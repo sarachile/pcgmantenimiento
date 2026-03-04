@@ -19,11 +19,13 @@ import {
   ArrowRight,
   Loader2,
   Lock,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function SubscriptionPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -135,11 +137,18 @@ export default function SubscriptionPage() {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12">
-      <div className="text-center space-y-2">
-        <h2 className="text-4xl font-black tracking-tight text-primary">Planes y Escalabilidad</h2>
-        <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Gestiona el crecimiento de tu operación de mantenimiento con planes diseñados para la industria.
-        </p>
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+          <Link href="/dashboard">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div className="space-y-1">
+          <h2 className="text-4xl font-black tracking-tight text-primary">Planes y Escalabilidad</h2>
+          <p className="text-muted-foreground text-sm font-medium max-w-2xl">
+            Gestiona el crecimiento de tu operación de mantenimiento con planes diseñados para la industria.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
