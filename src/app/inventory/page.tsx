@@ -23,6 +23,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Search, 
   Plus, 
@@ -31,10 +38,11 @@ import {
   TrendingDown,
   MoreVertical,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  Settings2
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, serverTimestamp, addDoc } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { collection, serverTimestamp, addDoc, doc, increment } from "firebase/firestore";
 import { MOCK_SPARE_PARTS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -45,15 +53,24 @@ export default function InventoryPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isAdjustOpen, setIsAdjustOpen] = useState(false);
 
-  // Form states
+  // Form states for new item
   const [newItem, setNewItem] = useState({
     name: "",
     sku: "",
     stockActual: "",
     stockMinimo: "",
     unitPrice: ""
+  });
+
+  // Form states for adjustment
+  const [adjustment, setAdjustment] = useState({
+    partId: "",
+    type: "entrada", // entrada o salida
+    quantity: "",
+    reason: ""
   });
 
   const inventoryQuery = useMemoFirebase(() => {
@@ -73,24 +90,7 @@ export default function InventoryPage() {
 
   const handleCreateItem = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!db || !profile?.companyId) {
-      toast({
-        title: "Error de sesión",
-        description: "No se pudo identificar su empresa. Intente reingresar.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!newItem.name || !newItem.sku || !newItem.stockActual) {
-      toast({
-        title: "Campos incompletos",
-        description: "Por favor complete los campos obligatorios marcados con *.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!db || !profile?.companyId) return;
 
     const colRef = collection(db, "companies", profile.companyId, "spareParts");
     const itemData = {
@@ -103,25 +103,38 @@ export default function InventoryPage() {
       createdAt: serverTimestamp(),
     };
 
-    // Firestore write (non-blocking)
-    addDoc(colRef, itemData).catch(async (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: colRef.path,
-        operation: 'create',
-        requestResourceData: itemData,
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    });
-
-    // UI updates immediately
+    addDoc(colRef, itemData);
+    
     toast({
       title: "Ítem registrado",
       description: `${newItem.name} ha sido añadido al catálogo.`,
     });
     
-    // Reset and close
     setNewItem({ name: "", sku: "", stockActual: "", stockMinimo: "", unitPrice: "" });
-    setIsDialogOpen(false);
+    setIsCreateOpen(false);
+  };
+
+  const handleAdjustStock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !profile?.companyId || !adjustment.partId) return;
+
+    const qty = Number(adjustment.quantity);
+    if (isNaN(qty) || qty <= 0) return;
+
+    const finalQty = adjustment.type === "entrada" ? qty : -qty;
+    const partRef = doc(db, "companies", profile.companyId, "spareParts", adjustment.partId);
+
+    updateDocumentNonBlocking(partRef, {
+      stockActual: increment(finalQty)
+    });
+
+    toast({
+      title: "Stock Ajustado",
+      description: `Se ha registrado una ${adjustment.type} de ${qty} unidades.`,
+    });
+
+    setAdjustment({ partId: "", type: "entrada", quantity: "", reason: "" });
+    setIsAdjustOpen(false);
   };
 
   if (isAuthLoading) {
@@ -143,15 +156,86 @@ export default function InventoryPage() {
           </Button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Inventario de Insumos</h2>
-            <p className="text-muted-foreground">Gestión de materiales, repuestos y recursos para mantenimiento.</p>
+            <p className="text-muted-foreground">Gestión de materiales y repuestos para mantenimiento.</p>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
-             <TrendingDown className="mr-2 h-4 w-4" /> Ajuste de Stock
-          </Button>
+          <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <TrendingDown className="mr-2 h-4 w-4" /> Ajuste de Stock
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Ajustar Stock Manualmente</DialogTitle>
+                <DialogDescription>
+                  Corrija el inventario físico o registre mermas y entradas directas.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAdjustStock} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Ítem a ajustar</Label>
+                  <Select 
+                    value={adjustment.partId} 
+                    onValueChange={(val) => setAdjustment({...adjustment, partId: val})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccione un ítem..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {parts.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo de Ajuste</Label>
+                    <Select 
+                      value={adjustment.type} 
+                      onValueChange={(val) => setAdjustment({...adjustment, type: val as "entrada" | "salida"})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="entrada">Entrada (+)</SelectItem>
+                        <SelectItem value="salida">Salida (-)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cantidad</Label>
+                    <Input 
+                      type="number" 
+                      placeholder="0"
+                      value={adjustment.quantity}
+                      onChange={(e) => setAdjustment({...adjustment, quantity: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Motivo del Ajuste</Label>
+                  <Input 
+                    placeholder="Ej: Cuadratura inventario físico..." 
+                    value={adjustment.reason}
+                    onChange={(e) => setAdjustment({...adjustment, reason: e.target.value})}
+                  />
+                </div>
+                <DialogFooter className="pt-4">
+                  <Button type="submit" className="w-full">
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    Aplicar Ajuste
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
@@ -161,7 +245,7 @@ export default function InventoryPage() {
               <DialogHeader>
                 <DialogTitle>Registrar Nuevo Ítem</DialogTitle>
                 <DialogDescription>
-                  Añada un nuevo material o insumo al catálogo maestro de su empresa.
+                  Añada un nuevo material o insumo al catálogo maestro.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateItem} className="space-y-4 py-4">
@@ -179,7 +263,7 @@ export default function InventoryPage() {
                   <Label htmlFor="sku">Referencia / SKU *</Label>
                   <Input 
                     id="sku" 
-                    placeholder="Código interno o de fabricante" 
+                    placeholder="Código interno" 
                     value={newItem.sku}
                     onChange={(e) => setNewItem({...newItem, sku: e.target.value})}
                     required
@@ -216,7 +300,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <DialogFooter className="pt-4">
-                  <Button type="submit" className="w-full sm:w-auto">
+                  <Button type="submit" className="w-full">
                     <Plus className="h-4 w-4 mr-2" />
                     Guardar en Catálogo
                   </Button>
