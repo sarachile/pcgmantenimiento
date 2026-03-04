@@ -200,7 +200,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile, isReviewer, isSupervisor, isCompanyAdmin } = useUser();
+  const { profile, isReviewer, isSupervisor, isCompanyAdmin, isTechnician } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   const reportRef = useRef<HTMLDivElement>(null);
@@ -364,14 +364,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl m-10">Orden no encontrada.</div>;
 
   const isClientAccess = isReviewer || (!profile?.role && !isDocLoading);
-  const showQrCode = ot.status === 'en revision' && ot.technicianSignatureUrl && !ot.clientSignatureUrl;
+  const showQrCode = ot.reviewerRequired && ot.technicianSignatureUrl && !ot.clientSignatureUrl;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
-      {/* REPORTE OCULTO PARA PDF */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
-          ref={reportRef} 
+          forwardedRef={reportRef} 
           company={company || null} 
           workOrder={ot} 
           client={client || null} 
@@ -428,8 +427,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {/* SECCIÓN QR PARA CLIENTE */}
-          {showQrCode && !isClientAccess && (
+          {showQrCode && (isTechnician || isSupervisor || isCompanyAdmin) && (
             <Card className="border-2 border-primary border-dashed bg-primary/5">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row items-center gap-6">
@@ -446,10 +444,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       <h3 className="text-lg font-black text-primary uppercase">Validación por el Cliente</h3>
                     </div>
                     <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                      Solicite al cliente que escanee este código con su móvil para que pueda <strong>evaluar el servicio</strong> y <strong>firmar la recepción conforme</strong> desde su propio dispositivo.
+                      Escanee este código desde el móvil del revisor para que pueda <strong>firmar la recepción conforme</strong> y evaluar el trabajo directamente.
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className="bg-white text-primary border-primary/20 h-6">SINCRONIZACIÓN REAL-TIME</Badge>
+                      <Badge variant="outline" className="bg-white text-primary border-primary/20 h-6 uppercase font-bold text-[9px]">Flujo QR Activo</Badge>
                       <Button variant="link" className="h-6 p-0 text-xs font-bold gap-1" asChild>
                         <a href={currentUrl} target="_blank"><ExternalLink className="h-3 w-3" /> Abrir enlace directo</a>
                       </Button>
@@ -529,6 +527,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <div className="border-2 rounded-2xl p-4 h-40 flex items-center justify-center bg-slate-50 shadow-inner">
                     <FirebaseImage url={ot.clientSignatureUrl} className="max-h-full" />
                   </div>
+                ) : ot.reviewerRequired ? (
+                  <div className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-amber-50/30 gap-1 p-2">
+                    <QrCode className="h-5 w-5 text-amber-400" />
+                    <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest text-center">Recepción vía QR Activada</span>
+                    <p className="text-[8px] text-slate-400 leading-tight">El cliente debe firmar desde su móvil escaneando el código superior.</p>
+                  </div>
                 ) : (
                   <Button variant="outline" className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col gap-2" onClick={() => setSignatureType('client')}>
                     <SignatureIcon className="h-6 w-6 text-slate-300" />
@@ -583,7 +587,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 const url = await getDownloadURL(sRef);
                 const updateData: any = signatureType === 'client' ? { clientSignatureUrl: url } : { technicianSignatureUrl: url };
                 
-                // Si el técnico firma por primera vez, movemos a 'en revision'
                 if (signatureType === 'technician' && ot.status === 'creada') {
                   updateData.status = 'en revision';
                   updateData.executedAt = serverTimestamp();

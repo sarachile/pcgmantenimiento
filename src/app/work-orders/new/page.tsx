@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -10,9 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -28,9 +30,9 @@ export default function NewWorkOrderPage() {
   const [clientId, setClientId] = useState("");
   const [assetId, setAssetId] = useState("");
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
+  const [reviewerRequired, setReviewerRequired] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Inicialización perezosa de fecha para evitar useEffect y loops
   const [scheduledDate, setScheduledDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [durationDays, setDurationDays] = useState(1);
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
@@ -45,7 +47,6 @@ export default function NewWorkOrderPage() {
     } catch (e) { return ""; }
   }, [scheduledDate, durationDays]);
 
-  // Consultas estables usando el ID primitivo como dependencia
   const companyId = profile?.companyId;
 
   const clientsQuery = useMemoFirebase(() => 
@@ -85,7 +86,7 @@ export default function NewWorkOrderPage() {
         status: "creada",
         assignedToStaffIds,
         createdByUserId: profile.id,
-        reviewerRequired: false,
+        reviewerRequired,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
         estimatedEndDate: estimatedEndDateStr ? new Date(estimatedEndDateStr).toISOString() : null,
@@ -174,6 +175,17 @@ export default function NewWorkOrderPage() {
                   {estimatedEndDateStr ? format(parseISO(estimatedEndDateStr), 'dd/MM/yyyy') : '...'}
                 </div>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between p-4 bg-amber-50 border-2 border-amber-100 rounded-2xl">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <QrCode className="h-4 w-4 text-amber-600" />
+                  <Label className="text-amber-900 font-black text-sm">Validación Externa por QR</Label>
+                </div>
+                <p className="text-[10px] text-amber-700 font-medium">Permite que el revisor del cliente firme desde su propio dispositivo móvil.</p>
+              </div>
+              <Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} />
             </div>
 
             <div className="space-y-4">
