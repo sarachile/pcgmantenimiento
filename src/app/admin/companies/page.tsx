@@ -47,7 +47,8 @@ import {
   Shield,
   Send,
   ExternalLink,
-  Globe
+  Globe,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -260,7 +261,7 @@ export default function AdminCompaniesPage() {
 
     toast({
       title: "Invitación Procesada",
-      description: `Se ha encolado el envío para ${inviteEmail}. Revisa la colección 'mail' para ver el estado.`,
+      description: `Se ha encolado el envío para ${inviteEmail}.`,
     });
     
     setIsSendingInvite(false);
@@ -597,6 +598,14 @@ export default function AdminCompaniesPage() {
                 onChange={(e) => setInviteEmail(e.target.value)}
               />
             </div>
+            
+            <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 flex gap-2">
+              <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-[10px] text-amber-700 leading-tight">
+                <strong>Nota Técnica:</strong> Asegúrese de que la extensión <strong>Trigger Email</strong> esté instalada y configurada en su consola de Firebase para que este envío sea exitoso.
+              </p>
+            </div>
+
             <div className="bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200">
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Vista Previa de Notificación SaaS:</p>
               <div className="text-[12px] text-slate-700 leading-relaxed space-y-2">

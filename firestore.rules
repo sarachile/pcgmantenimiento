@@ -34,7 +34,7 @@ service cloud.firestore {
     // --- REGLAS DE COLECCIONES ---
 
     // Colección para la extensión Trigger Email
-    // Simplificamos al máximo para el superadmin
+    // El superadmin tiene control total para enviar y monitorear correos
     match /mail/{mailId} {
       allow create: if isSignedIn() && (request.auth.token.email == 'control@pcgoperacion.com' || isSuperAdmin());
       allow read, update, delete: if isSignedIn() && (request.auth.token.email == 'control@pcgoperacion.com' || isSuperAdmin());
