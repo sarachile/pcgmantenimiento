@@ -8,7 +8,6 @@ import {
   MOCK_USERS,
   MOCK_CLIENTS,
   MOCK_ASSETS,
-  MOCK_SPARE_PARTS
 } from "@/lib/mock-data";
 import { 
   Card, 
@@ -26,9 +25,7 @@ import {
   XCircle, 
   ArrowLeft,
   Loader2,
-  Receipt,
-  Package,
-  Plus,
+  FileDown,
   Camera,
   Image as ImageIcon,
   ListChecks,
@@ -51,14 +48,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,12 +55,15 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp, increment, arrayUnion, query, orderBy } from "firebase/firestore";
+import { doc, collection, addDoc, serverTimestamp, arrayUnion, query, orderBy } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
-import { ChecklistItem, WorkOrder, DigitalLogbookEntry } from "@/lib/types";
+import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company } from "@/lib/types";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 import { format, parseISO } from "date-fns";
+import { WorkOrderReport } from "@/components/WorkOrderReport";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 // Simple Signature Pad Component using Canvas
 function SignaturePad({ onSave, onCancel, isSaving, title }: { 
@@ -174,14 +166,17 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile, isReviewer, isSupervisor, isCompanyAdmin, isTechnician } = useUser();
+  const { profile } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const reportRef = useRef<HTMLDivElement>(null);
+  
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [isSavingSignature, setIsSavingSignature] = useState(false);
@@ -198,6 +193,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     return doc(db, "companies", profile.companyId, "workOrders", otId);
   }, [db, profile?.companyId, otId]);
 
+  const companyRef = useMemoFirebase(() => {
+    if (!db || !profile?.companyId) return null;
+    return doc(db, "companies", profile.companyId);
+  }, [db, profile?.companyId]);
+
   const logbookQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId || otId.startsWith('OT-')) return null;
     return query(
@@ -208,14 +208,16 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   // Firestore Data
   const { data: firestoreOt, isLoading: isDocLoading } = useDoc<WorkOrder>(otRef);
+  const { data: company } = useDoc<Company>(companyRef);
   const { data: firestoreLogbook } = useCollection<DigitalLogbookEntry>(logbookQuery);
 
   const ot = firestoreOt || MOCK_WORK_ORDERS.find(o => o.id === otId);
   const logbook = firestoreLogbook && firestoreLogbook.length > 0 ? firestoreLogbook : MOCK_LOGBOOK.filter(l => l.workOrderId === otId);
   
   const isMock = !firestoreOt;
-  const client = MOCK_CLIENTS.find(c => c.id === ot?.clientId);
-  const asset = MOCK_ASSETS.find(a => a.id === ot?.assetId);
+  const client = MOCK_CLIENTS.find(c => c.id === ot?.clientId) || null;
+  const asset = MOCK_ASSETS.find(a => a.id === ot?.assetId) || null;
+  const technician = MOCK_USERS.find(u => u.id === ot?.assignedTo) || null;
 
   const formatDate = (date: any) => {
     if (!mounted || !date) return '...';
@@ -225,6 +227,34 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       return new Date(date).toLocaleString();
     } catch (e) {
       return 'N/A';
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current) return;
+    setIsGeneratingPdf(true);
+    try {
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Reporte_PCG_${ot?.id}_${Date.now()}.pdf`);
+      
+      toast({ title: "Reporte generado", description: "El PDF se ha descargado exitosamente." });
+    } catch (error: any) {
+      toast({ title: "Error al generar PDF", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -383,7 +413,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         digitalLogbookEntries: logbook.map(l => ({
           id: l.id,
           timestamp: l.timestamp?.toDate ? l.timestamp.toDate().toISOString() : l.timestamp,
-          eventType: l.eventType,
+          eventType: l.eventType as any,
           eventDetails: l.eventDetails,
           actor: l.actor,
           workOrderId: l.workOrderId
@@ -442,10 +472,21 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   if (!ot) return <div className="p-8 text-center">Orden no encontrada.</div>;
 
-  const canReview = (isReviewer || isSupervisor || isCompanyAdmin) && ot.status === 'en revision';
-
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4 sm:px-0">
+      {/* Hidden Report for PDF Capture */}
+      <div className="hidden">
+        <WorkOrderReport 
+          ref={reportRef}
+          company={company || null}
+          workOrder={ot}
+          client={client}
+          asset={asset}
+          logbook={logbook}
+          technician={technician}
+        />
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-card p-6 rounded-xl border shadow-sm">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link>
@@ -466,7 +507,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             {isGeneratingAi ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2 text-amber-500 fill-amber-500" />}
             Resumen IA
           </Button>
-          {canReview && (
+          <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf}>
+            {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />}
+            Reporte PDF
+          </Button>
+          {['en revision', 'ejecutada'].includes(ot.status) && (
             <>
               <Button variant="outline" className="text-rose-500" onClick={() => handleStatusChange('rechazada')}>
                 <XCircle className="mr-2 h-4 w-4" /> Rechazar
@@ -518,7 +563,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Inicio Programado</p>
                     <div className="flex items-center gap-1.5">
                       <CalendarIcon className="h-3 w-3 text-primary" />
-                      <p className="text-sm font-bold">{format(ot.scheduledDate instanceof Date ? ot.scheduledDate : parseISO(ot.scheduledDate), 'dd/MM/yyyy')}</p>
+                      <p className="text-sm font-bold">{formatDate(ot.scheduledDate).split(',')[0]}</p>
                     </div>
                   </div>
                   <div>
@@ -530,7 +575,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Término Estimado</p>
-                    <p className="text-sm font-bold text-primary">{ot.estimatedEndDate ? format(ot.estimatedEndDate instanceof Date ? ot.estimatedEndDate : parseISO(ot.estimatedEndDate), 'dd/MM/yyyy') : 'S/I'}</p>
+                    <p className="text-sm font-bold text-primary">{formatDate(ot.estimatedEndDate).split(',')[0]}</p>
                   </div>
                 </div>
               )}
@@ -643,7 +688,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <Dialog open={signatureType === 'technician'} onOpenChange={(open) => !open && setSignatureType(null)}>
                       <DialogTrigger asChild>
                         <Button variant="outline" className="w-full" onClick={() => setSignatureType('technician')} disabled={isMock}>
-                          <Plus className="h-4 w-4 mr-2" /> Firmar como Técnico
+                          <SignatureIcon className="h-4 w-4 mr-2" /> Firmar como Técnico
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
@@ -672,7 +717,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <Dialog open={signatureType === 'client'} onOpenChange={(open) => !open && setSignatureType(null)}>
                       <DialogTrigger asChild>
                         <Button variant="outline" className="w-full" onClick={() => setSignatureType('client')} disabled={isMock}>
-                          <Plus className="h-4 w-4 mr-2" /> Capturar Firma Cliente
+                          <SignatureIcon className="h-4 w-4 mr-2" /> Capturar Firma Cliente
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
