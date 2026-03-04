@@ -96,28 +96,30 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
     if (!ot || !company || !firestore) return;
     setIsSubmitting(true);
     try {
-      // Generar código de validación único
       const verificationCode = `PCG-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
-      const approvalDate = new Date().toISOString();
-
-      const evalCol = collection(firestore, "companies", company.id, "evaluations");
-      const evalDoc = await addDoc(evalCol, {
-        workOrderId: ot.id,
-        clientId: ot.clientId,
-        companyId: company.id,
-        reviewerId: "external_client",
-        reviewerName: client?.contactName || "Responsable Cliente",
-        ratings,
-        comment,
-        createdAt: serverTimestamp()
-      });
+      
+      let evaluationId = null;
+      if (ot.evaluationRequired) {
+        const evalCol = collection(firestore, "companies", company.id, "evaluations");
+        const evalDoc = await addDoc(evalCol, {
+          workOrderId: ot.id,
+          clientId: ot.clientId,
+          companyId: company.id,
+          reviewerId: "external_client",
+          reviewerName: client?.contactName || "Responsable Cliente",
+          ratings,
+          comment,
+          createdAt: serverTimestamp()
+        });
+        evaluationId = evalDoc.id;
+      }
 
       const otRef = doc(firestore, "companies", company.id, "workOrders", ot.id);
       updateDocumentNonBlocking(otRef, {
         clientApprovalName: client?.contactName || "Responsable Cliente",
         clientApprovalDate: serverTimestamp(),
         clientApprovalCode: verificationCode,
-        evaluationId: evalDoc.id,
+        evaluationId: evaluationId,
         status: 'aprobada',
         updatedAt: serverTimestamp()
       });
@@ -128,6 +130,14 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
       toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleNextFromReview = () => {
+    if (ot?.evaluationRequired) {
+      setStep(2);
+    } else {
+      setStep(3);
     }
   };
 
@@ -248,7 +258,10 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
             </Card>
             
             <div className="flex flex-col gap-4">
-              <Button className="w-full h-16 rounded-2xl bg-indigo-600 text-white text-lg font-black shadow-xl shadow-indigo-200 uppercase tracking-widest" onClick={() => setStep(2)}>Siguiente: Evaluar Servicio <ArrowLeft className="ml-2 h-5 w-5 rotate-180" /></Button>
+              <Button className="w-full h-16 rounded-2xl bg-indigo-600 text-white text-lg font-black shadow-xl shadow-indigo-200 uppercase tracking-widest" onClick={handleNextFromReview}>
+                {ot.evaluationRequired ? "Siguiente: Evaluar Servicio" : "Siguiente: Confirmar Aprobación"}
+                <ArrowLeft className="ml-2 h-5 w-5 rotate-180" />
+              </Button>
               <Button variant="ghost" className="text-rose-500 font-black h-12 uppercase tracking-widest hover:bg-rose-50" onClick={() => setStep(6)}>
                 <AlertTriangle className="h-4 w-4 mr-2" /> Reportar Disconformidad
               </Button>
@@ -333,7 +346,9 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
                   >
                     {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Confirmar y Aprobar Servicio"}
                   </Button>
-                  <Button variant="ghost" className="w-full text-slate-400 font-black uppercase text-[10px] tracking-[0.3em]" onClick={() => setStep(2)}>Volver a evaluación</Button>
+                  <Button variant="ghost" className="w-full text-slate-400 font-black uppercase text-[10px] tracking-[0.3em]" onClick={() => ot?.evaluationRequired ? setStep(2) : setStep(1)}>
+                    Volver {ot?.evaluationRequired ? "a evaluación" : "atrás"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

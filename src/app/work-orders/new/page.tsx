@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -30,7 +30,8 @@ export default function NewWorkOrderPage() {
   const [clientId, setClientId] = useState("");
   const [assetId, setAssetId] = useState("");
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
-  const [reviewerRequired, setReviewerRequired] = useState(false);
+  const [reviewerRequired, setReviewerRequired] = useState(true);
+  const [evaluationRequired, setEvaluationRequired] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [scheduledDate, setScheduledDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
@@ -38,7 +39,6 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
-  // CRITICAL: Use primitive companyId for dependency stability to prevent infinite loops in Radix UI
   const companyId = profile?.companyId || "";
 
   const clientsQuery = useMemoFirebase(() => 
@@ -85,6 +85,7 @@ export default function NewWorkOrderPage() {
         assignedToStaffIds,
         createdByUserId: profile.id,
         reviewerRequired,
+        evaluationRequired,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
         estimatedEndDate: estimatedEndDateStr ? new Date(estimatedEndDateStr).toISOString() : null,
@@ -183,15 +184,40 @@ export default function NewWorkOrderPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-amber-50 border-2 border-amber-100 rounded-2xl">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <QrCode className="h-4 w-4 text-amber-600" />
-                  <Label className="text-amber-900 font-black text-sm">Validación Externa Requerida</Label>
+            {/* SECCIÓN DE REQUISITOS - ANIMADA Y DESTACADA */}
+            <div className="space-y-4 p-1 rounded-3xl bg-gradient-to-r from-amber-500/20 via-blue-500/20 to-emerald-500/20 animate-pulse">
+              <div className="bg-white rounded-[1.4rem] p-6 border-2 border-slate-100 shadow-sm space-y-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="bg-primary/10 p-1.5 rounded-lg">
+                    <QrCode className="h-4 w-4 text-primary" />
+                  </div>
+                  <Label className="font-black text-xs uppercase text-slate-900 tracking-tighter">Protocolos de Cierre y Calidad</Label>
                 </div>
-                <p className="text-[10px] text-amber-700 font-medium">Requiere firma del cliente desde su propio dispositivo vía QR/Email.</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 border-2 rounded-2xl hover:border-amber-200 transition-colors">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <QrCode className="h-4 w-4 text-amber-600" />
+                        <Label className="text-slate-900 font-black text-xs uppercase tracking-tighter">Validación Externa</Label>
+                      </div>
+                      <p className="text-[9px] text-slate-500 font-medium leading-none">Firma digital del cliente vía QR.</p>
+                    </div>
+                    <Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} />
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-slate-50 border-2 rounded-2xl hover:border-emerald-200 transition-colors">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-emerald-600" />
+                        <Label className="text-slate-900 font-black text-xs uppercase tracking-tighter">Solicitar Evaluación</Label>
+                      </div>
+                      <p className="text-[9px] text-slate-500 font-medium leading-none">Pedir calificación por estrellas.</p>
+                    </div>
+                    <Switch checked={evaluationRequired} onCheckedChange={setEvaluationRequired} />
+                  </div>
+                </div>
               </div>
-              <Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} />
             </div>
 
             <div className="space-y-4">

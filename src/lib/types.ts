@@ -128,6 +128,7 @@ export interface WorkOrder {
   assignedToStaffIds?: string[];
   createdByUserId: string;
   reviewerRequired: boolean;
+  evaluationRequired: boolean;
   scheduledDate?: string | any;
   durationDays?: number;
   estimatedEndDate?: string | any;
