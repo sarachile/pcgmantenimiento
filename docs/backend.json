@@ -74,6 +74,26 @@
       },
       "required": ["id", "companyId", "clientId", "status", "createdAt"]
     },
+    "Invoice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invoice",
+      "type": "object",
+      "description": "Factura electrónica emitida mediante SimpleAPI vinculada a una OT.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "workOrderId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pendiente", "enviado", "error", "aceptado_sii"] },
+        "simpleApiId": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "xmlUrl": { "type": "string" },
+        "issuedBy": { "type": "string" },
+        "issuedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "companyId", "clientId", "workOrderId", "amount", "status", "issuedAt"]
+    },
     "DigitalLogbookEntry": {
       "title": "DigitalLogbookEntry",
       "type": "object",
@@ -102,6 +122,10 @@
     "/companies/{companyId}/workOrders/{workOrderId}": {
       "schema": { "$ref": "#/backend/entities/WorkOrder" },
       "description": "Órdenes de trabajo de la empresa."
+    },
+    "/companies/{companyId}/workOrders/{workOrderId}/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/backend/entities/Invoice" },
+      "description": "Facturas emitidas para una OT específica."
     },
     "/companies/{companyId}/workOrders/{workOrderId}/digitalLogbookEntries/{entryId}": {
       "schema": { "$ref": "#/backend/entities/DigitalLogbookEntry" },

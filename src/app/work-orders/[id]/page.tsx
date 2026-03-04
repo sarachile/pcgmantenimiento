@@ -27,16 +27,17 @@ import {
   ShieldCheck,
   Sparkles,
   ArrowLeft,
-  MessageSquare,
+  FileText,
   Loader2,
-  Building2
+  Building2,
+  Receipt
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { doc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -46,6 +47,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const db = useFirestore();
   
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isInvoicing, setIsInvoicing] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -70,7 +72,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!mounted || !date) return '...';
     try {
       if (typeof date === 'string') return new Date(date).toLocaleString();
-      if (date.toDate) return date.toDate().toLocaleString();
+      if (date?.toDate) return date.toDate().toLocaleString();
       return new Date(date).toLocaleString();
     } catch (e) {
       return 'N/A';
@@ -99,9 +101,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           description: ot.description || "",
           status: ot.status as any,
           createdAt: typeof ot.createdAt === 'string' ? ot.createdAt : (ot.createdAt as any)?.toDate().toISOString(),
-          updatedAt: ot.updatedAt ? (typeof ot.updatedAt === 'string' ? ot.updatedAt : (ot.updatedAt as any)?.toDate().toISOString()) : undefined,
-          executedAt: ot.executedAt ? (typeof ot.executedAt === 'string' ? ot.executedAt : (ot.executedAt as any)?.toDate().toISOString()) : undefined,
-          reviewedAt: ot.reviewedAt ? (typeof ot.reviewedAt === 'string' ? ot.reviewedAt : (ot.reviewedAt as any)?.toDate().toISOString()) : undefined,
           companyId: profile?.companyId || "demo-company"
         },
         digitalLogbookEntries: logbook.map(entry => ({
@@ -118,6 +117,47 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleCreateInvoice = async () => {
+    if (isMock) {
+      toast({
+        title: "Simulación de Factura",
+        description: "Se ha solicitado la emisión a SimpleAPI (Modo Demo).",
+      });
+      return;
+    }
+
+    if (!profile?.companyId || !client) return;
+
+    setIsInvoicing(true);
+    try {
+      const invoiceRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "invoices");
+      
+      // En una app real, aquí se llamaría a la Cloud Function de SimpleAPI
+      await addDoc(invoiceRef, {
+        companyId: profile.companyId,
+        clientId: client.id,
+        workOrderId: ot.id,
+        amount: 150000, // Monto simulado
+        status: "pendiente",
+        issuedBy: profile.id,
+        issuedAt: serverTimestamp(),
+      });
+
+      toast({
+        title: "Solicitud enviada",
+        description: "La factura está siendo procesada por SimpleAPI.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error de emisión",
+        description: "No se pudo registrar la solicitud de factura.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsInvoicing(false);
     }
   };
 
@@ -148,6 +188,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </p>
         </div>
         <div className="flex gap-2">
+          {ot.status === 'aprobada' && (
+            <Button onClick={handleCreateInvoice} disabled={isInvoicing} className="bg-primary hover:bg-primary/90">
+              {isInvoicing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Receipt className="mr-2 h-4 w-4" />}
+              Facturar (SimpleAPI)
+            </Button>
+          )}
           {ot.status === 'en revision' && !isMock && (
             <>
               <Button variant="outline" className="border-rose-500 text-rose-500 hover:bg-rose-50">

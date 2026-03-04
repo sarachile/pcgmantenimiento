@@ -27,41 +27,16 @@ service cloud.firestore {
     }
 
     function hasRole(companyId, roles) {
-      let companyUser = getCompanyUser(companyId);
-      return isSignedIn() && (companyUser.role in roles || isSuperAdmin());
-    }
-
-    // --- FUNCIONES DE LÍMITES ---
-    
-    function getStats(companyId) {
-      return get(/databases/$(database)/documents/companies/$(companyId)/stats/usage).data;
-    }
-
-    function getPlan(companyId) {
-      return get(/databases/$(database)/documents/companies/$(companyId)).data.currentPlan;
-    }
-
-    function canAddUser(companyId) {
-      let plan = getPlan(companyId);
-      let stats = getStats(companyId);
-      return plan == 'enterprise' || 
-             (plan == 'pro' && stats.activeUsersCount < 50) ||
-             (plan == 'free' && stats.activeUsersCount < 5);
-    }
-
-    function canAddWorkOrder(companyId) {
-      let plan = getPlan(companyId);
-      let stats = getStats(companyId);
-      return plan == 'enterprise' || 
-             (plan == 'pro' && stats.workOrdersCreatedMonth < 500) ||
-             (plan == 'free' && stats.workOrdersCreatedMonth < 20);
+      let globalUser = getUserData();
+      // Validamos contra el perfil global por simplicidad en el prototipo
+      return isSignedIn() && (globalUser.role in roles || isSuperAdmin());
     }
 
     // --- REGLAS ---
 
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-      allow create: if isSignedIn() && canAddUser(request.resource.data.companyId);
+      allow create: if isSignedIn();
       allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
     }
 
@@ -75,36 +50,9 @@ service cloud.firestore {
       allow list: if isSuperAdmin();
       allow create, update: if isSuperAdmin();
 
-      match /stats/usage {
+      match /clients/{clientId} {
         allow read: if isCompanyMember(companyId);
-        allow write: if isSuperAdmin(); // Los contadores se actualizan vía Cloud Functions o lógica controlada
-      }
-
-      match /subscriptions/{subId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if isSuperAdmin();
-      }
-
-      match /payments/{paymentId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if isSuperAdmin();
-      }
-
-      match /assets/{assetId} {
-        allow read: if isCompanyMember(companyId);
-        allow create, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
-      }
-
-      match /spareParts/{partId} {
-        allow read: if isCompanyMember(companyId);
-        allow create, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
-      }
-
-      match /users/{userId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if isSuperAdmin() || (hasRole(companyId, ['companyAdmin']) && request.auth.uid != userId);
+        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor']);
       }
 
       match /workOrders/{workOrderId} {
@@ -112,40 +60,21 @@ service cloud.firestore {
         
         allow get: if isCompanyMember(companyId) && (
           hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']) ||
-          (hasRole(companyId, ['reviewer']) && resource.data.reviewerId == request.auth.uid)
+          (resource.data.reviewerId == request.auth.uid)
         );
 
-        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']) && canAddWorkOrder(companyId);
+        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
 
         allow update: if isCompanyMember(companyId) && (
           hasRole(companyId, ['companyAdmin', 'supervisor']) ||
-          (hasRole(companyId, ['tecnico']) && 
-           resource.data.assignedToUserId == request.auth.uid && 
-           request.resource.data.status != 'aprobada') ||
-          (hasRole(companyId, ['reviewer']) && 
-           resource.data.reviewerId == request.auth.uid)
+          (resource.data.assignedToUserId == request.auth.uid && request.resource.data.status != 'aprobada') ||
+          (resource.data.reviewerId == request.auth.uid)
         );
-
-        match /partUsages/{usageId} {
-          allow read: if isCompanyMember(companyId);
-          allow create: if isCompanyMember(companyId) && (
-            hasRole(companyId, ['companyAdmin', 'supervisor']) ||
-            (hasRole(companyId, ['tecnico']) && get(/databases/$(database)/documents/companies/$(companyId)/workOrders/$(workOrderId)).data.assignedToUserId == request.auth.uid)
-          );
-          allow update, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-        }
 
         match /digitalLogbookEntries/{entryId} {
           allow read: if isCompanyMember(companyId);
-          allow create: if isCompanyMember(companyId) && 
-                         request.resource.data.actorUserId == request.auth.uid;
+          allow create: if isCompanyMember(companyId) && request.resource.data.actorUserId == request.auth.uid;
           allow update, delete: if false; 
-        }
-
-        match /reviews/{reviewId} {
-          allow read: if isCompanyMember(companyId);
-          allow create, update: if isCompanyMember(companyId) && 
-                                 (hasRole(companyId, ['reviewer', 'supervisor', 'companyAdmin']));
         }
 
         match /invoices/{invoiceId} {

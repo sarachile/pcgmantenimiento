@@ -67,6 +67,20 @@ export interface WorkOrder {
   evidenceUrls?: string[];
 }
 
+export interface Invoice {
+  id: string;
+  companyId: string;
+  clientId: string;
+  workOrderId: string;
+  amount: number;
+  status: DTEStatus;
+  simpleApiId?: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  issuedBy: string;
+  issuedAt: string | any;
+}
+
 export interface DigitalLogbookEntry {
   id: string;
   workOrderId: string;
