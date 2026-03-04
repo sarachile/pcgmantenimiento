@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -54,7 +55,6 @@ import {
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, serverTimestamp, addDoc, doc, increment } from "firebase/firestore";
-import { MOCK_SPARE_PARTS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -91,8 +91,7 @@ export default function InventoryPage() {
 
   const { data: realParts, isLoading: isPartsLoading } = useCollection(inventoryQuery);
 
-  const parts = realParts && realParts.length > 0 ? realParts : MOCK_SPARE_PARTS;
-  const isDemo = !realParts || realParts.length === 0;
+  const parts = realParts || [];
 
   const filtered = parts.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -103,22 +102,12 @@ export default function InventoryPage() {
     e.preventDefault();
     if (!db || !profile?.companyId) return;
 
-    if (isDemo) {
-      toast({
-        title: "Modo Demo",
-        description: "No se pueden crear ítems reales en el modo de demostración.",
-        variant: "destructive"
-      });
-      setIsCreateOpen(false);
-      return;
-    }
-
     const colRef = collection(db, "companies", profile.companyId, "spareParts");
     const itemData = {
       companyId: profile.companyId,
-      name: newItem.name,
-      sku: newItem.sku,
-      stockActual: Number(newItem.stockActual),
+      name: newItem.name || "Nombre por definir",
+      sku: newItem.sku || "SKU por definir",
+      stockActual: Number(newItem.stockActual) || 0,
       stockMinimo: Number(newItem.stockMinimo) || 0,
       unitPrice: Number(newItem.unitPrice) || 0,
       createdAt: serverTimestamp(),
@@ -128,7 +117,7 @@ export default function InventoryPage() {
     
     toast({
       title: "Ítem registrado",
-      description: `${newItem.name} ha sido añadido al catálogo.`,
+      description: `${itemData.name} ha sido añadido al catálogo.`,
     });
     
     setNewItem({ name: "", sku: "", stockActual: "", stockMinimo: "", unitPrice: "" });
@@ -145,17 +134,6 @@ export default function InventoryPage() {
         description: "Por favor ingrese una cantidad mayor a 0.",
         variant: "destructive"
       });
-      return;
-    }
-
-    if (isDemo) {
-      toast({
-        title: "Modo Demo",
-        description: "Ajuste simulado correctamente. Los cambios no se guardan en modo demo.",
-      });
-      setIsAdjustOpen(false);
-      setSelectedItem(null);
-      setAdjustment({ type: "entrada", quantity: "", reason: "" });
       return;
     }
 
@@ -185,10 +163,6 @@ export default function InventoryPage() {
   };
 
   const handleDeleteItem = (item: any) => {
-    if (isDemo) {
-      toast({ title: "Modo Demo", description: "No se pueden eliminar ítems de ejemplo.", variant: "destructive" });
-      return;
-    }
     if (!db || !profile?.companyId) return;
 
     const partRef = doc(db, "companies", profile.companyId, "spareParts", item.id);
@@ -234,34 +208,31 @@ export default function InventoryPage() {
             </DialogHeader>
             <form onSubmit={handleCreateItem} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nombre del Ítem *</Label>
+                <Label htmlFor="name">Nombre del Ítem</Label>
                 <Input 
                   id="name" 
                   placeholder="Ej: Filtro de Aire, Aceite 10W40..." 
                   value={newItem.name}
                   onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                  required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="sku">Referencia / SKU *</Label>
+                <Label htmlFor="sku">Referencia / SKU</Label>
                 <Input 
                   id="sku" 
                   placeholder="Código interno" 
                   value={newItem.sku}
                   onChange={(e) => setNewItem({...newItem, sku: e.target.value})}
-                  required
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="stock">Stock Inicial *</Label>
+                  <Label htmlFor="stock">Stock Inicial</Label>
                   <Input 
                     id="stock" 
                     type="number" 
                     value={newItem.stockActual}
                     onChange={(e) => setNewItem({...newItem, stockActual: e.target.value})}
-                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -392,7 +363,6 @@ export default function InventoryPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200">DEMO</Badge>}
           </div>
         </CardHeader>
         <CardContent>
@@ -400,6 +370,10 @@ export default function InventoryPage() {
             <div className="py-10 text-center">
               <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
               Cargando catálogo...
+            </div>
+          ) : parts.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground border rounded-lg border-dashed">
+              No hay materiales registrados en el inventario.
             </div>
           ) : (
             <Table>

@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, updateDoc, query, where } from "firebase/firestore";
-import { MOCK_USERS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -59,12 +58,8 @@ export default function TeamPage() {
 
   const { data: realUsers, isLoading: isUsersLoading } = useCollection(usersQuery);
 
-  const companyUsers = realUsers && realUsers.length > 0 
-    ? realUsers 
-    : MOCK_USERS.filter(u => u.companyId === profile?.companyId);
+  const companyUsers = realUsers || [];
     
-  const isDemo = !realUsers || realUsers.length === 0;
-
   // Lógica de límites
   const planLimits = {
     free: 1,
@@ -82,14 +77,6 @@ export default function TeamPage() {
   );
 
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
-    if (isDemo) {
-      toast({
-        title: "Modo Demo",
-        description: "No se pueden modificar usuarios de ejemplo.",
-      });
-      return;
-    }
-
     try {
       const userRef = doc(db, "users", userId);
       await updateDoc(userRef, { active: !currentStatus });
@@ -178,6 +165,10 @@ export default function TeamPage() {
             <div className="py-10 text-center text-muted-foreground font-medium">
                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                Cargando equipo...
+            </div>
+          ) : companyUsers.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground border rounded-lg border-dashed">
+              No hay miembros registrados en el equipo.
             </div>
           ) : (
             <Table>

@@ -14,13 +14,11 @@ import {
   Loader2,
   Calendar as CalendarIcon,
   AlertTriangle,
-  TrendingUp,
   Activity
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
-import { MOCK_WORK_ORDERS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -42,25 +40,23 @@ export default function DashboardPage() {
     return collection(db, "companies", profile.companyId, "workOrders");
   }, [db, profile?.companyId]);
 
-  const { data: realWorkOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
+  const { data: workOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
-  const workOrders = realWorkOrders && realWorkOrders.length > 0 ? realWorkOrders : MOCK_WORK_ORDERS;
-  const isDemo = !realWorkOrders || realWorkOrders.length === 0;
+  const realWorkOrders = workOrders || [];
 
-  // Calculo de Alertas y Métricas
   const today = startOfDay(new Date());
   
   const overdueOrders = useMemo(() => {
-    return workOrders.filter(ot => {
+    return realWorkOrders.filter(ot => {
       if (ot.status === 'aprobada') return false;
       const endDate = ot.estimatedEndDate?.toDate ? ot.estimatedEndDate.toDate() : (ot.estimatedEndDate ? parseISO(ot.estimatedEndDate) : null);
       return endDate && isBefore(endDate, today);
     });
-  }, [workOrders, today]);
+  }, [realWorkOrders, today]);
 
   const upcomingOrders = useMemo(() => {
     const nextWeek = addDays(today, 7);
-    return workOrders.filter(ot => {
+    return realWorkOrders.filter(ot => {
       const startDate = ot.scheduledDate?.toDate ? ot.scheduledDate.toDate() : (ot.scheduledDate ? parseISO(ot.scheduledDate) : null);
       return startDate && isAfter(startDate, today) && isBefore(startDate, nextWeek);
     }).sort((a, b) => {
@@ -68,7 +64,7 @@ export default function DashboardPage() {
       const dateB = b.scheduledDate?.toDate ? b.scheduledDate.toDate() : parseISO(b.scheduledDate);
       return dateA.getTime() - dateB.getTime();
     });
-  }, [workOrders, today]);
+  }, [realWorkOrders, today]);
 
   const calculateProgress = (ot: WorkOrder) => {
     if (!ot.checklist || ot.checklist.length === 0) return 0;
@@ -92,7 +88,6 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Monitoreo operacional de PCGMANTENIMIENTO.</p>
         </div>
         <div className="flex items-center gap-3">
-          {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">MODO DEMO</Badge>}
           <Button asChild>
             <Link href="/work-orders/new">
               <Plus className="mr-2 h-4 w-4" /> Nueva OT
@@ -101,9 +96,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Sección de Alertas Críticas */}
       {overdueOrders.length > 0 && (
-        <Alert variant="destructive" className="border-2 shadow-md animate-pulse">
+        <Alert variant="destructive" className="border-2 shadow-md">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle className="font-bold">Atención: Órdenes Fuera de Plazo</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
@@ -122,7 +116,7 @@ export default function DashboardPage() {
             <ClipboardList className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{workOrders.length}</div>
+            <div className="text-2xl font-bold">{realWorkOrders.length}</div>
             <p className="text-[10px] text-muted-foreground uppercase font-bold mt-1">Órdenes en sistema</p>
           </CardContent>
         </Card>
@@ -132,7 +126,7 @@ export default function DashboardPage() {
             <Clock className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{workOrders.filter(ot => ot.status === 'en revision').length}</div>
+            <div className="text-2xl font-bold">{realWorkOrders.filter(ot => ot.status === 'en revision').length}</div>
             <p className="text-[10px] text-amber-600 font-bold mt-1">Pendientes de firma</p>
           </CardContent>
         </Card>
@@ -142,7 +136,7 @@ export default function DashboardPage() {
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{workOrders.filter(ot => ot.status === 'aprobada').length}</div>
+            <div className="text-2xl font-bold">{realWorkOrders.filter(ot => ot.status === 'aprobada').length}</div>
             <p className="text-[10px] text-emerald-600 font-bold mt-1">Trabajos finalizados</p>
           </CardContent>
         </Card>
@@ -169,29 +163,30 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {workOrders.filter(ot => ot.status !== 'aprobada').slice(0, 5).map((ot) => {
-                const progress = calculateProgress(ot);
-                return (
-                  <div key={ot.id} className="space-y-2 group">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-primary group-hover:underline cursor-pointer">
-                          <Link href={`/work-orders/${ot.id}`}>{ot.id}</Link>
-                        </span>
-                        <span className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">{ot.description}</span>
+              {realWorkOrders.filter(ot => ot.status !== 'aprobada').length > 0 ? (
+                realWorkOrders.filter(ot => ot.status !== 'aprobada').slice(0, 5).map((ot) => {
+                  const progress = calculateProgress(ot);
+                  return (
+                    <div key={ot.id} className="space-y-2 group">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-bold text-primary group-hover:underline cursor-pointer">
+                            <Link href={`/work-orders/${ot.id}`}>{ot.id}</Link>
+                          </span>
+                          <span className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">{ot.description}</span>
+                        </div>
+                        <Badge variant="outline" className={cn(
+                          "text-[10px] font-bold uppercase",
+                          progress === 100 ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
+                        )}>
+                          {progress}% COMPLETADO
+                        </Badge>
                       </div>
-                      <Badge variant="outline" className={cn(
-                        "text-[10px] font-bold uppercase",
-                        progress === 100 ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
-                      )}>
-                        {progress}% COMPLETADO
-                      </Badge>
+                      <Progress value={progress} className="h-1.5" />
                     </div>
-                    <Progress value={progress} className="h-1.5" />
-                  </div>
-                );
-              })}
-              {workOrders.length === 0 && (
+                  );
+                })
+              ) : (
                 <div className="text-center py-10 text-muted-foreground italic">
                   No hay órdenes activas para mostrar progreso.
                 </div>
@@ -255,37 +250,40 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {workOrders.slice(0, 5).map((ot) => (
-                <div key={ot.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50">
-                  <div className="bg-primary/5 p-2 rounded-full">
-                    <ClipboardList className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium leading-none">{ot.id}</p>
-                      {isDemo && <span className="text-[10px] text-muted-foreground bg-muted px-1 rounded">MOCK</span>}
+              {realWorkOrders.length > 0 ? (
+                realWorkOrders.slice(0, 5).map((ot) => (
+                  <div key={ot.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50">
+                    <div className="bg-primary/5 p-2 rounded-full">
+                      <ClipboardList className="h-4 w-4 text-primary" />
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-1">{ot.description}</p>
+                    <div className="flex-1 space-y-1">
+                      <p className="text-sm font-medium leading-none">{ot.id}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">{ot.description}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={cn(
+                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        ot.status === 'creada' && "bg-blue-100 text-blue-700",
+                        ot.status === 'asignada' && "bg-indigo-100 text-indigo-700",
+                        ot.status === 'en revision' && "bg-amber-100 text-amber-700",
+                        ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700",
+                        ot.status === 'rechazada' && "bg-rose-100 text-rose-700"
+                      )}>
+                        {ot.status.charAt(0).toUpperCase() + ot.status.slice(1)}
+                      </span>
+                    </div>
+                    <Button variant="ghost" size="icon" asChild>
+                      <Link href={`/work-orders/${ot.id}`}>
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
                   </div>
-                  <div className="text-right">
-                    <span className={cn(
-                      "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                      ot.status === 'creada' && "bg-blue-100 text-blue-700",
-                      ot.status === 'asignada' && "bg-indigo-100 text-indigo-700",
-                      ot.status === 'en revision' && "bg-amber-100 text-amber-700",
-                      ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700",
-                      ot.status === 'rechazada' && "bg-rose-100 text-rose-700"
-                    )}>
-                      {ot.status.charAt(0).toUpperCase() + ot.status.slice(1)}
-                    </span>
-                  </div>
-                  <Button variant="ghost" size="icon" asChild>
-                    <Link href={`/work-orders/${ot.id}`}>
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                ))
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  No hay órdenes de trabajo registradas.
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>

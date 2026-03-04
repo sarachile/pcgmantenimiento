@@ -41,7 +41,6 @@ import {
 } from "lucide-react";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
-import { MOCK_CLIENTS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -76,10 +75,9 @@ export default function ClientsPage() {
     return collection(db, "companies", profile.companyId, "clients");
   }, [db, profile?.companyId]);
 
-  const { data: realClients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: clientsData, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
 
-  const clients = realClients && realClients.length > 0 ? realClients : MOCK_CLIENTS.filter(c => c.companyId === profile?.companyId);
-  const isDemo = !realClients || realClients.length === 0;
+  const clients = clientsData || [];
 
   // Lógica de límites
   const planLimits = {
@@ -105,16 +103,6 @@ export default function ClientsPage() {
       toast({
         title: "Límite alcanzado",
         description: `Tu plan ${currentPlan.toUpperCase()} permite hasta ${maxClients} clientes. Mejora tu plan para añadir más.`,
-        variant: "destructive"
-      });
-      setIsCreateOpen(false);
-      return;
-    }
-
-    if (isDemo && !editingClient) {
-      toast({
-        title: "Modo Demo",
-        description: "No se pueden crear clientes reales en el modo de demostración.",
         variant: "destructive"
       });
       setIsCreateOpen(false);
@@ -161,10 +149,6 @@ export default function ClientsPage() {
   };
 
   const handleDelete = (client: Client) => {
-    if (isDemo) {
-      toast({ title: "Modo Demo", description: "No se pueden eliminar clientes de ejemplo.", variant: "destructive" });
-      return;
-    }
     if (!db || !profile?.companyId) return;
 
     const clientRef = doc(db, "companies", profile.companyId, "clients", client.id);
@@ -313,6 +297,10 @@ export default function ClientsPage() {
             <div className="py-10 text-center">
               <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
               Cargando clientes...
+            </div>
+          ) : clients.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground border rounded-lg border-dashed">
+              No hay clientes registrados en la cartera.
             </div>
           ) : (
             <Table>

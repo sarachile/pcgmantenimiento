@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
-import { MOCK_ASSETS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -45,12 +44,11 @@ export default function AssetsPage() {
     return collection(db, "companies", profile.companyId, "assets");
   }, [db, profile?.companyId]);
 
-  const { data: realAssets, isLoading: isAssetsLoading } = useCollection(assetsQuery);
+  const { data: assets, isLoading: isAssetsLoading } = useCollection(assetsQuery);
 
-  const assets = realAssets && realAssets.length > 0 ? realAssets : MOCK_ASSETS;
-  const isDemo = !realAssets || realAssets.length === 0;
+  const realAssets = assets || [];
 
-  const filtered = assets.filter(a => 
+  const filtered = realAssets.filter(a => 
     a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.code.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -105,7 +103,6 @@ export default function AssetsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">MODO DEMO</Badge>}
           </div>
         </CardHeader>
         <CardContent>
@@ -113,6 +110,10 @@ export default function AssetsPage() {
             <div className="py-10 text-center">
               <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
               Cargando activos...
+            </div>
+          ) : realAssets.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground border rounded-lg border-dashed">
+              No hay activos registrados en el catálogo.
             </div>
           ) : (
             <Table>
