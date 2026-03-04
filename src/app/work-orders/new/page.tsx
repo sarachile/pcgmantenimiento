@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -17,6 +16,7 @@ import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar a
 import Link from "next/link";
 import { MOCK_USERS, MOCK_CLIENTS, MOCK_ASSETS } from "@/lib/mock-data";
 import { addDays, format, parseISO } from "date-fns";
+import { Client, Asset, User } from "@/lib/types";
 
 export default function NewWorkOrderPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -127,10 +127,15 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  // Fetch real data if available
+  // Fetch real data
   const assetsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "assets");
+  }, [db, profile?.companyId]);
+
+  const clientsQuery = useMemoFirebase(() => {
+    if (!db || !profile?.companyId) return null;
+    return collection(db, "companies", profile.companyId, "clients");
   }, [db, profile?.companyId]);
 
   const usersQuery = useMemoFirebase(() => {
@@ -138,15 +143,21 @@ export default function NewWorkOrderPage() {
     return query(collection(db, "users"), where("companyId", "==", profile.companyId));
   }, [db, profile?.companyId]);
 
-  const { data: realAssets } = useCollection(assetsQuery);
-  const { data: realUsers } = useCollection(usersQuery);
+  const { data: realAssets } = useCollection<Asset>(assetsQuery);
+  const { data: realClients } = useCollection<Client>(clientsQuery);
+  const { data: realUsers } = useCollection<User>(usersQuery);
 
   const technicians = (realUsers && realUsers.length > 0) 
     ? realUsers.filter(u => u.role === 'tecnico') 
     : MOCK_USERS.filter(u => u.role === 'tecnico' && u.companyId === profile?.companyId);
 
-  const clients = MOCK_CLIENTS.filter(c => c.companyId === profile?.companyId);
-  const assets = (realAssets && realAssets.length > 0) ? realAssets : MOCK_ASSETS.filter(a => a.companyId === profile?.companyId);
+  const clients = (realClients && realClients.length > 0)
+    ? realClients
+    : MOCK_CLIENTS.filter(c => c.companyId === profile?.companyId);
+
+  const assets = (realAssets && realAssets.length > 0) 
+    ? realAssets 
+    : MOCK_ASSETS.filter(a => a.companyId === profile?.companyId);
 
   if (isUserLoading) {
     return (

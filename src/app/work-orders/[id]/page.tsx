@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useRef } from "react";
@@ -79,7 +78,7 @@ import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFireba
 import { doc, collection, addDoc, serverTimestamp, arrayUnion, query, orderBy, increment } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
-import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company, PartUsage, SparePart } from "@/lib/types";
+import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company, PartUsage, SparePart, Client, User, Asset } from "@/lib/types";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 import { format, parseISO } from "date-fns";
 import { WorkOrderReport } from "@/components/WorkOrderReport";
@@ -253,9 +252,30 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const logbook = firestoreLogbook && firestoreLogbook.length > 0 ? firestoreLogbook : MOCK_LOGBOOK.filter(l => l.workOrderId === otId);
   
   const isMock = !firestoreOt;
-  const client = MOCK_CLIENTS.find(c => c.id === ot?.clientId) || null;
-  const asset = MOCK_ASSETS.find(a => a.id === ot?.assetId) || null;
-  const technician = MOCK_USERS.find(u => u.id === (ot?.assignedTo || ot?.assignedToUserId)) || null;
+
+  // Real data for related entities
+  const clientRef = useMemoFirebase(() => {
+    if (!db || !profile?.companyId || !ot?.clientId) return null;
+    return doc(db, "companies", profile.companyId, "clients", ot.clientId);
+  }, [db, profile?.companyId, ot?.clientId]);
+  const { data: realClient } = useDoc<Client>(clientRef);
+
+  const assetRef = useMemoFirebase(() => {
+    if (!db || !profile?.companyId || !ot?.assetId) return null;
+    return doc(db, "companies", profile.companyId, "assets", ot.assetId);
+  }, [db, profile?.companyId, ot?.assetId]);
+  const { data: realAsset } = useDoc<Asset>(assetRef);
+
+  const techId = ot?.assignedTo || ot?.assignedToUserId;
+  const techRef = useMemoFirebase(() => {
+    if (!db || !techId) return null;
+    return doc(db, "users", techId);
+  }, [db, techId]);
+  const { data: realTechnician } = useDoc<User>(techRef);
+
+  const client = realClient || MOCK_CLIENTS.find(c => c.id === ot?.clientId) || null;
+  const asset = realAsset || MOCK_ASSETS.find(a => a.id === ot?.assetId) || null;
+  const technician = realTechnician || MOCK_USERS.find(u => u.id === techId) || null;
 
   const formatDate = (date: any) => {
     if (!mounted || !date) return '...';
