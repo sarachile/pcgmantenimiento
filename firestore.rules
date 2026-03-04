@@ -1,68 +1,156 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- REGLAS DE ALTA PRIORIDAD ---
+    // =========================
+    // 🔧 HELPERS
+    // =========================
 
-    // Colección 'mail' para la extensión Trigger Email
-    // El Super Admin tiene control total para enviar y monitorear (list, get, create, update, delete)
-    match /mail/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.token.email == 'control@pcgoperacion.com';
-    }
-
-    // --- FUNCIONES HELPER ---
-    
     function isSignedIn() {
       return request.auth != null;
     }
-    
+
+    function userDocRef() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function userExists() {
+      return exists(userDocRef());
+    }
+
+    function getUserData() {
+      return userExists() ? get(userDocRef()).data : null;
+    }
+
     function isSuperAdmin() {
       return isSignedIn() && (
         request.auth.token.email == 'control@pcgoperacion.com' ||
-        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid))
+        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
+        (userExists() && getUserData().role == 'superadmin')
       );
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
     }
 
     function isCompanyMember(companyId) {
-      if (!isSignedIn()) return false;
-      if (request.auth.token.email == 'control@pcgoperacion.com') return true;
-      
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(userPath) && get(userPath).data.companyId == companyId;
+      return isSignedIn() &&
+        (
+          isSuperAdmin() || 
+          (userExists() && getUserData().companyId == companyId)
+        );
     }
 
-    // --- REGLAS DE COLECCIONES ---
-
-    match /superAdmins/{userId} {
-      allow create: if isOwner(userId) && request.auth.token.email == 'control@pcgoperacion.com';
-      allow read: if isSignedIn() && (isOwner(userId) || isSuperAdmin());
-      allow update, delete: if isSuperAdmin();
+    function hasRole(companyId, roles) {
+      return isSignedIn() &&
+        (
+          isSuperAdmin() ||
+          (userExists() && getUserData().companyId == companyId && getUserData().role in roles)
+        );
     }
+
+    // =========================
+    // 👤 USERS
+    // =========================
 
     match /users/{userId} {
-      allow create: if isOwner(userId);
-      allow read: if isSignedIn();
-      allow update: if isOwner(userId) || isSuperAdmin();
+      allow get: if isSignedIn() &&
+        (
+          request.auth.uid == userId ||
+          isSuperAdmin() ||
+          (userExists() && isCompanyMember(resource.data.companyId))
+        );
+
+      allow list: if isSuperAdmin();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() &&
+        (
+          request.auth.uid == userId ||
+          isSuperAdmin()
+        );
+      allow delete: if isSuperAdmin();
     }
 
-    match /companies/{companyId} {
-      allow create: if isSignedIn();
-      allow read: if isSignedIn() && (
-        isSuperAdmin() || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId)
-      );
-      
-      allow update: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
-      allow list: if isSuperAdmin();
+    match /superAdmins/{userId} {
+      allow read, write: if isSuperAdmin();
+    }
 
-      match /{allPaths=**} {
-        allow read, write: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
+    // =========================
+    // 🏢 COMPANIES
+    // =========================
+
+    match /companies/{companyId} {
+      allow get: if isCompanyMember(companyId);
+      allow list: if isSuperAdmin();
+      allow create, update, delete: if isSuperAdmin();
+
+      // ---------- CLIENTS ----------
+      match /clients/{clientId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor']);
       }
+
+      // ---------- ASSETS ----------
+      match /assets/{assetId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+        allow delete: if hasRole(companyId, ['companyAdmin']);
+      }
+
+      // ---------- SPARE PARTS ----------
+      match /spareParts/{partId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+      }
+
+      // ---------- WORK ORDERS ----------
+      match /workOrders/{workOrderId} {
+        allow list, get: if isCompanyMember(companyId);
+        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+        allow delete: if hasRole(companyId, ['companyAdmin']);
+
+        // ---- PART USAGES ----
+        match /partUsages/{usageId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+        }
+
+        // ---- LOGBOOK ----
+        match /digitalLogbookEntries/{entryId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if isCompanyMember(companyId);
+        }
+
+        // ---- INVOICES ----
+        match /invoices/{invoiceId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        }
+      }
+    }
+
+    // =========================
+    // 📧 MAIL (EXTENSIÓN EMAIL)
+    // =========================
+
+    match /mail/{document=**} {
+      // SOLO usuarios autorizados pueden disparar correos
+      allow create: if isSignedIn() &&
+        (
+          isSuperAdmin() ||
+          (userExists() && getUserData().role in ['companyAdmin', 'supervisor'])
+        );
+
+      // Solo el SuperAdmin puede monitorear los logs desde el frontend
+      allow read: if isSuperAdmin();
+      allow update, delete: if false;
+    }
+
+    // =========================
+    // 🔒 DEFAULT DENY
+    // =========================
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
