@@ -25,9 +25,9 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isSignedIn() && (
+        request.auth.token.email == 'control@pcgoperacion.com' ||
         exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
-        (userExists() && getUserData().role == 'superadmin') ||
-        request.auth.token.email == 'control@pcgoperacion.com'
+        (userExists() && getUserData().role == 'superadmin')
       );
     }
 
@@ -141,7 +141,7 @@ service cloud.firestore {
           (userExists() && getUserData().role in ['companyAdmin', 'supervisor'])
         );
 
-      // Solo el SuperAdmin puede monitorear los logs desde el frontend
+      // El SuperAdmin DEBE poder leer para que el monitor funcione
       allow read: if isSuperAdmin();
       allow update, delete: if false;
     }

@@ -122,9 +122,10 @@ export default function AdminCompaniesPage() {
   }, [db, isSuperAdmin]);
   const { data: allUsers } = useCollection<User>(usersQuery);
 
-  // Monitor de correos mejorado con orden cronológico
+  // Monitor de correos mejorado
   const mailLogQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
+    // Sin orderBy para evitar requerir índices manuales de inmediato
     return query(collection(db, "mail"), limit(10));
   }, [db, isSuperAdmin]);
   const { data: mailLogs } = useCollection(mailLogQuery);
@@ -251,7 +252,6 @@ export default function AdminCompaniesPage() {
       },
     };
 
-    // Usamos addDocumentNonBlocking pero nos aseguramos de limpiar la UI
     addDocumentNonBlocking(mailCol, mailData);
 
     toast({
@@ -259,7 +259,7 @@ export default function AdminCompaniesPage() {
       description: "Revisa el monitor lateral para confirmar la entrega.",
     });
     
-    // Reseteamos estados y cerramos la ventana
+    // Forzamos el cierre y limpieza
     setIsInviteOpen(false);
     setIsSendingInvite(false);
     setInviteEmail("");
@@ -476,8 +476,12 @@ export default function AdminCompaniesPage() {
             <CardContent className="pt-4 px-0">
               <div className="space-y-1">
                 {mailLogs && mailLogs.length > 0 ? (
-                  // Ordenar localmente mientras no haya índice
-                  [...mailLogs].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5).map((log: any) => (
+                  // Ordenar localmente por createdAt si existe
+                  [...mailLogs].sort((a, b) => {
+                    const timeA = a.createdAt?.seconds || 0;
+                    const timeB = b.createdAt?.seconds || 0;
+                    return timeB - timeA;
+                  }).map((log: any) => (
                     <div key={log.id} className="px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] font-bold text-white/60 truncate max-w-[120px]">{log.to}</span>
@@ -487,7 +491,7 @@ export default function AdminCompaniesPage() {
                           log.delivery?.state === 'ERROR' ? "bg-rose-500/20 text-rose-400 border-rose-500/30" :
                           "bg-blue-500/20 text-blue-400 border-blue-500/30 animate-pulse"
                         )} variant="outline">
-                          {log.delivery?.state || 'PENDIENTE'}
+                          {log.delivery?.state || 'PROCESANDO'}
                         </Badge>
                       </div>
                       {log.delivery?.error && (
@@ -497,13 +501,13 @@ export default function AdminCompaniesPage() {
                       )}
                       <div className="flex items-center gap-1.5 text-[8px] text-white/40 mt-1">
                         <Clock className="h-2 w-2" />
-                        {log.delivery?.endTime ? format(log.delivery.endTime.toDate(), "HH:mm:ss") : 'Procesando...'}
+                        {log.createdAt ? format(log.createdAt.toDate(), "HH:mm:ss") : '...'}
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="py-8 text-center text-white/30 italic text-xs">
-                    No hay envíos registrados aún.
+                    No hay envíos registrados aún o cargando...
                   </div>
                 )}
               </div>
@@ -514,22 +518,22 @@ export default function AdminCompaniesPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Shield className="h-4 w-4 text-blue-600" />
-                Guía de Configuración Técnica
+                Guía de Notificaciones
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Si los correos aparecen como <span className="text-rose-600 font-bold">ERROR</span> en el monitor:
+                  El monitor lateral lee la colección <code className="bg-white px-1">mail</code> en tiempo real. 
                 </p>
                 <div className="space-y-2">
                   <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
                     <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
-                    <span><strong>SMTP incorrecto:</strong> Verifica el usuario y contraseña en la extensión Trigger Email.</span>
+                    <span>Si aparece <strong>ERROR</strong>, verifica la configuración SMTP en la extensión de Firebase.</span>
                   </div>
                   <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
                     <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
-                    <span><strong>Colección "mail":</strong> El monitor de arriba lee esta colección para darte feedback.</span>
+                    <span>Los correos tardan entre 2 a 5 segundos en procesarse.</span>
                   </div>
                 </div>
               </div>
