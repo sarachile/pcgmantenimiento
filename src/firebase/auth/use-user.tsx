@@ -7,7 +7,6 @@ import { User } from '@/lib/types';
 
 /**
  * Hook de usuario blindado contra re-renders infinitos.
- * Utiliza memoización estricta para asegurar estabilidad en las dependencias de otros hooks.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
@@ -29,7 +28,6 @@ export function useUser() {
         return;
       }
 
-      // Evitar fetch si el UID no ha cambiado
       if (lastUidRef.current === authUser.uid) {
         return;
       }
@@ -43,7 +41,6 @@ export function useUser() {
         if (userSnap.exists()) {
           fetchedProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
-          // Fallback para plataforma admins
           const adminRef = doc(firestore, 'platform_admins', authUser.uid);
           const adminSnap = await getDoc(adminRef);
           
@@ -76,7 +73,6 @@ export function useUser() {
   const isLoading = isAuthLoading || isProfileLoading;
   const isAuthenticated = !!authUser && !!profile;
 
-  // Memoización del valor de retorno para evitar loops en componentes hijos
   return useMemo(() => ({
     user: authUser,
     profile,
@@ -87,5 +83,5 @@ export function useUser() {
     isTechnician: profile?.role === 'tecnico',
     isSupervisor: profile?.role === 'supervisor',
     isReviewer: profile?.role === 'reviewer',
-  }), [authUser, profile, isLoading, isAuthenticated]);
+  }), [authUser?.uid, profile, isLoading, isAuthenticated]);
 }

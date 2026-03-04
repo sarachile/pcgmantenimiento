@@ -6,11 +6,11 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Solución SaaS: Lectura pública de evidencias para visualización en reportes y navegador
-    // Esto asegura que <img> con URLs de descarga funcionen siempre.
+    // Solución SaaS: Permitir lectura pública para reportes y escritura para firmas de clientes
+    // La seguridad reside en que el ID de la OT actúa como un token secreto
     match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow write: if true; 
     }
     
     match /companies/{companyId}/branding/{fileName} {
@@ -18,7 +18,7 @@ service firebase.storage {
       allow write: if isSignedIn();
     }
 
-    // Regla por defecto
+    // Regla por defecto para el resto del bucket
     match /{allPaths=**} {
       allow read: if true;
       allow write: if isSignedIn();

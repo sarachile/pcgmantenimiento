@@ -40,7 +40,6 @@ export default function NewWorkOrderPage() {
 
   const companyId = profile?.companyId;
 
-  // Memoización estricta de las consultas con dependencias primitivas para evitar bucles infinitos en Selects
   const clientsQuery = useMemoFirebase(() => 
     db && companyId ? collection(db, "companies", companyId, "clients") : null, 
     [db, companyId]
@@ -71,10 +70,7 @@ export default function NewWorkOrderPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !clientId || !companyId) {
-      toast({ title: "Datos incompletos", description: "Descripción y Cliente son obligatorios.", variant: "destructive" });
-      return;
-    }
+    if (!description.trim() || !clientId || !companyId || !profile) return;
 
     setIsSubmitting(true);
     try {
@@ -133,7 +129,7 @@ export default function NewWorkOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Selección de Cliente *</Label>
-                <Select value={clientId || ""} onValueChange={setClientId}>
+                <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger className="h-12 rounded-xl border-2">
                     <SelectValue placeholder={isClientsLoading ? "Cargando..." : "Busque un cliente..."} />
                   </SelectTrigger>
@@ -146,7 +142,7 @@ export default function NewWorkOrderPage() {
               </div>
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Maquinaria / Activo</Label>
-                <Select value={assetId || ""} onValueChange={setAssetId}>
+                <Select value={assetId} onValueChange={setAssetId}>
                   <SelectTrigger className="h-12 rounded-xl border-2">
                     <SelectValue placeholder={isAssetsLoading ? "Cargando..." : "Seleccione equipo (Opcional)"} />
                   </SelectTrigger>
@@ -182,47 +178,39 @@ export default function NewWorkOrderPage() {
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <QrCode className="h-4 w-4 text-amber-600" />
-                  <Label className="text-amber-900 font-black text-sm">Validación Externa por Correo/QR</Label>
+                  <Label className="text-amber-900 font-black text-sm">Validación Externa Requerida</Label>
                 </div>
-                <p className="text-[10px] text-amber-700 font-medium">Permite que el revisor del cliente firme desde su propio dispositivo.</p>
+                <p className="text-[10px] text-amber-700 font-medium">Requiere firma del cliente desde su propio dispositivo vía QR/Email.</p>
               </div>
               <Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} />
             </div>
 
             <div className="space-y-4">
               <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2"><Users className="h-4 w-4" /> Personal Técnico Asignado</Label>
-              {isStaffLoading ? (
-                <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {staffMembers?.map(staff => (
-                    <label 
-                      key={staff.id} 
-                      className={cn(
-                        "flex items-center space-x-4 border-2 p-4 rounded-2xl transition-all cursor-pointer",
-                        assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "bg-white hover:border-slate-300"
-                      )}
-                    >
-                      <Checkbox 
-                        checked={assignedToStaffIds.includes(staff.id)} 
-                        onCheckedChange={() => {
-                          setAssignedToStaffIds(prev => 
-                            prev.includes(staff.id) ? prev.filter(id => id !== staff.id) : [...prev, staff.id]
-                          );
-                        }} 
-                        className="h-5 w-5" 
-                      />
-                      <div className="flex flex-col">
-                        <p className="font-black text-sm text-slate-900">{staff.name}</p>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{staff.role}</p>
-                      </div>
-                    </label>
-                  ))}
-                  {(!staffMembers || staffMembers.length === 0) && (
-                    <p className="text-xs text-slate-400 italic p-4 border-2 border-dashed rounded-2xl">No hay miembros del equipo registrados.</p>
-                  )}
-                </div>
-              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {staffMembers?.map(staff => (
+                  <label 
+                    key={staff.id} 
+                    className={cn(
+                      "flex items-center space-x-4 border-2 p-4 rounded-2xl transition-all cursor-pointer",
+                      assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 shadow-sm" : "bg-white hover:border-slate-300"
+                    )}
+                  >
+                    <Checkbox 
+                      checked={assignedToStaffIds.includes(staff.id)} 
+                      onCheckedChange={() => {
+                        setAssignedToStaffIds(prev => 
+                          prev.includes(staff.id) ? prev.filter(id => id !== staff.id) : [...prev, staff.id]
+                        );
+                      }} 
+                    />
+                    <div className="flex flex-col">
+                      <p className="font-black text-sm text-slate-900">{staff.name}</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{staff.role}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-2">
