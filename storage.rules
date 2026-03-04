@@ -1,0 +1,32 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isCompanyMember(companyId) {
+      return isSignedIn() && (
+        getUserData().companyId == companyId || 
+        firestore.exists(/databases/(default)/documents/platform_admins/$(request.auth.uid))
+      );
+    }
+
+    // Regla para firmas digitales y evidencias de OTs
+    match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
+      allow read: if isCompanyMember(companyId);
+      allow write: if isCompanyMember(companyId);
+    }
+    
+    // Regla para branding de la empresa (Logotipos)
+    match /companies/{companyId}/branding/{fileName} {
+      allow read: if isCompanyMember(companyId);
+      allow write: if isCompanyMember(companyId);
+    }
+  }
+}

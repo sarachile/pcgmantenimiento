@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useFirebase } from '@/firebase/provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { User } from '@/lib/types';
 
 /**
  * Hook para acceder al estado del usuario y su perfil en Firestore.
- * Sincronizado con firestore.rules para evitar errores de permisos.
+ * Estabilizado para evitar bucles de renderizado infinitos.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
   const [profile, setProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
+  
+  // Ref para comparar cambios profundos y evitar actualizaciones de estado innecesarias
+  const profileRef = useRef<string>("");
 
   useEffect(() => {
     let isMounted = true;
@@ -22,6 +25,7 @@ export function useUser() {
         if (isMounted) {
           setProfile(null);
           setIsProfileLoading(false);
+          profileRef.current = "";
         }
         return;
       }
@@ -29,7 +33,6 @@ export function useUser() {
       if (isMounted) setIsProfileLoading(true);
       
       try {
-        // Primero intentamos cargar desde la colección raíz /users
         const userRef = doc(firestore, 'users', authUser.uid);
         const userSnap = await getDoc(userRef);
         
@@ -38,7 +41,6 @@ export function useUser() {
         if (userSnap.exists()) {
           newProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
-          // Intentar como superAdmin si no existe en la colección de usuarios regulares
           const superAdminRef = doc(firestore, 'platform_admins', authUser.uid);
           const superAdminSnap = await getDoc(superAdminRef);
           
@@ -54,14 +56,11 @@ export function useUser() {
         }
 
         if (isMounted) {
-          setProfile(prev => {
-            if (!newProfile) return null;
-            // Estabilización de objeto para evitar bucles en useEffect externos
-            if (prev && JSON.stringify(prev) === JSON.stringify(newProfile)) {
-              return prev;
-            }
-            return newProfile;
-          });
+          const profileString = JSON.stringify(newProfile);
+          if (profileRef.current !== profileString) {
+            profileRef.current = profileString;
+            setProfile(newProfile);
+          }
         }
 
       } catch (error) {
