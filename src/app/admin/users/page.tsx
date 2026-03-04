@@ -20,10 +20,12 @@ import {
   Shield, 
   Ban,
   MoreVertical,
-  Building2
+  Building2,
+  ArrowLeft
 } from "lucide-react";
 import { MOCK_USERS, MOCK_COMPANIES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,9 +38,16 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Usuarios Globales</h2>
-          <p className="text-muted-foreground">Administre cuentas y roles en todas las empresas del ecosistema.</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+            <Link href="/admin">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Usuarios Globales</h2>
+            <p className="text-muted-foreground">Administre cuentas y roles en todas las empresas del ecosistema.</p>
+          </div>
         </div>
         <Button>
           <UserPlus className="mr-2 h-4 w-4" /> Nuevo Superadmin

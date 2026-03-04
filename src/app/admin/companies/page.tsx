@@ -19,10 +19,12 @@ import {
   Plus, 
   ExternalLink, 
   Settings2,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from "lucide-react";
 import { MOCK_COMPANIES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function AdminCompaniesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -40,9 +42,16 @@ export default function AdminCompaniesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Gestión de Empresas</h2>
-          <p className="text-muted-foreground">Administración de tenants y suscripciones de la plataforma.</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+            <Link href="/admin">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Gestión de Empresas</h2>
+            <p className="text-muted-foreground">Administración de tenants y suscripciones de la plataforma.</p>
+          </div>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
