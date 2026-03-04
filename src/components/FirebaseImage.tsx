@@ -14,8 +14,8 @@ interface FirebaseImageProps {
 }
 
 /**
- * Componente robusto para cargar imágenes de Firebase Storage.
- * Resuelve automáticamente rutas o URLs con tokens expirados.
+ * Componente definitivo para carga de imágenes de Firebase.
+ * Resuelve la ruta y obtiene un token fresco siempre (Option A).
  */
 export function FirebaseImage({ path, url, alt = "Imagen", className }: FirebaseImageProps) {
   const storage = useStorage();
@@ -30,41 +30,29 @@ export function FirebaseImage({ path, url, alt = "Imagen", className }: Firebase
       setLoading(true);
       setError(false);
       try {
-        let finalRef = null;
+        let finalPath = path;
 
-        if (path) {
-          finalRef = ref(storage, path);
-        } else if (url && url.includes('firebasestorage.googleapis.com')) {
-          // Extraer la ruta del archivo de una URL de Firebase para re-obtener un token válido
-          try {
-            const decodedUrl = decodeURIComponent(url);
-            const pathStart = decodedUrl.indexOf('/o/') + 3;
-            const pathEnd = decodedUrl.indexOf('?', pathStart);
-            const extractedPath = pathEnd === -1 
-              ? decodedUrl.substring(pathStart) 
-              : decodedUrl.substring(pathStart, pathEnd);
-            
-            finalRef = ref(storage, extractedPath);
-          } catch (e) {
-            // Si falla el parseo, intentar usar la URL original directamente
-            setResolvedUrl(url);
-            setLoading(false);
-            return;
-          }
-        } else if (url) {
-          setResolvedUrl(url);
-          setLoading(false);
-          return;
+        // Si recibimos una URL completa de Firebase, extraemos la ruta interna
+        if (!finalPath && url && url.includes('firebasestorage.googleapis.com')) {
+          const decodedUrl = decodeURIComponent(url);
+          const pathStart = decodedUrl.indexOf('/o/') + 3;
+          const pathEnd = decodedUrl.indexOf('?', pathStart);
+          finalPath = pathEnd === -1 
+            ? decodedUrl.substring(pathStart) 
+            : decodedUrl.substring(pathStart, pathEnd);
         }
 
-        if (finalRef) {
-          const downloadUrl = await getDownloadURL(finalRef);
+        if (finalPath) {
+          const fileRef = ref(storage, finalPath);
+          const downloadUrl = await getDownloadURL(fileRef);
           setResolvedUrl(downloadUrl);
+        } else if (url) {
+          setResolvedUrl(url);
         } else {
           setError(true);
         }
       } catch (e) {
-        console.error("Error resolviendo imagen de Firebase:", e);
+        console.error("Error resolviendo imagen:", e);
         setError(true);
       } finally {
         setLoading(false);
@@ -96,6 +84,7 @@ export function FirebaseImage({ path, url, alt = "Imagen", className }: Firebase
       alt={alt} 
       className={cn("object-contain", className)}
       loading="lazy"
+      crossOrigin="anonymous"
     />
   );
 }

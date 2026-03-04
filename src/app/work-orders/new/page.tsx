@@ -34,12 +34,12 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
-  // Inicializar fecha solo en el cliente para evitar errores de hidratación
+  // Hidratación segura de fecha
   useEffect(() => {
     setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
   }, []);
 
-  // Cálculo de fecha de término estable mediante useMemo
+  // Cálculo estable de fecha de término
   const estimatedEndDateStr = useMemo(() => {
     if (!scheduledDate || !durationDays) return "";
     try {
@@ -51,23 +51,23 @@ export default function NewWorkOrderPage() {
     }
   }, [scheduledDate, durationDays]);
 
-  const handleAddTask = useCallback(() => {
+  const handleAddTask = () => {
     if (!newTask.trim()) return;
     setChecklist(prev => [...prev, { task: newTask.trim() }]);
     setNewTask("");
-  }, [newTask]);
+  };
 
-  const removeTask = useCallback((index: number) => {
+  const removeTask = (index: number) => {
     setChecklist(prev => prev.filter((_, i) => i !== index));
-  }, []);
+  };
 
-  const toggleStaffSelection = useCallback((staffId: string) => {
+  const toggleStaffSelection = (staffId: string) => {
     setAssignedToStaffIds(prev => 
       prev.includes(staffId) 
         ? prev.filter(id => id !== staffId) 
         : [...prev, staffId]
     );
-  }, []);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,16 +98,16 @@ export default function NewWorkOrderPage() {
       };
 
       const docRef = await addDoc(colRef, newOT);
-      toast({ title: "Orden Creada" });
+      toast({ title: "Orden Creada exitosamente" });
       router.push(`/work-orders/${docRef.id}`);
     } catch (error: any) {
-      toast({ title: "Error al guardar", variant: "destructive" });
+      toast({ title: "Error al guardar", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Consultas estables a Firestore
+  // Consultas Firestore estables
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "clients");
@@ -127,7 +127,7 @@ export default function NewWorkOrderPage() {
   const { data: realAssets } = useCollection<Asset>(assetsQuery);
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
 
-  // Opciones de selectores memoizadas para evitar re-renders de Radix UI
+  // Opciones memoizadas para evitar re-renders de Radix Select
   const clientOptions = useMemo(() => (
     realClients?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || []
   ), [realClients]);
@@ -144,7 +144,7 @@ export default function NewWorkOrderPage() {
         <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground italic">Planificación técnica centralizada.</p>
+          <p className="text-sm text-muted-foreground">Registre la planificación técnica para su equipo.</p>
         </div>
       </div>
 
@@ -158,14 +158,14 @@ export default function NewWorkOrderPage() {
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccione cliente" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Seleccione un cliente" /></SelectTrigger>
                   <SelectContent>{clientOptions}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccione equipo (Opcional)" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Opcional: Seleccione equipo" /></SelectTrigger>
                   <SelectContent>{assetOptions}</SelectContent>
                 </Select>
               </div>
@@ -173,11 +173,11 @@ export default function NewWorkOrderPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/10 rounded-xl border">
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><CalendarIcon className="h-3 w-3" /> Inicio</Label>
+                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><CalendarIcon className="h-3 w-3" /> Fecha Inicio</Label>
                 <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><Clock className="h-3 w-3" /> Días Estimados</Label>
+                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><Clock className="h-3 w-3" /> Duración (Días)</Label>
                 <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} />
               </div>
               <div className="space-y-2">
@@ -192,20 +192,23 @@ export default function NewWorkOrderPage() {
               <Label className="font-bold text-xs uppercase text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Equipo Operativo Asignado</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
                 {staffMembers?.map(staff => (
-                  <div 
+                  <label 
                     key={staff.id} 
                     className={cn(
-                      "flex items-center space-x-3 border p-3 rounded-xl transition-all cursor-pointer",
+                      "flex items-center space-x-3 border p-3 rounded-xl transition-all cursor-pointer select-none",
                       assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 shadow-sm" : "bg-white hover:bg-muted/50"
                     )}
-                    onClick={() => toggleStaffSelection(staff.id)}
                   >
-                    <Checkbox checked={assignedToStaffIds.includes(staff.id)} />
+                    <Checkbox 
+                      id={`staff-${staff.id}`}
+                      checked={assignedToStaffIds.includes(staff.id)} 
+                      onCheckedChange={() => toggleStaffSelection(staff.id)}
+                    />
                     <div className="flex flex-col gap-0.5">
                       <p className="font-bold text-xs">{staff.name}</p>
                       <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
                     </div>
-                  </div>
+                  </label>
                 ))}
               </div>
             </div>
@@ -218,7 +221,7 @@ export default function NewWorkOrderPage() {
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Protocolo de Revisión</Label></div>
               <div className="flex gap-2">
-                <Input placeholder="Añadir tarea al protocolo..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())} />
+                <Input placeholder="Tarea a realizar..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())} />
                 <Button type="button" onClick={handleAddTask} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
               </div>
               {checklist.length > 0 && (

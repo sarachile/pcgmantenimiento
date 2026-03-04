@@ -6,20 +6,19 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Ruta para evidencias y firmas de OTs
-    // Se permite lectura pública para facilitar la visualización en reportes y emails sin tokens complejos
+    // Solución SaaS: Lectura pública de evidencias para visualización en reportes y emails
+    // Escritura restringida a personal autenticado
     match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
       allow read: if true;
       allow write: if isSignedIn();
     }
     
-    // Ruta para logotipos de empresa
     match /companies/{companyId}/branding/{fileName} {
       allow read: if true;
       allow write: if isSignedIn();
     }
 
-    // Por defecto, lectura pública para evitar errores de <img> y escritura solo para autenticados
+    // Regla por defecto: Lectura permitida para activos públicos, escritura privada
     match /{allPaths=**} {
       allow read: if true;
       allow write: if isSignedIn();

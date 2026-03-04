@@ -6,16 +6,16 @@ import { doc, getDoc } from 'firebase/firestore';
 import { User } from '@/lib/types';
 
 /**
- * Hook para acceder al estado del usuario y su perfil en Firestore.
- * Estabilizado mediante comparación profunda para evitar bucles de renderizado.
+ * Hook de usuario optimizado para evitar bucles de renderizado.
+ * Utiliza comparación de strings para detectar cambios reales en el perfil.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
   const [profile, setProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   
-  // Ref para rastrear la versión serializada del perfil y evitar actualizaciones innecesarias
-  const profileStringRef = useRef<string>("");
+  // Ref para prevenir re-renders infinitos comparando el contenido de los datos
+  const profileDataKeyRef = useRef<string>("");
 
   useEffect(() => {
     let isMounted = true;
@@ -25,27 +25,26 @@ export function useUser() {
         if (isMounted) {
           setProfile(null);
           setIsProfileLoading(false);
-          profileStringRef.current = "";
+          profileDataKeyRef.current = "";
         }
         return;
       }
 
       try {
-        // Intentar cargar desde la colección de usuarios de empresa
         const userRef = doc(firestore, 'users', authUser.uid);
         const userSnap = await getDoc(userRef);
         
-        let newProfile: User | null = null;
+        let fetchedProfile: User | null = null;
 
         if (userSnap.exists()) {
-          newProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
+          fetchedProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
-          // Intentar cargar como administrador global
+          // Intento fallback para superadmins
           const adminRef = doc(firestore, 'platform_admins', authUser.uid);
           const adminSnap = await getDoc(adminRef);
           
           if (adminSnap.exists()) {
-            newProfile = { 
+            fetchedProfile = { 
               ...(adminSnap.data() as any), 
               id: authUser.uid, 
               role: 'superadmin',
@@ -56,15 +55,16 @@ export function useUser() {
         }
 
         if (isMounted) {
-          const newProfileString = JSON.stringify(newProfile);
-          // Solo actualizamos el estado si los DATOS han cambiado realmente
-          if (profileStringRef.current !== newProfileString) {
-            profileStringRef.current = newProfileString;
-            setProfile(newProfile);
+          // Creamos una llave única basada en los datos críticos
+          const profileKey = fetchedProfile ? `${fetchedProfile.id}-${fetchedProfile.role}-${fetchedProfile.companyId}` : "none";
+          
+          if (profileDataKeyRef.current !== profileKey) {
+            profileDataKeyRef.current = profileKey;
+            setProfile(fetchedProfile);
           }
         }
       } catch (error) {
-        console.error("Error al cargar perfil:", error);
+        console.error("Error loading user profile:", error);
       } finally {
         if (isMounted) setIsProfileLoading(false);
       }
