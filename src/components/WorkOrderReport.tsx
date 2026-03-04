@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, User } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -19,8 +19,14 @@ interface WorkOrderReportProps {
 
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
   ({ company, workOrder, client, asset, logbook, technician }, ref) => {
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+      setIsMounted(true);
+    }, []);
+
     const formatDate = (date: any) => {
-      if (!date) return "N/A";
+      if (!isMounted || !date) return "...";
       try {
         const d = date.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
         return format(d, "PPP 'a las' p", { locale: es });
