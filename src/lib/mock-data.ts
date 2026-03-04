@@ -24,6 +24,16 @@ export const MOCK_CLIENTS: Client[] = [
     contactName: 'Marta Figueroa',
     contactEmail: 'marta@plantanorte.cl',
     createdAt: '2024-01-20T10:00:00Z',
+  },
+  {
+    id: 'cli-2',
+    companyId: 'comp-1',
+    name: 'Inmobiliaria Los Parques',
+    rut: '77.111.333-5',
+    address: 'Vitacura 550, Torre B',
+    contactName: 'Pedro Rosselot',
+    contactEmail: 'pedro@losparques.cl',
+    createdAt: '2024-02-10T09:00:00Z',
   }
 ];
 
@@ -41,11 +51,11 @@ export const MOCK_ASSETS: Asset[] = [
   {
     id: 'ast-2',
     companyId: 'comp-1',
-    name: 'Bomba Hidráulica 5HP',
-    code: 'BOMB-024',
-    location: 'Planta 2, Sector 4',
-    status: 'en mantenimiento',
-    lastMaintenanceAt: '2024-03-01T10:00:00Z',
+    name: 'Camioneta Ford F-150',
+    code: 'VEH-102',
+    location: 'Bodega Central',
+    status: 'activo',
+    lastMaintenanceAt: '2024-03-05T10:00:00Z',
     createdAt: '2024-01-20T11:00:00Z',
   }
 ];
@@ -63,11 +73,11 @@ export const MOCK_SPARE_PARTS: SparePart[] = [
   {
     id: 'prt-2',
     companyId: 'comp-1',
-    name: 'Correa de Distribución B-2',
-    sku: 'SKU-002-COR',
-    stockActual: 2,
+    name: 'Tabiquería Yeso-Cartón 12.5mm',
+    sku: 'SKU-CONST-001',
+    stockActual: 45,
     stockMinimo: 10,
-    unitPrice: 45000,
+    unitPrice: 15800,
   }
 ];
 
@@ -97,14 +107,36 @@ export const MOCK_WORK_ORDERS: WorkOrder[] = [
     id: 'OT-1001',
     companyId: 'comp-1',
     clientId: 'cli-1',
-    description: 'Mantenimiento preventivo de transformador T-400 en Planta Norte.',
+    description: 'Mantención 10.000km Camioneta Patente XX-12.',
     status: 'en revision',
     assignedTo: 'user-3',
-    createdByUserId: 'user-2',
+    createdByUserId: 'user-1',
     reviewerRequired: true,
+    checklist: [
+      { id: 't1', task: 'Cambiar aceite de motor', completed: true, completedAt: '2024-03-21T10:00:00Z' },
+      { id: 't2', task: 'Revisar presión de neumáticos', completed: true, completedAt: '2024-03-21T10:30:00Z' },
+      { id: 't3', task: 'Limpieza de filtros de aire', completed: false }
+    ],
     createdAt: '2024-03-20T08:00:00Z',
     updatedAt: '2024-03-21T15:30:00Z',
     executedAt: '2024-03-21T14:00:00Z',
+  },
+  {
+    id: 'OT-1002',
+    companyId: 'comp-1',
+    clientId: 'cli-2',
+    description: 'Reparación de tabique sala n°2 y pintura de terminación.',
+    status: 'creada',
+    assignedTo: 'user-3',
+    createdByUserId: 'user-1',
+    reviewerRequired: false,
+    checklist: [
+      { id: 't4', task: 'Desmontaje de planchas dañadas', completed: false },
+      { id: 't5', task: 'Estructura de perfiles galvanizados', completed: false },
+      { id: 't6', task: 'Pintura de terminación blanco látex', completed: false }
+    ],
+    createdAt: '2024-03-22T09:00:00Z',
+    updatedAt: '2024-03-22T09:00:00Z',
   }
 ];
 
@@ -116,6 +148,6 @@ export const MOCK_LOGBOOK: DigitalLogbookEntry[] = [
     timestamp: '2024-03-20T08:00:00Z',
     eventType: 'status_change',
     eventDetails: 'Orden de trabajo creada.',
-    actor: 'user-2',
+    actor: 'user-1',
   }
 ];

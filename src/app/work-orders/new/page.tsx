@@ -186,7 +186,7 @@ export default function NewWorkOrderPage() {
               </div>
               <Textarea 
                 id="description" 
-                placeholder="Describa la tarea preventiva o falla..." 
+                placeholder="Ej: Mantención 5.000km Camión Patente XX-12 o Reparación de tabique sala n°2..." 
                 required
                 className="min-h-[100px] resize-none"
                 value={description}
@@ -202,7 +202,7 @@ export default function NewWorkOrderPage() {
               
               <div className="flex gap-2">
                 <Input 
-                  placeholder="Ej: Verificar nivel de aceite..." 
+                  placeholder="Ej: Revisión niveles de aceite o Pintura de terminación..." 
                   value={newTask} 
                   onChange={(e) => setNewTask(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}
