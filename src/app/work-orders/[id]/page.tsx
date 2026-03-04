@@ -33,7 +33,8 @@ import {
   Image as ImageIcon,
   Trash2,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Plus
 } from "lucide-react";
 import {
   Dialog,
@@ -56,7 +57,7 @@ import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, Staf
 import { WorkOrderReport } from "@/components/WorkOrderReport";
 import { FirebaseImage } from "@/components/FirebaseImage";
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import jsPDF from "jsPDF";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
@@ -316,7 +317,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">Este link expira automáticamente al ser firmado.</p>
             </div>
 
-            <div style="border-top: 1px solid #f1f5f9; pt: 24px; text-align: center;">
+            <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; text-align: center;">
               <p style="font-size: 11px; color: #94a3b8;">Mensaje automático enviado vía <strong>PCGMANTENIMIENTO ERP</strong>. Por favor no responda a este correo.</p>
             </div>
           </div>
