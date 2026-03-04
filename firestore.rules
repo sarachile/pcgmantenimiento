@@ -130,20 +130,15 @@ service cloud.firestore {
     }
 
     // =========================
-    // 📧 MAIL (EXTENSIÓN EMAIL)
+    // 📧 MAIL (BYPASS DE EXTENSIÓN)
     // =========================
 
-    match /mail/{document=**} {
-      // SOLO usuarios autorizados pueden disparar correos
-      allow create: if isSignedIn() &&
-        (
-          isSuperAdmin() ||
-          (userExists() && getUserData().role in ['companyAdmin', 'supervisor'])
-        );
-
-      // El SuperAdmin DEBE poder leer para que el monitor funcione
+    match /mail/{mailId} {
+      // El SuperAdmin puede leer para el monitor
       allow read: if isSuperAdmin();
-      allow update, delete: if false;
+      // Permitir creación y actualización para el flujo de Server Actions
+      allow create, update: if isSignedIn() && (isSuperAdmin() || getUserData().role == 'companyAdmin');
+      allow delete: if false;
     }
 
     // =========================

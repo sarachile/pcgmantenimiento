@@ -66,10 +66,11 @@ import {
   setDocumentNonBlocking,
   addDocumentNonBlocking
 } from "@/firebase";
-import { collection, doc, serverTimestamp, query, orderBy, limit } from "firebase/firestore";
+import { collection, doc, serverTimestamp, query, orderBy, limit, updateDoc } from "firebase/firestore";
 import { Company, User } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { sendSystemEmail } from "@/actions/email";
 
 export default function AdminCompaniesPage() {
   const { toast } = useToast();
@@ -122,11 +123,9 @@ export default function AdminCompaniesPage() {
   }, [db, isSuperAdmin]);
   const { data: allUsers } = useCollection<User>(usersQuery);
 
-  // Monitor de correos mejorado
   const mailLogQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
-    // Sin orderBy para evitar requerir índices manuales de inmediato
-    return query(collection(db, "mail"), limit(10));
+    return query(collection(db, "mail"), limit(15));
   }, [db, isSuperAdmin]);
   const { data: mailLogs } = useCollection(mailLogQuery);
 
@@ -205,64 +204,90 @@ export default function AdminCompaniesPage() {
     setIsInviteOpen(true);
   };
 
-  const handleSendInvite = (e: React.FormEvent) => {
+  const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !detailsCompany || !inviteEmail || !profile) return;
 
     setIsSendingInvite(true);
     
     const mailCol = collection(db, "mail");
-    const mailData = {
-      to: inviteEmail,
-      createdAt: serverTimestamp(),
-      message: {
-        subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; color: #1f2937; background-color: #ffffff;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -1px;">PCGMANTENIMIENTO ERP</h1>
-              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Solución de Gestión Industrial Avanzada</p>
-            </div>
-            
-            <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">Bienvenido a su Entorno Operativo</h2>
-            
-            <p>Estimados,</p>
-            <p>Su ecosistema de gestión para <strong>${detailsCompany.name}</strong> ha sido activado y está listo para la operación de campo y administrativa.</p>
-            
-            <p>Para comenzar, cada miembro del equipo debe registrarse en el portal oficial:</p>
-            
-            <div style="margin: 32px 0; text-align: center;">
-              <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                Completar Registro de Usuario
-              </a>
-            </div>
-            
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-              <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; text-align: center;">Código de Vinculación Corporativa</p>
-              <div style="background-color: #ffffff; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px;">
-                ${detailsCompany.id}
-              </div>
-            </div>
-            
-            <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
-              Este es un mensaje automático de la plataforma central de PCG OPERACIONES.
-            </p>
+    const htmlContent = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; color: #1f2937; background-color: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -1px;">PCGMANTENIMIENTO ERP</h1>
+          <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Solución de Gestión Industrial Avanzada</p>
+        </div>
+        
+        <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">Bienvenido a su Entorno Operativo</h2>
+        
+        <p>Estimados,</p>
+        <p>Su ecosistema de gestión para <strong>${detailsCompany.name}</strong> ha sido activado y está listo para la operación de campo y administrativa.</p>
+        
+        <p>Para comenzar, cada miembro del equipo debe registrarse en el portal oficial:</p>
+        
+        <div style="margin: 32px 0; text-align: center;">
+          <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+            Completar Registro de Usuario
+          </a>
+        </div>
+        
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+          <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; text-align: center;">Código de Vinculación Corporativa</p>
+          <div style="background-color: #ffffff; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px;">
+            ${detailsCompany.id}
           </div>
-        `,
-      },
-    };
+        </div>
+        
+        <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
+          Este es un mensaje automático de la plataforma central de PCG OPERACIONES.
+        </p>
+      </div>
+    `;
 
-    addDocumentNonBlocking(mailCol, mailData);
+    try {
+      // 1. Crear el registro en Firestore para el monitor
+      const docRef = await addDocumentNonBlocking(mailCol, {
+        to: inviteEmail,
+        createdAt: serverTimestamp(),
+        message: {
+          subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
+          html: htmlContent,
+        },
+        delivery: { state: 'PROCESANDO' }
+      });
 
-    toast({
-      title: "Invitación Enviada",
-      description: "Revisa el monitor lateral para confirmar la entrega.",
-    });
-    
-    // Forzamos el cierre y limpieza
-    setIsInviteOpen(false);
-    setIsSendingInvite(false);
-    setInviteEmail("");
+      // 2. Disparar el envío real vía Server Action
+      const result = await sendSystemEmail({
+        to: inviteEmail,
+        subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
+        html: htmlContent
+      });
+
+      // 3. Actualizar el registro con el resultado real
+      if (docRef && docRef.id) {
+        const logRef = doc(db, "mail", docRef.id);
+        await updateDoc(logRef, {
+          delivery: {
+            state: result.success ? 'SUCCESS' : 'ERROR',
+            error: result.error || null,
+            sentAt: serverTimestamp()
+          }
+        });
+      }
+
+      toast({
+        title: result.success ? "Invitación Enviada" : "Error en envío",
+        description: result.success ? "El correo ha sido enviado exitosamente." : result.error,
+        variant: result.success ? "default" : "destructive"
+      });
+      
+      setIsInviteOpen(false);
+      setInviteEmail("");
+    } catch (error: any) {
+      toast({ title: "Error crítico", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSendingInvite(false);
+    }
   };
 
   const formatDate = (date: any) => {
@@ -465,7 +490,6 @@ export default function AdminCompaniesPage() {
         </Card>
 
         <div className="space-y-6">
-          {/* MONITOR DE ENTREGA DE CORREOS */}
           <Card className="border-none shadow-sm bg-slate-900 text-white overflow-hidden">
             <CardHeader className="pb-2 border-b border-white/10">
               <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
@@ -476,7 +500,6 @@ export default function AdminCompaniesPage() {
             <CardContent className="pt-4 px-0">
               <div className="space-y-1">
                 {mailLogs && mailLogs.length > 0 ? (
-                  // Ordenar localmente por createdAt si existe
                   [...mailLogs].sort((a, b) => {
                     const timeA = a.createdAt?.seconds || 0;
                     const timeB = b.createdAt?.seconds || 0;
@@ -507,7 +530,7 @@ export default function AdminCompaniesPage() {
                   ))
                 ) : (
                   <div className="py-8 text-center text-white/30 italic text-xs">
-                    No hay envíos registrados aún o cargando...
+                    No hay envíos registrados aún...
                   </div>
                 )}
               </div>
@@ -518,22 +541,18 @@ export default function AdminCompaniesPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Shield className="h-4 w-4 text-blue-600" />
-                Guía de Notificaciones
+                Motor de Notificaciones
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  El monitor lateral lee la colección <code className="bg-white px-1">mail</code> en tiempo real. 
+                  El sistema ahora utiliza un <strong>Server Action</strong> directo para evitar errores de permisos de Firebase Extensions.
                 </p>
                 <div className="space-y-2">
                   <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
-                    <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
-                    <span>Si aparece <strong>ERROR</strong>, verifica la configuración SMTP en la extensión de Firebase.</span>
-                  </div>
-                  <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
                     <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>Los correos tardan entre 2 a 5 segundos en procesarse.</span>
+                    <span>Los correos se envían instantáneamente vía Gmail SMTP.</span>
                   </div>
                 </div>
               </div>
@@ -641,7 +660,7 @@ export default function AdminCompaniesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Invitación por Email Profesional */}
+      {/* Dialog Invitación por Email */}
       <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -667,11 +686,11 @@ export default function AdminCompaniesPage() {
             </div>
             
             <div className="bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200">
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Vista Previa de Notificación SaaS:</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Vista Previa de Notificación:</p>
               <div className="text-[12px] text-slate-700 leading-relaxed space-y-2">
                 <p>Estimados,</p>
-                <p>Les damos la bienvenida a <strong>PCGMANTENIMIENTO ERP</strong>. Su entorno de gestión industrial ha sido configurado y se encuentra listo para operar.</p>
-                <p>Utilicen el siguiente <strong>Código de Acceso Maestro</strong> en su registro:</p>
+                <p>Les damos la bienvenida a <strong>PCGMANTENIMIENTO ERP</strong>. Su entorno de gestión industrial ha sido configurado.</p>
+                <p>Utilicen el siguiente <strong>Código de Acceso Maestro</strong>:</p>
                 <div className="bg-white p-3 text-center rounded-lg border-2 border-primary/20 font-mono font-black text-xl text-primary tracking-widest shadow-sm">
                   {detailsCompany?.id}
                 </div>
@@ -679,7 +698,7 @@ export default function AdminCompaniesPage() {
             </div>
             <DialogFooter className="pt-4">
               <Button type="submit" className="w-full h-12 text-sm font-bold gap-2" disabled={isSendingInvite}>
-                {isSendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Credenciales Corporativas</>}
+                {isSendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Credenciales</>}
               </Button>
             </DialogFooter>
           </form>
