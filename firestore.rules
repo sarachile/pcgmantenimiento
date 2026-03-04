@@ -11,6 +11,7 @@ service cloud.firestore {
     
     function isSuperAdmin() {
       return isSignedIn() && (
+        request.auth.token.email == 'control@pcgoperacion.com' ||
         exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin')
       );
@@ -32,12 +33,14 @@ service cloud.firestore {
 
     // Colección para la extensión Trigger Email
     match /mail/{mailId} {
+      // Permitir a cualquier usuario autenticado crear correos (necesario para el flujo de la plataforma)
       allow create: if isSignedIn();
+      // Solo el superadmin puede ver el historial de correos
       allow read, write: if isSuperAdmin();
     }
 
     match /superAdmins/{userId} {
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId) && request.auth.token.email == 'control@pcgoperacion.com';
       allow read: if isSignedIn() && (isOwner(userId) || isSuperAdmin());
       allow update, delete: if isSuperAdmin();
     }
