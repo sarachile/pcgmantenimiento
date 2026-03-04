@@ -29,7 +29,8 @@ import {
   MoreVertical,
   Trash2,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
@@ -77,9 +78,16 @@ export default function WorkOrdersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Órdenes de Trabajo</h2>
-          <p className="text-muted-foreground">Administre y supervise todas las órdenes de trabajo de su empresa.</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Órdenes de Trabajo</h2>
+            <p className="text-muted-foreground">Administre y supervise todas las órdenes de trabajo de su empresa.</p>
+          </div>
         </div>
         <Button asChild>
           <Link href="/work-orders/new">
