@@ -38,18 +38,9 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
-  const estimatedEndDateStr = useMemo(() => {
-    if (!scheduledDate || !durationDays) return "";
-    try {
-      const start = parseISO(scheduledDate);
-      const end = addDays(start, Number(durationDays));
-      return format(end, 'yyyy-MM-dd');
-    } catch (e) { return ""; }
-  }, [scheduledDate, durationDays]);
-
   const companyId = profile?.companyId;
 
-  // Consultas estables con dependencias primitivas
+  // Memoización estricta de las consultas para evitar bucles infinitos en Selects
   const clientsQuery = useMemoFirebase(() => 
     db && companyId ? collection(db, "companies", companyId, "clients") : null, 
     [db, companyId]
@@ -65,9 +56,18 @@ export default function NewWorkOrderPage() {
     [db, companyId]
   );
 
-  const { data: clients } = useCollection<Client>(clientsQuery);
-  const { data: assets } = useCollection<Asset>(assetsQuery);
-  const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
+  const { data: clients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: assets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
+  const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
+
+  const estimatedEndDateStr = useMemo(() => {
+    if (!scheduledDate || !durationDays) return "";
+    try {
+      const start = parseISO(scheduledDate);
+      const end = addDays(start, Number(durationDays));
+      return format(end, 'yyyy-MM-dd');
+    } catch (e) { return ""; }
+  }, [scheduledDate, durationDays]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,7 +135,7 @@ export default function NewWorkOrderPage() {
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Selección de Cliente *</Label>
                 <Select value={clientId || ""} onValueChange={setClientId}>
                   <SelectTrigger className="h-12 rounded-xl border-2">
-                    <SelectValue placeholder="Busque un cliente..." />
+                    <SelectValue placeholder={isClientsLoading ? "Cargando..." : "Busque un cliente..."} />
                   </SelectTrigger>
                   <SelectContent>
                     {(clients || []).map(c => (
@@ -148,7 +148,7 @@ export default function NewWorkOrderPage() {
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Maquinaria / Activo</Label>
                 <Select value={assetId || ""} onValueChange={setAssetId}>
                   <SelectTrigger className="h-12 rounded-xl border-2">
-                    <SelectValue placeholder="Seleccione equipo (Opcional)" />
+                    <SelectValue placeholder={isAssetsLoading ? "Cargando..." : "Seleccione equipo (Opcional)"} />
                   </SelectTrigger>
                   <SelectContent>
                     {(assets || []).map(a => (
@@ -191,34 +191,38 @@ export default function NewWorkOrderPage() {
 
             <div className="space-y-4">
               <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2"><Users className="h-4 w-4" /> Personal Técnico Asignado</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {staffMembers?.map(staff => (
-                  <label 
-                    key={staff.id} 
-                    className={cn(
-                      "flex items-center space-x-4 border-2 p-4 rounded-2xl transition-all cursor-pointer",
-                      assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "bg-white hover:border-slate-300"
-                    )}
-                  >
-                    <Checkbox 
-                      checked={assignedToStaffIds.includes(staff.id)} 
-                      onCheckedChange={() => {
-                        setAssignedToStaffIds(prev => 
-                          prev.includes(staff.id) ? prev.filter(id => id !== staff.id) : [...prev, staff.id]
-                        );
-                      }} 
-                      className="h-5 w-5" 
-                    />
-                    <div className="flex flex-col">
-                      <p className="font-black text-sm text-slate-900">{staff.name}</p>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{staff.role}</p>
-                    </div>
-                  </label>
-                ))}
-                {(!staffMembers || staffMembers.length === 0) && (
-                  <p className="text-xs text-slate-400 italic p-4 border-2 border-dashed rounded-2xl">No hay miembros del equipo registrados.</p>
-                )}
-              </div>
+              {isStaffLoading ? (
+                <div className="p-4 text-center"><Loader2 className="h-4 w-4 animate-spin mx-auto" /></div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {staffMembers?.map(staff => (
+                    <label 
+                      key={staff.id} 
+                      className={cn(
+                        "flex items-center space-x-4 border-2 p-4 rounded-2xl transition-all cursor-pointer",
+                        assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "bg-white hover:border-slate-300"
+                      )}
+                    >
+                      <Checkbox 
+                        checked={assignedToStaffIds.includes(staff.id)} 
+                        onCheckedChange={() => {
+                          setAssignedToStaffIds(prev => 
+                            prev.includes(staff.id) ? prev.filter(id => id !== staff.id) : [...prev, staff.id]
+                          );
+                        }} 
+                        className="h-5 w-5" 
+                      />
+                      <div className="flex flex-col">
+                        <p className="font-black text-sm text-slate-900">{staff.name}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{staff.role}</p>
+                      </div>
+                    </label>
+                  ))}
+                  {(!staffMembers || staffMembers.length === 0) && (
+                    <p className="text-xs text-slate-400 italic p-4 border-2 border-dashed rounded-2xl">No hay miembros del equipo registrados.</p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

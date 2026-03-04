@@ -363,7 +363,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         updatedAt: serverTimestamp()
       });
 
-      // Si requiere cliente, enviar email
       if (ot.reviewerRequired && client?.contactEmail) {
         const approvalLink = currentUrl;
         await sendSystemEmail({
@@ -532,7 +531,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <span className={cn("text-sm font-medium", item.completed && "line-through text-muted-foreground font-normal")}>{item.task}</span>
                   </div>
                   {item.completedAt && (
-                    <span className="text-[10px] font-black text-slate-300 uppercase italic">OK: {format(new Date(item.completedAt), "HH:mm")}</span>
+                    <span className="text-[10px] font-black text-slate-300 uppercase italic">OK: {formatDateLabel(item.completedAt)}</span>
                   )}
                 </div>
               ))}

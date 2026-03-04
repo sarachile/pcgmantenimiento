@@ -52,7 +52,7 @@ service cloud.firestore {
     }
 
     match /companies/{companyId} {
-      allow get: if isCompanyMember(companyId) || request.auth == null; // Portal público necesita leer datos básicos de empresa
+      allow get: if isCompanyMember(companyId) || request.auth == null;
       allow list: if isPlatformAdmin();
       allow create: if isPlatformAdmin();
       allow update: if isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin'));
@@ -76,15 +76,15 @@ service cloud.firestore {
 
       match /evaluations/{evalId} {
         allow read: if isCompanyMember(companyId);
-        allow create: if true; // Permitir que clientes externos envíen su evaluación
+        allow create: if true; 
       }
 
       match /workOrders/{workOrderId} {
-        // Permitir lectura pública para el portal de aprobación si el ID es correcto
         allow get: if isCompanyMember(companyId) || true; 
         allow list: if isCompanyMember(companyId);
         allow create: if isCompanyMember(companyId);
         allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
+        allow delete: if isCompanyMember(companyId);
         
         match /digitalLogbookEntries/{entryId} {
           allow read, write: if isCompanyMember(companyId);
