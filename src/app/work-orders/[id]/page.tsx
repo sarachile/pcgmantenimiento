@@ -32,7 +32,8 @@ import {
   Camera,
   Image as ImageIcon,
   Trash2,
-  XCircle
+  XCircle,
+  AlertTriangle
 } from "lucide-react";
 import {
   Dialog,
@@ -62,10 +63,12 @@ import { sendSystemEmail } from "@/actions/email";
 
 function EvaluationForm({ 
   onSave, 
-  isSaving 
+  isSaving,
+  isReApproval = false
 }: { 
   onSave: (ratings: any, comment: string) => void, 
-  isSaving: boolean 
+  isSaving: boolean,
+  isReApproval?: boolean
 }) {
   const [ratings, setRatings] = useState({
     quality: 0,
@@ -114,7 +117,7 @@ function EvaluationForm({
       <div className="space-y-2">
         <Label className="text-xs font-bold uppercase text-muted-foreground">Comentarios y Observaciones</Label>
         <Textarea 
-          placeholder="Opcional: Describa su experiencia..." 
+          placeholder={isReApproval ? "Indique por qué solicita nueva aprobación..." : "Opcional: Describa su experiencia..."} 
           className="min-h-[100px] text-sm"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -125,7 +128,7 @@ function EvaluationForm({
         disabled={!canSubmit || isSaving}
         onClick={() => onSave(ratings, comment)}
       >
-        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Evaluación y Aprobar</>}
+        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> {isReApproval ? "Solicitar Nueva Aprobación" : "Enviar Evaluación y Aprobar"}</>}
       </Button>
     </div>
   );
@@ -395,7 +398,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         evaluationId: evalDoc.id, 
         status: nextStatus, 
         reviewedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        rejectedReason: null // Limpiar motivo si se está re-aprobando
       });
 
       if (ot.reviewerRequired && client?.contactEmail) {
@@ -506,16 +510,21 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf}>
             {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Reporte PDF
           </Button>
-          {(isSupervisor || isCompanyAdmin) && ot.status === 'en revision' && (
+          {(isSupervisor || isCompanyAdmin) && (ot.status === 'en revision' || ot.status === 'rechazada') && (
             <Dialog open={isEvalOpen} onOpenChange={setIsEvalOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-amber-600 hover:bg-amber-700">Aprobación Interna</Button>
+                <Button className={cn(ot.status === 'rechazada' ? "bg-rose-600 hover:bg-rose-700" : "bg-amber-600 hover:bg-amber-700")}>
+                  {ot.status === 'rechazada' ? "Solicitar Nueva Aprobación" : "Aprobación Interna"}
+                </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Validación de Supervisión</DialogTitle>
+                  <DialogTitle>{ot.status === 'rechazada' ? "Reiniciar Ciclo de Aprobación" : "Validación de Supervisión"}</DialogTitle>
+                  {ot.status === 'rechazada' && (
+                    <DialogDescription>Se enviará una nueva solicitud de validación al cliente.</DialogDescription>
+                  )}
                 </DialogHeader>
-                <EvaluationForm isSaving={isUpdating} onSave={handleInternalApproval} />
+                <EvaluationForm isSaving={isUpdating} onSave={handleInternalApproval} isReApproval={ot.status === 'rechazada'} />
               </DialogContent>
             </Dialog>
           )}
@@ -614,7 +623,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolo</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-gap-2"><ListChecks className="h-5 w-5" /> Protocolo</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {ot.checklist?.map((item) => (
                 <div key={item.id} className="flex items-center justify-between p-4 bg-white border rounded-xl">
