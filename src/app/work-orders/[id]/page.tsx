@@ -45,6 +45,8 @@ import { WorkOrderReport } from "@/components/WorkOrderReport";
 import { FirebaseImage } from "@/components/FirebaseImage";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 
 function EvaluationForm({ 
   onSave, 
@@ -208,7 +210,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   // Consulta para obtener la información de los miembros del equipo asignados
   const staffQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId || !ot?.assignedToStaffIds?.length) return null;
-    // Firestore limit: max 10 IDs in 'in' query. Correct for MVP.
     return query(
       collection(db, "companies", profile.companyId, "staff"), 
       where("__name__", "in", ot.assignedToStaffIds)
@@ -241,13 +242,20 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   }, [db, profile?.companyId, otId]);
   const { data: partUsages } = useCollection<PartUsage>(partUsagesQuery);
 
+  const formatDateLabel = (date: any) => {
+    if (!date) return "...";
+    try {
+      const d = date.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
+      return format(d, "dd MMM yyyy HH:mm", { locale: es });
+    } catch (e) { return "N/A"; }
+  };
+
   const handleDownloadPdf = async () => {
     if (!reportRef.current) return;
     setIsGeneratingPdf(true);
     toast({ title: "Generando reporte...", description: "Por favor espere un momento." });
     
     try {
-      // Importante: useCORS true para que html2canvas pueda leer imágenes de Firebase Storage
       const canvas = await html2canvas(reportRef.current, { 
         scale: 2, 
         useCORS: true, 
@@ -465,7 +473,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-primary border-2 border-white" />
                     <p className="text-[10px] font-black text-primary uppercase tracking-widest">{entry.eventType}</p>
                     <p className="text-xs text-slate-600 mt-1 leading-relaxed">{entry.eventDetails}</p>
-                    <p className="text-[9px] text-slate-400 mt-1 font-bold italic">{formatDate(entry.timestamp)}</p>
+                    <p className="text-[9px] text-slate-400 mt-1 font-bold italic">{formatDateLabel(entry.timestamp)}</p>
                   </div>
                 ))}
               </div>
