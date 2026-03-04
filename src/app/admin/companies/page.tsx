@@ -48,7 +48,9 @@ import {
   Send,
   ExternalLink,
   Globe,
-  Info
+  Info,
+  AlertTriangle,
+  CheckCircle2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -363,117 +365,177 @@ export default function AdminCompaniesPage() {
         </Dialog>
       </div>
 
-      <Card className="border-none shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar por nombre o código..." 
-              className="pl-10"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isCompaniesLoading ? (
-            <div className="py-10 text-center">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              Cargando tenantes...
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="md:col-span-2 border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar por nombre o código..." 
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Empresa / Inicio</TableHead>
-                  <TableHead>Código Acceso</TableHead>
-                  <TableHead>Plan / Estado</TableHead>
-                  <TableHead>Usuarios</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((company: Company) => {
-                  const companyUsers = getCompanyUsers(company.id);
-                  return (
-                    <TableRow key={company.id} className="group">
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-900">{company.name}</span>
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <Calendar className="h-3 w-3" /> {formatDate(company.createdAt)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">
-                            {company.id}
-                          </code>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" 
-                            onClick={() => {
-                              navigator.clipboard.writeText(company.id);
-                              toast({ title: "Copiado", description: "Código de acceso copiado." });
-                            }}
-                          >
-                            <Copy className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <Badge variant="outline" className={cn(
-                            "w-fit text-[9px] font-black uppercase",
-                            company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
-                            company.currentPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
-                          )}>
-                            {company.currentPlan?.toUpperCase() || 'FREE'}
-                          </Badge>
-                          <span className={cn(
-                            "text-[10px] font-bold",
-                            !company.isActive ? "text-rose-600" : "text-emerald-600"
-                          )}>
-                            {company.isActive ? 'OPERATIVA' : 'SUSPENDIDA'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Users className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm font-medium">{companyUsers.length}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleViewDetails(company)}
-                            title="Ver Ficha y Usuarios"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => handleOpenConfig(company)}
-                            title="Ajustar Suscripción"
-                          >
-                            <Settings2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            {isCompaniesLoading ? (
+              <div className="py-10 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                Cargando tenantes...
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Empresa / Inicio</TableHead>
+                    <TableHead>Código Acceso</TableHead>
+                    <TableHead>Plan / Estado</TableHead>
+                    <TableHead>Usuarios</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((company: Company) => {
+                    const companyUsers = getCompanyUsers(company.id);
+                    return (
+                      <TableRow key={company.id} className="group">
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-900">{company.name}</span>
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3" /> {formatDate(company.createdAt)}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">
+                              {company.id}
+                            </code>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" 
+                              onClick={() => {
+                                navigator.clipboard.writeText(company.id);
+                                toast({ title: "Copiado", description: "Código de acceso copiado." });
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className={cn(
+                              "w-fit text-[9px] font-black uppercase",
+                              company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
+                              company.currentPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
+                            )}>
+                              {company.currentPlan?.toUpperCase() || 'FREE'}
+                            </Badge>
+                            <span className={cn(
+                              "text-[10px] font-bold",
+                              !company.isActive ? "text-rose-600" : "text-emerald-600"
+                            )}>
+                              {company.isActive ? 'OPERATIVA' : 'SUSPENDIDA'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <Users className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm font-medium">{companyUsers.length}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleViewDetails(company)}
+                              title="Ver Ficha y Usuarios"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleOpenConfig(company)}
+                              title="Ajustar Suscripción"
+                            >
+                              <Settings2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="border-none shadow-sm bg-blue-50/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <Shield className="h-4 w-4 text-blue-600" />
+                Guía de Configuración Técnica
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Para que el envío de correos funcione, asegúrese de completar estos 3 puntos en Firebase:
+                </p>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
+                    <span><strong>Extensión Trigger Email:</strong> Instalada y configurada con SMTP de Gmail o SendGrid.</span>
+                  </div>
+                  <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
+                    <span><strong>Colección "mail":</strong> Creada en Firestore para recibir las peticiones.</span>
+                  </div>
+                  <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
+                    <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
+                    <span><strong>Error de Build:</strong> Si falla la instalación, otorgue el rol "Usuario de cuenta de servicio" a la cuenta <em>compute@developer...</em> en Google Cloud IAM.</span>
+                  </div>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="w-full text-[10px] h-8" asChild>
+                <Link href="https://console.cloud.google.com/iam-admin/iam" target="_blank">
+                  Ir a Google Cloud IAM <ExternalLink className="ml-1 h-3 w-3" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-bold">Resumen de Capacidad</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Empresas Activas</span>
+                  <span className="font-bold">{companies?.filter(c => c.isActive).length || 0}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Total Usuarios SaaS</span>
+                  <span className="font-bold">{allUsers?.length || 0}</span>
+                </div>
+                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary w-[45%]" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Dialog Ficha de Empresa y Usuarios */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
