@@ -7,15 +7,15 @@ import { User } from '@/lib/types';
 
 /**
  * Hook para acceder al estado del usuario y su perfil en Firestore.
- * Estabilizado para evitar bucles de renderizado infinitos.
+ * Estabilizado para evitar bucles de renderizado infinitos mediante comparación profunda de datos.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
   const [profile, setProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   
-  // Ref para comparar cambios profundos y evitar actualizaciones de estado innecesarias
-  const profileRef = useRef<string>("");
+  // Ref para comparar cambios reales en la estructura de datos
+  const lastProfileDataRef = useRef<string>("");
 
   useEffect(() => {
     let isMounted = true;
@@ -25,13 +25,11 @@ export function useUser() {
         if (isMounted) {
           setProfile(null);
           setIsProfileLoading(false);
-          profileRef.current = "";
+          lastProfileDataRef.current = "";
         }
         return;
       }
 
-      if (isMounted) setIsProfileLoading(true);
-      
       try {
         const userRef = doc(firestore, 'users', authUser.uid);
         const userSnap = await getDoc(userRef);
@@ -41,6 +39,7 @@ export function useUser() {
         if (userSnap.exists()) {
           newProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
+          // Intentar como administrador de plataforma
           const superAdminRef = doc(firestore, 'platform_admins', authUser.uid);
           const superAdminSnap = await getDoc(superAdminRef);
           
@@ -56,9 +55,11 @@ export function useUser() {
         }
 
         if (isMounted) {
-          const profileString = JSON.stringify(newProfile);
-          if (profileRef.current !== profileString) {
-            profileRef.current = profileString;
+          // Comparar como string JSON para detectar cambios reales en los datos, 
+          // no solo en la referencia de memoria.
+          const dataString = JSON.stringify(newProfile);
+          if (lastProfileDataRef.current !== dataString) {
+            lastProfileDataRef.current = dataString;
             setProfile(newProfile);
           }
         }
@@ -76,7 +77,7 @@ export function useUser() {
   }, [authUser?.uid, firestore]);
 
   const isLoading = isAuthLoading || isProfileLoading;
-  const isAuthenticated = !!authUser;
+  const isAuthenticated = !!authUser && !!profile;
 
   return {
     user: authUser,

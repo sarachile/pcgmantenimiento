@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, Info } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember, WorkOrder } from "@/lib/types";
@@ -30,15 +30,18 @@ export default function NewWorkOrderPage() {
   const [assetId, setAssetId] = useState("");
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
   const [scheduledDate, setScheduledDate] = useState("");
   const [durationDays, setDurationDays] = useState(1);
+  const [checklist, setChecklist] = useState<{task: string}[]>([]);
+  const [newTask, setNewTask] = useState("");
 
+  // Estabilizar la fecha inicial para evitar desajustes de hidratación
   useEffect(() => {
     setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
   }, []);
 
-  const estimatedEndDate = useMemo(() => {
+  // Calcular fecha de término como valor derivado puro (sin useEffect)
+  const estimatedEndDateStr = useMemo(() => {
     if (!scheduledDate || !durationDays) return "";
     try {
       const start = parseISO(scheduledDate);
@@ -49,18 +52,15 @@ export default function NewWorkOrderPage() {
     }
   }, [scheduledDate, durationDays]);
 
-  const [checklist, setChecklist] = useState<{task: string}[]>([]);
-  const [newTask, setNewTask] = useState("");
-
-  const handleAddTask = () => {
+  const handleAddTask = useCallback(() => {
     if (!newTask.trim()) return;
     setChecklist(prev => [...prev, { task: newTask.trim() }]);
     setNewTask("");
-  };
+  }, [newTask]);
 
-  const removeTask = (index: number) => {
+  const removeTask = useCallback((index: number) => {
     setChecklist(prev => prev.filter((_, i) => i !== index));
-  };
+  }, []);
 
   const toggleStaffSelection = useCallback((staffId: string) => {
     setAssignedToStaffIds(prev => 
@@ -88,7 +88,7 @@ export default function NewWorkOrderPage() {
         reviewerRequired: false,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
-        estimatedEndDate: estimatedEndDate ? new Date(estimatedEndDate).toISOString() : null,
+        estimatedEndDate: estimatedEndDateStr ? new Date(estimatedEndDateStr).toISOString() : null,
         checklist: checklist.map((item, idx) => ({
           id: `task-${idx}-${Date.now()}`,
           task: item.task,
@@ -108,6 +108,7 @@ export default function NewWorkOrderPage() {
     }
   };
 
+  // Queries estabilizadas con useMemoFirebase
   const assetsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "assets");
@@ -131,11 +132,12 @@ export default function NewWorkOrderPage() {
     );
   }, [db, profile?.companyId]);
 
-  const { data: realAssets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
-  const { data: realClients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: realAssets } = useCollection<Asset>(assetsQuery);
+  const { data: realClients } = useCollection<Client>(clientsQuery);
   const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
   const { data: activeWorkOrders } = useCollection<WorkOrder>(activeWorkOrdersQuery);
 
+  // Memoizar el mapa de personal ocupado
   const staffBusyMap = useMemo(() => {
     const busy: Record<string, string> = {};
     activeWorkOrders?.forEach(ot => {
@@ -145,6 +147,19 @@ export default function NewWorkOrderPage() {
     });
     return busy;
   }, [activeWorkOrders]);
+
+  // Memoizar las opciones de los selectores para evitar re-renders de Radix UI
+  const clientOptions = useMemo(() => (
+    realClients?.map(client => (
+      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+    ))
+  ), [realClients]);
+
+  const assetOptions = useMemo(() => (
+    realAssets?.map(asset => (
+      <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
+    ))
+  ), [realAssets]);
 
   if (isUserLoading) {
     return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -169,19 +184,13 @@ export default function NewWorkOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Cliente *</Label>
-                <Select value={clientId || ""} onValueChange={setClientId}>
+                <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Seleccione cliente" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {realClients && realClients.length > 0 ? (
-                        realClients.map(client => (
-                          <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="_empty" disabled>No hay clientes registrados</SelectItem>
-                      )}
+                      {clientOptions?.length ? clientOptions : <SelectItem value="_none" disabled>No hay clientes</SelectItem>}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -189,19 +198,13 @@ export default function NewWorkOrderPage() {
 
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Activo / Equipo</Label>
-                <Select value={assetId || ""} onValueChange={setAssetId}>
+                <Select value={assetId} onValueChange={setAssetId}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Seleccione equipo" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {realAssets && realAssets.length > 0 ? (
-                        realAssets.map(asset => (
-                          <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="_empty" disabled>No hay activos registrados</SelectItem>
-                      )}
+                      {assetOptions?.length ? assetOptions : <SelectItem value="_none" disabled>No hay activos</SelectItem>}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -219,9 +222,9 @@ export default function NewWorkOrderPage() {
                   <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-muted-foreground">Término</Label>
+                  <Label className="text-xs font-bold uppercase text-muted-foreground">Término Estimado</Label>
                   <div className="h-10 px-3 flex items-center bg-background border rounded-md font-medium text-primary">
-                    {estimatedEndDate ? format(parseISO(estimatedEndDate), 'dd/MM/yyyy') : '...'}
+                    {estimatedEndDateStr ? format(parseISO(estimatedEndDateStr), 'dd/MM/yyyy') : '...'}
                   </div>
                 </div>
               </CardContent>
@@ -250,9 +253,10 @@ export default function NewWorkOrderPage() {
                           <Checkbox 
                             id={`staff-${staff.id}`} 
                             checked={isSelected}
-                            className="pointer-events-none"
+                            onCheckedChange={() => toggleStaffSelection(staff.id)}
+                            onClick={(e) => e.stopPropagation()} // Evitar doble ejecución
                           />
-                          <div className="flex flex-col gap-0.5 pointer-events-none">
+                          <div className="flex flex-col gap-0.5">
                             <div className="font-bold flex items-center justify-between gap-2 text-xs">
                               {staff.name}
                               {busyOTId && <Badge variant="outline" className="text-[8px] h-4 bg-white text-amber-600">OT: {busyOTId}</Badge>}
@@ -268,12 +272,12 @@ export default function NewWorkOrderPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase text-muted-foreground">Descripción *</Label>
-              <Textarea placeholder="Detalle de los trabajos a realizar..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Label className="font-bold text-xs uppercase text-muted-foreground">Descripción de Trabajos *</Label>
+              <Textarea placeholder="Detalle técnico de los servicios..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
 
             <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Protocolo (Checklist)</Label></div>
+              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Protocolo de Revisión (Checklist)</Label></div>
               <div className="flex gap-2">
                 <Input placeholder="Añadir tarea..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())} />
                 <Button type="button" onClick={handleAddTask} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
@@ -293,7 +297,7 @@ export default function NewWorkOrderPage() {
           <CardFooter className="flex justify-between border-t p-6 bg-muted/20">
             <Button variant="outline" type="button" asChild disabled={isSubmitting}><Link href="/work-orders">Cancelar</Link></Button>
             <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId} className="min-w-[140px]">
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Crear OT"}
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Orden de Trabajo"}
             </Button>
           </CardFooter>
         </form>

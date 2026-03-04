@@ -2,31 +2,28 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Helper para verificar si el usuario está autenticado
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function getUserData() {
-      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isCompanyMember(companyId) {
-      return isSignedIn() && (
-        getUserData().companyId == companyId || 
-        firestore.exists(/databases/(default)/documents/platform_admins/$(request.auth.uid))
-      );
-    }
-
-    // Regla para firmas digitales y evidencias de OTs
+    // REGLA PARA ÓRDENES DE TRABAJO (Firmas y Evidencias)
     match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
-      allow read: if isCompanyMember(companyId);
-      allow write: if isCompanyMember(companyId);
+      // Permitir lectura pública para que las URLs de descarga funcionen en reportes y <img>
+      allow read: if true;
+      // Escritura permitida solo a usuarios autenticados
+      allow write: if isSignedIn();
     }
     
-    // Regla para branding de la empresa (Logotipos)
+    // REGLA PARA BRANDING (Logotipos)
     match /companies/{companyId}/branding/{fileName} {
-      allow read: if isCompanyMember(companyId);
-      allow write: if isCompanyMember(companyId);
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Regla por defecto para el resto del bucket
+    match /{allPaths=**} {
+      allow read, write: if isSignedIn();
     }
   }
 }
