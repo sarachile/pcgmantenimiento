@@ -27,11 +27,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { initializeFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, getStorage } from "firebase/storage";
-import { WorkOrder, Client, Company, Asset, StaffMember } from "@/lib/types";
+import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { WorkOrder, Client, Company, Asset } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { FirebaseImage } from "@/components/FirebaseImage";
+import { useSearchParams } from "next/navigation";
 
 function SignaturePad({ onSave, isSaving }: { onSave: (blob: Blob) => void, isSaving: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -94,6 +95,8 @@ function SignaturePad({ onSave, isSaving }: { onSave: (blob: Blob) => void, isSa
 export default function ExternalApprovalPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
+  const searchParams = useSearchParams();
+  const companyId = searchParams.get('c');
   const { toast } = useToast();
   
   const [ot, setOt] = useState<WorkOrder | null>(null);
@@ -111,38 +114,27 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
 
   useEffect(() => {
     async function loadData() {
+      if (!companyId) {
+        setLoading(false);
+        return;
+      }
       try {
-        // En un entorno SaaS real, primero buscaríamos la OT en todas las colecciones de compañías
-        // Para este MVP, asumimos que conocemos la estructura o usamos una búsqueda por ID global (si se implementara)
-        // Como no tenemos el companyId, debemos buscar en todas las empresas o tener un mapeo.
-        // Simulamos la carga asumiendo acceso vía rules si el ID es correcto.
-        
-        // NOTA: Para producción, el link debería incluir el companyId: /portal/approve/[compId]/[otId]
-        // Aquí intentaremos buscarla en la base de datos (esta es una limitación del esquema actual sin CompanyId en la URL)
-        // Procederemos con una búsqueda en la colección de 'workOrders' de todas las empresas (requiere índice o conocer la empresa)
-        
-        // BUSQUEDA HACK PARA MVP: Buscar en todas las empresas registradas
-        const companiesSnap = await getDocs(collection(firestore, "companies"));
-        let foundOt: WorkOrder | null = null;
-        let foundComp: Company | null = null;
-
-        for (const cDoc of companiesSnap.docs) {
-          const otDoc = await getDoc(doc(firestore, "companies", cDoc.id, "workOrders", otId));
+        const companyDoc = await getDoc(doc(firestore, "companies", companyId));
+        if (companyDoc.exists()) {
+          setCompany({ ...companyDoc.data() as Company, id: companyId });
+          
+          const otDoc = await getDoc(doc(firestore, "companies", companyId, "workOrders", otId));
           if (otDoc.exists()) {
-            foundOt = { ...otDoc.data() as WorkOrder, id: otId };
-            foundComp = { ...cDoc.data() as Company, id: cDoc.id };
-            break;
-          }
-        }
-
-        if (foundOt && foundComp) {
-          setOt(foundOt);
-          setCompany(foundComp);
-          const clientDoc = await getDoc(doc(firestore, "companies", foundComp.id, "clients", foundOt.clientId));
-          if (clientDoc.exists()) setClient(clientDoc.data() as Client);
-          if (foundOt.assetId) {
-            const assetDoc = await getDoc(doc(firestore, "companies", foundComp.id, "assets", foundOt.assetId));
-            if (assetDoc.exists()) setAsset(assetDoc.data() as Asset);
+            const otData = otDoc.data() as WorkOrder;
+            setOt({ ...otData, id: otId });
+            
+            const clientDoc = await getDoc(doc(firestore, "companies", companyId, "clients", otData.clientId));
+            if (clientDoc.exists()) setClient(clientDoc.data() as Client);
+            
+            if (otData.assetId) {
+              const assetDoc = await getDoc(doc(firestore, "companies", companyId, "assets", otData.assetId));
+              if (assetDoc.exists()) setAsset(assetDoc.data() as Asset);
+            }
           }
         }
       } catch (e) {
@@ -152,19 +144,17 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
       }
     }
     loadData();
-  }, [firestore, otId]);
+  }, [firestore, otId, companyId]);
 
   const handleFinalApprove = async (signatureBlob: Blob) => {
     if (!ot || !company || !firestore || !storage) return;
     setIsSubmitting(true);
     try {
-      // 1. Subir Firma
       const path = `companies/${company.id}/workOrders/${ot.id}/client_sig_${Date.now()}.png`;
       const sRef = ref(storage, path);
       await uploadBytes(sRef, signatureBlob);
       const signatureUrl = await getDownloadURL(sRef);
 
-      // 2. Guardar Evaluación
       const evalCol = collection(firestore, "companies", company.id, "evaluations");
       const evalDoc = await addDoc(evalCol, {
         workOrderId: ot.id,
@@ -177,7 +167,6 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
         createdAt: serverTimestamp()
       });
 
-      // 3. Actualizar OT
       const otRef = doc(firestore, "companies", company.id, "workOrders", ot.id);
       updateDocumentNonBlocking(otRef, {
         clientSignatureUrl: signatureUrl,
@@ -196,7 +185,7 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-indigo-600" /></div>;
-  if (!ot) return <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center"><Card className="p-10 rounded-3xl border-dashed border-2">Orden no válida o caducada.</Card></div>;
+  if (!ot || !companyId) return <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center"><Card className="p-10 rounded-3xl border-dashed border-2">Acceso no válido o caducado. Por favor use el link oficial.</Card></div>;
 
   if (ot.status === 'aprobada') {
     return (
@@ -251,8 +240,8 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
                     <p className="text-sm font-black text-slate-900">{asset?.name || "S/I"}</p>
                   </div>
                   <div className="bg-indigo-50/50 p-4 rounded-2xl">
-                    <p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Técnico Ejecutor</p>
-                    <p className="text-sm font-black text-slate-900">Ver Reporte</p>
+                    <p className="text-[10px] font-black uppercase text-indigo-400 mb-1">Estado Técnico</p>
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700">EJECUTADO</Badge>
                   </div>
                 </div>
                 <div className="space-y-2">

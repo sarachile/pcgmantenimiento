@@ -218,11 +218,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [currentUrl, setCurrentUrl] = useState("");
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && profile?.companyId) {
       const baseUrl = window.location.origin;
-      setCurrentUrl(`${baseUrl}/portal/approve/${otId}`);
+      // Inyectamos el ID de la empresa en la URL para evitar búsquedas globales costosas y con fallos de permisos
+      setCurrentUrl(`${baseUrl}/portal/approve/${otId}?c=${profile.companyId}`);
     }
-  }, [otId]);
+  }, [otId, profile?.companyId]);
 
   const otRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -617,7 +618,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <span className={cn("text-sm font-medium", item.completed && "line-through text-muted-foreground font-normal")}>{item.task}</span>
                   </div>
                   {item.completedAt && (
-                    <span className="text-[10px] font-black text-slate-300 uppercase italic">OK: {formatDateLabel(item.completedAt)}</span>
+                    <span className="text-[10px] font-black text-slate-300 uppercase italic">OK: {format(new Date(item.completedAt), "HH:mm")}</span>
                   )}
                 </div>
               ))}

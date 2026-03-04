@@ -40,7 +40,7 @@ export default function NewWorkOrderPage() {
 
   const companyId = profile?.companyId;
 
-  // Memoización estricta de las consultas para evitar bucles infinitos en Selects
+  // Memoización estricta de las consultas con dependencias primitivas para evitar bucles infinitos en Selects
   const clientsQuery = useMemoFirebase(() => 
     db && companyId ? collection(db, "companies", companyId, "clients") : null, 
     [db, companyId]
@@ -182,9 +182,9 @@ export default function NewWorkOrderPage() {
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <QrCode className="h-4 w-4 text-amber-600" />
-                  <Label className="text-amber-900 font-black text-sm">Validación Externa por QR</Label>
+                  <Label className="text-amber-900 font-black text-sm">Validación Externa por Correo/QR</Label>
                 </div>
-                <p className="text-[10px] text-amber-700 font-medium">Permite que el revisor del cliente firme desde su propio dispositivo móvil.</p>
+                <p className="text-[10px] text-amber-700 font-medium">Permite que el revisor del cliente firme desde su propio dispositivo.</p>
               </div>
               <Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} />
             </div>

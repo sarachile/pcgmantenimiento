@@ -5,8 +5,7 @@ service cloud.firestore {
 
     /**
      * PCGMANTENIMIENTO SECURITY RULES
-     * 
-     * Implementación de modelo SaaS con validación centralizada en la colección /users.
+     * Implementación SaaS con soporte para Portal de Validación Externo (Público)
      */
 
     // --- Helper Functions ---
@@ -52,7 +51,8 @@ service cloud.firestore {
     }
 
     match /companies/{companyId} {
-      allow get: if isCompanyMember(companyId) || request.auth == null;
+      // Allow public get for the customer portal branding
+      allow get: if isCompanyMember(companyId) || true;
       allow list: if isPlatformAdmin();
       allow create: if isPlatformAdmin();
       allow update: if isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin'));
@@ -63,34 +63,41 @@ service cloud.firestore {
       }
 
       match /clients/{clientId} {
-        allow read, write: if isCompanyMember(companyId);
+        // Public get for portal info
+        allow get: if isCompanyMember(companyId) || true;
+        allow list: if isCompanyMember(companyId);
+        allow write: if isCompanyMember(companyId);
       }
 
       match /assets/{assetId} {
-        allow read, write: if isCompanyMember(companyId);
-      }
-
-      match /spareParts/{partId} {
-        allow read, write: if isCompanyMember(companyId);
+        // Public get for portal info
+        allow get: if isCompanyMember(companyId) || true;
+        allow list: if isCompanyMember(companyId);
+        allow write: if isCompanyMember(companyId);
       }
 
       match /evaluations/{evalId} {
         allow read: if isCompanyMember(companyId);
+        // Clients can create evaluations without login from the portal
         allow create: if true; 
       }
 
       match /workOrders/{workOrderId} {
-        allow get: if isCompanyMember(companyId) || true; 
+        // Public get for portal validation (ID acts as a secret token)
+        allow get: if true; 
         allow list: if isCompanyMember(companyId);
         allow create: if isCompanyMember(companyId);
+        // Clients can update status/signature from portal
         allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
         allow delete: if isCompanyMember(companyId);
         
         match /digitalLogbookEntries/{entryId} {
-          allow read, write: if isCompanyMember(companyId);
+          allow read: if isCompanyMember(companyId) || true;
+          allow write: if isCompanyMember(companyId);
         }
         match /partUsages/{usageId} {
-          allow read, write: if isCompanyMember(companyId);
+          allow read: if isCompanyMember(companyId) || true;
+          allow write: if isCompanyMember(companyId);
         }
       }
     }
