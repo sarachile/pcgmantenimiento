@@ -11,7 +11,9 @@ import {
   Settings, 
   ShieldCheck,
   CreditCard,
-  LogOut
+  LogOut,
+  BarChart3,
+  Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -43,11 +45,22 @@ const navItems: NavItem[] = [
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
 ];
 
+const adminItems: NavItem[] = [
+  { title: "Control Plataforma", href: "/admin", icon: Globe, roles: ['superadmin'] },
+  { title: "Empresas", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
+  { title: "Usuarios Globales", href: "/admin/users", icon: Users, roles: ['superadmin'] },
+  { title: "Estadísticas", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
+];
+
 export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
   const pathname = usePathname();
 
   const filteredItems = navItems.filter(item => 
     !item.roles || item.roles.includes(userRole)
+  );
+
+  const filteredAdminItems = adminItems.filter(item => 
+    item.roles?.includes(userRole)
   );
 
   return (
@@ -80,6 +93,28 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
             ))}
           </SidebarMenu>
         </SidebarGroup>
+
+        {filteredAdminItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administración SaaS</SidebarGroupLabel>
+            <SidebarMenu>
+              {filteredAdminItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={pathname === item.href}
+                    tooltip={item.title}
+                  >
+                    <Link href={item.href}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="p-4 border-t border-border/50">
         <SidebarMenu>
