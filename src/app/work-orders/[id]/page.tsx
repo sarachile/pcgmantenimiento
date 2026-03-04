@@ -26,23 +26,46 @@ import {
   ShieldCheck,
   Sparkles,
   ArrowLeft,
-  MessageSquare
+  MessageSquare,
+  Loader2
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 import { useToast } from "@/hooks/use-toast";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
+  const { profile } = useUser();
+  const db = useFirestore();
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
 
-  const ot = MOCK_WORK_ORDERS.find(o => o.id === otId);
+  // Intentar cargar de Firestore
+  const otRef = useMemoFirebase(() => {
+    if (!db || !profile?.companyId || otId.startsWith('OT-')) return null;
+    return doc(db, "companies", profile.companyId, "workOrders", otId);
+  }, [db, profile?.companyId, otId]);
+
+  const { data: firestoreOt, isLoading: isDocLoading } = useDoc(otRef);
+
+  // Determinar OT final (Firestore o Mock)
+  const ot = firestoreOt || MOCK_WORK_ORDERS.find(o => o.id === otId);
   const logbook = MOCK_LOGBOOK.filter(l => l.workOrderId === otId);
+  const isMock = !firestoreOt;
+
+  if (isDocLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!ot) {
     return <div className="p-8 text-center">Orden de trabajo no encontrada.</div>;
@@ -54,12 +77,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       const result = await generateWorkOrderSummary({
         workOrder: {
           ...ot,
-          // Adapt mock structure to flow input schema
+          id: ot.id,
+          description: ot.description || "",
           status: ot.status as any,
-          createdAt: ot.createdAt,
-          updatedAt: ot.updatedAt,
-          executedAt: ot.executedAt,
-          reviewedAt: ot.reviewedAt,
+          createdAt: typeof ot.createdAt === 'string' ? ot.createdAt : (ot.createdAt as any)?.toDate().toISOString(),
+          updatedAt: ot.updatedAt ? (typeof ot.updatedAt === 'string' ? ot.updatedAt : (ot.updatedAt as any)?.toDate().toISOString()) : undefined,
+          executedAt: ot.executedAt ? (typeof ot.executedAt === 'string' ? ot.executedAt : (ot.executedAt as any)?.toDate().toISOString()) : undefined,
+          reviewedAt: ot.reviewedAt ? (typeof ot.reviewedAt === 'string' ? ot.reviewedAt : (ot.reviewedAt as any)?.toDate().toISOString()) : undefined,
+          companyId: profile?.companyId || "demo-company"
         },
         digitalLogbookEntries: logbook.map(entry => ({
           ...entry,
@@ -87,20 +112,25 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Link>
         </Button>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            {ot.id}
-            <Badge variant={ot.status === 'aprobada' ? 'default' : 'outline'} className={cn(
-              ot.status === 'creada' && "border-blue-500 text-blue-500",
-              ot.status === 'en revision' && "border-amber-500 text-amber-500",
-              ot.status === 'aprobada' && "bg-emerald-500 text-white border-emerald-500"
-            )}>
-              {ot.status.toUpperCase()}
-            </Badge>
-          </h2>
-          <p className="text-muted-foreground text-sm">Creada el {new Date(ot.createdAt).toLocaleString()}</p>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold flex items-center gap-3">
+              {ot.id}
+              <Badge variant={ot.status === 'aprobada' ? 'default' : 'outline'} className={cn(
+                ot.status === 'creada' && "border-blue-500 text-blue-500",
+                ot.status === 'en revision' && "border-amber-500 text-amber-500",
+                ot.status === 'aprobada' && "bg-emerald-500 text-white border-emerald-500"
+              )}>
+                {ot.status.toUpperCase()}
+              </Badge>
+            </h2>
+            {isMock && <Badge variant="outline" className="text-amber-600 bg-amber-50">EJEMPLO</Badge>}
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Creada el {ot.createdAt ? (typeof ot.createdAt === 'string' ? new Date(ot.createdAt).toLocaleString() : (ot.createdAt as any).toDate().toLocaleString()) : 'N/A'}
+          </p>
         </div>
         <div className="flex gap-2">
-          {ot.status === 'en revision' && (
+          {ot.status === 'en revision' && !isMock && (
             <>
               <Button variant="outline" className="border-rose-500 text-rose-500 hover:bg-rose-50">
                 <XCircle className="mr-2 h-4 w-4" /> Rechazar
@@ -129,11 +159,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Técnico Asignado</label>
-                  <p className="mt-1">{MOCK_USERS.find(u => u.id === ot.assignedTo)?.name || 'Sin asignar'}</p>
+                  <p className="mt-1">{MOCK_USERS.find(u => u.id === (ot.assignedTo || (ot as any).assignedToUserId))?.name || 'Sin asignar'}</p>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fecha de Ejecución</label>
-                  <p className="mt-1">{ot.executedAt ? new Date(ot.executedAt).toLocaleString() : 'Pendiente'}</p>
+                  <p className="mt-1">{ot.executedAt ? (typeof ot.executedAt === 'string' ? new Date(ot.executedAt).toLocaleString() : (ot.executedAt as any).toDate().toLocaleString()) : 'Pendiente'}</p>
                 </div>
               </div>
             </CardContent>
@@ -180,21 +210,27 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <CardDescription>Registro auditable e inmutable de eventos asociados.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-muted">
-                {logbook.map((entry) => (
-                  <div key={entry.id} className="relative">
-                    <div className="absolute -left-[23px] top-1 h-4 w-4 rounded-full bg-background border-2 border-primary ring-4 ring-background" />
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-primary uppercase">{entry.eventType.replace('_', ' ')}</span>
-                        <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</span>
+              {logbook.length > 0 ? (
+                <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-muted">
+                  {logbook.map((entry) => (
+                    <div key={entry.id} className="relative">
+                      <div className="absolute -left-[23px] top-1 h-4 w-4 rounded-full bg-background border-2 border-primary ring-4 ring-background" />
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-primary uppercase">{entry.eventType.replace('_', ' ')}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</span>
+                        </div>
+                        <p className="text-sm font-medium">{entry.eventDetails}</p>
+                        <p className="text-xs text-muted-foreground">Actor: {MOCK_USERS.find(u => u.id === entry.actor)?.name}</p>
                       </div>
-                      <p className="text-sm font-medium">{entry.eventDetails}</p>
-                      <p className="text-xs text-muted-foreground">Actor: {MOCK_USERS.find(u => u.id === entry.actor)?.name}</p>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm italic">
+                  No hay registros en el libro para esta OT.
+                </div>
+              )}
             </CardContent>
             <CardFooter className="bg-muted/30 border-t p-4 rounded-b-lg">
               <div className="flex w-full items-center gap-2">
@@ -204,9 +240,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <input 
                   className="flex-1 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground" 
                   placeholder="Escribir un comentario en el libro..."
-                  disabled={ot.status === 'aprobada'}
+                  disabled={ot.status === 'aprobada' || isMock}
                 />
-                <Button variant="ghost" size="sm" disabled={ot.status === 'aprobada'}>Registrar</Button>
+                <Button variant="ghost" size="sm" disabled={ot.status === 'aprobada' || isMock}>Registrar</Button>
               </div>
             </CardFooter>
           </Card>
@@ -244,7 +280,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <div className="space-y-3">
                 {['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'].map((step, idx) => {
                   const isActive = ot.status === step;
-                  const isDone = ['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'].indexOf(ot.status) > idx;
+                  const steps = ['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'];
+                  const currentIdx = steps.indexOf(ot.status);
+                  const isDone = currentIdx > idx;
                   
                   return (
                     <div key={step} className="flex items-center gap-3">

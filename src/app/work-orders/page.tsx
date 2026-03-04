@@ -37,6 +37,8 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNo
 import { collection, doc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { MOCK_WORK_ORDERS } from "@/lib/mock-data";
+import { Badge } from "@/components/ui/badge";
 
 export default function WorkOrdersPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -44,15 +46,22 @@ export default function WorkOrdersPage() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Query memoizada para obtener las OTs de la empresa actual
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "workOrders");
   }, [db, profile?.companyId]);
 
-  const { data: workOrders, isLoading: isOrdersLoading } = useCollection(workOrdersQuery);
+  const { data: realWorkOrders, isLoading: isOrdersLoading } = useCollection(workOrdersQuery);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: string, isMock?: boolean) => {
+    if (isMock) {
+      toast({
+        title: "Acción no permitida",
+        description: "No se pueden eliminar órdenes de ejemplo.",
+        variant: "destructive"
+      });
+      return;
+    }
     if (!profile?.companyId) return;
     const docRef = doc(db, "companies", profile.companyId, "workOrders", id);
     deleteDocumentNonBlocking(docRef);
@@ -61,6 +70,10 @@ export default function WorkOrdersPage() {
       description: "La orden de trabajo ha sido eliminada del sistema.",
     });
   };
+
+  // Fallback a mocks si no hay datos reales
+  const workOrders = realWorkOrders && realWorkOrders.length > 0 ? realWorkOrders : MOCK_WORK_ORDERS;
+  const isDemo = !realWorkOrders || realWorkOrders.length === 0;
 
   const filteredOTs = (workOrders || []).filter(ot => 
     ot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -85,7 +98,10 @@ export default function WorkOrdersPage() {
             </Link>
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Órdenes de Trabajo</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-3xl font-bold tracking-tight">Órdenes de Trabajo</h2>
+              {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200">DEMO</Badge>}
+            </div>
             <p className="text-muted-foreground">Administre y supervise todas las órdenes de trabajo de su empresa.</p>
           </div>
         </div>
@@ -140,56 +156,68 @@ export default function WorkOrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOTs.map((ot) => (
-                  <TableRow key={ot.id} className="hover:bg-muted/20 transition-colors">
-                    <TableCell className="font-bold text-primary truncate max-w-[100px]">{ot.id}</TableCell>
-                    <TableCell className="max-w-[300px] truncate">{ot.description}</TableCell>
-                    <TableCell>
-                      <span className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                        ot.status === 'creada' && "bg-blue-100 text-blue-700",
-                        ot.status === 'asignada' && "bg-indigo-100 text-indigo-700",
-                        ot.status === 'ejecutada' && "bg-purple-100 text-purple-700",
-                        ot.status === 'en revision' && "bg-amber-100 text-amber-700",
-                        ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700",
-                        ot.status === 'rechazada' && "bg-rose-100 text-rose-700"
-                      )}>
-                        {ot.status.charAt(0).toUpperCase() + ot.status.slice(1)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {ot.createdAt ? (ot.createdAt.toDate ? ot.createdAt.toDate().toLocaleDateString() : new Date(ot.createdAt).toLocaleDateString()) : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" asChild title="Ver Detalle">
-                          <Link href={`/work-orders/${ot.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
-                              <Link href={`/work-orders/${ot.id}`}>
-                                <Eye className="mr-2 h-4 w-4" /> Ver Detalles
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-rose-600" onClick={() => handleDelete(ot.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filteredOTs.map((ot) => {
+                  const isMock = !realWorkOrders || !realWorkOrders.find(r => r.id === ot.id);
+                  return (
+                    <TableRow key={ot.id} className="hover:bg-muted/20 transition-colors">
+                      <TableCell className="font-bold text-primary">
+                        <div className="flex items-center gap-2">
+                          {ot.id}
+                          {isMock && <span className="text-[10px] bg-muted px-1 rounded font-normal text-muted-foreground">MOCK</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[300px] truncate">{ot.description}</TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                          ot.status === 'creada' && "bg-blue-100 text-blue-700",
+                          ot.status === 'asignada' && "bg-indigo-100 text-indigo-700",
+                          ot.status === 'ejecutada' && "bg-purple-100 text-purple-700",
+                          ot.status === 'en revision' && "bg-amber-100 text-amber-700",
+                          ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700",
+                          ot.status === 'rechazada' && "bg-rose-100 text-rose-700"
+                        )}>
+                          {ot.status.charAt(0).toUpperCase() + ot.status.slice(1)}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {ot.createdAt ? (ot.createdAt.toDate ? ot.createdAt.toDate().toLocaleDateString() : new Date(ot.createdAt).toLocaleDateString()) : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" asChild title="Ver Detalle">
+                            <Link href={`/work-orders/${ot.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <Link href={`/work-orders/${ot.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-rose-600" 
+                                onClick={() => handleDelete(ot.id, isMock)}
+                                disabled={isMock}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
