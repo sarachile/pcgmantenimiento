@@ -322,7 +322,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             </Card>
           )}
 
-          {/* Tarjeta de Información General */}
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
             <CardHeader className="bg-primary/5 p-6 border-b">
               <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
@@ -442,15 +441,28 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <Checkbox 
                       checked={item.completed} 
                       onCheckedChange={() => {
-                        const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: !i.completed, completedAt: !i.completed ? new Date().toISOString() : null } : i);
+                        const isNowCompleted = !item.completed;
+                        const newChecklist = ot.checklist?.map(i => 
+                          i.id === item.id 
+                            ? { ...i, completed: isNowCompleted, completedAt: isNowCompleted ? new Date().toISOString() : null } 
+                            : i
+                        );
                         updateDocumentNonBlocking(otRef!, { checklist: newChecklist });
                       }} 
                       disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'} 
                       className="h-6 w-6 rounded-lg"
                     />
-                    <span className={cn("text-sm font-bold", item.completed ? "line-through text-slate-400" : "text-slate-700")}>{item.task}</span>
+                    <div className="flex flex-col">
+                      <span className={cn("text-sm font-bold", item.completed ? "text-slate-400" : "text-slate-700")}>{item.task}</span>
+                      {item.completed ? (
+                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">
+                          REALIZADO {item.completedAt && `- ${format(new Date(item.completedAt), "HH:mm 'hrs'", { locale: es })}`}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">PENDIENTE</span>
+                      )}
+                    </div>
                   </div>
-                  {item.completedAt && <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md uppercase tracking-tighter">{format(new Date(item.completedAt), "HH:mm 'hrs'")}</span>}
                 </div>
               )) : (
                 <p className="text-center py-6 text-xs font-bold text-slate-400 uppercase tracking-widest italic">No se definieron ítems de control.</p>

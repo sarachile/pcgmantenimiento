@@ -350,7 +350,10 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
               <p className="text-slate-500 font-bold text-lg mb-12 leading-relaxed">
                 Su sello de validación digital ha sido generado. La Orden de Trabajo ha sido cerrada y el certificado final ya está disponible para el equipo técnico.
               </p>
-              <div className="space-y-6">
+              <Button className="mt-8 w-full h-14 rounded-2xl bg-indigo-600 text-white font-black shadow-xl uppercase tracking-widest" asChild>
+                <a href="/">Cerrar y Finalizar</a>
+              </Button>
+              <div className="space-y-6 mt-12">
                 <p className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.5em]">PCGMANTENIMIENTO ERP</p>
                 <div className="h-1.5 w-32 bg-indigo-600 mx-auto rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)]" />
               </div>

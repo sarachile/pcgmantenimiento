@@ -146,13 +146,13 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
                   <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${item.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
                     {item.completed && <CheckCircle2 className="h-3.5 w-3.5" />}
                   </div>
-                  <span className={`text-sm ${item.completed ? 'font-black text-slate-900' : 'text-slate-400'}`}>{item.task}</span>
+                  <div className="flex flex-col">
+                    <span className={`text-sm ${item.completed ? 'font-black text-slate-900' : 'text-slate-400'}`}>{item.task}</span>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">
+                      {item.completed ? `REALIZADO: ${item.completedAt ? format(new Date(item.completedAt), "dd/MM/yyyy HH:mm") : ''}` : 'PENDIENTE'}
+                    </span>
+                  </div>
                 </div>
-                {item.completedAt && (
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
-                    {format(new Date(item.completedAt), "HH:mm 'hrs'")}
-                  </span>
-                )}
               </div>
             ))
           ) : (
