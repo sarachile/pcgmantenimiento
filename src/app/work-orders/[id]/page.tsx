@@ -35,7 +35,9 @@ import {
   Fingerprint,
   ClipboardList,
   Calendar as CalendarIcon,
-  Clock
+  Clock,
+  KeyRound,
+  ShieldAlert
 } from "lucide-react";
 import {
   Dialog,
@@ -151,7 +153,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold; width: 140px;">ORDEN DE TRABAJO:</td><td style="padding: 6px 0; font-weight: 900; color: #1e3a8a;">${ot.id}</td></tr>
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">EQUIPO / ACTIVO:</td><td style="padding: 6px 0; font-weight: bold;">${asset?.name || 'S/I'} [${asset?.code || '-'}]</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">FECHA EJECUCIÓN:</td><td style="padding: 6px 0;">${formatDateLabel(ot.executedAt || new Date())}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">CÓDIGO DE ACCESO:</td><td style="padding: 6px 0;"><span style="background: #1e3a8a; color: #ffffff; padding: 4px 12px; border-radius: 6px; font-family: monospace; font-weight: 900; font-size: 18px; letter-spacing: 2px;">${ot.approvalPin || '------'}</span></td></tr>
               </table>
             </div>
 
@@ -164,7 +166,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <a href="${currentUrl}" style="background-color: #1e3a8a; color: #ffffff; padding: 18px 36px; text-decoration: none; border-radius: 12px; font-weight: 900; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);">
                 REVISAR Y APROBAR DIGITALMENTE
               </a>
-              <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">Este link permite la validación sin necesidad de iniciar sesión.</p>
+              <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">Para su seguridad, el sistema le solicitará el código de acceso indicado arriba.</p>
             </div>
 
             <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; text-align: center;">
@@ -299,24 +301,29 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
           {ot.status === 'pendiente cliente' && (
-            <Card className="border-4 border-indigo-500 border-dashed bg-indigo-50/20 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-8 shadow-xl">
+            <Card className="border-4 border-indigo-500 border-dashed bg-indigo-50/20 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-8 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-indigo-600 text-white px-4 py-1 rounded-bl-xl font-black text-[10px] uppercase tracking-widest">Seguridad Activa</div>
               <div className="bg-white p-4 rounded-3xl shadow-inner border-2 border-indigo-100 shrink-0">
                 <img src={qrUrl} className="w-32 h-32" alt="QR de Aprobación" />
               </div>
               <div className="text-center md:text-left space-y-4 flex-1">
                 <div className="space-y-1">
-                  <h3 className="text-xl font-black text-indigo-900 uppercase tracking-tighter">Validación Externa Activa</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed font-medium">El cliente debe aprobar mediante sello digital. Se ha enviado un enlace seguro a su correo.</p>
+                  <h3 className="text-xl font-black text-indigo-900 uppercase tracking-tighter">Validación Externa Protegida</h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <KeyRound className="h-4 w-4 text-indigo-600" />
+                    <span className="text-sm font-black text-indigo-700">PIN DE ACCESO: <span className="bg-white px-3 py-1 rounded-lg border border-indigo-200 font-mono tracking-[0.3em] text-lg">{ot.approvalPin}</span></span>
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed font-medium">Solo el cliente con este PIN podrá autorizar. El código ha sido incluido en la notificación oficial.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <Button variant="outline" className="rounded-xl bg-white gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={handleResendEmail} disabled={isResendingEmail}>
                     {isResendingEmail ? <Loader2 className="animate-spin h-4 w-4" /> : <Mail className="h-4 w-4" />} 
-                    Re-enviar Notificación
+                    Re-enviar PIN y Enlace
                   </Button>
                   <Button variant="ghost" className="rounded-xl h-10 text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-indigo-600" onClick={() => {
                     navigator.clipboard.writeText(currentUrl);
                     toast({ title: "Link Copiado" });
-                  }}><ExternalLink className="h-3.5 w-3.5 mr-2" /> Copiar Link Directo</Button>
+                  }}><ExternalLink className="h-3.5 w-3.5 mr-2" /> Link Directo</Button>
                 </div>
               </div>
             </Card>

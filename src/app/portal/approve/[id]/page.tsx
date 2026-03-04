@@ -23,10 +23,14 @@ import {
   Camera,
   XCircle,
   AlertTriangle,
-  Fingerprint
+  Fingerprint,
+  KeyRound,
+  Lock,
+  ArrowRight
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { initializeFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -50,9 +54,13 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
   const [asset, setAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Estados de flujo
+  const [isAccessGranted, setIsAccessLocked] = useState(false);
+  const [pinInput, setPinInput] = useState("");
   const [step, setStep] = useState(1); // 1: Review, 2: Evaluation, 3: Confirmation, 4: Success, 5: Rejection, 6: Confirm Reject
+  
   const [rejectionReason, setRejectionReason] = useState("");
-
   const [ratings, setRatings] = useState({ quality: 0, timing: 0, safety: 0, documentation: 0 });
   const [comment, setComment] = useState("");
 
@@ -91,6 +99,17 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
     }
     loadData();
   }, [firestore, otId, companyId]);
+
+  const handleVerifyPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === ot?.approvalPin) {
+      setIsAccessLocked(true);
+      toast({ title: "Acceso Concedido", description: "Identidad verificada exitosamente." });
+    } else {
+      toast({ title: "Código Incorrecto", description: "El PIN ingresado no es válido.", variant: "destructive" });
+      setPinInput("");
+    }
+  };
 
   const handleFinalDigitalApproval = async () => {
     if (!ot || !company || !firestore) return;
@@ -164,14 +183,6 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-indigo-600" /></div>;
   if (!ot || !companyId) return <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center"><Card className="p-10 rounded-[2.5rem] border-dashed border-2">Acceso no válido o caducado.</Card></div>;
 
-  const formatDateLabel = (date: any) => {
-    if (!date) return "...";
-    try {
-      const d = date.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
-      return format(d, "dd 'de' MMMM, yyyy", { locale: es });
-    } catch (e) { return "N/A"; }
-  };
-
   if (ot.status === 'aprobada') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -186,6 +197,55 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
       </div>
     );
   }
+
+  // PANTALLA DE BLOQUEO POR PIN
+  if (!isAccessGranted) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full rounded-[2.5rem] shadow-2xl border-none overflow-hidden animate-in zoom-in-95 duration-500">
+          <CardHeader className="bg-white p-10 text-center space-y-4">
+            <div className="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <Lock className="h-10 w-10 text-indigo-600" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-black uppercase tracking-tighter italic text-slate-900">Acceso Protegido</CardTitle>
+              <CardDescription className="text-slate-500 font-medium">Por su seguridad, ingrese el código enviado a su correo institucional.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="bg-slate-50 p-10">
+            <form onSubmit={handleVerifyPin} className="space-y-6">
+              <div className="space-y-2 text-center">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em]">PIN de 6 Dígitos</Label>
+                <Input 
+                  type="text" 
+                  maxLength={6} 
+                  placeholder="000000"
+                  className="h-20 text-center text-4xl font-black tracking-[0.5em] rounded-2xl border-2 focus:border-indigo-500 border-slate-200 shadow-inner bg-white"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg shadow-xl shadow-indigo-200 uppercase tracking-widest gap-3">
+                Verificar Identidad <ArrowRight className="h-5 w-5" />
+              </Button>
+              <p className="text-[10px] text-center text-slate-400 font-bold uppercase leading-relaxed">
+                El código único garantiza que solo personal autorizado pueda emitir el sello digital de aprobación.
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const formatDateLabel = (date: any) => {
+    if (!date) return "...";
+    try {
+      const d = date.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
+      return format(d, "dd 'de' MMMM, yyyy", { locale: es });
+    } catch (e) { return "N/A"; }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">

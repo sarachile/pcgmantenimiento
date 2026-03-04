@@ -129,6 +129,7 @@ export interface WorkOrder {
   createdByUserId: string;
   reviewerRequired: boolean;
   evaluationRequired: boolean;
+  approvalPin?: string; // Código de 6 dígitos para validar al cliente
   scheduledDate?: string | any;
   durationDays?: number;
   estimatedEndDate?: string | any;

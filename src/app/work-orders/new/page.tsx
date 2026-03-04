@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -75,6 +75,9 @@ export default function NewWorkOrderPage() {
 
     setIsSubmitting(true);
     try {
+      // Generar PIN de 6 dígitos aleatorio
+      const pin = Math.floor(100000 + Math.random() * 900000).toString();
+
       const colRef = collection(db, "companies", companyId, "workOrders");
       const newOT = {
         companyId,
@@ -86,6 +89,7 @@ export default function NewWorkOrderPage() {
         createdByUserId: profile.id,
         reviewerRequired,
         evaluationRequired,
+        approvalPin: pin,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
         estimatedEndDate: estimatedEndDateStr ? new Date(estimatedEndDateStr).toISOString() : null,
@@ -189,9 +193,9 @@ export default function NewWorkOrderPage() {
               <div className="bg-white rounded-[1.4rem] p-6 border-2 border-slate-100 shadow-sm space-y-6">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="bg-primary/10 p-1.5 rounded-lg">
-                    <QrCode className="h-4 w-4 text-primary" />
+                    <ShieldCheck className="h-4 w-4 text-primary" />
                   </div>
-                  <Label className="font-black text-xs uppercase text-slate-900 tracking-tighter">Protocolos de Cierre y Calidad</Label>
+                  <Label className="font-black text-xs uppercase text-slate-900 tracking-tighter">Protocolos de Cierre y Seguridad</Label>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -201,7 +205,7 @@ export default function NewWorkOrderPage() {
                         <QrCode className="h-4 w-4 text-amber-600" />
                         <Label className="text-slate-900 font-black text-xs uppercase tracking-tighter">Validación Externa</Label>
                       </div>
-                      <p className="text-[9px] text-slate-500 font-medium leading-none">Firma digital del cliente vía QR.</p>
+                      <p className="text-[9px] text-slate-500 font-medium leading-none">Firma digital del cliente vía PIN y QR.</p>
                     </div>
                     <Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} />
                   </div>
