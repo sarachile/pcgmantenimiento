@@ -13,7 +13,8 @@ import {
   CreditCard,
   LogOut,
   BarChart3,
-  Globe
+  Globe,
+  HardHat
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -39,6 +40,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
+  { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
   { title: "Mi Empresa", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor'] },
   { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
