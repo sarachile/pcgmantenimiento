@@ -22,6 +22,7 @@ export interface Company {
   isActive: boolean;
   createdAt: string | any;
   updatedAt?: string | any;
+  requestedPlan?: string;
 }
 
 export interface Client {
