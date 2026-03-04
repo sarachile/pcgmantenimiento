@@ -15,7 +15,8 @@ import {
   Globe,
   HardHat,
   Package,
-  CalendarDays
+  CalendarDays,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -44,20 +45,22 @@ interface NavItem {
   roles?: Role[];
 }
 
+// Items operativos del ERP (para empresas)
 const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", href: "/calendar", icon: CalendarDays },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
-  { title: "Clientes", href: "/clients", icon: Users, roles: ['companyAdmin', 'supervisor', 'superadmin'] },
-  { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico', 'superadmin'] },
-  { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico', 'superadmin'] },
-  { title: "Reportes", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor', 'superadmin'] },
+  { title: "Clientes", href: "/clients", icon: Users, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
+  { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
+  { title: "Reportes", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor'] },
   { title: "Mi Empresa", href: "/company", icon: Building2 },
-  { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor', 'superadmin'] },
-  { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor', 'superadmin'] },
-  { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin', 'superadmin'] },
+  { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
+  { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
 ];
 
+// Items maestros (solo para Superadmin)
 const adminItems: NavItem[] = [
   { title: "Control Maestro", href: "/admin", icon: Globe, roles: ['superadmin'] },
   { title: "Empresas Registradas", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
@@ -67,7 +70,7 @@ const adminItems: NavItem[] = [
 
 export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
   const pathname = usePathname();
-  const { profile } = useUser();
+  const { profile, isSuperAdmin } = useUser();
   const db = useFirestore();
   const auth = useAuth();
   const router = useRouter();
@@ -79,10 +82,12 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
 
   const { data: company } = useDoc<Company>(companyRef);
 
-  const filteredItems = navItems.filter(item => 
+  // Si es superadmin, NO mostramos los navItems operativos
+  const filteredItems = isSuperAdmin ? [] : navItems.filter(item => 
     !item.roles || item.roles.includes(userRole)
   );
 
+  // Si es superadmin, mostramos solo adminItems
   const filteredAdminItems = adminItems.filter(item => 
     item.roles?.includes(userRole)
   );
@@ -96,7 +101,11 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
     <Sidebar className="border-r border-border/50 bg-card">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          {company?.logoUrl ? (
+          {isSuperAdmin ? (
+            <div className="bg-primary p-2 rounded-lg">
+              <ShieldCheck className="text-primary-foreground h-6 w-6" />
+            </div>
+          ) : company?.logoUrl ? (
             <div className="h-10 w-10 relative overflow-hidden rounded-lg border bg-white flex items-center justify-center">
               <Image 
                 src={company.logoUrl} 
@@ -107,38 +116,42 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
             </div>
           ) : (
             <div className="bg-primary p-2 rounded-lg">
-              <ShieldCheck className="text-primary-foreground h-6 w-6" />
+              <Settings className="text-primary-foreground h-6 w-6" />
             </div>
           )}
           <span className="font-bold text-xl tracking-tight text-primary uppercase truncate max-w-[140px]">
-            {company?.name || "PCGMANT"}
+            {isSuperAdmin ? "CONTROL MAESTRO" : (company?.name || "PCGMANT")}
           </span>
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
-          <SidebarMenu>
-            {filteredItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton 
-                  asChild 
-                  isActive={pathname === item.href}
-                  tooltip={item.title}
-                >
-                  <Link href={item.href}>
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
+        {/* Solo mostramos el grupo de Menú Principal si NO somos superadmin */}
+        {!isSuperAdmin && filteredItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
+            <SidebarMenu>
+              {filteredItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={pathname === item.href}
+                    tooltip={item.title}
+                  >
+                    <Link href={item.href}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
 
+        {/* Grupo exclusivo de Superadmin */}
         {filteredAdminItems.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-primary font-bold">Panel Súper Admin</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-primary font-bold">Administración Global</SidebarGroupLabel>
             <SidebarMenu>
               {filteredAdminItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
