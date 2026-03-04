@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -127,12 +127,16 @@ export default function NewWorkOrderPage() {
 
   const staffQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
-    return query(collection(db, "companies", profile.companyId, "staff"), where("active", "==", true));
+    // IMPORTANTE: Aseguramos que la subcolección sea la correcta bajo el tenant del perfil
+    return query(
+      collection(db, "companies", profile.companyId, "staff"), 
+      where("active", "==", true)
+    );
   }, [db, profile?.companyId]);
 
-  const { data: realAssets } = useCollection<Asset>(assetsQuery);
-  const { data: realClients } = useCollection<Client>(clientsQuery);
-  const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
+  const { data: realAssets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
+  const { data: realClients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
 
   if (isUserLoading) {
     return (
@@ -168,12 +172,16 @@ export default function NewWorkOrderPage() {
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccione un cliente..." />
+                    <SelectValue placeholder={isClientsLoading ? "Cargando clientes..." : "Seleccione un cliente..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {(realClients || []).map(client => (
-                      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                    ))}
+                    {realClients && realClients.length > 0 ? (
+                      realClients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-xs text-muted-foreground text-center">No hay clientes registrados</div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -182,12 +190,16 @@ export default function NewWorkOrderPage() {
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccione equipo (Opcional)..." />
+                    <SelectValue placeholder={isAssetsLoading ? "Cargando activos..." : "Seleccione equipo (Opcional)..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {(realAssets || []).map(asset => (
-                      <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
-                    ))}
+                    {realAssets && realAssets.length > 0 ? (
+                      realAssets.map(asset => (
+                        <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-xs text-muted-foreground text-center">No hay activos en catálogo</div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -222,15 +234,28 @@ export default function NewWorkOrderPage() {
               </Label>
               <Select value={assignedToStaffId} onValueChange={setAssignedToStaffId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccione del equipo de trabajo..." />
+                  <SelectValue placeholder={isStaffLoading ? "Cargando equipo..." : "Seleccione del equipo de trabajo..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {(staffMembers || []).map(staff => (
-                    <SelectItem key={staff.id} value={staff.id}>{staff.name} ({staff.role})</SelectItem>
-                  ))}
+                  {isStaffLoading ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    </div>
+                  ) : staffMembers && staffMembers.length > 0 ? (
+                    staffMembers.map(staff => (
+                      <SelectItem key={staff.id} value={staff.id}>{staff.name} ({staff.role})</SelectItem>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center space-y-2">
+                      <p className="text-xs text-muted-foreground">No hay personal activo registrado.</p>
+                      <Button variant="outline" size="sm" asChild className="w-full h-7 text-[10px]">
+                        <Link href="/team"><UserPlus className="h-3 w-3 mr-1" /> Ir a Equipo</Link>
+                      </Button>
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground italic">Si no aparece alguien, regístrelo primero en la tarjeta "Equipo de Trabajo".</p>
+              <p className="text-[10px] text-muted-foreground italic">El personal disponible corresponde a los trabajadores asociados a su empresa.</p>
             </div>
 
             <div className="space-y-2">
