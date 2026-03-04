@@ -196,7 +196,7 @@ export default function AdminCompaniesPage() {
 
   const handleSendInvite = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !detailsCompany || !inviteEmail) return;
+    if (!db || !detailsCompany || !inviteEmail || !profile) return;
 
     setIsSendingInvite(true);
     
@@ -252,15 +252,15 @@ export default function AdminCompaniesPage() {
 
     addDocumentNonBlocking(mailCol, mailData).catch(async (error) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: "mail", // Simplificamos la ruta para depuración precisa en reglas
+        path: "mail",
         operation: 'create',
         requestResourceData: mailData
       }));
     });
 
     toast({
-      title: "Cola de Envío",
-      description: `Procesando invitación para ${inviteEmail}.`,
+      title: "Invitación Procesada",
+      description: `Se ha encolado el envío para ${inviteEmail}. Revisa la colección 'mail' para ver el estado.`,
     });
     
     setIsSendingInvite(false);
