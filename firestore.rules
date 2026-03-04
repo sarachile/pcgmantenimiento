@@ -32,7 +32,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin() || isCompanyMember(resource.data.companyId));
-      allow list: if isSignedIn() && (isSuperAdmin() || (request.query.filters.companyId != null && isCompanyMember(request.query.filters.companyId)));
+      allow list: if isSignedIn() && (isSuperAdmin() || (request.query.filters != null && request.query.filters.companyId != null && isCompanyMember(request.query.filters.companyId[0])));
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
     }

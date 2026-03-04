@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -112,10 +112,18 @@ export default function NewWorkOrderPage() {
     return collection(db, "companies", profile.companyId, "assets");
   }, [db, profile?.companyId]);
 
-  const { data: realAssets } = useCollection(assetsQuery);
-  const { data: realUsers } = useCollection(useMemoFirebase(() => db ? collection(db, "users") : null, [db]));
+  const usersQuery = useMemoFirebase(() => {
+    if (!db || !profile?.companyId) return null;
+    return query(collection(db, "users"), where("companyId", "==", profile.companyId));
+  }, [db, profile?.companyId]);
 
-  const technicians = (realUsers || MOCK_USERS).filter(u => u.role === 'tecnico' && u.companyId === profile?.companyId);
+  const { data: realAssets } = useCollection(assetsQuery);
+  const { data: realUsers } = useCollection(usersQuery);
+
+  const technicians = (realUsers && realUsers.length > 0) 
+    ? realUsers.filter(u => u.role === 'tecnico') 
+    : MOCK_USERS.filter(u => u.role === 'tecnico' && u.companyId === profile?.companyId);
+
   const clients = MOCK_CLIENTS.filter(c => c.companyId === profile?.companyId);
   const assets = (realAssets && realAssets.length > 0) ? realAssets : MOCK_ASSETS.filter(a => a.companyId === profile?.companyId);
 
