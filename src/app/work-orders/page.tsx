@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Table, 
   TableBody, 
@@ -45,6 +45,11 @@ export default function WorkOrdersPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -79,6 +84,16 @@ export default function WorkOrdersPage() {
     ot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ot.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const formatTableDate = (date: any) => {
+    if (!mounted || !date) return '...';
+    try {
+      if (date.toDate) return date.toDate().toLocaleDateString();
+      return new Date(date).toLocaleDateString();
+    } catch (e) {
+      return 'N/A';
+    }
+  };
 
   if (isUserLoading) {
     return (
@@ -181,7 +196,7 @@ export default function WorkOrdersPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
-                        {ot.createdAt ? (ot.createdAt.toDate ? ot.createdAt.toDate().toLocaleDateString() : new Date(ot.createdAt).toLocaleDateString()) : 'N/A'}
+                        {formatTableDate(ot.createdAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

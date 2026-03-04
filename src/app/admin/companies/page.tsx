@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Table, 
   TableBody, 
@@ -26,6 +26,11 @@ import { cn } from "@/lib/utils";
 
 export default function AdminCompaniesPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const filtered = MOCK_COMPANIES.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -101,7 +106,7 @@ export default function AdminCompaniesPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {new Date(company.createdAt).toLocaleDateString()}
+                    {mounted ? new Date(company.createdAt).toLocaleDateString() : '...'}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

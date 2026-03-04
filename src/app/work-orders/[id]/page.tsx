@@ -45,6 +45,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Intentar cargar de Firestore
   const otRef = useMemoFirebase(() => {
@@ -58,6 +63,17 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const ot = firestoreOt || MOCK_WORK_ORDERS.find(o => o.id === otId);
   const logbook = MOCK_LOGBOOK.filter(l => l.workOrderId === otId);
   const isMock = !firestoreOt;
+
+  const formatDate = (date: any) => {
+    if (!mounted || !date) return '...';
+    try {
+      if (typeof date === 'string') return new Date(date).toLocaleString();
+      if (date.toDate) return date.toDate().toLocaleString();
+      return new Date(date).toLocaleString();
+    } catch (e) {
+      return 'N/A';
+    }
+  };
 
   if (isDocLoading) {
     return (
@@ -126,7 +142,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             {isMock && <Badge variant="outline" className="text-amber-600 bg-amber-50">EJEMPLO</Badge>}
           </div>
           <p className="text-muted-foreground text-sm">
-            Creada el {ot.createdAt ? (typeof ot.createdAt === 'string' ? new Date(ot.createdAt).toLocaleString() : (ot.createdAt as any).toDate().toLocaleString()) : 'N/A'}
+            Creada el {formatDate(ot.createdAt)}
           </p>
         </div>
         <div className="flex gap-2">
@@ -163,7 +179,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fecha de Ejecución</label>
-                  <p className="mt-1">{ot.executedAt ? (typeof ot.executedAt === 'string' ? new Date(ot.executedAt).toLocaleString() : (ot.executedAt as any).toDate().toLocaleString()) : 'Pendiente'}</p>
+                  <p className="mt-1">{ot.executedAt ? formatDate(ot.executedAt) : 'Pendiente'}</p>
                 </div>
               </div>
             </CardContent>
@@ -218,7 +234,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       <div className="space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-primary uppercase">{entry.eventType.replace('_', ' ')}</span>
-                          <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</span>
+                          <span className="text-xs text-muted-foreground">{formatDate(entry.timestamp)}</span>
                         </div>
                         <p className="text-sm font-medium">{entry.eventDetails}</p>
                         <p className="text-xs text-muted-foreground">Actor: {MOCK_USERS.find(u => u.id === entry.actor)?.name}</p>
