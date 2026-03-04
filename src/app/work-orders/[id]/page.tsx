@@ -57,7 +57,7 @@ import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, Staf
 import { WorkOrderReport } from "@/components/WorkOrderReport";
 import { FirebaseImage } from "@/components/FirebaseImage";
 import html2canvas from "html2canvas";
-import jsPDF from "jsPDF";
+import jsPDF from "jspdf";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
