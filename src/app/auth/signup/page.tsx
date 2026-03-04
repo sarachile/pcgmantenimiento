@@ -56,10 +56,10 @@ export default function SignupPage() {
       // 3. Create User Profile
       await setDoc(doc(db, 'users', userId), {
         id: userId,
-        email,
-        name,
-        role,
-        companyId,
+        email: email.toLowerCase(),
+        name: name,
+        role: role,
+        companyId: companyId,
         createdAt: serverTimestamp(),
         active: true,
       });
@@ -68,8 +68,8 @@ export default function SignupPage() {
       if (isSuperAdminAccount) {
         await setDoc(doc(db, 'superAdmins', userId), {
           id: userId,
-          email,
-          name,
+          email: email.toLowerCase(),
+          name: name,
           grantedAt: serverTimestamp(),
         });
       }
@@ -83,9 +83,10 @@ export default function SignupPage() {
       
       router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
     } catch (error: any) {
+      console.error("Signup error:", error);
       toast({
         title: "Error al registrarse",
-        description: error.message,
+        description: error.message || "No se pudo completar el registro técnico.",
         variant: "destructive",
       });
     } finally {

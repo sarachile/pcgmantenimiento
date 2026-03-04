@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -14,8 +15,7 @@ import {
   Globe,
   HardHat,
   Package,
-  CalendarDays,
-  UserGroup
+  CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -33,6 +33,9 @@ import { Role, Company } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import Image from "next/image";
+import { signOut } from "firebase/auth";
+import { useAuth } from "@/firebase";
+import { useRouter } from "next/navigation";
 
 interface NavItem {
   title: string;
@@ -45,27 +48,29 @@ const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", href: "/calendar", icon: CalendarDays },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
-  { title: "Clientes", href: "/clients", icon: Users, roles: ['companyAdmin', 'supervisor'] },
-  { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
-  { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
-  { title: "Reportes", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Clientes", href: "/clients", icon: Users, roles: ['companyAdmin', 'supervisor', 'superadmin'] },
+  { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico', 'superadmin'] },
+  { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico', 'superadmin'] },
+  { title: "Reportes", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor', 'superadmin'] },
   { title: "Mi Empresa", href: "/company", icon: Building2 },
-  { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
-  { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
-  { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
+  { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor', 'superadmin'] },
+  { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor', 'superadmin'] },
+  { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin', 'superadmin'] },
 ];
 
 const adminItems: NavItem[] = [
-  { title: "Control Plataforma", href: "/admin", icon: Globe, roles: ['superadmin'] },
-  { title: "Empresas", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
+  { title: "Control Maestro", href: "/admin", icon: Globe, roles: ['superadmin'] },
+  { title: "Empresas Registradas", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
   { title: "Usuarios Globales", href: "/admin/users", icon: Users, roles: ['superadmin'] },
-  { title: "Estadísticas Globales", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
+  { title: "Estadísticas SaaS", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
 ];
 
 export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
   const pathname = usePathname();
   const { profile } = useUser();
   const db = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
 
   const companyRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -81,6 +86,11 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
   const filteredAdminItems = adminItems.filter(item => 
     item.roles?.includes(userRole)
   );
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/auth/login");
+  };
 
   return (
     <Sidebar className="border-r border-border/50 bg-card">
@@ -128,7 +138,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
 
         {filteredAdminItems.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administración SaaS</SidebarGroupLabel>
+            <SidebarGroupLabel className="text-primary font-bold">Panel Súper Admin</SidebarGroupLabel>
             <SidebarMenu>
               {filteredAdminItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
@@ -136,6 +146,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
                     asChild 
                     isActive={pathname === item.href}
                     tooltip={item.title}
+                    className="text-primary hover:bg-primary/5"
                   >
                     <Link href={item.href}>
                       <item.icon className="h-4 w-4" />
@@ -151,7 +162,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
       <SidebarFooter className="p-4 border-t border-border/50">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="text-muted-foreground hover:text-destructive">
+            <SidebarMenuButton className="text-muted-foreground hover:text-destructive" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
               <span>Cerrar Sesión</span>
             </SidebarMenuButton>
