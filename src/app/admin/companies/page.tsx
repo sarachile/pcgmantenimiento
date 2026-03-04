@@ -51,7 +51,7 @@ import {
   Info,
   AlertTriangle,
   CheckCircle2
-} from "lucide-react";
+} from "lucide-center";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -62,9 +62,7 @@ import {
   useMemoFirebase, 
   updateDocumentNonBlocking,
   setDocumentNonBlocking,
-  addDocumentNonBlocking,
-  errorEmitter,
-  FirestorePermissionError
+  addDocumentNonBlocking
 } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { Company, User } from "@/lib/types";
@@ -253,15 +251,8 @@ export default function AdminCompaniesPage() {
       },
     };
 
-    // Usamos addDocumentNonBlocking que emitirá FirestorePermissionError si falla
-    addDocumentNonBlocking(mailCol, mailData).catch(async (error) => {
-      // Ya lo maneja addDocumentNonBlocking internamente, pero forzamos por si acaso
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: "mail",
-        operation: 'create',
-        requestResourceData: mailData
-      }));
-    });
+    // addDocumentNonBlocking ya maneja internamente la emisión del error contextual de Firestore
+    addDocumentNonBlocking(mailCol, mailData);
 
     toast({
       title: "Invitación Procesada",

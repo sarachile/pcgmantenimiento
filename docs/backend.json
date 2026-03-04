@@ -94,33 +94,26 @@
         "executedAt": { "type": "string", "format": "date-time" }
       }
     },
-    "Asset": {
-      "title": "Asset",
+    "EmailNotification": {
+      "title": "EmailNotification",
       "type": "object",
-      "description": "Equipo o activo sujeto a mantenimiento.",
+      "description": "Documento para la extensión Trigger Email.",
       "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "name": { "type": "string" },
-        "code": { "type": "string" },
-        "location": { "type": "string" },
-        "status": { "type": "string", "enum": ["activo", "inactivo", "en mantenimiento"] },
-        "lastMaintenanceAt": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "SparePart": {
-      "title": "SparePart",
-      "type": "object",
-      "description": "Repuesto o insumo de inventario.",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "name": { "type": "string" },
-        "sku": { "type": "string" },
-        "stockActual": { "type": "number" },
-        "stockMinimo": { "type": "number" },
-        "unitPrice": { "type": "number" }
+        "to": { "type": "string", "format": "email" },
+        "message": {
+          "type": "object",
+          "properties": {
+            "subject": { "type": "string" },
+            "html": { "type": "string" }
+          }
+        },
+        "delivery": {
+          "type": "object",
+          "properties": {
+            "state": { "type": "string" },
+            "error": { "type": "string" }
+          }
+        }
       }
     }
   },
@@ -132,29 +125,13 @@
       "schema": { "$ref": "#/backend/entities/Company" },
       "description": "Documentos de empresa."
     },
-    "/companies/{companyId}/clients/{clientId}": {
-      "schema": { "$ref": "#/backend/entities/Client" },
-      "description": "Clientes de la empresa."
-    },
-    "/companies/{companyId}/assets/{assetId}": {
-      "schema": { "$ref": "#/backend/entities/Asset" },
-      "description": "Activos de la empresa."
-    },
-    "/companies/{companyId}/spareParts/{partId}": {
-      "schema": { "$ref": "#/backend/entities/SparePart" },
-      "description": "Repuestos en inventario."
-    },
-    "/companies/{companyId}/workOrders/{workOrderId}": {
-      "schema": { "$ref": "#/backend/entities/WorkOrder" },
-      "description": "Órdenes de trabajo."
+    "/mail/{mailId}": {
+      "schema": { "$ref": "#/backend/entities/EmailNotification" },
+      "description": "Envíos de correo automáticos."
     },
     "/users/{userId}": {
       "schema": { "$ref": "#/backend/entities/User" },
       "description": "Perfiles de usuario."
-    },
-    "/superAdmins/{userId}": {
-      "schema": { "$ref": "#/backend/entities/SuperAdmin" },
-      "description": "Registro de súper administradores."
     }
   }
 }
