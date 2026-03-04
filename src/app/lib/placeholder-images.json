@@ -1,0 +1,17 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "hero-maintenance",
+      "description": "Professional maintenance team at work",
+      "imageUrl": "https://picsum.photos/seed/pcg1/1200/600",
+      "imageHint": "maintenance team"
+    },
+    {
+      "id": "company-logo-placeholder",
+      "description": "Abstract corporate logo",
+      "imageUrl": "https://picsum.photos/seed/pcg2/200/200",
+      "imageHint": "corporate logo"
+    }
+  ]
+}

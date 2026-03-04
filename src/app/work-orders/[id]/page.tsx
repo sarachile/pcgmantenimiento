@@ -1,0 +1,273 @@
+
+"use client";
+
+import { use, useState, useEffect } from "react";
+import { 
+  MOCK_WORK_ORDERS, 
+  MOCK_LOGBOOK, 
+  MOCK_USERS 
+} from "@/lib/mock-data";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription,
+  CardFooter
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { 
+  ClipboardList, 
+  History, 
+  CheckCircle2, 
+  XCircle, 
+  ShieldCheck,
+  Sparkles,
+  ArrowLeft,
+  MessageSquare
+} from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
+import { useToast } from "@/hooks/use-toast";
+
+export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  const otId = resolvedParams.id;
+  const { toast } = useToast();
+  
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+
+  const ot = MOCK_WORK_ORDERS.find(o => o.id === otId);
+  const logbook = MOCK_LOGBOOK.filter(l => l.workOrderId === otId);
+
+  if (!ot) {
+    return <div className="p-8 text-center">Orden de trabajo no encontrada.</div>;
+  }
+
+  const handleGenerateSummary = async () => {
+    setIsGenerating(true);
+    try {
+      const result = await generateWorkOrderSummary({
+        workOrder: {
+          ...ot,
+          // Adapt mock structure to flow input schema
+          status: ot.status as any,
+          createdAt: ot.createdAt,
+          updatedAt: ot.updatedAt,
+          executedAt: ot.executedAt,
+          reviewedAt: ot.reviewedAt,
+        },
+        digitalLogbookEntries: logbook.map(entry => ({
+          ...entry,
+          timestamp: entry.timestamp,
+        }))
+      });
+      setAiSummary(result.summary);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo generar el resumen inteligente.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/work-orders">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div className="flex-1">
+          <h2 className="text-2xl font-bold flex items-center gap-3">
+            {ot.id}
+            <Badge variant={ot.status === 'aprobada' ? 'default' : 'outline'} className={cn(
+              ot.status === 'creada' && "border-blue-500 text-blue-500",
+              ot.status === 'en revision' && "border-amber-500 text-amber-500",
+              ot.status === 'aprobada' && "bg-emerald-500 text-white border-emerald-500"
+            )}>
+              {ot.status.toUpperCase()}
+            </Badge>
+          </h2>
+          <p className="text-muted-foreground text-sm">Creada el {new Date(ot.createdAt).toLocaleString()}</p>
+        </div>
+        <div className="flex gap-2">
+          {ot.status === 'en revision' && (
+            <>
+              <Button variant="outline" className="border-rose-500 text-rose-500 hover:bg-rose-50">
+                <XCircle className="mr-2 h-4 w-4" /> Rechazar
+              </Button>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <CheckCircle2 className="mr-2 h-4 w-4" /> Aprobar OT
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="md:col-span-2 space-y-6">
+          <Card className="border-none shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-lg">Detalles de la Orden</CardTitle>
+              <ClipboardList className="h-5 w-5 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Descripción del Trabajo</label>
+                <p className="mt-1 text-base leading-relaxed">{ot.description}</p>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Técnico Asignado</label>
+                  <p className="mt-1">{MOCK_USERS.find(u => u.id === ot.assignedTo)?.name || 'Sin asignar'}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fecha de Ejecución</label>
+                  <p className="mt-1">{ot.executedAt ? new Date(ot.executedAt).toLocaleString() : 'Pendiente'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm bg-primary/5 border-l-4 border-l-primary">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Resumen Inteligente (IA)
+                </CardTitle>
+                <CardDescription>Generado automáticamente a partir del historial y detalles.</CardDescription>
+              </div>
+              <Button 
+                onClick={handleGenerateSummary} 
+                disabled={isGenerating}
+                variant="outline"
+                size="sm"
+                className="bg-background"
+              >
+                {isGenerating ? "Generando..." : "Actualizar"}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {aiSummary ? (
+                <div className="prose prose-sm max-w-none text-primary">
+                  {aiSummary}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground italic flex flex-col items-center gap-2">
+                   <p>Presione el botón para generar un resumen ejecutivo de la mantención.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <History className="h-5 w-5 text-muted-foreground" />
+                Libro Digital de Obra
+              </CardTitle>
+              <CardDescription>Registro auditable e inmutable de eventos asociados.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-muted">
+                {logbook.map((entry) => (
+                  <div key={entry.id} className="relative">
+                    <div className="absolute -left-[23px] top-1 h-4 w-4 rounded-full bg-background border-2 border-primary ring-4 ring-background" />
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-primary uppercase">{entry.eventType.replace('_', ' ')}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(entry.timestamp).toLocaleString()}</span>
+                      </div>
+                      <p className="text-sm font-medium">{entry.eventDetails}</p>
+                      <p className="text-xs text-muted-foreground">Actor: {MOCK_USERS.find(u => u.id === entry.actor)?.name}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+            <CardFooter className="bg-muted/30 border-t p-4 rounded-b-lg">
+              <div className="flex w-full items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                </div>
+                <input 
+                  className="flex-1 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground" 
+                  placeholder="Escribir un comentario en el libro..."
+                  disabled={ot.status === 'aprobada'}
+                />
+                <Button variant="ghost" size="sm" disabled={ot.status === 'aprobada'}>Registrar</Button>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card className="border-none shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Información del Cliente</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-xl">🏢</div>
+                <div>
+                  <p className="text-sm font-bold">Planta Norte Industrial</p>
+                  <p className="text-xs text-muted-foreground">RUT: 76.888.222-1</p>
+                </div>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-muted-foreground uppercase">Contraparte Técnica</p>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  <span className="text-sm">Marta Figueroa (Reviewer)</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm bg-accent/5">
+            <CardHeader>
+              <CardTitle className="text-base text-accent">Estado del Proceso</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'].map((step, idx) => {
+                  const isActive = ot.status === step;
+                  const isDone = ['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'].indexOf(ot.status) > idx;
+                  
+                  return (
+                    <div key={step} className="flex items-center gap-3">
+                      <div className={cn(
+                        "h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold",
+                        isActive ? "bg-accent text-white" : isDone ? "bg-accent/20 text-accent" : "bg-muted text-muted-foreground"
+                      )}>
+                        {isDone ? "✓" : idx + 1}
+                      </div>
+                      <span className={cn(
+                        "text-sm",
+                        isActive ? "font-bold text-foreground" : isDone ? "text-accent" : "text-muted-foreground"
+                      )}>
+                        {step.charAt(0).toUpperCase() + step.slice(1)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
