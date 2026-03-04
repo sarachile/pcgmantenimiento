@@ -16,11 +16,12 @@ export interface Company {
   name: string;
   rut: string;
   address: string;
+  logoUrl?: string;
   subscriptionPlan: PlanType;
   subscriptionStatus: SubscriptionStatus;
   isActive: boolean;
-  createdAt: string;
-  updatedAt?: string;
+  createdAt: string | any;
+  updatedAt?: string | any;
 }
 
 export interface Client {
