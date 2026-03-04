@@ -43,21 +43,71 @@
       "properties": {
         "id": { "type": "string" },
         "companyId": { "type": "string" },
+        "assetId": { "type": "string", "description": "Referencia al activo vinculado." },
         "description": { "type": "string" },
         "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "aprobada", "rechazada"] },
-        "assignedToUserId": { "type": "string", "description": "UID del técnico asignado." },
-        "reviewerId": { "type": "string", "description": "UID del revisor asignado (opcional)." },
-        "reviewerRequired": { "type": "boolean", "description": "Indica si requiere aprobación de un reviewer externo." },
+        "assignedToUserId": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "reviewerRequired": { "type": "boolean" },
         "createdByUserId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" },
         "executedAt": { "type": "string", "format": "date-time" },
         "reviewedAt": { "type": "string", "format": "date-time" },
         "approvedByUserId": { "type": "string" },
-        "evidenceUrls": { "type": "array", "items": { "type": "string" }, "description": "Links a fotos/documentos en Storage." },
+        "evidenceUrls": { "type": "array", "items": { "type": "string" } },
         "rejectedReason": { "type": "string" }
       },
       "required": ["id", "companyId", "description", "status", "reviewerRequired", "createdAt"]
+    },
+    "Asset": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Asset",
+      "type": "object",
+      "description": "Activo industrial o equipo a mantener.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string", "description": "Código interno o SKU del equipo." },
+        "location": { "type": "string" },
+        "status": { "type": "string", "enum": ["activo", "inactivo", "en mantenimiento"] },
+        "lastMaintenanceAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "companyId", "name", "code", "status", "createdAt"]
+    },
+    "SparePart": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SparePart",
+      "type": "object",
+      "description": "Repuesto o insumo en inventario.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "currentStock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "unit": { "type": "string", "description": "Unidad de medida (unidades, metros, litros, etc.)" }
+      },
+      "required": ["id", "companyId", "name", "currentStock", "minStock"]
+    },
+    "PartUsage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PartUsage",
+      "type": "object",
+      "description": "Registro de uso de repuesto en una OT.",
+      "properties": {
+        "id": { "type": "string" },
+        "workOrderId": { "type": "string" },
+        "partId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "usedAt": { "type": "string", "format": "date-time" },
+        "actorUserId": { "type": "string" }
+      },
+      "required": ["id", "workOrderId", "partId", "quantity", "usedAt", "actorUserId"]
     },
     "DigitalLogbookEntry": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -78,7 +128,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Review",
       "type": "object",
-      "description": "Revisión formal de una OT por un revisor o supervisor.",
+      "description": "Revisión formal de una OT.",
       "properties": {
         "id": { "type": "string" },
         "workOrderId": { "type": "string" },
@@ -119,21 +169,29 @@
       "schema": { "$ref": "#/backend/entities/User" },
       "description": "Copia de usuario para reglas de seguridad."
     },
+    "/companies/{companyId}/assets/{assetId}": {
+      "schema": { "$ref": "#/backend/entities/Asset" },
+      "description": "Catálogo de equipos por empresa."
+    },
+    "/companies/{companyId}/spareParts/{partId}": {
+      "schema": { "$ref": "#/backend/entities/SparePart" },
+      "description": "Inventario de repuestos."
+    },
     "/companies/{companyId}/workOrders/{workOrderId}": {
       "schema": { "$ref": "#/backend/entities/WorkOrder" },
-      "description": "Órdenes de trabajo de la empresa."
+      "description": "Órdenes de trabajo."
+    },
+    "/companies/{companyId}/workOrders/{workOrderId}/partUsages/{usageId}": {
+      "schema": { "$ref": "#/backend/entities/PartUsage" },
+      "description": "Repuestos consumidos en la OT."
     },
     "/companies/{companyId}/workOrders/{workOrderId}/digitalLogbookEntries/{entryId}": {
       "schema": { "$ref": "#/backend/entities/DigitalLogbookEntry" },
-      "description": "Entradas del libro digital (Inmutable)."
+      "description": "Libro digital (Inmutable)."
     },
     "/companies/{companyId}/workOrders/{workOrderId}/reviews/{reviewId}": {
       "schema": { "$ref": "#/backend/entities/Review" },
       "description": "Revisiones de la OT."
-    },
-    "/companies/{companyId}/subscriptions/{subId}": {
-      "schema": { "$ref": "#/backend/entities/Subscription" },
-      "description": "Historial de suscripciones."
     }
   }
 }

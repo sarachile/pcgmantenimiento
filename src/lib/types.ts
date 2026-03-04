@@ -3,14 +3,17 @@ export type Role = 'companyAdmin' | 'supervisor' | 'tecnico' | 'reviewer' | 'sup
 
 export type OTStatus = 'creada' | 'asignada' | 'ejecutada' | 'en revision' | 'aprobada' | 'rechazada';
 
+export type AssetStatus = 'activo' | 'inactivo' | 'en mantenimiento';
+
 export interface Company {
   id: string;
   name: string;
   rut: string;
   address: string;
-  subscriptionPlan: 'basic' | 'pro' | 'enterprise';
-  subscriptionStatus: 'active' | 'inactive' | 'pending';
+  currentPlan: 'free' | 'pro' | 'enterprise';
+  isActive: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface User {
@@ -19,30 +22,74 @@ export interface User {
   name: string;
   role: Role;
   companyId: string;
-  active: boolean;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface Asset {
+  id: string;
+  companyId: string;
+  name: string;
+  code: string;
+  location: string;
+  status: AssetStatus;
+  lastMaintenanceAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface SparePart {
+  id: string;
+  companyId: string;
+  name: string;
+  code: string;
+  currentStock: number;
+  minStock: number;
+  unit: string;
+}
+
+export interface PartUsage {
+  id: string;
+  workOrderId: string;
+  partId: string;
+  quantity: number;
+  usedAt: string;
+  actorUserId: string;
 }
 
 export interface WorkOrder {
   id: string;
   companyId: string;
+  assetId?: string;
   description: string;
   status: OTStatus;
-  assignedTo?: string; // User ID
-  createdBy: string; // User ID
+  assignedToUserId?: string;
+  createdByUserId: string;
+  reviewerId?: string;
+  reviewerRequired: boolean;
   createdAt: string;
   updatedAt: string;
   executedAt?: string;
   reviewedAt?: string;
-  approvedBy?: string;
+  approvedByUserId?: string;
   rejectedReason?: string;
+  evidenceUrls?: string[];
 }
 
 export interface DigitalLogbookEntry {
   id: string;
   workOrderId: string;
-  companyId: string;
   timestamp: string;
   eventType: 'status_change' | 'action_taken' | 'comment' | 'system_alert';
   eventDetails: string;
-  actor: string; // User ID
+  actorUserId: string;
+}
+
+export interface Review {
+  id: string;
+  workOrderId: string;
+  reviewerId: string;
+  status: 'approved' | 'rejected';
+  comments: string;
+  createdAt: string;
 }

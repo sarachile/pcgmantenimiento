@@ -49,6 +49,18 @@ service cloud.firestore {
       allow list: if isSuperAdmin();
       allow create, update: if isSuperAdmin();
 
+      match /assets/{assetId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+      }
+
+      match /spareParts/{partId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+      }
+
       match /users/{userId} {
         allow read: if isCompanyMember(companyId);
         allow write: if isSuperAdmin() || (hasRole(companyId, ['companyAdmin']) && request.auth.uid != userId);
@@ -65,24 +77,28 @@ service cloud.firestore {
         allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
 
         allow update: if isCompanyMember(companyId) && (
-          // Admins y Supervisores pueden hacer todo
           hasRole(companyId, ['companyAdmin', 'supervisor']) ||
-          
-          // Técnicos solo pueden actualizar si están asignados y no es para aprobar
           (hasRole(companyId, ['tecnico']) && 
            resource.data.assignedToUserId == request.auth.uid && 
            request.resource.data.status != 'aprobada') ||
-          
-          // Reviewers asignados
           (hasRole(companyId, ['reviewer']) && 
            resource.data.reviewerId == request.auth.uid)
         );
+
+        match /partUsages/{usageId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if isCompanyMember(companyId) && (
+            hasRole(companyId, ['companyAdmin', 'supervisor']) ||
+            (hasRole(companyId, ['tecnico']) && get(/databases/$(database)/documents/companies/$(companyId)/workOrders/$(workOrderId)).data.assignedToUserId == request.auth.uid)
+          );
+          allow update, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        }
 
         match /digitalLogbookEntries/{entryId} {
           allow read: if isCompanyMember(companyId);
           allow create: if isCompanyMember(companyId) && 
                          request.resource.data.actorUserId == request.auth.uid;
-          allow update, delete: if false; // INMUTABILIDAD
+          allow update, delete: if false; 
         }
 
         match /reviews/{reviewId} {
