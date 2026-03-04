@@ -28,7 +28,11 @@ import {
   ExternalLink,
   Mail,
   Building2,
-  HardHat
+  HardHat,
+  Camera,
+  Image as ImageIcon,
+  Trash2,
+  XCircle
 } from "lucide-react";
 import {
   Dialog,
@@ -45,7 +49,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp, query, orderBy, where } from "firebase/firestore";
+import { doc, collection, addDoc, serverTimestamp, query, orderBy, where, arrayUnion, arrayRemove } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, StaffMember } from "@/lib/types";
 import { WorkOrderReport } from "@/components/WorkOrderReport";
@@ -208,8 +212,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const db = useFirestore();
   const storage = useStorage();
   const reportRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [signatureType, setSignatureType] = useState<'client' | 'technician' | null>(null);
@@ -422,6 +428,40 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile?.companyId || !ot || !storage || !otRef) return;
+
+    setIsUploading(true);
+    try {
+      const path = `companies/${profile.companyId}/workOrders/${ot.id}/evidence_${Date.now()}_${file.name}`;
+      const fileRef = ref(storage, path);
+      await uploadBytes(fileRef, file);
+      const url = await getDownloadURL(fileRef);
+
+      updateDocumentNonBlocking(otRef, {
+        evidenceUrls: arrayUnion(url),
+        updatedAt: serverTimestamp()
+      });
+
+      toast({ title: "Foto cargada", description: "La evidencia se ha guardado correctamente." });
+    } catch (error: any) {
+      toast({ title: "Error al subir", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemovePhoto = (url: string) => {
+    if (!otRef) return;
+    updateDocumentNonBlocking(otRef, {
+      evidenceUrls: arrayRemove(url),
+      updatedAt: serverTimestamp()
+    });
+    toast({ title: "Foto eliminada" });
+  };
+
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!ot) return <div className="p-8 text-center">Orden no encontrada.</div>;
 
@@ -448,7 +488,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-black">{ot.id}</h2>
-            <Badge>{ot.status}</Badge>
+            <Badge className={cn(
+              ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700",
+              ot.status === 'rechazada' && "bg-rose-100 text-rose-700",
+              ot.status === 'pendiente cliente' && "bg-indigo-100 text-indigo-700",
+              ot.status === 'en revision' && "bg-amber-100 text-amber-700",
+            )}>{ot.status.toUpperCase()}</Badge>
           </div>
         </div>
         <div className="flex gap-2">
@@ -471,6 +516,20 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
+      {ot.status === 'rechazada' && ot.rejectedReason && (
+        <Card className="border-2 border-rose-500 bg-rose-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-rose-700 flex items-center gap-2">
+              <XCircle className="h-5 w-5" /> RECHAZADA POR EL CLIENTE
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm font-bold text-rose-900 mb-1 uppercase tracking-widest text-[10px]">Observaciones del Cliente:</p>
+            <p className="text-sm text-rose-800 bg-white p-4 rounded-xl border border-rose-200 italic">"{ot.rejectedReason}"</p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
           {ot.status === 'pendiente cliente' && (
@@ -490,6 +549,41 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Evidencia Fotográfica</CardTitle>
+              {(ot.status === 'creada' || ot.status === 'en revision' || ot.status === 'rechazada') && (
+                <>
+                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleUploadPhoto} />
+                  <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4 mr-2" />} Añadir Foto
+                  </Button>
+                </>
+              )}
+            </CardHeader>
+            <CardContent>
+              {ot.evidenceUrls && ot.evidenceUrls.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {ot.evidenceUrls.map((url, i) => (
+                    <div key={i} className="group relative aspect-square rounded-xl overflow-hidden border bg-muted">
+                      <FirebaseImage url={url} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleRemovePhoto(url)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-muted-foreground border-2 border-dashed rounded-xl flex flex-col items-center gap-2">
+                  <ImageIcon className="h-8 w-8 opacity-20" />
+                  <p className="text-xs">No hay fotos de evidencia cargadas.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader><CardTitle>Información de Campo</CardTitle></CardHeader>
@@ -536,23 +630,27 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Firmas</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Firmas de Validación</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-2 gap-8">
               <div className="text-center space-y-2">
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">Firma Técnico</p>
                 {ot.technicianSignatureUrl ? (
-                  <FirebaseImage url={ot.technicianSignatureUrl} className="h-32 border rounded-xl bg-slate-50" />
+                  <div className="h-32 border rounded-xl bg-slate-50 flex items-center justify-center p-2">
+                    <FirebaseImage url={ot.technicianSignatureUrl} className="max-h-full" />
+                  </div>
                 ) : (
                   <Button variant="outline" className="w-full h-32 border-dashed flex flex-col gap-2" onClick={() => setSignatureType('technician')} disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'}>
                     <SignatureIcon className="h-6 w-6 opacity-20" />
-                    <span className="text-xs">Capturar Firma</span>
+                    <span className="text-xs">Capturar Firma Técnico</span>
                   </Button>
                 )}
               </div>
               <div className="text-center space-y-2">
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">Firma Cliente</p>
                 {ot.clientSignatureUrl ? (
-                  <FirebaseImage url={ot.clientSignatureUrl} className="h-32 border rounded-xl bg-slate-50" />
+                  <div className="h-32 border rounded-xl bg-slate-50 flex items-center justify-center p-2">
+                    <FirebaseImage url={ot.clientSignatureUrl} className="max-h-full" />
+                  </div>
                 ) : (
                   <div className="h-32 border border-dashed rounded-xl flex items-center justify-center bg-slate-50/50">
                     <p className="text-[10px] text-slate-400 italic">Pendiente validación</p>
@@ -606,7 +704,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 const url = await getDownloadURL(sRef);
                 const updateData: any = signatureType === 'client' ? { clientSignatureUrl: url } : { technicianSignatureUrl: url };
                 
-                if (signatureType === 'technician' && ot.status === 'creada') {
+                if (signatureType === 'technician' && (ot.status === 'creada' || ot.status === 'rechazada')) {
                   updateData.status = 'en revision';
                   updateData.executedAt = serverTimestamp();
                 }

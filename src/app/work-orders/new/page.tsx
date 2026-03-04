@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
@@ -38,7 +38,8 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
-  const companyId = profile?.companyId;
+  // Usar IDs primitivos para las dependencias de las queries para evitar re-renders infinitos
+  const companyId = profile?.companyId || "";
 
   const clientsQuery = useMemoFirebase(() => 
     db && companyId ? collection(db, "companies", companyId, "clients") : null, 
@@ -106,6 +107,13 @@ export default function NewWorkOrderPage() {
     }
   };
 
+  const handleAddTask = useCallback(() => {
+    if (newTask.trim()) {
+      setChecklist(prev => [...prev, { task: newTask.trim() }]);
+      setNewTask("");
+    }
+  }, [newTask]);
+
   if (isUserLoading) {
     return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
@@ -129,7 +137,7 @@ export default function NewWorkOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Selección de Cliente *</Label>
-                <Select value={clientId} onValueChange={setClientId}>
+                <Select value={clientId || ""} onValueChange={setClientId}>
                   <SelectTrigger className="h-12 rounded-xl border-2">
                     <SelectValue placeholder={isClientsLoading ? "Cargando..." : "Busque un cliente..."} />
                   </SelectTrigger>
@@ -142,11 +150,12 @@ export default function NewWorkOrderPage() {
               </div>
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Maquinaria / Activo</Label>
-                <Select value={assetId} onValueChange={setAssetId}>
+                <Select value={assetId || "none"} onValueChange={(val) => setAssetId(val === "none" ? "" : val)}>
                   <SelectTrigger className="h-12 rounded-xl border-2">
                     <SelectValue placeholder={isAssetsLoading ? "Cargando..." : "Seleccione equipo (Opcional)"} />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Sin activo específico</SelectItem>
                     {(assets || []).map(a => (
                       <SelectItem key={a.id} value={a.id} className="font-bold">
                         {a.name} <span className="text-[10px] opacity-50 ml-2">[{a.code}]</span>
@@ -236,22 +245,14 @@ export default function NewWorkOrderPage() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      if (newTask.trim()) {
-                        setChecklist(prev => [...prev, { task: newTask.trim() }]);
-                        setNewTask("");
-                      }
+                      handleAddTask();
                     }
                   }} 
                   className="h-12 rounded-xl border-2"
                 />
                 <Button 
                   type="button" 
-                  onClick={() => {
-                    if(newTask.trim()) {
-                      setChecklist(prev => [...prev, { task: newTask.trim() }]);
-                      setNewTask("");
-                    }
-                  }} 
+                  onClick={handleAddTask} 
                   variant="outline" 
                   className="h-12 w-12 border-2 rounded-xl shrink-0"
                 >
@@ -264,6 +265,7 @@ export default function NewWorkOrderPage() {
                     <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-xl border shadow-sm group">
                       <span className="text-sm font-bold text-slate-700">{idx + 1}. {item.task}</span>
                       <Button 
+                        type="button"
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity" 

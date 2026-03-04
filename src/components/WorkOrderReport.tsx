@@ -5,7 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, QrCode } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, QrCode, Camera } from "lucide-react";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -164,6 +164,22 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
           )}
         </div>
       </div>
+
+      {/* Evidence Photos */}
+      {workOrder.evidenceUrls && workOrder.evidenceUrls.length > 0 && (
+        <div className="mb-10">
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2">
+            <Camera className="h-4 w-4" /> EVIDENCIA FOTOGRÁFICA DE CAMPO
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            {workOrder.evidenceUrls.map((url, i) => (
+              <div key={i} className="aspect-video rounded-2xl overflow-hidden border-2 border-slate-100 bg-slate-50">
+                <img src={url} alt={`Evidencia ${i+1}`} className="w-full h-full object-cover" crossOrigin="anonymous" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Signatures Area */}
       <div className="mt-auto pt-16 border-t-2 border-slate-100">
