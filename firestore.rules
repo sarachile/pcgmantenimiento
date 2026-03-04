@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -24,9 +25,9 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isSignedIn() && (
-        request.auth.token.email == 'control@pcgoperacion.com' ||
         exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
-        (userExists() && getUserData().role == 'superadmin')
+        (userExists() && getUserData().role == 'superadmin') ||
+        request.auth.token.email == 'control@pcgoperacion.com'
       );
     }
 

@@ -125,7 +125,8 @@ export default function AdminCompaniesPage() {
   // Consulta para el monitor de correos
   const mailLogQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
-    return query(collection(db, "mail"), orderBy("delivery.startTime", "desc"), limit(5));
+    // Sin orderBy inicial para evitar errores de índice en proyectos nuevos
+    return query(collection(db, "mail"), limit(10));
   }, [db, isSuperAdmin]);
   const { data: mailLogs } = useCollection(mailLogQuery);
 
@@ -213,6 +214,7 @@ export default function AdminCompaniesPage() {
     const mailCol = collection(db, "mail");
     const mailData = {
       to: inviteEmail,
+      createdAt: serverTimestamp(),
       message: {
         subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
         html: `
@@ -257,6 +259,7 @@ export default function AdminCompaniesPage() {
       description: "Revisa el monitor lateral para confirmar la entrega.",
     });
     
+    // CORRECCIÓN: Cerramos diálogo y reseteamos estados inmediatamente
     setIsSendingInvite(false);
     setIsInviteOpen(false);
     setInviteEmail("");
@@ -473,7 +476,8 @@ export default function AdminCompaniesPage() {
             <CardContent className="pt-4 px-0">
               <div className="space-y-1">
                 {mailLogs && mailLogs.length > 0 ? (
-                  mailLogs.map((log: any) => (
+                  // Ordenar localmente mientras no haya índice
+                  [...mailLogs].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)).slice(0, 5).map((log: any) => (
                     <div key={log.id} className="px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] font-bold text-white/60 truncate max-w-[120px]">{log.to}</span>
