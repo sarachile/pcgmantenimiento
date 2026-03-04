@@ -35,10 +35,10 @@ import {
 import { Role, Company } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
-import Image from "next/image";
 import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
+import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface NavItem {
   title: string;
@@ -110,11 +110,10 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
             </div>
           ) : company?.logoUrl ? (
             <div className="h-10 w-10 relative overflow-hidden rounded-lg border bg-white flex items-center justify-center">
-              <Image 
-                src={company.logoUrl} 
+              <FirebaseImage 
+                url={company.logoUrl} 
                 alt={company.name} 
-                fill 
-                className="object-contain p-1"
+                className="h-full w-full"
               />
             </div>
           ) : (

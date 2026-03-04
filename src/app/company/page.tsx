@@ -13,8 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Upload, Loader2, Save, Trash2, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import Image from "next/image";
 import { Company } from "@/lib/types";
+import { FirebaseImage } from "@/components/FirebaseImage";
 
 export default function CompanyProfilePage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -49,7 +49,7 @@ export default function CompanyProfilePage() {
     }
   }, [company]);
 
-  const handleUpdateCompany = async (e: React.FormEvent) => {
+  const handleUpdateCompany = async () => {
     if (!companyRef) return;
 
     setIsSaving(true);
@@ -148,11 +148,10 @@ export default function CompanyProfilePage() {
             <div className="relative h-40 w-40 rounded-xl border-2 border-dashed bg-muted/20 flex items-center justify-center overflow-hidden group">
               {company?.logoUrl ? (
                 <>
-                  <Image 
-                    src={company.logoUrl} 
+                  <FirebaseImage 
+                    url={company.logoUrl} 
                     alt="Logo Empresa" 
-                    fill 
-                    className="object-contain p-4"
+                    className="h-full w-full p-4"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <Button size="icon" variant="ghost" className="text-white hover:text-rose-500" onClick={handleRemoveLogo}>

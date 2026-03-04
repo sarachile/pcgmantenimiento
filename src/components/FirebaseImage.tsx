@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { Loader2, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
 
 interface FirebaseImageProps {
   url?: string;
@@ -14,15 +13,20 @@ interface FirebaseImageProps {
 
 /**
  * Componente robusto para renderizar imágenes de Firebase Storage.
- * Utiliza next/image para optimización y maneja estados de error de forma defensiva.
+ * Maneja estados de error de forma defensiva y muestra placeholders.
  */
 export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    setLoading(true);
-    setError(false);
+    if (url) {
+      setLoading(true);
+      setError(false);
+    } else {
+      setLoading(false);
+      setError(false);
+    }
   }, [url]);
 
   // Si no hay URL o hubo un error, mostramos un placeholder elegante en lugar de una imagen rota
@@ -43,12 +47,12 @@ export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageP
         </div>
       )}
       
-      <Image 
+      {/* Usamos img estándar para evitar interferencias de optimización de Next.js que causan logs de consola extra */}
+      <img 
         src={url} 
         alt={alt} 
-        fill
         className={cn(
-          "object-contain transition-opacity duration-500", 
+          "max-w-full max-h-full object-contain transition-opacity duration-500", 
           loading ? "opacity-0" : "opacity-100"
         )}
         onLoad={() => setLoading(false)}
@@ -56,7 +60,6 @@ export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageP
           setLoading(false);
           setError(true);
         }}
-        unoptimized // Desactivamos proxy de optimización para evitar problemas de CORS con Storage
       />
     </div>
   );
