@@ -197,6 +197,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [manualComment, setManualComment] = useState("");
   const [signatureType, setSignatureType] = useState<'client' | 'technician' | null>(null);
   const [isEvalOpen, setIsEvalOpen] = useState(false);
+  const [resolvedSignatures, setResolvedSignatures] = useState<{tech?: string, client?: string}>({});
 
   const otRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -208,7 +209,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const companyRef = useMemoFirebase(() => db && profile?.companyId ? doc(db, "companies", profile.companyId) : null, [db, profile?.companyId]);
   const { data: company } = useDoc<Company>(companyRef);
 
-  // Consulta robusta para personal asignado
   const staffQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId || !ot?.assignedToStaffIds || ot.assignedToStaffIds.length === 0) return null;
     return query(
@@ -251,13 +251,35 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { return "N/A"; }
   };
 
+  const getBase64Image = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.error("CORS Error pre-resolving signature:", e);
+      return url; 
+    }
+  };
+
   const handleDownloadPdf = async () => {
-    if (!reportRef.current) return;
+    if (!reportRef.current || !ot) return;
     setIsGeneratingPdf(true);
     toast({ title: "Generando reporte...", description: "Procesando evidencias gráficas." });
     
-    // Pequeña espera para asegurar que las imágenes del reporte (oculto) se hayan renderizado
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Resolvemos firmas a Base64 para saltar bloqueos CORS del canvas
+    const techBase64 = ot.technicianSignatureUrl ? await getBase64Image(ot.technicianSignatureUrl) : undefined;
+    const clientBase64 = ot.clientSignatureUrl ? await getBase64Image(ot.clientSignatureUrl) : undefined;
+    
+    setResolvedSignatures({ tech: techBase64, client: clientBase64 });
+
+    // Esperamos un momento para que el componente oculto se actualice con las firmas base64
+    await new Promise(resolve => setTimeout(resolve, 600));
 
     try {
       const canvas = await html2canvas(reportRef.current, { 
@@ -317,7 +339,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
       {/* REPORTE OCULTO PARA PDF - Mejorado para visualización robusta */}
-      <div className="fixed -left-[5000px] top-0 pointer-events-none opacity-0">
+      <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           ref={reportRef} 
           company={company || null} 
@@ -326,7 +348,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           asset={asset || null} 
           logbook={logbook || []} 
           assignedStaff={assignedStaff || []} 
-          partUsages={partUsages || []} 
+          partUsages={partUsages || []}
+          techSignatureBase64={resolvedSignatures.tech}
+          clientSignatureBase64={resolvedSignatures.client}
         />
       </div>
 

@@ -15,14 +15,16 @@ interface WorkOrderReportProps {
   logbook: DigitalLogbookEntry[];
   assignedStaff: StaffMember[];
   partUsages: PartUsage[];
+  techSignatureBase64?: string;
+  clientSignatureBase64?: string;
 }
 
 /**
  * Reporte optimizado para exportación a PDF.
- * Usa bordes sólidos para las firmas para asegurar visibilidad estructural incluso si fallan imágenes.
+ * Usa datos Base64 para las firmas para evitar bloqueos CORS en el canvas de html2canvas.
  */
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
-  ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages }, forwardedRef) => {
+  ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages, techSignatureBase64, clientSignatureBase64 }, forwardedRef) => {
     
     const formatDate = (date: any) => {
       if (!date) return "...";
@@ -152,17 +154,16 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           </div>
         </div>
 
-        {/* SECCIÓN DE FIRMAS DIGITALES - Rediseñada con líneas físicas de borde */}
+        {/* SECCIÓN DE FIRMAS DIGITALES - Robustez mediante Base64 */}
         <div className="mt-auto pt-16 border-t-2 border-slate-100">
           <div className="grid grid-cols-2 gap-20">
             <div className="text-center space-y-4">
               <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
-                {workOrder.technicianSignatureUrl ? (
+                {techSignatureBase64 ? (
                   <img 
-                    src={workOrder.technicianSignatureUrl} 
+                    src={techSignatureBase64} 
                     alt="Firma Técnico" 
                     className="max-h-full max-w-full object-contain" 
-                    crossOrigin="anonymous" 
                   />
                 ) : (
                   <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Firma Técnico</span>
@@ -175,12 +176,11 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
             </div>
             <div className="text-center space-y-4">
               <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
-                {workOrder.clientSignatureUrl ? (
+                {clientSignatureBase64 ? (
                   <img 
-                    src={workOrder.clientSignatureUrl} 
+                    src={clientSignatureBase64} 
                     alt="Firma Cliente" 
                     className="max-h-full max-w-full object-contain" 
-                    crossOrigin="anonymous" 
                   />
                 ) : (
                   <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Recepción Cliente</span>
