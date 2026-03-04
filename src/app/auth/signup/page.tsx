@@ -31,43 +31,47 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    
+    const cleanEmail = email.toLowerCase().trim();
+    const isSuperAdminAccount = cleanEmail === SUPERADMIN_EMAIL;
+
     try {
       // 1. Crear usuario en Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       const userId = userCredential.user.uid;
 
-      const isSuperAdminAccount = email.toLowerCase().trim() === SUPERADMIN_EMAIL.toLowerCase();
       const role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin';
       const companyId = isSuperAdminAccount ? 'pcg-central' : `comp-${Math.random().toString(36).substr(2, 9)}`;
 
       // 2. Registrar empresa (Tenant)
+      // Usamos los campos exactos del backend.json
       await setDoc(doc(db, 'companies', companyId), {
         id: companyId,
-        name: isSuperAdminAccount ? 'PCG OPERACIONES CENTRAL' : companyName,
-        createdAt: serverTimestamp(),
-        isActive: true,
-        subscriptionPlan: isSuperAdminAccount ? 'enterprise' : 'free',
-        subscriptionStatus: 'active',
+        name: isSuperAdminAccount ? 'PCG OPERACIONES CENTRAL' : (companyName || 'Mi Empresa'),
         rut: '76.000.000-0',
         address: 'Dirección por definir',
+        isActive: true,
+        currentPlan: isSuperAdminAccount ? 'enterprise' : 'free',
+        subscriptionStatus: 'active',
+        createdAt: serverTimestamp(),
       });
 
       // 3. Crear Perfil de Usuario
       await setDoc(doc(db, 'users', userId), {
         id: userId,
-        email: email.toLowerCase().trim(),
+        email: cleanEmail,
         name: name,
         role: role,
         companyId: companyId,
-        createdAt: serverTimestamp(),
         active: true,
+        createdAt: serverTimestamp(),
       });
 
-      // 4. Si es Superadmin, registrar en colección privilegiada
+      // 4. Registro en colección de Súper Administradores si corresponde
       if (isSuperAdminAccount) {
         await setDoc(doc(db, 'superAdmins', userId), {
           id: userId,
-          email: email.toLowerCase().trim(),
+          email: cleanEmail,
           name: name,
           grantedAt: serverTimestamp(),
         });
@@ -75,12 +79,14 @@ export default function SignupPage() {
 
       toast({
         title: isSuperAdminAccount ? "Acceso Maestro Activado" : "Cuenta creada",
-        description: isSuperAdminAccount 
-          ? "Bienvenido al Centro de Control PCG." 
-          : "Bienvenido a PCGMANTENIMIENTO. Redirigiendo...",
+        description: "Bienvenido a PCGMANTENIMIENTO. Redirigiendo...",
       });
       
-      router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
+      // Forzamos una pequeña espera para asegurar propagación
+      setTimeout(() => {
+        router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
+      }, 500);
+
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({

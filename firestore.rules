@@ -11,13 +11,12 @@ service cloud.firestore {
     
     function isSuperAdmin() {
       if (!isSignedIn()) return false;
-      // Primero revisamos la colección privilegiada de forma directa
-      let isPrivileged = exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
-      if (isPrivileged) return true;
-      
-      // Fallback al rol en el perfil de usuario (solo si el documento existe)
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(userPath) && get(userPath).data.role == 'superadmin';
+      // Verificación directa en la colección privilegiada
+      return exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
     function isCompanyMember(companyId) {
@@ -25,75 +24,36 @@ service cloud.firestore {
       if (isSuperAdmin()) return true;
       
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      if (!exists(userPath)) return false;
-      
-      let userData = get(userPath).data;
-      return userData.companyId == companyId;
+      return exists(userPath) && get(userPath).data.companyId == companyId;
     }
 
-    function hasRole(companyId, roles) {
-      if (!isSignedIn()) return false;
-      if (isSuperAdmin()) return true;
-      
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      if (!exists(userPath)) return false;
-      
-      let userData = get(userPath).data;
-      return userData.role in roles && userData.companyId == companyId;
-    }
-
-    // --- REGLAS ---
+    // --- REGLAS DE COLECCIONES ---
 
     match /superAdmins/{userId} {
-      // Permitir creación inicial si es el propio usuario
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      // Permitir creación si es el propio usuario (necesario para el registro inicial)
+      allow create: if isOwner(userId);
+      allow read: if isOwner(userId) || isSuperAdmin();
     }
 
     match /users/{userId} {
-      // Regla de creación robusta para el registro inicial
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin() || isCompanyMember(resource.data.companyId));
-      allow list: if isSignedIn() && (isSuperAdmin() || (request.query.limit <= 100));
-      allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      // Permitir creación y edición del propio perfil
+      allow create: if isOwner(userId);
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() && isSuperAdmin();
+      allow update: if isOwner(userId) || isSuperAdmin();
     }
 
     match /companies/{companyId} {
-      // Permitir creación inicial
+      // Permitir creación inicial de la empresa por cualquier usuario autenticado
       allow create: if isSignedIn();
       allow get: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
       allow list: if isSuperAdmin();
-      allow update: if isSuperAdmin() || hasRole(companyId, ['companyAdmin']);
+      allow update: if isSuperAdmin() || isCompanyMember(companyId);
 
-      match /clients/{clientId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-      }
-
-      match /assets/{assetId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
-      }
-
-      match /spareParts/{partId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-      }
-
-      match /workOrders/{workOrderId} {
-        allow read: if isCompanyMember(companyId);
-        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-        allow update: if isCompanyMember(companyId);
-
-        match /partUsages/{usageId} {
-          allow read: if isCompanyMember(companyId);
-          allow write: if isCompanyMember(companyId);
-        }
-
-        match /digitalLogbookEntries/{entryId} {
-          allow read: if isCompanyMember(companyId);
-          allow create: if isCompanyMember(companyId);
-        }
+      // Regla comodín para subcolecciones de empresa
+      match /{allPaths=**} {
+        allow read: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
+        allow write: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
       }
     }
   }
