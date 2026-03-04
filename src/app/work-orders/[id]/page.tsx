@@ -36,18 +36,19 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { doc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile } = useUser();
+  const { profile, isReviewer, isSupervisor, isCompanyAdmin } = useUser();
   const db = useFirestore();
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [isInvoicing, setIsInvoicing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -79,17 +80,52 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  if (isDocLoading) {
-    return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const handleStatusChange = async (newStatus: 'aprobada' | 'rechazada') => {
+    if (isMock) {
+      toast({
+        title: "Modo Demo",
+        description: `Se simula el cambio de estado a ${newStatus}.`,
+      });
+      return;
+    }
 
-  if (!ot) {
-    return <div className="p-8 text-center">Orden de trabajo no encontrada.</div>;
-  }
+    if (!profile || !otRef) return;
+
+    setIsUpdating(true);
+    try {
+      // 1. Update WorkOrder status
+      updateDocumentNonBlocking(otRef, { 
+        status: newStatus,
+        updatedAt: serverTimestamp(),
+        approvedByUserId: newStatus === 'aprobada' ? profile.id : null,
+        reviewedAt: serverTimestamp(),
+      });
+
+      // 2. Add Digital Logbook Entry
+      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot!.id, "digitalLogbookEntries");
+      await addDoc(logRef, {
+        workOrderId: ot!.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'status_change',
+        eventDetails: `Orden ${newStatus} por ${profile.name}.`,
+        actor: profile.id,
+      });
+
+      toast({
+        title: `Orden ${newStatus}`,
+        description: `El estado ha sido actualizado correctamente.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el estado de la orden.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleGenerateSummary = async () => {
     setIsGenerating(true);
@@ -97,10 +133,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       const result = await generateWorkOrderSummary({
         workOrder: {
           ...ot,
-          id: ot.id,
-          description: ot.description || "",
-          status: ot.status as any,
-          createdAt: typeof ot.createdAt === 'string' ? ot.createdAt : (ot.createdAt as any)?.toDate().toISOString(),
+          id: ot!.id,
+          description: ot!.description || "",
+          status: ot!.status as any,
+          createdAt: typeof ot!.createdAt === 'string' ? ot!.createdAt : (ot!.createdAt as any)?.toDate().toISOString(),
           companyId: profile?.companyId || "demo-company"
         },
         digitalLogbookEntries: logbook.map(entry => ({
@@ -133,14 +169,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
     setIsInvoicing(true);
     try {
-      const invoiceRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "invoices");
+      const invoiceRef = collection(db, "companies", profile.companyId, "workOrders", ot!.id, "invoices");
       
-      // En una app real, aquí se llamaría a la Cloud Function de SimpleAPI
       await addDoc(invoiceRef, {
         companyId: profile.companyId,
         clientId: client.id,
-        workOrderId: ot.id,
-        amount: 150000, // Monto simulado
+        workOrderId: ot!.id,
+        amount: 150000,
         status: "pendiente",
         issuedBy: profile.id,
         issuedAt: serverTimestamp(),
@@ -160,6 +195,20 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       setIsInvoicing(false);
     }
   };
+
+  if (isDocLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!ot) {
+    return <div className="p-8 text-center">Orden de trabajo no encontrada.</div>;
+  }
+
+  const canReview = (isReviewer || isSupervisor || isCompanyAdmin) && ot.status === 'en revision';
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -194,13 +243,24 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               Facturar (SimpleAPI)
             </Button>
           )}
-          {ot.status === 'en revision' && !isMock && (
+          {canReview && (
             <>
-              <Button variant="outline" className="border-rose-500 text-rose-500 hover:bg-rose-50">
-                <XCircle className="mr-2 h-4 w-4" /> Rechazar
+              <Button 
+                variant="outline" 
+                className="border-rose-500 text-rose-500 hover:bg-rose-50"
+                onClick={() => handleStatusChange('rechazada')}
+                disabled={isUpdating}
+              >
+                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />} 
+                Rechazar
               </Button>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                <CheckCircle2 className="mr-2 h-4 w-4" /> Aprobar OT
+              <Button 
+                className="bg-emerald-600 hover:bg-emerald-700"
+                onClick={() => handleStatusChange('aprobada')}
+                disabled={isUpdating}
+              >
+                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />} 
+                Aprobar OT
               </Button>
             </>
           )}
