@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
@@ -57,7 +57,10 @@ export default function NewWorkOrderPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !clientId || !profile?.companyId) return;
+    if (!description.trim() || !clientId || !profile?.companyId) {
+      toast({ title: "Datos incompletos", description: "Descripción y Cliente son obligatorios.", variant: "destructive" });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -84,7 +87,7 @@ export default function NewWorkOrderPage() {
       };
 
       const docRef = await addDoc(colRef, newOT);
-      toast({ title: "Orden Creada exitosamente" });
+      toast({ title: "Orden Generada", description: `La orden ${docRef.id} ha sido creada.` });
       router.push(`/work-orders/${docRef.id}`);
     } catch (error: any) {
       toast({ title: "Error al guardar", description: error.message, variant: "destructive" });
@@ -93,7 +96,7 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  // Consultas estables
+  // Consultas estables usando useMemoFirebase
   const clientsQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "clients") : null, [db, profile?.companyId]);
   const assetsQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "assets") : null, [db, profile?.companyId]);
   const staffQuery = useMemoFirebase(() => db && profile?.companyId ? query(collection(db, "companies", profile.companyId, "staff"), where("active", "==", true)) : null, [db, profile?.companyId]);
@@ -102,6 +105,10 @@ export default function NewWorkOrderPage() {
   const { data: realAssets } = useCollection<Asset>(assetsQuery);
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
 
+  // Memoizar las opciones para evitar re-renders del Select
+  const clientOptions = useMemo(() => realClients || [], [realClients]);
+  const assetOptions = useMemo(() => realAssets || [], [realAssets]);
+
   if (isUserLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
@@ -109,87 +116,90 @@ export default function NewWorkOrderPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground">Planificación técnica centralizada.</p>
+          <h2 className="text-3xl font-black tracking-tight">Nueva Orden de Trabajo</h2>
+          <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest">Planificación técnica centralizada</p>
         </div>
       </div>
 
-      <Card className="border-none shadow-lg">
-        <CardHeader className="bg-primary/5 border-b">
-          <CardTitle className="flex items-center gap-2"><ClipboardPlus className="h-5 w-5 text-primary" /> Detalles de la Operación</CardTitle>
+      <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
+        <CardHeader className="bg-primary/5 border-b py-6">
+          <CardTitle className="flex items-center gap-3 text-xl font-black"><ClipboardPlus className="h-6 w-6 text-primary" /> Detalles de la Operación</CardTitle>
         </CardHeader>
         <form onSubmit={handleCreate}>
-          <CardContent className="space-y-6 pt-6">
+          <CardContent className="space-y-8 pt-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="font-bold text-xs uppercase text-muted-foreground">Cliente *</Label>
+                <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Selección de Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccione un cliente" /></SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="Busque un cliente..." /></SelectTrigger>
                   <SelectContent>
-                    {realClients?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    {clientOptions.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="font-bold text-xs uppercase text-muted-foreground">Activo / Equipo</Label>
+                <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Maquinaria / Activo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger><SelectValue placeholder="Seleccione equipo (Opcional)" /></SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="Seleccione equipo (Opcional)" /></SelectTrigger>
                   <SelectContent>
-                    {realAssets?.map(a => <SelectItem key={a.id} value={a.id}>{a.name} ({a.code})</SelectItem>)}
+                    {assetOptions.map(a => <SelectItem key={a.id} value={a.id} className="font-bold">{a.name} <span className="text-[10px] opacity-50 ml-2">[{a.code}]</span></SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/10 rounded-xl border">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 shadow-inner">
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><CalendarIcon className="h-3 w-3" /> Fecha Inicio</Label>
-                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+                <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><CalendarIcon className="h-3 w-3" /> Fecha Inicio</Label>
+                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className="h-11 border-2 bg-white font-bold" />
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><Clock className="h-3 w-3" /> Duración (Días)</Label>
-                <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} />
+                <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><Clock className="h-3 w-3" /> Plazo (Días)</Label>
+                <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} className="h-11 border-2 bg-white font-bold" />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase text-muted-foreground">Término Estimado</Label>
-                <div className="h-10 px-3 flex items-center bg-background border rounded-md font-medium text-primary">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Término Previsto</Label>
+                <div className="h-11 px-4 flex items-center bg-white border-2 rounded-xl font-black text-primary">
                   {estimatedEndDateStr ? format(parseISO(estimatedEndDateStr), 'dd/MM/yyyy') : '...'}
                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
-              <Label className="font-bold text-xs uppercase text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Técnicos Asignados</Label>
+              <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2"><Users className="h-4 w-4" /> Personal Técnico Asignado</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {staffMembers?.map(staff => (
                   <div 
                     key={staff.id} 
                     className={cn(
-                      "flex items-center space-x-3 border p-3 rounded-xl transition-all cursor-pointer",
-                      assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5" : "bg-white hover:bg-muted/50"
+                      "flex items-center space-x-4 border-2 p-4 rounded-2xl transition-all cursor-pointer group",
+                      assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "bg-white hover:border-slate-300"
                     )}
                     onClick={() => toggleStaffSelection(staff.id)}
                   >
-                    <Checkbox checked={assignedToStaffIds.includes(staff.id)} onCheckedChange={() => {}} />
+                    <Checkbox checked={assignedToStaffIds.includes(staff.id)} onCheckedChange={() => {}} className="h-5 w-5" />
                     <div className="flex flex-col">
-                      <p className="font-bold text-xs">{staff.name}</p>
-                      <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
+                      <p className="font-black text-sm text-slate-900">{staff.name}</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{staff.role}</p>
                     </div>
                   </div>
                 ))}
+                {(!staffMembers || staffMembers.length === 0) && (
+                  <p className="text-xs text-slate-400 italic p-4 border-2 border-dashed rounded-2xl">No hay miembros del equipo registrados.</p>
+                )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="font-bold text-xs uppercase text-muted-foreground">Descripción de Trabajos *</Label>
-              <Textarea placeholder="Detalle técnico de los servicios..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Alcance de los Trabajos *</Label>
+              <Textarea placeholder="Describa el servicio técnico a realizar..." className="min-h-[120px] rounded-2xl border-2 p-4 text-sm" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
 
-            <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Checklist de Revisión</Label></div>
-              <div className="flex gap-2">
+            <div className="space-y-4 pt-6 border-t-2 border-slate-100">
+              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-5 w-5 text-primary" /><Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Checklist de Ejecución</Label></div>
+              <div className="flex gap-3">
                 <Input 
-                  placeholder="Nueva tarea..." 
+                  placeholder="Añadir ítem de control..." 
                   value={newTask} 
                   onChange={(e) => setNewTask(e.target.value)} 
                   onKeyDown={(e) => {
@@ -201,6 +211,7 @@ export default function NewWorkOrderPage() {
                       }
                     }
                   }} 
+                  className="h-12 rounded-xl border-2"
                 />
                 <Button 
                   type="button" 
@@ -211,27 +222,27 @@ export default function NewWorkOrderPage() {
                     }
                   }} 
                   variant="outline" 
-                  size="icon"
+                  className="h-12 w-12 border-2 rounded-xl shrink-0"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" />
                 </Button>
               </div>
               {checklist.length > 0 && (
-                <div className="space-y-2 border rounded-lg p-3 bg-muted/20">
+                <div className="space-y-2 p-4 bg-slate-50 rounded-2xl border-2 border-dashed">
                   {checklist.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-card p-2 rounded border">
-                      <span className="text-sm">{idx + 1}. {item.task}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
+                    <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-xl border shadow-sm group">
+                      <span className="text-sm font-bold text-slate-700">{idx + 1}. {item.task}</span>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between border-t p-6 bg-muted/20">
-            <Button variant="outline" type="button" asChild disabled={isSubmitting}><Link href="/work-orders">Cancelar</Link></Button>
-            <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Orden"}
+          <CardFooter className="flex justify-between border-t py-8 px-8 bg-slate-50 mt-10">
+            <Button variant="ghost" type="button" asChild disabled={isSubmitting} className="font-bold"><Link href="/work-orders">Descartar</Link></Button>
+            <Button type="submit" size="lg" disabled={isSubmitting || !description.trim() || !clientId} className="h-14 px-10 rounded-2xl font-black text-base shadow-xl shadow-primary/20">
+              {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Generar Orden de Trabajo"}
             </Button>
           </CardFooter>
         </form>

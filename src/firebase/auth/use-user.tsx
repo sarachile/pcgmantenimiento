@@ -6,16 +6,15 @@ import { doc, getDoc } from 'firebase/firestore';
 import { User } from '@/lib/types';
 
 /**
- * Hook de usuario altamente estable para evitar bucles de renderizado.
- * Utiliza una llave de datos serializada para prevenir actualizaciones de estado innecesarias.
+ * Hook de usuario optimizado para evitar re-renders infinitos.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
   const [profile, setProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   
-  // Ref para rastrear la identidad de los datos y evitar re-renders infinitos
-  const profileKeyRef = useRef<string>("");
+  // Ref para evitar bucles de actualización
+  const lastProfileIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -25,8 +24,14 @@ export function useUser() {
         if (isMounted) {
           setProfile(null);
           setIsProfileLoading(false);
-          profileKeyRef.current = "";
+          lastProfileIdRef.current = null;
         }
+        return;
+      }
+
+      // Si ya tenemos el perfil cargado para este UID, no hacemos nada
+      if (lastProfileIdRef.current === authUser.uid) {
+        setIsProfileLoading(false);
         return;
       }
 
@@ -55,16 +60,8 @@ export function useUser() {
         }
 
         if (isMounted) {
-          // Generamos una llave de identidad basada en datos críticos
-          const currentDataKey = fetchedProfile 
-            ? `${fetchedProfile.id}-${fetchedProfile.role}-${fetchedProfile.companyId}-${fetchedProfile.active}`
-            : "none";
-          
-          // Solo actualizamos el estado si los datos reales han cambiado
-          if (profileKeyRef.current !== currentDataKey) {
-            profileKeyRef.current = currentDataKey;
-            setProfile(fetchedProfile);
-          }
+          setProfile(fetchedProfile);
+          lastProfileIdRef.current = authUser.uid;
         }
       } catch (error) {
         console.error("Error loading user profile:", error);

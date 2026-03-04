@@ -201,12 +201,20 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   }, [db, profile?.companyId, otId]);
 
   const { data: ot, isLoading: isDocLoading } = useDoc<WorkOrder>(otRef);
-  const { data: company } = useDoc<Company>(useMemoFirebase(() => db && profile?.companyId ? doc(db, "companies", profile.companyId) : null, [db, profile?.companyId]));
+  
+  const companyRef = useMemoFirebase(() => db && profile?.companyId ? doc(db, "companies", profile.companyId) : null, [db, profile?.companyId]);
+  const { data: company } = useDoc<Company>(companyRef);
 
+  // Consulta para obtener la información de los miembros del equipo asignados
   const staffQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId || !ot?.assignedToStaffIds?.length) return null;
-    return query(collection(db, "companies", profile.companyId, "staff"), where("id", "in", ot.assignedToStaffIds));
+    // Firestore limit: max 10 IDs in 'in' query. Correct for MVP.
+    return query(
+      collection(db, "companies", profile.companyId, "staff"), 
+      where("__name__", "in", ot.assignedToStaffIds)
+    );
   }, [db, profile?.companyId, ot?.assignedToStaffIds]);
+  
   const { data: assignedStaff } = useCollection<StaffMember>(staffQuery);
 
   const clientRef = useMemoFirebase(() => {
@@ -236,17 +244,29 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const handleDownloadPdf = async () => {
     if (!reportRef.current) return;
     setIsGeneratingPdf(true);
+    toast({ title: "Generando reporte...", description: "Por favor espere un momento." });
+    
     try {
-      const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      // Importante: useCORS true para que html2canvas pueda leer imágenes de Firebase Storage
+      const canvas = await html2canvas(reportRef.current, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: "#ffffff",
+        logging: false
+      });
+      
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`PCG_${ot?.id}.pdf`);
-      toast({ title: "Reporte generado" });
+      pdf.save(`REPORTE_PCG_${ot?.id}.pdf`);
+      
+      toast({ title: "Reporte generado", description: "El archivo PDF se ha descargado exitosamente." });
     } catch (e: any) { 
-      toast({ title: "Error al generar PDF", variant: "destructive" }); 
+      console.error("PDF Generation Error:", e);
+      toast({ title: "Error al generar PDF", description: "Asegúrese de que todas las imágenes se hayan cargado correctamente.", variant: "destructive" }); 
     } finally { 
       setIsGeneratingPdf(false); 
     }
@@ -269,21 +289,22 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       };
       const evalDoc = await addDoc(evalCol, newEval);
       updateDocumentNonBlocking(otRef!, { evaluationId: evalDoc.id, status: 'aprobada', reviewedAt: serverTimestamp() });
-      toast({ title: "Evaluación enviada" });
+      toast({ title: "Evaluación enviada", description: "El trabajo ha sido aprobado y evaluado." });
       setIsEvalOpen(false);
     } catch (e: any) {
-      toast({ title: "Error al evaluar", variant: "destructive" });
+      toast({ title: "Error al evaluar", description: e.message, variant: "destructive" });
     } finally {
       setIsUpdating(false);
     }
   };
 
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!ot) return <div className="p-8 text-center">Orden no encontrada.</div>;
+  if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl m-10">Orden no encontrada o eliminada.</div>;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
-      <div className="absolute -left-[9999px] top-0 pointer-events-none opacity-0">
+      {/* REPORTE OCULTO PARA PDF */}
+      <div className="fixed -left-[2000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           ref={reportRef} 
           company={company || null} 
@@ -296,34 +317,40 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         />
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-4 bg-card p-6 rounded-xl border shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 bg-card p-6 rounded-2xl border shadow-sm">
         <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold">{ot.id}</h2>
-            <Badge variant={ot.status === 'aprobada' ? 'default' : 'outline'}>{ot.status.toUpperCase()}</Badge>
+            <h2 className="text-2xl font-black">{ot.id}</h2>
+            <Badge className={cn(
+              "font-black uppercase text-[10px] tracking-widest",
+              ot.status === 'aprobada' ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-700'
+            )}>{ot.status}</Badge>
           </div>
-          <div className="text-muted-foreground text-sm flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-            <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Equipo Responsable:</span>
+          <div className="text-muted-foreground text-[11px] font-bold flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 uppercase tracking-wider">
+            <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-primary" /> Equipo Responsable:</span>
             {assignedStaff && assignedStaff.length > 0 ? (
-              assignedStaff.map(s => <Badge key={s.id} variant="secondary" className="text-[10px] h-5">{s.name}</Badge>)
+              assignedStaff.map(s => <Badge key={s.id} variant="outline" className="text-[9px] h-5 bg-white border-primary/20">{s.name}</Badge>)
             ) : (
-              <span className="italic">Por asignar</span>
+              <span className="italic text-slate-400">Sin personal asignado</span>
             )}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf}>{isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Reporte PDF</Button>
+          <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="h-11 font-bold border-2">
+            {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} 
+            Descargar Informe PDF
+          </Button>
           
           {isReviewer && ot.status === 'en revision' && client?.evaluationEnabled && (
             <Dialog open={isEvalOpen} onOpenChange={setIsEvalOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-amber-600 gap-2"><Star className="h-4 w-4" /> Aprobar y Evaluar</Button>
+                <Button className="bg-amber-600 hover:bg-amber-700 h-11 px-6 font-bold gap-2"><Star className="h-4 w-4" /> Aprobar y Evaluar</Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-amber-600" /> Evaluación de Servicio</DialogTitle>
-                  <DialogDescription>Su opinión es fundamental para mejorar nuestra calidad técnica.</DialogDescription>
+                  <DialogDescription>Su opinión técnica es fundamental para nuestra mejora continua.</DialogDescription>
                 </DialogHeader>
                 <EvaluationForm isSaving={isUpdating} onSave={handleSaveEvaluation} />
               </DialogContent>
@@ -331,60 +358,87 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           )}
 
           {!isReviewer && ot.status !== 'aprobada' && (
-            <Button className="bg-emerald-600" onClick={() => updateDocumentNonBlocking(otRef!, { status: 'aprobada', reviewedAt: serverTimestamp() })}>Aprobar Trabajo</Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 h-11 px-6 font-bold" onClick={() => updateDocumentNonBlocking(otRef!, { status: 'aprobada', reviewedAt: serverTimestamp() })}>Finalizar Trabajo</Button>
           )}
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          <Card className="border-none shadow-sm">
-            <CardHeader><CardTitle className="text-lg">Detalles de Ejecución</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+          <Card className="border-none shadow-sm overflow-hidden">
+            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-bold">Información de Campo</CardTitle></CardHeader>
+            <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-muted/30 p-3 rounded-lg"><p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Cliente</p><p className="text-sm font-bold">{client?.name || 'S/I'}</p></div>
-                <div className="bg-muted/30 p-3 rounded-lg"><p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Equipo</p><p className="text-sm font-bold">{asset?.name || 'S/I'}</p></div>
+                <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                  <p className="text-[10px] font-black text-primary uppercase mb-1 tracking-widest">Cliente / Entidad</p>
+                  <p className="text-sm font-black text-slate-900">{client?.name || 'S/I'}</p>
+                </div>
+                <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                  <p className="text-[10px] font-black text-primary uppercase mb-1 tracking-widest">Maquinaria / Activo</p>
+                  <p className="text-sm font-black text-slate-900">{asset?.name || 'S/I'}</p>
+                </div>
               </div>
-              <p className="text-sm">{ot.description}</p>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Descripción de Trabajos</Label>
+                <div className="p-4 bg-slate-50 rounded-2xl text-sm leading-relaxed text-slate-700 border">
+                  {ot.description}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-sm">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" /> Protocolo Realizado</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
+            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-bold flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" /> Protocolo de Verificación</CardTitle></CardHeader>
+            <CardContent className="p-6 space-y-3">
               {ot.checklist?.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg">
-                  <Checkbox checked={item.completed} onCheckedChange={() => {
-                    const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: !i.completed, completedAt: !i.completed ? new Date().toISOString() : null } : i);
-                    updateDocumentNonBlocking(otRef!, { checklist: newChecklist, updatedAt: serverTimestamp() });
-                  }} disabled={ot.status === 'aprobada' || isReviewer} />
-                  <span className={cn("text-sm", item.completed && "line-through text-muted-foreground")}>{item.task}</span>
+                <div key={item.id} className="flex items-center justify-between gap-3 p-4 bg-white border-2 rounded-2xl hover:border-primary/20 transition-all group">
+                  <div className="flex items-center gap-4">
+                    <Checkbox 
+                      checked={item.completed} 
+                      onCheckedChange={() => {
+                        const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: !i.completed, completedAt: !i.completed ? new Date().toISOString() : null } : i);
+                        updateDocumentNonBlocking(otRef!, { checklist: newChecklist, updatedAt: serverTimestamp() });
+                      }} 
+                      disabled={ot.status === 'aprobada' || isReviewer}
+                      className="h-5 w-5"
+                    />
+                    <span className={cn("text-sm font-medium", item.completed && "line-through text-muted-foreground font-normal")}>{item.task}</span>
+                  </div>
+                  {item.completedAt && (
+                    <span className="text-[10px] font-black text-slate-300 uppercase italic">OK: {format(new Date(item.completedAt), "HH:mm")}</span>
+                  )}
                 </div>
               ))}
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-sm">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><SignatureIcon className="h-5 w-5 text-primary" /> Firmas de Conformidad</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-6">
-              <div className="space-y-2 text-center">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Personal Responsable</p>
+            <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-bold flex items-center gap-2"><SignatureIcon className="h-5 w-5 text-primary" /> Evidencia de Conformidad</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-2 gap-8 p-6">
+              <div className="space-y-3 text-center">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Firma Responsable Técnico</p>
                 {ot.technicianSignatureUrl ? (
-                  <div className="border rounded-lg p-2 h-32 flex items-center justify-center bg-white shadow-inner">
+                  <div className="border-2 rounded-2xl p-4 h-40 flex items-center justify-center bg-slate-50 shadow-inner group relative">
                     <FirebaseImage url={ot.technicianSignatureUrl} className="max-h-full" />
                   </div>
                 ) : (
-                  <Button variant="outline" className="w-full" onClick={() => setSignatureType('technician')} disabled={isReviewer}>Firmar</Button>
+                  <Button variant="outline" className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col gap-2" onClick={() => setSignatureType('technician')} disabled={isReviewer}>
+                    <SignatureIcon className="h-6 w-6 text-slate-300" />
+                    <span className="text-xs font-bold text-slate-400">Capturar Firma Personal</span>
+                  </Button>
                 )}
               </div>
-              <div className="space-y-2 text-center">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground">Recepción Cliente</p>
+              <div className="space-y-3 text-center">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Firma Recepción Cliente</p>
                 {ot.clientSignatureUrl ? (
-                  <div className="border rounded-lg p-2 h-32 flex items-center justify-center bg-white shadow-inner">
+                  <div className="border-2 rounded-2xl p-4 h-40 flex items-center justify-center bg-slate-50 shadow-inner">
                     <FirebaseImage url={ot.clientSignatureUrl} className="max-h-full" />
                   </div>
                 ) : (
-                  <Button variant="outline" className="w-full" onClick={() => setSignatureType('client')}>Firmar</Button>
+                  <Button variant="outline" className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col gap-2" onClick={() => setSignatureType('client')}>
+                    <SignatureIcon className="h-6 w-6 text-slate-300" />
+                    <span className="text-xs font-bold text-slate-400">Capturar Firma Cliente</span>
+                  </Button>
                 )}
               </div>
             </CardContent>
@@ -393,11 +447,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
         <div className="space-y-6">
           <Card className="border-none shadow-sm h-fit">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Bitácora Operativa</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
+            <CardHeader className="bg-slate-900 text-white"><CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><History className="h-4 w-4 text-primary" /> Bitácora Auditada</CardTitle></CardHeader>
+            <CardContent className="p-4 space-y-4">
               <div className="flex gap-2">
-                <Textarea placeholder="Reportar novedad..." className="min-h-[60px]" value={manualComment} onChange={e => setManualComment(e.target.value)} />
-                <Button size="icon" onClick={() => {
+                <Textarea placeholder="Reportar novedad..." className="min-h-[80px] text-xs bg-slate-50" value={manualComment} onChange={e => setManualComment(e.target.value)} />
+                <Button size="icon" className="shrink-0 h-auto" onClick={() => {
                   if (!manualComment.trim() || !profile) return;
                   addDoc(collection(db!, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries"), {
                     workOrderId: ot.id, companyId: profile.companyId, timestamp: serverTimestamp(), eventType: 'comment', eventDetails: manualComment, actor: profile.id
@@ -405,11 +459,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   setManualComment("");
                 }}><MessageSquare className="h-4 w-4" /></Button>
               </div>
-              <div className="space-y-4 border-l pl-4 max-h-[400px] overflow-y-auto">
+              <div className="space-y-4 border-l-2 border-slate-100 pl-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 {logbook?.map(entry => (
-                  <div key={entry.id} className="text-xs">
-                    <p className="font-bold text-primary uppercase">{entry.eventType}</p>
-                    <p className="text-muted-foreground">{entry.eventDetails}</p>
+                  <div key={entry.id} className="relative pb-4 last:pb-0">
+                    <div className="absolute -left-[21px] top-1 w-3 h-3 rounded-full bg-primary border-2 border-white" />
+                    <p className="text-[10px] font-black text-primary uppercase tracking-widest">{entry.eventType}</p>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">{entry.eventDetails}</p>
+                    <p className="text-[9px] text-slate-400 mt-1 font-bold italic">{formatDate(entry.timestamp)}</p>
                   </div>
                 ))}
               </div>
@@ -420,8 +476,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       {signatureType && (
         <Dialog open={true} onOpenChange={() => setSignatureType(null)}>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Capturar Firma: {signatureType === 'client' ? 'Cliente' : 'Personal'}</DialogTitle></DialogHeader>
+          <DialogContent className="sm:max-w-[450px]">
+            <DialogHeader><DialogTitle className="text-xl font-black">Capturar Firma Digital: {signatureType === 'client' ? 'Cliente' : 'Técnico'}</DialogTitle></DialogHeader>
             <SignaturePad isSaving={isUpdating} onCancel={() => setSignatureType(null)} onSave={async blob => {
               if (!profile?.companyId || !storage) return;
               setIsUpdating(true);
@@ -432,9 +488,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 const url = await getDownloadURL(sRef);
                 updateDocumentNonBlocking(otRef!, signatureType === 'client' ? { clientSignatureUrl: url } : { technicianSignatureUrl: url });
                 setSignatureType(null);
-                toast({ title: "Firma guardada" });
+                toast({ title: "Firma guardada", description: "La evidencia ha sido vinculada a la orden de trabajo." });
               } catch (e: any) {
-                toast({ title: "Error al subir firma", variant: "destructive" });
+                toast({ title: "Error al subir firma", description: e.message, variant: "destructive" });
               } finally {
                 setIsUpdating(false);
               }
