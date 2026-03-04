@@ -32,16 +32,15 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      // 1. Create Auth User
+      // 1. Crear usuario en Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const userId = userCredential.user.uid;
 
-      // Check if it's the reserved superadmin account
-      const isSuperAdminAccount = email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+      const isSuperAdminAccount = email.toLowerCase().trim() === SUPERADMIN_EMAIL.toLowerCase();
       const role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin';
       const companyId = isSuperAdminAccount ? 'pcg-central' : `comp-${Math.random().toString(36).substr(2, 9)}`;
 
-      // 2. Create Company
+      // 2. Registrar empresa (Tenant)
       await setDoc(doc(db, 'companies', companyId), {
         id: companyId,
         name: isSuperAdminAccount ? 'PCG OPERACIONES CENTRAL' : companyName,
@@ -49,14 +48,14 @@ export default function SignupPage() {
         isActive: true,
         subscriptionPlan: isSuperAdminAccount ? 'enterprise' : 'free',
         subscriptionStatus: 'active',
-        rut: '76.000.000-0', // Default RUT for setup
+        rut: '76.000.000-0',
         address: 'Dirección por definir',
       });
 
-      // 3. Create User Profile
+      // 3. Crear Perfil de Usuario
       await setDoc(doc(db, 'users', userId), {
         id: userId,
-        email: email.toLowerCase(),
+        email: email.toLowerCase().trim(),
         name: name,
         role: role,
         companyId: companyId,
@@ -64,11 +63,11 @@ export default function SignupPage() {
         active: true,
       });
 
-      // 4. If Superadmin, register in the privileged collection for security rules
+      // 4. Si es Superadmin, registrar en colección privilegiada
       if (isSuperAdminAccount) {
         await setDoc(doc(db, 'superAdmins', userId), {
           id: userId,
-          email: email.toLowerCase(),
+          email: email.toLowerCase().trim(),
           name: name,
           grantedAt: serverTimestamp(),
         });
@@ -101,8 +100,8 @@ export default function SignupPage() {
           <div className="bg-primary/10 p-3 rounded-2xl mb-4">
             <ShieldPlus className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Nueva Empresa</CardTitle>
-          <CardDescription>Cree su cuenta de administrador de plataforma</CardDescription>
+          <CardTitle className="text-2xl font-bold tracking-tight">Registro PCG</CardTitle>
+          <CardDescription>Cree su cuenta corporativa para el ERP</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
@@ -110,10 +109,10 @@ export default function SignupPage() {
               <Label htmlFor="name">Nombre Completo</Label>
               <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            {email.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase() && (
+            {email.toLowerCase().trim() !== SUPERADMIN_EMAIL && (
               <div className="space-y-2">
                 <Label htmlFor="company">Nombre de la Empresa</Label>
-                <Input id="company" required={email.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase()} value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                <Input id="company" required={email.toLowerCase().trim() !== SUPERADMIN_EMAIL} value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
               </div>
             )}
             <div className="space-y-2">
@@ -127,7 +126,7 @@ export default function SignupPage() {
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button className="w-full" type="submit" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Crear Empresa y Cuenta"}
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Registrarse e Iniciar"}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
               ¿Ya tiene una cuenta? <Link href="/auth/login" className="text-primary hover:underline">Inicie sesión</Link>
