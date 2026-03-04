@@ -6,10 +6,9 @@ service cloud.firestore {
     // --- REGLAS DE ALTA PRIORIDAD ---
 
     // Colección 'mail' para la extensión Trigger Email
-    // Permite que el Súper Administrador cree peticiones de correo
+    // El Super Admin tiene control total para enviar y monitorear
     match /mail/{mailId} {
-      allow create: if request.auth != null && request.auth.token.email == 'control@pcgoperacion.com';
-      allow read, update, delete: if request.auth != null && request.auth.token.email == 'control@pcgoperacion.com';
+      allow read, write: if request.auth != null && request.auth.token.email == 'control@pcgoperacion.com';
     }
 
     // --- FUNCIONES HELPER ---

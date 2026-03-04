@@ -50,7 +50,9 @@ import {
   Globe,
   Info,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  Clock,
+  XCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -64,7 +66,7 @@ import {
   setDocumentNonBlocking,
   addDocumentNonBlocking
 } from "@/firebase";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, query, orderBy, limit } from "firebase/firestore";
 import { Company, User } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -120,6 +122,13 @@ export default function AdminCompaniesPage() {
   }, [db, isSuperAdmin]);
   const { data: allUsers } = useCollection<User>(usersQuery);
 
+  // Consulta para el monitor de correos
+  const mailLogQuery = useMemoFirebase(() => {
+    if (!db || !isSuperAdmin) return null;
+    return query(collection(db, "mail"), orderBy("delivery.startTime", "desc"), limit(5));
+  }, [db, isSuperAdmin]);
+  const { data: mailLogs } = useCollection(mailLogQuery);
+
   const filtered = (companies || []).filter((c: Company) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -147,8 +156,8 @@ export default function AdminCompaniesPage() {
     setDocumentNonBlocking(companyRef, companyData, { merge: true });
     
     toast({
-      title: "Solicitud Enviada",
-      description: `Creando entorno para ${formData.name}.`,
+      title: "Entorno Generado",
+      description: `Se ha creado el acceso para ${formData.name}.`,
     });
     
     setIsCreateOpen(false);
@@ -179,8 +188,8 @@ export default function AdminCompaniesPage() {
     });
 
     toast({
-      title: "Actualización en curso",
-      description: `Guardando parámetros para ${selectedCompany.name}.`,
+      title: "Cambios guardados",
+      description: `Configuración actualizada para ${selectedCompany.name}.`,
     });
     setIsConfigOpen(false);
   };
@@ -224,7 +233,6 @@ export default function AdminCompaniesPage() {
               <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                 Completar Registro de Usuario
               </a>
-              <p style="color: #64748b; font-size: 12px; margin-top: 12px;">Acceso vía: www.pcgmantenimiento.com</p>
             </div>
             
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
@@ -232,19 +240,10 @@ export default function AdminCompaniesPage() {
               <div style="background-color: #ffffff; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px;">
                 ${detailsCompany.id}
               </div>
-              <p style="color: #b45309; font-size: 12px; font-weight: bold; margin-top: 12px; text-align: center;">
-                * Este código vincula su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
-              </p>
             </div>
-            
-            <div style="font-size: 13px; color: #64748b; line-height: 1.6;">
-              <p><strong>Nota de Seguridad:</strong> Este código permite el acceso a la infraestructura de datos de su empresa. Favor distribuirlo únicamente a personal autorizado.</p>
-            </div>
-            
-            <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
             
             <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
-              Este es un mensaje automático de la plataforma central de PCG OPERACIONES. Por favor no responda a esta casilla.
+              Este es un mensaje automático de la plataforma central de PCG OPERACIONES.
             </p>
           </div>
         `,
@@ -254,8 +253,8 @@ export default function AdminCompaniesPage() {
     addDocumentNonBlocking(mailCol, mailData);
 
     toast({
-      title: "Invitación Procesada",
-      description: `Se ha encolado el envío para ${inviteEmail}.`,
+      title: "Invitación Enviada",
+      description: "Revisa el monitor lateral para confirmar la entrega.",
     });
     
     setIsSendingInvite(false);
@@ -320,14 +319,6 @@ export default function AdminCompaniesPage() {
                     required 
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Dirección Inicial (Opcional)</Label>
-                  <Input 
-                    placeholder="Calle, Ciudad..." 
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
@@ -471,6 +462,50 @@ export default function AdminCompaniesPage() {
         </Card>
 
         <div className="space-y-6">
+          {/* MONITOR DE ENTREGA DE CORREOS */}
+          <Card className="border-none shadow-sm bg-slate-900 text-white overflow-hidden">
+            <CardHeader className="pb-2 border-b border-white/10">
+              <CardTitle className="text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                <Send className="h-3 w-3 text-blue-400" />
+                Monitor de Notificaciones
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4 px-0">
+              <div className="space-y-1">
+                {mailLogs && mailLogs.length > 0 ? (
+                  mailLogs.map((log: any) => (
+                    <div key={log.id} className="px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-bold text-white/60 truncate max-w-[120px]">{log.to}</span>
+                        <Badge className={cn(
+                          "text-[8px] h-4 font-black uppercase",
+                          log.delivery?.state === 'SUCCESS' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                          log.delivery?.state === 'ERROR' ? "bg-rose-500/20 text-rose-400 border-rose-500/30" :
+                          "bg-blue-500/20 text-blue-400 border-blue-500/30 animate-pulse"
+                        )} variant="outline">
+                          {log.delivery?.state || 'PENDIENTE'}
+                        </Badge>
+                      </div>
+                      {log.delivery?.error && (
+                        <p className="text-[9px] text-rose-300 leading-tight bg-rose-500/10 p-1.5 rounded mt-1 font-mono">
+                          {log.delivery.error}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1.5 text-[8px] text-white/40 mt-1">
+                        <Clock className="h-2 w-2" />
+                        {log.delivery?.endTime ? format(log.delivery.endTime.toDate(), "HH:mm:ss") : 'Procesando...'}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-white/30 italic text-xs">
+                    No hay envíos registrados aún.
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="border-none shadow-sm bg-blue-50/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -481,47 +516,17 @@ export default function AdminCompaniesPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Para que el envío de correos funcione, asegúrese de completar estos 3 puntos en Firebase:
+                  Si los correos aparecen como <span className="text-rose-600 font-bold">ERROR</span> en el monitor:
                 </p>
                 <div className="space-y-2">
                   <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
-                    <span><strong>Extensión Trigger Email:</strong> Instalada y configurada con SMTP de Gmail o SendGrid.</span>
-                  </div>
-                  <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
-                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
-                    <span><strong>Colección "mail":</strong> Creada en Firestore para recibir las peticiones.</span>
-                  </div>
-                  <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
                     <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
-                    <span><strong>Error de Build:</strong> Si falla la instalación, otorgue el rol "Usuario de cuenta de servicio" a la cuenta <em>compute@developer...</em> en Google Cloud IAM.</span>
+                    <span><strong>SMTP incorrecto:</strong> Verifica el usuario y contraseña en la extensión Trigger Email.</span>
                   </div>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="w-full text-[10px] h-8" asChild>
-                <Link href="https://console.cloud.google.com/iam-admin/iam" target="_blank">
-                  Ir a Google Cloud IAM <ExternalLink className="ml-1 h-3 w-3" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-bold">Resumen de Capacidad</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Empresas Activas</span>
-                  <span className="font-bold">{companies?.filter(c => c.isActive).length || 0}</span>
-                </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">Total Usuarios SaaS</span>
-                  <span className="font-bold">{allUsers?.length || 0}</span>
-                </div>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-[45%]" />
+                  <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
+                    <span><strong>Colección "mail":</strong> El monitor de arriba lee esta colección para darte feedback.</span>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -653,34 +658,15 @@ export default function AdminCompaniesPage() {
               />
             </div>
             
-            <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 flex gap-2">
-              <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-[10px] text-amber-700 leading-tight">
-                <strong>Nota Técnica:</strong> Asegúrese de que la extensión <strong>Trigger Email</strong> esté instalada y configurada en su consola de Firebase para que este envío sea exitoso.
-              </p>
-            </div>
-
             <div className="bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200">
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Vista Previa de Notificación SaaS:</p>
               <div className="text-[12px] text-slate-700 leading-relaxed space-y-2">
                 <p>Estimados,</p>
                 <p>Les damos la bienvenida a <strong>PCGMANTENIMIENTO ERP</strong>. Su entorno de gestión industrial ha sido configurado y se encuentra listo para operar.</p>
-                <p>Para comenzar, cada miembro del equipo debe registrarse en nuestra plataforma oficial:</p>
-                <div className="py-1">
-                  <Link href="https://www.pcgmantenimiento.com" className="text-primary font-bold hover:underline flex items-center gap-1">
-                    www.pcgmantenimiento.com <ExternalLink className="h-3 w-3" />
-                  </Link>
-                </div>
-                <p>Utilicen el siguiente <strong>Código de Acceso Maestro</strong> en el campo correspondiente del formulario de registro corporativo:</p>
+                <p>Utilicen el siguiente <strong>Código de Acceso Maestro</strong> en su registro:</p>
                 <div className="bg-white p-3 text-center rounded-lg border-2 border-primary/20 font-mono font-black text-xl text-primary tracking-widest shadow-sm">
                   {detailsCompany?.id}
                 </div>
-                <p className="text-[10px] text-amber-600 font-bold mt-2">
-                  * Importante: Este código es solo para vincular su cuenta a la empresa. Su contraseña personal la define usted en el paso siguiente.
-                </p>
-                <p className="text-[10px] text-slate-500 italic mt-4">
-                  * Este código permite la vinculación segura de usuarios a su organización. Por seguridad, no lo comparta fuera de su equipo técnico.
-                </p>
               </div>
             </div>
             <DialogFooter className="pt-4">
@@ -731,22 +717,6 @@ export default function AdminCompaniesPage() {
                   <SelectContent>
                     <SelectItem value="true">Activa / Operativa</SelectItem>
                     <SelectItem value="false">Suspendida / Bloqueada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Estado de Facturación</Label>
-                <Select 
-                  value={configData.subscriptionStatus} 
-                  onValueChange={(val) => setConfigData({...configData, subscriptionStatus: val})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Pagos al Día</SelectItem>
-                    <SelectItem value="past_due">Pendiente de Pago</SelectItem>
-                    <SelectItem value="canceled">Suscripción Cancelada</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
