@@ -14,7 +14,7 @@ import { ShieldPlus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
-const SUPERADMIN_EMAIL = 'control@pcgoperacion';
+const SUPERADMIN_EMAIL = 'control@pcgoperacion.com';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -49,6 +49,8 @@ export default function SignupPage() {
         isActive: true,
         subscriptionPlan: isSuperAdminAccount ? 'enterprise' : 'free',
         subscriptionStatus: 'active',
+        rut: '76.000.000-0', // Default RUT for setup
+        address: 'Dirección por definir',
       });
 
       // 3. Create User Profile
