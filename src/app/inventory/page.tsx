@@ -103,6 +103,16 @@ export default function InventoryPage() {
     e.preventDefault();
     if (!db || !profile?.companyId) return;
 
+    if (isDemo) {
+      toast({
+        title: "Modo Demo",
+        description: "No se pueden crear ítems reales en el modo de demostración.",
+        variant: "destructive"
+      });
+      setIsCreateOpen(false);
+      return;
+    }
+
     const colRef = collection(db, "companies", profile.companyId, "spareParts");
     const itemData = {
       companyId: profile.companyId,
@@ -127,10 +137,29 @@ export default function InventoryPage() {
 
   const handleAdjustStock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !profile?.companyId || !selectedItem) return;
-
+    
     const qty = Number(adjustment.quantity);
-    if (isNaN(qty) || qty <= 0) return;
+    if (isNaN(qty) || qty <= 0) {
+      toast({
+        title: "Cantidad inválida",
+        description: "Por favor ingrese una cantidad mayor a 0.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (isDemo) {
+      toast({
+        title: "Modo Demo",
+        description: "Ajuste simulado correctamente. Los cambios no se guardan en modo demo.",
+      });
+      setIsAdjustOpen(false);
+      setSelectedItem(null);
+      setAdjustment({ type: "entrada", quantity: "", reason: "" });
+      return;
+    }
+
+    if (!db || !profile?.companyId || !selectedItem) return;
 
     const finalQty = adjustment.type === "entrada" ? qty : -qty;
     const partRef = doc(db, "companies", profile.companyId, "spareParts", selectedItem.id);
@@ -144,9 +173,9 @@ export default function InventoryPage() {
       description: `Se ha registrado una ${adjustment.type} de ${qty} unidades para ${selectedItem.name}.`,
     });
 
-    setAdjustment({ type: "entrada", quantity: "", reason: "" });
     setIsAdjustOpen(false);
     setSelectedItem(null);
+    setAdjustment({ type: "entrada", quantity: "", reason: "" });
   };
 
   const openAdjustDialog = (item: any, type: "entrada" | "salida") => {
@@ -265,7 +294,6 @@ export default function InventoryPage() {
         </Dialog>
       </div>
 
-      {/* Ajuste de Stock Dialog (Triggered from row actions) */}
       <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -299,6 +327,7 @@ export default function InventoryPage() {
                   value={adjustment.quantity}
                   onChange={(e) => setAdjustment({...adjustment, quantity: e.target.value})}
                   required
+                  min="1"
                 />
               </div>
             </div>
