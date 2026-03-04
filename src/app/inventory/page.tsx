@@ -33,8 +33,8 @@ import {
   Loader2,
   ArrowLeft
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { collection, serverTimestamp, addDoc } from "firebase/firestore";
 import { MOCK_SPARE_PARTS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -85,9 +85,7 @@ export default function InventoryPage() {
     }
 
     const colRef = collection(db, "companies", profile.companyId, "spareParts");
-    
-    // Use non-blocking call as per guidelines
-    addDocumentNonBlocking(colRef, {
+    const itemData = {
       companyId: profile.companyId,
       name: newItem.name,
       sku: newItem.sku,
@@ -95,6 +93,16 @@ export default function InventoryPage() {
       stockMinimo: Number(newItem.stockMinimo) || 0,
       unitPrice: Number(newItem.unitPrice) || 0,
       createdAt: serverTimestamp(),
+    };
+
+    // Firestore write (non-blocking)
+    addDoc(colRef, itemData).catch(async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: colRef.path,
+        operation: 'create',
+        requestResourceData: itemData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
     });
 
     // Proceed immediately for a responsive UI
