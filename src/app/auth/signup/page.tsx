@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -40,7 +39,7 @@ export default function SignupPage() {
       let targetCompanyId = isSuperAdminAccount ? 'pcg-central' : companyCode.trim();
       let role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin'; 
 
-      // 1. VALIDACIÓN PRE-REGISTRO (Solo para usuarios normales)
+      // 1. VALIDACIÓN PRE-REGISTRO
       if (!isSuperAdminAccount) {
         if (!targetCompanyId) {
           throw new Error("Debe ingresar el código de vinculación de su empresa.");
@@ -57,7 +56,7 @@ export default function SignupPage() {
           throw new Error("Esta empresa se encuentra suspendida. Contacte a soporte.");
         }
 
-        // Validar límites de usuarios del plan
+        // Validar límites de usuarios
         const usersQuery = query(collection(db, "users"), where("companyId", "==", targetCompanyId));
         const usersSnap = await getDocs(usersQuery);
         
@@ -69,17 +68,16 @@ export default function SignupPage() {
           throw new Error(`La empresa ha alcanzado el límite de ${maxUsers} usuarios para el plan ${currentPlan.toUpperCase()}.`);
         }
 
-        // Si ya hay un administrador, el siguiente es técnico por defecto
         if (usersSnap.size > 0) {
           role = 'tecnico';
         }
       }
 
-      // 2. Crear usuario en Auth (A partir de aquí estamos autenticados)
+      // 2. Crear usuario en Auth
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       const userId = userCredential.user.uid;
 
-      // 3. Si es Super Admin, asegurar que la empresa central exista (ahora tenemos auth)
+      // 3. Si es Super Admin, asegurar que la empresa central exista
       if (isSuperAdminAccount) {
         const centralSnap = await getDoc(doc(db, 'companies', 'pcg-central'));
         if (!centralSnap.exists()) {
@@ -96,7 +94,7 @@ export default function SignupPage() {
         }
       }
 
-      // 4. Crear Perfil de Usuario
+      // 4. Crear Perfil de Usuario en colección central /users
       await setDoc(doc(db, 'users', userId), {
         id: userId,
         email: cleanEmail,
@@ -107,9 +105,9 @@ export default function SignupPage() {
         createdAt: new Date().toISOString(),
       });
 
-      // 5. Registro en colección de Súper Administradores si corresponde
+      // 5. Registro en platform_admins (nombre exacto para firestore.rules)
       if (isSuperAdminAccount) {
-        await setDoc(doc(db, 'superAdmins', userId), {
+        await setDoc(doc(db, 'platform_admins', userId), {
           id: userId,
           email: cleanEmail,
           name: name,
@@ -119,10 +117,10 @@ export default function SignupPage() {
 
       toast({
         title: isSuperAdminAccount ? "Acceso Maestro Activado" : "Cuenta vinculada",
-        description: `Bienvenido a ${isSuperAdminAccount ? 'PCG' : 'su entorno de trabajo'}. Redirigiendo...`,
+        description: "Bienvenido al sistema. Redirigiendo...",
       });
       
-      router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
+      router.push('/dashboard');
 
     } catch (error: any) {
       toast({
@@ -168,7 +166,7 @@ export default function SignupPage() {
                   onChange={(e) => setCompanyCode(e.target.value)} 
                 />
                 <p className="text-[10px] text-primary/70 italic leading-tight">
-                  * Este código vincula su cuenta a su organización. Solicítelo a su jefe de área o administrador.
+                  * Este código vincula su cuenta a su organización.
                 </p>
               </div>
             )}
@@ -185,9 +183,6 @@ export default function SignupPage() {
                 <KeyRound className="h-3.5 w-3.5 text-muted-foreground" /> Contraseña Personal
               </Label>
               <Input id="password" type="password" placeholder="Mínimo 6 caracteres" required value={password} onChange={(e) => setPassword(e.target.value)} />
-              <p className="text-[10px] text-muted-foreground italic">
-                * Esta es su clave privada para entrar al sistema. No es el código de empresa.
-              </p>
             </div>
 
             {isSuperAdminEmail && (
