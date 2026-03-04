@@ -149,9 +149,18 @@ function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => 
     const canvas = canvasRef.current; if (!canvas) return;
     const ctx = canvas.getContext('2d'); if (!ctx) return;
     const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-    ctx.lineTo(x, y); ctx.stroke();
+    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.touches[0].clientX - rect.left;
+    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.touches[0].clientY - rect.top;
+    
+    // Support for both mouse and touch
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    
+    if (clientX !== undefined && clientY !== undefined) {
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      ctx.lineTo(x, y); ctx.stroke();
+    }
   };
 
   return (
@@ -251,10 +260,21 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { return "N/A"; }
   };
 
+  /**
+   * Resuelve una URL de imagen a Base64 para evitar bloqueos CORS en Canvas/PDF.
+   */
   const getBase64Image = async (url: string) => {
+    if (!url) return undefined;
     try {
-      const response = await fetch(url);
+      // Intentar fetch con cache-bust para saltar bloqueos de CORS por cacheo incompleto
+      const response = await fetch(url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now(), {
+        mode: 'cors',
+        credentials: 'omit'
+      });
+      
+      if (!response.ok) throw new Error('Fetch failed');
       const blob = await response.blob();
+      
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -262,8 +282,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         reader.readAsDataURL(blob);
       });
     } catch (e) {
-      console.error("CORS Error pre-resolving signature:", e);
-      return url; 
+      console.warn("CORS/Fetch error resolving signature for PDF. Falling back to direct URL.", e);
+      return url; // Si falla, devolvemos la URL y que html2canvas intente manejarlo
     }
   };
 
@@ -272,22 +292,25 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     setIsGeneratingPdf(true);
     toast({ title: "Generando reporte...", description: "Procesando evidencias gráficas." });
     
-    // Resolvemos firmas a Base64 para saltar bloqueos CORS del canvas
-    const techBase64 = ot.technicianSignatureUrl ? await getBase64Image(ot.technicianSignatureUrl) : undefined;
-    const clientBase64 = ot.clientSignatureUrl ? await getBase64Image(ot.clientSignatureUrl) : undefined;
-    
-    setResolvedSignatures({ tech: techBase64, client: clientBase64 });
-
-    // Esperamos un momento para que el componente oculto se actualice con las firmas base64
-    await new Promise(resolve => setTimeout(resolve, 600));
-
     try {
+      // Resolvemos firmas a Base64 en paralelo antes de la captura
+      const [techBase64, clientBase64] = await Promise.all([
+        ot.technicianSignatureUrl ? getBase64Image(ot.technicianSignatureUrl) : Promise.resolve(undefined),
+        ot.clientSignatureUrl ? getBase64Image(ot.clientSignatureUrl) : Promise.resolve(undefined)
+      ]);
+      
+      setResolvedSignatures({ tech: techBase64, client: clientBase64 });
+
+      // Breve espera para que el componente oculto actualice sus src
+      await new Promise(resolve => setTimeout(resolve, 800));
+
       const canvas = await html2canvas(reportRef.current, { 
         scale: 2, 
         useCORS: true, 
         backgroundColor: "#ffffff",
         logging: false,
-        allowTaint: false
+        allowTaint: false,
+        imageTimeout: 15000
       });
       
       const imgData = canvas.toDataURL("image/png");
@@ -296,12 +319,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`REPORTE_PCG_${ot?.id}.pdf`);
+      pdf.save(`REPORTE_TECNICO_PCG_${ot.id}.pdf`);
       
-      toast({ title: "Reporte generado", description: "Documento descargado." });
+      toast({ title: "Reporte generado", description: "El documento se ha descargado." });
     } catch (e: any) { 
       console.error("PDF Generation Error:", e);
-      toast({ title: "Error al generar PDF", description: "Reintente en unos segundos.", variant: "destructive" }); 
+      toast({ title: "Error al generar PDF", description: "Hubo un problema al procesar las imágenes.", variant: "destructive" }); 
     } finally { 
       setIsGeneratingPdf(false); 
     }
@@ -338,7 +361,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
-      {/* REPORTE OCULTO PARA PDF - Mejorado para visualización robusta */}
+      {/* REPORTE OCULTO PARA PDF */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           ref={reportRef} 

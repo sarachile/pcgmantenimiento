@@ -21,7 +21,7 @@ interface WorkOrderReportProps {
 
 /**
  * Reporte optimizado para exportación a PDF.
- * Usa datos Base64 para las firmas para evitar bloqueos CORS en el canvas de html2canvas.
+ * Las firmas se inyectan como Base64 para evitar bloqueos de CORS.
  */
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
   ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages, techSignatureBase64, clientSignatureBase64 }, forwardedRef) => {
@@ -50,7 +50,7 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
                   src={company.logoUrl} 
                   alt="Logo Empresa" 
                   className="w-full h-full object-contain p-2" 
-                  crossOrigin="anonymous" 
+                  crossOrigin="anonymous"
                 />
               </div>
             ) : (
@@ -70,7 +70,7 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
             <p className="text-sm font-black text-slate-400 mb-1 uppercase tracking-widest">ORDEN DE TRABAJO</p>
             <p className="text-4xl font-black text-slate-900 tracking-tighter leading-none">{workOrder.id}</p>
             <div className="inline-block px-4 py-1 bg-slate-900 text-white text-[10px] font-black rounded-full mt-4 uppercase tracking-widest">
-              ESTADO: {workOrder.status}
+              ESTADO: {workOrder.status.toUpperCase()}
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
         {/* DESCRIPCIÓN TÉCNICA */}
         <div className="mb-10">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2 mb-4">DETALLE DE LOS TRABAJOS</h3>
-          <div className="p-6 bg-white border-2 border-slate-100 rounded-2xl">
+          <div className="p-6 bg-white border-2 border-slate-100 rounded-2xl min-h-[100px]">
             <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{workOrder.description}</p>
           </div>
         </div>
@@ -154,18 +154,20 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           </div>
         </div>
 
-        {/* SECCIÓN DE FIRMAS DIGITALES - Robustez mediante Base64 */}
+        {/* SECCIÓN DE FIRMAS DIGITALES */}
         <div className="mt-auto pt-16 border-t-2 border-slate-100">
           <div className="grid grid-cols-2 gap-20">
             <div className="text-center space-y-4">
               <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
-                {techSignatureBase64 ? (
+                {(techSignatureBase64 || workOrder.technicianSignatureUrl) && (
                   <img 
-                    src={techSignatureBase64} 
+                    src={techSignatureBase64 || workOrder.technicianSignatureUrl} 
                     alt="Firma Técnico" 
                     className="max-h-full max-w-full object-contain" 
+                    crossOrigin="anonymous"
                   />
-                ) : (
+                )}
+                {!techSignatureBase64 && !workOrder.technicianSignatureUrl && (
                   <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Firma Técnico</span>
                 )}
               </div>
@@ -176,13 +178,15 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
             </div>
             <div className="text-center space-y-4">
               <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
-                {clientSignatureBase64 ? (
+                {(clientSignatureBase64 || workOrder.clientSignatureUrl) && (
                   <img 
-                    src={clientSignatureBase64} 
+                    src={clientSignatureBase64 || workOrder.clientSignatureUrl} 
                     alt="Firma Cliente" 
                     className="max-h-full max-w-full object-contain" 
+                    crossOrigin="anonymous"
                   />
-                ) : (
+                )}
+                {!clientSignatureBase64 && !workOrder.clientSignatureUrl && (
                   <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Recepción Cliente</span>
                 )}
               </div>
