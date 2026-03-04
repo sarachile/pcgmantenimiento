@@ -1,7 +1,6 @@
-
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import { 
   MOCK_WORK_ORDERS, 
   MOCK_LOGBOOK, 
@@ -14,27 +13,23 @@ import {
   CardContent, 
   CardHeader, 
   CardTitle, 
-  CardDescription,
-  CardFooter
+  CardDescription
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { 
   ClipboardList, 
   History, 
   CheckCircle2, 
   XCircle, 
-  ShieldCheck,
-  Sparkles,
   ArrowLeft,
-  FileText,
   Loader2,
-  Building2,
   Receipt,
   Package,
   Plus,
-  AlertTriangle
+  Camera,
+  Image as ImageIcon,
+  Trash2
 } from "lucide-react";
 import {
   Dialog,
@@ -56,10 +51,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp, increment } from "firebase/firestore";
+import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { doc, collection, addDoc, serverTimestamp, increment, arrayUnion } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Image from "next/image";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -67,12 +63,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const { toast } = useToast();
   const { profile, isReviewer, isSupervisor, isCompanyAdmin, isTechnician } = useUser();
   const db = useFirestore();
+  const storage = useStorage();
   
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isInvoicing, setIsInvoicing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isAddingPart, setIsAddingPart] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   // Form states for spare parts
@@ -163,6 +159,52 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || isMock) {
+      if (isMock) toast({ title: "Modo Demo", description: "Subida de archivos no disponible en modo demo." });
+      return;
+    }
+
+    if (!profile || !ot) return;
+
+    setIsUploading(true);
+    try {
+      // 1. Upload to Storage
+      const storagePath = `companies/${profile.companyId}/workOrders/${ot.id}/evidence/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage) || ref(storage, storagePath);
+      const snapshot = await uploadBytes(ref(storage, storagePath), file);
+      const downloadUrl = await getDownloadURL(snapshot.ref);
+
+      // 2. Update Firestore OT
+      if (otRef) {
+        updateDocumentNonBlocking(otRef, {
+          evidenceUrls: arrayUnion(downloadUrl),
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      // 3. Log event
+      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
+      await addDoc(logRef, {
+        workOrderId: ot.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'action_taken',
+        eventDetails: `Se cargó nueva evidencia fotográfica: ${file.name}`,
+        actor: profile.id,
+      });
+
+      toast({ title: "Evidencia cargada", description: "La foto se ha guardado correctamente." });
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Error al subir", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleRegisterPart = async () => {
     if (isMock) {
       toast({ title: "Modo Demo", description: "Registro de repuesto simulado." });
@@ -178,7 +220,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
     setIsAddingPart(true);
     try {
-      // 1. Record Usage
       const usageRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "partUsages");
       await addDoc(usageRef, {
         workOrderId: ot.id,
@@ -189,13 +230,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         usedAt: serverTimestamp(),
       });
 
-      // 2. Reduce Inventory Stock
       const partRef = doc(db, "companies", profile.companyId, "spareParts", selectedPartId);
       updateDocumentNonBlocking(partRef, {
         stockActual: increment(-qty)
       });
 
-      // 3. Log event
       const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
       await addDoc(logRef, {
         workOrderId: ot.id,
@@ -228,6 +267,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const canReview = (isReviewer || isSupervisor || isCompanyAdmin) && ot.status === 'en revision';
   const canEditParts = (isTechnician || isSupervisor || isCompanyAdmin) && !['aprobada', 'rechazada'].includes(ot.status);
+  const canUploadEvidence = (isTechnician || isSupervisor || isCompanyAdmin) && !['aprobada', 'rechazada'].includes(ot.status);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
@@ -253,7 +293,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         </div>
         <div className="flex flex-wrap gap-2">
           {ot.status === 'aprobada' && (
-            <Button disabled={isInvoicing} className="bg-primary">
+            <Button className="bg-primary">
               <Receipt className="mr-2 h-4 w-4" /> Facturar
             </Button>
           )}
@@ -290,6 +330,64 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <Label className="text-xs uppercase text-muted-foreground">Descripción del Trabajo</Label>
                 <p className="mt-1 text-sm leading-relaxed">{ot.description}</p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Evidence Section */}
+          <Card className="border-none shadow-sm overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2"><Camera className="h-5 w-5 text-primary" /> Evidencia Fotográfica</CardTitle>
+                <CardDescription>Respaldo visual de la intervención.</CardDescription>
+              </div>
+              {canUploadEvidence && (
+                <div>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                  />
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                    Subir Foto
+                  </Button>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent className="pt-4">
+              {ot.evidenceUrls && ot.evidenceUrls.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {ot.evidenceUrls.map((url, idx) => (
+                    <Dialog key={idx}>
+                      <DialogTrigger asChild>
+                        <div className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer">
+                          <Image src={url} alt={`Evidencia ${idx + 1}`} fill className="object-cover group-hover:scale-105 transition-transform" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <ImageIcon className="text-white h-6 w-6" />
+                          </div>
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-3xl">
+                        <div className="relative aspect-video w-full">
+                          <Image src={url} alt={`Evidencia ${idx + 1}`} fill className="object-contain" />
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 border-2 border-dashed rounded-xl bg-muted/10">
+                  <ImageIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No se ha cargado evidencia fotográfica aún.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
