@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -40,14 +41,16 @@ import {
   Building2,
   Loader2,
   ShieldCheck,
-  Save
+  Save,
+  Copy,
+  Key
 } from "lucide-react";
 import { MOCK_COMPANIES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Company } from "@/lib/types";
 
 export default function AdminCompaniesPage() {
@@ -72,6 +75,7 @@ export default function AdminCompaniesPage() {
   const [configData, setConfigData] = useState({
     currentPlan: "free" as any,
     subscriptionStatus: "active" as any,
+    isActive: true
   });
 
   useEffect(() => {
@@ -90,7 +94,7 @@ export default function AdminCompaniesPage() {
 
   const filtered = companies.filter((c: any) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.rut.includes(searchTerm)
+    c.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleCreateCompany = async (e: React.FormEvent) => {
@@ -99,25 +103,23 @@ export default function AdminCompaniesPage() {
 
     setIsSubmitting(true);
     try {
-      const colRef = collection(db, "companies");
-      const companyId = `comp-${Math.random().toString(36).substr(2, 9)}`;
+      const companyId = `comp-${Math.random().toString(36).substr(2, 6)}`;
       
-      const newCompanyData = {
+      // Usar setDoc para controlar el ID
+      await setDoc(doc(db, "companies", companyId), {
         id: companyId,
         name: formData.name,
-        rut: formData.rut || "",
+        rut: formData.rut || "Pendiente",
         address: "Dirección por definir",
         currentPlan: formData.currentPlan,
         subscriptionStatus: "active",
         isActive: true,
         createdAt: new Date().toISOString(),
-      };
-
-      await addDocumentNonBlocking(colRef, newCompanyData);
+      });
 
       toast({
         title: "Empresa Registrada",
-        description: `Se ha creado el entorno para ${formData.name} exitosamente.`,
+        description: `Código de acceso: ${companyId}. Entréguelo al cliente para su registro.`,
       });
       
       setIsCreateOpen(false);
@@ -133,11 +135,20 @@ export default function AdminCompaniesPage() {
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copiado",
+      description: "Código de acceso copiado al portapapeles.",
+    });
+  };
+
   const handleOpenConfig = (company: Company) => {
     setSelectedCompany(company);
     setConfigData({
       currentPlan: company.currentPlan || "free",
       subscriptionStatus: company.subscriptionStatus || "active",
+      isActive: company.isActive ?? true
     });
     setIsConfigOpen(true);
   };
@@ -146,7 +157,7 @@ export default function AdminCompaniesPage() {
     e.preventDefault();
     if (!db || !selectedCompany) return;
 
-    if (isDemo) {
+    if (isDemo && selectedCompany.id.startsWith('comp-1')) {
       toast({
         title: "Modo Demo",
         description: "No se pueden actualizar parámetros en modo de vista previa.",
@@ -161,12 +172,13 @@ export default function AdminCompaniesPage() {
       updateDocumentNonBlocking(companyRef, {
         currentPlan: configData.currentPlan,
         subscriptionStatus: configData.subscriptionStatus,
+        isActive: configData.isActive,
         updatedAt: serverTimestamp(),
       });
 
       toast({
         title: "Suscripción Actualizada",
-        description: `Límites y estado actualizados para ${selectedCompany.name}.`,
+        description: `Parámetros guardados para ${selectedCompany.name}.`,
       });
       setIsConfigOpen(false);
     } catch (error: any) {
@@ -176,13 +188,6 @@ export default function AdminCompaniesPage() {
         variant: "destructive",
       });
     }
-  };
-
-  const handleImpersonate = (companyName: string) => {
-    toast({
-      title: "Acceso como Administrador",
-      description: `Entrando al entorno de ${companyName}...`,
-    });
   };
 
   if (isUserLoading) {
@@ -204,7 +209,7 @@ export default function AdminCompaniesPage() {
           </Button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Gestión de Empresas</h2>
-            <p className="text-muted-foreground">Administración de tenants y suscripciones de la plataforma.</p>
+            <p className="text-muted-foreground">Administración de tenants y códigos de acceso.</p>
           </div>
         </div>
         
@@ -216,12 +221,12 @@ export default function AdminCompaniesPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Registrar Nuevo Tenant</DialogTitle>
-              <DialogDescription>Cree un nuevo espacio de trabajo independiente. No hay restricciones para tu cuenta de Súper Admin.</DialogDescription>
+              <DialogTitle>Registrar Nuevo Cliente</DialogTitle>
+              <DialogDescription>Cree el entorno para que el cliente pueda registrar sus usuarios.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2">
+              <div className="space-y-4">
+                <div className="space-y-2">
                   <Label>Nombre de la Empresa / Razón Social *</Label>
                   <Input 
                     placeholder="Ej: Servicios Industriales S.A." 
@@ -230,34 +235,36 @@ export default function AdminCompaniesPage() {
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>RUT Empresa (Opcional)</Label>
-                  <Input 
-                    placeholder="76.000.000-0" 
-                    value={formData.rut}
-                    onChange={(e) => setFormData({...formData, rut: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Plan de Suscripción</Label>
-                  <Select 
-                    value={formData.currentPlan} 
-                    onValueChange={(val) => setFormData({...formData, currentPlan: val})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="free">Gratuito (Demo)</SelectItem>
-                      <SelectItem value="pro">Plan Pro</SelectItem>
-                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>RUT Empresa (Opcional)</Label>
+                    <Input 
+                      placeholder="76.000.000-0" 
+                      value={formData.rut}
+                      onChange={(e) => setFormData({...formData, rut: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Plan Asignado</Label>
+                    <Select 
+                      value={formData.currentPlan} 
+                      onValueChange={(val) => setFormData({...formData, currentPlan: val})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">Demo (1/1)</SelectItem>
+                        <SelectItem value="pro">Pro (5/3)</SelectItem>
+                        <SelectItem value="enterprise">Enterprise (15/5)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Registro Maestro"}
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Empresa y Código"}
                 </Button>
               </DialogFooter>
             </form>
@@ -271,13 +278,13 @@ export default function AdminCompaniesPage() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Buscar por nombre o RUT..." 
+                placeholder="Buscar por nombre o código ID..." 
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">MODO VISTA MOCK</Badge>}
+            {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">VISTA PREVIA</Badge>}
           </div>
         </CardHeader>
         <CardContent>
@@ -291,9 +298,9 @@ export default function AdminCompaniesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre / RUT</TableHead>
+                  <TableHead>Código de Acceso</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Fecha Creación</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -303,41 +310,55 @@ export default function AdminCompaniesPage() {
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="font-bold">{company.name}</span>
-                        <span className="text-xs text-muted-foreground">{company.rut || 'RUT Pendiente'}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase">{company.rut || 'RUT Pendiente'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">
+                          {company.id}
+                        </code>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6" 
+                          onClick={() => copyToClipboard(company.id)}
+                          title="Copiar Código"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={cn(
+                        "text-[10px] font-bold uppercase",
                         company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
                         company.currentPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
                       )}>
-                        {(company.currentPlan || 'FREE').toUpperCase()}
+                        {company.currentPlan || 'FREE'}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className={cn(
+                        "text-[10px] font-bold",
+                        !company.isActive ? "bg-rose-100 text-rose-700" :
                         company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-700" : 
-                        company.subscriptionStatus === 'past_due' ? "bg-amber-100 text-amber-700" :
-                        "bg-rose-100 text-rose-700"
+                        "bg-amber-100 text-amber-700"
                       )}>
-                        {company.subscriptionStatus === 'active' ? 'ACTIVA' : 
-                         company.subscriptionStatus === 'past_due' ? 'VENCIDA' : 'BLOQUEADA'}
+                        {!company.isActive ? 'INACTIVA' : 
+                         company.subscriptionStatus === 'active' ? 'AL DÍA' : 'VENCIDA'}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {mounted ? new Date(company.createdAt).toLocaleDateString() : '...'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          title="Configurar Parámetros de Suscripción" 
                           onClick={() => handleOpenConfig(company)}
                         >
                           <Settings2 className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" title="Entrar como Admin de Empresa" onClick={() => handleImpersonate(company.name)}>
+                        <Button variant="ghost" size="icon" title="Simular Entrada">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       </div>
@@ -354,59 +375,65 @@ export default function AdminCompaniesPage() {
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Configurar Suscripción</DialogTitle>
+            <DialogTitle>Parámetros de Empresa</DialogTitle>
             <DialogDescription>
-              Ajuste el plan y estado de la cuenta para {selectedCompany?.name}.
+              Ajuste el estado y plan para {selectedCompany?.name}.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveConfig} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Plan de Servicio</Label>
-              <Select 
-                value={configData.currentPlan} 
-                onValueChange={(val) => setConfigData({...configData, currentPlan: val})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Plan Inicio (Demo)</SelectItem>
-                  <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
-                  <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Estado de Facturación</Label>
-              <Select 
-                value={configData.subscriptionStatus} 
-                onValueChange={(val) => setConfigData({...configData, subscriptionStatus: val})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Activa / Al Día</SelectItem>
-                  <SelectItem value="past_due">Vencida / Pendiente Pago</SelectItem>
-                  <SelectItem value="canceled">Suspendida / Cancelada</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase">Resumen de Límites</p>
-              <div className="flex justify-between text-xs">
-                <span>Clientes:</span>
-                <span className="font-bold">{configData.currentPlan === 'free' ? '1' : configData.currentPlan === 'pro' ? '5' : '15'}</span>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Nivel de Servicio</Label>
+                <Select 
+                  value={configData.currentPlan} 
+                  onValueChange={(val) => setConfigData({...configData, currentPlan: val})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="free">Plan Inicio (Demo)</SelectItem>
+                    <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
+                    <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex justify-between text-xs">
-                <span>Usuarios:</span>
-                <span className="font-bold">{configData.currentPlan === 'free' ? '1' : configData.currentPlan === 'pro' ? '3' : '5'}</span>
+              <div className="space-y-2">
+                <Label>Estado de Operación</Label>
+                <Select 
+                  value={configData.isActive ? "true" : "false"} 
+                  onValueChange={(val) => setConfigData({...configData, isActive: val === "true"})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Activa / Operativa</SelectItem>
+                    <SelectItem value="false">Suspendida / Bloqueada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Estado de Facturación</Label>
+                <Select 
+                  value={configData.subscriptionStatus} 
+                  onValueChange={(val) => setConfigData({...configData, subscriptionStatus: val})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Pagos al Día</SelectItem>
+                    <SelectItem value="past_due">Pendiente de Pago</SelectItem>
+                    <SelectItem value="canceled">Suscripción Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter className="pt-4">
               <Button type="submit" className="w-full">
                 <Save className="h-4 w-4 mr-2" />
-                Guardar Parámetros
+                Actualizar Configuración
               </Button>
             </DialogFooter>
           </form>
