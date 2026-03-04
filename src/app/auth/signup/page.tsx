@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,9 +43,7 @@ export default function SignupPage() {
       const role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin';
       const companyId = isSuperAdminAccount ? 'pcg-central' : `comp-${Math.random().toString(36).substr(2, 9)}`;
 
-      // IMPORTANTE: El orden de creación es crítico para las reglas de seguridad
-      
-      // 2. Crear Perfil de Usuario PRIMERO
+      // 2. Crear Perfil de Usuario
       await setDoc(doc(db, 'users', userId), {
         id: userId,
         email: cleanEmail,
@@ -66,10 +64,10 @@ export default function SignupPage() {
         });
       }
 
-      // 4. Registrar empresa (Tenant) DESPUÉS de que el usuario tiene perfil
+      // 4. Registrar empresa (Tenant)
       await setDoc(doc(db, 'companies', companyId), {
         id: companyId,
-        name: isSuperAdminAccount ? 'PCG OPERACIONES CENTRAL' : (companyName || 'Mi Empresa'),
+        name: companyName || (isSuperAdminAccount ? 'PCG OPERACIONES CENTRAL' : 'Mi Empresa'),
         rut: '76.000.000-0',
         address: 'Dirección por definir',
         isActive: true,
@@ -89,7 +87,7 @@ export default function SignupPage() {
       console.error("Signup error:", error);
       toast({
         title: "Error al registrarse",
-        description: error.message || "No se pudo completar el registro.",
+        description: error.message || "No se pudo completar el registro de datos en el sistema.",
         variant: "destructive",
       });
     } finally {
@@ -113,12 +111,16 @@ export default function SignupPage() {
               <Label htmlFor="name">Nombre Completo</Label>
               <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            {email.toLowerCase().trim() !== SUPERADMIN_EMAIL && (
-              <div className="space-y-2">
-                <Label htmlFor="company">Nombre de la Empresa</Label>
-                <Input id="company" required={email.toLowerCase().trim() !== SUPERADMIN_EMAIL} value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="company">Nombre de la Empresa</Label>
+              <Input 
+                id="company" 
+                required 
+                placeholder={email.toLowerCase().trim() === SUPERADMIN_EMAIL ? "PCG OPERACIONES CENTRAL" : "Ej: Mi Empresa S.A."}
+                value={companyName} 
+                onChange={(e) => setCompanyName(e.target.value)} 
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email Corporativo</Label>
               <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

@@ -29,14 +29,14 @@ service cloud.firestore {
     // --- REGLAS DE COLECCIONES ---
 
     match /superAdmins/{userId} {
-      // Permitir creación si es el propio usuario (necesario para el registro inicial)
+      // Permitir creación inicial si es el propio usuario
       allow create: if isOwner(userId);
       allow read: if isOwner(userId) || isSuperAdmin();
       allow update, delete: if isSuperAdmin();
     }
 
     match /users/{userId} {
-      // Permitir creación y edición del propio perfil
+      // Permitir creación inicial si es el propio usuario
       allow create: if isOwner(userId);
       allow get: if isSignedIn();
       allow list: if isSignedIn();
@@ -44,10 +44,12 @@ service cloud.firestore {
     }
 
     match /companies/{companyId} {
-      // Permitir creación inicial si está autenticado
+      // Permitir creación inicial por cualquier usuario autenticado (fase de registro)
       allow create: if isSignedIn();
+      
       // Permitir lectura y actualización si es miembro o superadmin
-      allow read, update: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
+      allow read: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
+      allow update: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
       allow list: if isSuperAdmin();
 
       // Regla para subcolecciones de empresa (clientes, activos, OTs, etc.)
