@@ -52,7 +52,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc, addDoc } from "firebase/firestore";
 import { Company, User } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -199,19 +199,58 @@ export default function AdminCompaniesPage() {
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!detailsCompany) return;
+    if (!db || !detailsCompany || !inviteEmail) return;
 
     setIsSendingInvite(true);
-    // Simulación de envío de correo comercial profesional
-    setTimeout(() => {
+    try {
+      // Escribir en la colección 'mail' para activar el Trigger Email Extension
+      const mailCol = collection(db, "mail");
+      await addDoc(mailCol, {
+        to: inviteEmail,
+        message: {
+          subject: `Bienvenido a PCGMANTENIMIENTO ERP - Acceso Maestro ${detailsCompany.name}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; color: #1f2937;">
+              <h2 style="color: #1e3a8a; font-size: 24px; margin-bottom: 16px;">¡Bienvenido a PCGMANTENIMIENTO ERP!</h2>
+              <p>Estimados,</p>
+              <p>Su entorno de gestión industrial para <strong>${detailsCompany.name}</strong> ha sido configurado y se encuentra listo para operar.</p>
+              <p>Para comenzar, cada miembro del equipo debe registrarse en nuestra plataforma oficial:</p>
+              <div style="margin: 24px 0;">
+                <a href="https://www.pcgmantenimiento.com" style="background-color: #1e3a8a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                  Ir a www.pcgmantenimiento.com
+                </a>
+              </div>
+              <p>Durante el registro, se le solicitará el siguiente <strong>Código de Acceso Maestro</strong>:</p>
+              <div style="background-color: #f3f4f6; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 28px; font-family: monospace; font-weight: bold; color: #1e3a8a; letter-spacing: 4px;">
+                ${detailsCompany.id}
+              </div>
+              <p style="color: #b45309; font-size: 13px; font-weight: bold; margin-top: 16px;">
+                * Importante: Este código es solo para vincular su cuenta a la organización. Su contraseña personal la define usted en el paso siguiente.
+              </p>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+              <p style="font-size: 12px; color: #6b7280; font-style: italic;">
+                Este es un mensaje automático del sistema de control maestro de PCG OPERACIONES. Por favor no responda a este correo.
+              </p>
+            </div>
+          `,
+        },
+      });
+
       toast({
-        title: "Invitación Enviada",
-        description: `Se ha notificado a ${inviteEmail} con las credenciales de acceso para www.pcgmantenimiento.com.`,
+        title: "Invitación Procesada",
+        description: `El correo de bienvenida se ha enviado a ${inviteEmail}.`,
       });
       setIsSendingInvite(false);
       setIsInviteOpen(false);
       setInviteEmail("");
-    }, 1500);
+    } catch (error: any) {
+      toast({
+        title: "Error de Envío",
+        description: error.message || "No se pudo registrar la solicitud de correo.",
+        variant: "destructive",
+      });
+      setIsSendingInvite(false);
+    }
   };
 
   const formatDate = (date: any) => {
