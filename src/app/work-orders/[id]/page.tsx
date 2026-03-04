@@ -235,14 +235,20 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!reportRef.current) return;
     setIsGeneratingPdf(true);
     try {
+      // Ensure the component is visible to html2canvas by placing it off-screen but not hidden
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
+        allowTaint: true,
       });
       
       const imgData = canvas.toDataURL("image/png");
+      if (!imgData || imgData === 'data:,') {
+        throw new Error("No se pudo capturar la imagen del reporte. Verifique que los datos estén cargados.");
+      }
+
       const pdf = new jsPDF("p", "mm", "a4");
       const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -253,6 +259,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       
       toast({ title: "Reporte generado", description: "El PDF se ha descargado exitosamente." });
     } catch (error: any) {
+      console.error("Error generating PDF:", error);
       toast({ title: "Error al generar PDF", description: error.message, variant: "destructive" });
     } finally {
       setIsGeneratingPdf(false);
@@ -474,9 +481,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   if (!ot) return <div className="p-8 text-center">Orden no encontrada.</div>;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4 sm:px-0">
-      {/* Hidden Report for PDF Capture */}
-      <div className="hidden">
+    <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4 sm:px-0 relative">
+      {/* Hidden Report for PDF Capture - Using absolute off-screen instead of hidden for html2canvas compatibility */}
+      <div className="absolute -left-[9999px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           ref={reportRef}
           company={company || null}
@@ -741,7 +748,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card className="border-none shadow-sm">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Libro Digital de Obra</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Libro Digital de Obra</CardTitle>
+            </CardHeader>
             <CardContent className="space-y-6">
               {!['aprobada', 'rechazada'].includes(ot.status) && (
                 <div className="flex gap-2">
