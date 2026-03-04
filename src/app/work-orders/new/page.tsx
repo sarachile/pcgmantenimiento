@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat, UserPlus, Users, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat, UserPlus, Users, AlertTriangle, Info } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember, WorkOrder } from "@/lib/types";
@@ -268,7 +268,7 @@ export default function NewWorkOrderPage() {
                   <Users className="h-3 w-3" /> Personal Operativo Asignado
                 </Label>
                 <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
-                  <AlertTriangle className="h-2.5 w-2.5 text-amber-500" /> Personal ocupado está bloqueado
+                  <Info className="h-2.5 w-2.5 text-blue-500" /> El color ámbar indica que ya tiene otra OT activa
                 </p>
               </div>
               
@@ -285,29 +285,26 @@ export default function NewWorkOrderPage() {
                         <div 
                           key={staff.id} 
                           className={cn(
-                            "flex items-center space-x-2 border p-2 rounded-md transition-colors",
-                            busyOTId ? "bg-amber-50/50 border-amber-100 opacity-80" : "hover:bg-muted/30"
+                            "flex items-center space-x-2 border p-2 rounded-md transition-colors cursor-pointer hover:bg-muted/30",
+                            busyOTId && "bg-amber-50/50 border-amber-100"
                           )}
+                          onClick={() => toggleStaffSelection(staff.id)}
                         >
                           <Checkbox 
                             id={`staff-${staff.id}`} 
                             checked={assignedToStaffIds.includes(staff.id)}
-                            onCheckedChange={() => !busyOTId && toggleStaffSelection(staff.id)}
-                            disabled={!!busyOTId}
+                            onCheckedChange={() => toggleStaffSelection(staff.id)}
                           />
                           <label 
                             htmlFor={`staff-${staff.id}`}
-                            className={cn(
-                              "text-xs font-medium leading-none flex-1",
-                              busyOTId ? "cursor-not-allowed" : "cursor-pointer"
-                            )}
+                            className="text-xs font-medium leading-none flex-1 cursor-pointer"
                           >
                             <div className="flex flex-col gap-0.5">
                               <p className="font-bold flex items-center justify-between gap-2">
                                 {staff.name}
                                 {busyOTId && (
                                   <Badge variant="outline" className="text-[8px] h-4 bg-white text-amber-700 border-amber-200">
-                                    OCUPADO: {busyOTId}
+                                    EN OT: {busyOTId}
                                   </Badge>
                                 )}
                               </p>
@@ -337,7 +334,7 @@ export default function NewWorkOrderPage() {
                         {name}
                         <button 
                           type="button" 
-                          onClick={() => toggleStaffSelection(id)}
+                          onClick={(e) => { e.stopPropagation(); toggleStaffSelection(id); }}
                           className="ml-1 rounded-full hover:bg-muted p-0.5"
                         >
                           <Trash2 className="h-3 w-3 text-rose-500" />
