@@ -10,7 +10,8 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      // Validación prioritaria por email para evitar bloqueos de permisos
+      // Validación directa por email (bypass de seguridad para cuenta maestra)
+      // y verificación por colección de superAdmins
       return isSignedIn() && (
         request.auth.token.email == 'control@pcgoperacion.com' ||
         exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
@@ -24,6 +25,7 @@ service cloud.firestore {
 
     function isCompanyMember(companyId) {
       if (!isSignedIn()) return false;
+      if (request.auth.token.email == 'control@pcgoperacion.com') return true;
       if (isSuperAdmin()) return true;
       
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
@@ -33,10 +35,10 @@ service cloud.firestore {
     // --- REGLAS DE COLECCIONES ---
 
     // Colección para la extensión Trigger Email
-    // Usamos comodín recursivo para asegurar compatibilidad total con la extensión
-    match /mail/{allPaths=**} {
-      allow create: if isSignedIn();
-      allow read, write: if isSuperAdmin();
+    // Permitimos explícitamente la creación al administrador maestro
+    match /mail/{mailId} {
+      allow create: if isSignedIn() && (request.auth.token.email == 'control@pcgoperacion.com' || isSuperAdmin());
+      allow read, update, delete: if isSuperAdmin();
     }
 
     match /superAdmins/{userId} {
