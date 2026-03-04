@@ -2,10 +2,9 @@
 {
   "entities": {
     "Company": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Company",
       "type": "object",
-      "description": "Entidad principal que representa a una empresa cliente (tenant).",
+      "description": "Empresa cliente (tenant).",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
@@ -14,16 +13,14 @@
         "isActive": { "type": "boolean" },
         "currentPlan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
         "subscriptionStatus": { "type": "string", "enum": ["active", "past_due", "canceled"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "name", "rut", "isActive", "currentPlan", "createdAt"]
     },
     "Client": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Client",
       "type": "object",
-      "description": "Cliente final al que la empresa presta servicios de mantención.",
+      "description": "Cliente final de la empresa.",
       "properties": {
         "id": { "type": "string" },
         "companyId": { "type": "string" },
@@ -37,27 +34,24 @@
       "required": ["id", "companyId", "name", "rut", "createdAt"]
     },
     "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Perfil de usuario con rol y vinculación a empresa.",
+      "description": "Perfil de usuario con rol.",
       "properties": {
         "id": { "type": "string" },
         "companyId": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "firstName": { "type": "string" },
-        "lastName": { "type": "string" },
+        "name": { "type": "string" },
         "role": { "type": "string", "enum": ["superadmin", "companyAdmin", "supervisor", "tecnico", "reviewer"] },
-        "isActive": { "type": "boolean" },
+        "active": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "email", "role", "isActive", "createdAt"]
+      "required": ["id", "email", "role", "active", "createdAt"]
     },
     "WorkOrder": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "WorkOrder",
       "type": "object",
-      "description": "Orden de trabajo vinculada a una empresa, un cliente y un activo opcional.",
+      "description": "Orden de trabajo de mantenimiento.",
       "properties": {
         "id": { "type": "string" },
         "companyId": { "type": "string" },
@@ -66,19 +60,60 @@
         "description": { "type": "string" },
         "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "aprobada", "rechazada"] },
         "assignedToUserId": { "type": "string" },
-        "reviewerId": { "type": "string" },
         "reviewerRequired": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "executedAt": { "type": "string", "format": "date-time" },
-        "evidenceUrls": { "type": "array", "items": { "type": "string" } }
+        "executedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "companyId", "clientId", "status", "createdAt"]
     },
+    "Asset": {
+      "title": "Asset",
+      "type": "object",
+      "description": "Equipo o activo sujeto a mantenimiento.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "name": { "type": "string" },
+        "code": { "type": "string" },
+        "location": { "type": "string" },
+        "status": { "type": "string", "enum": ["activo", "inactivo", "en mantenimiento"] },
+        "lastMaintenanceAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "companyId", "name", "code", "status"]
+    },
+    "SparePart": {
+      "title": "SparePart",
+      "type": "object",
+      "description": "Repuesto o insumo de inventario.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "stockActual": { "type": "number" },
+        "stockMinimo": { "type": "number" },
+        "unitPrice": { "type": "number" }
+      },
+      "required": ["id", "companyId", "name", "stockActual"]
+    },
+    "PartUsage": {
+      "title": "PartUsage",
+      "type": "object",
+      "description": "Registro de uso de repuestos en una OT.",
+      "properties": {
+        "id": { "type": "string" },
+        "workOrderId": { "type": "string" },
+        "partId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "usedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workOrderId", "partId", "quantity"]
+    },
     "Invoice": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Invoice",
       "type": "object",
-      "description": "Factura electrónica emitida mediante SimpleAPI vinculada a una OT.",
+      "description": "Factura electrónica.",
       "properties": {
         "id": { "type": "string" },
         "companyId": { "type": "string" },
@@ -87,9 +122,6 @@
         "amount": { "type": "number" },
         "status": { "type": "string", "enum": ["pendiente", "enviado", "error", "aceptado_sii"] },
         "simpleApiId": { "type": "string" },
-        "pdfUrl": { "type": "string" },
-        "xmlUrl": { "type": "string" },
-        "issuedBy": { "type": "string" },
         "issuedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "companyId", "clientId", "workOrderId", "amount", "status", "issuedAt"]
@@ -119,21 +151,33 @@
       "schema": { "$ref": "#/backend/entities/Client" },
       "description": "Clientes de la empresa."
     },
+    "/companies/{companyId}/assets/{assetId}": {
+      "schema": { "$ref": "#/backend/entities/Asset" },
+      "description": "Activos de la empresa."
+    },
+    "/companies/{companyId}/spareParts/{partId}": {
+      "schema": { "$ref": "#/backend/entities/SparePart" },
+      "description": "Repuestos en inventario."
+    },
     "/companies/{companyId}/workOrders/{workOrderId}": {
       "schema": { "$ref": "#/backend/entities/WorkOrder" },
-      "description": "Órdenes de trabajo de la empresa."
+      "description": "Órdenes de trabajo."
+    },
+    "/companies/{companyId}/workOrders/{workOrderId}/partUsages/{usageId}": {
+      "schema": { "$ref": "#/backend/entities/PartUsage" },
+      "description": "Uso de repuestos por OT."
     },
     "/companies/{companyId}/workOrders/{workOrderId}/invoices/{invoiceId}": {
       "schema": { "$ref": "#/backend/entities/Invoice" },
-      "description": "Facturas emitidas para una OT específica."
+      "description": "Facturas emitidas."
     },
     "/companies/{companyId}/workOrders/{workOrderId}/digitalLogbookEntries/{entryId}": {
       "schema": { "$ref": "#/backend/entities/DigitalLogbookEntry" },
-      "description": "Entradas del libro digital por OT."
+      "description": "Libro digital."
     },
     "/users/{userId}": {
       "schema": { "$ref": "#/backend/entities/User" },
-      "description": "Perfiles de usuario globales."
+      "description": "Perfiles de usuario."
     }
   }
 }

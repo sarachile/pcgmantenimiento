@@ -7,8 +7,6 @@ export type AssetStatus = 'activo' | 'inactivo' | 'en mantenimiento';
 
 export type DTEStatus = 'pendiente' | 'enviado' | 'error' | 'aceptado_sii';
 
-export type DTEType = 'factura' | 'boleta' | 'guia';
-
 export type PlanType = 'free' | 'pro' | 'enterprise';
 
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled';
@@ -44,6 +42,35 @@ export interface User {
   companyId: string;
   active: boolean;
   createdAt: string;
+}
+
+export interface Asset {
+  id: string;
+  companyId: string;
+  name: string;
+  code: string;
+  location: string;
+  status: AssetStatus;
+  lastMaintenanceAt?: string | any;
+  createdAt: string | any;
+}
+
+export interface SparePart {
+  id: string;
+  companyId: string;
+  name: string;
+  sku: string;
+  stockActual: number;
+  stockMinimo: number;
+  unitPrice: number;
+}
+
+export interface PartUsage {
+  id: string;
+  workOrderId: string;
+  partId: string;
+  quantity: number;
+  usedAt: string | any;
 }
 
 export interface WorkOrder {

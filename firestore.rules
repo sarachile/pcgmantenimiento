@@ -9,16 +9,12 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function isSuperAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
-    }
-    
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
     
-    function getCompanyUser(companyId) {
-      return get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data;
+    function isSuperAdmin() {
+      return isSignedIn() && getUserData().role == 'superadmin';
     }
 
     function isCompanyMember(companyId) {
@@ -28,7 +24,6 @@ service cloud.firestore {
 
     function hasRole(companyId, roles) {
       let globalUser = getUserData();
-      // Validamos contra el perfil global por simplicidad en el prototipo
       return isSignedIn() && (globalUser.role in roles || isSuperAdmin());
     }
 
@@ -38,11 +33,6 @@ service cloud.firestore {
       allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-    }
-
-    match /superAdmins/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isSuperAdmin();
     }
 
     match /companies/{companyId} {
@@ -55,34 +45,37 @@ service cloud.firestore {
         allow write: if hasRole(companyId, ['companyAdmin', 'supervisor']);
       }
 
+      match /assets/{assetId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+        allow delete: if hasRole(companyId, ['companyAdmin']);
+      }
+
+      match /spareParts/{partId} {
+        allow read: if isCompanyMember(companyId);
+        allow create, update, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+      }
+
       match /workOrders/{workOrderId} {
         allow list: if isCompanyMember(companyId);
-        
-        allow get: if isCompanyMember(companyId) && (
-          hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']) ||
-          (resource.data.reviewerId == request.auth.uid)
-        );
-
+        allow get: if isCompanyMember(companyId);
         allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        allow update: if isCompanyMember(companyId);
 
-        allow update: if isCompanyMember(companyId) && (
-          hasRole(companyId, ['companyAdmin', 'supervisor']) ||
-          (resource.data.assignedToUserId == request.auth.uid && request.resource.data.status != 'aprobada') ||
-          (resource.data.reviewerId == request.auth.uid)
-        );
+        match /partUsages/{usageId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+        }
 
         match /digitalLogbookEntries/{entryId} {
           allow read: if isCompanyMember(companyId);
-          allow create: if isCompanyMember(companyId) && request.resource.data.actorUserId == request.auth.uid;
-          allow update, delete: if false; 
+          allow create: if isCompanyMember(companyId);
         }
 
         match /invoices/{invoiceId} {
           allow read: if isCompanyMember(companyId);
-          allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']) && 
-                        get(/databases/$(database)/documents/companies/$(companyId)/workOrders/$(workOrderId)).data.status == 'aprobada';
-          allow update: if isSuperAdmin();
-          allow delete: if false;
+          allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
         }
       }
     }
