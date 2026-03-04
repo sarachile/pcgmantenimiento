@@ -39,35 +39,90 @@ import {
   AlertCircle,
   ArrowLeft,
   Building2,
+  Loader2,
   ShieldCheck
 } from "lucide-react";
 import { MOCK_COMPANIES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { collection, serverTimestamp } from "firebase/firestore";
+import { Company } from "@/lib/types";
 
 export default function AdminCompaniesPage() {
   const { toast } = useToast();
+  const { isSuperAdmin, isLoading: isUserLoading } = useUser();
+  const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Form State
+  const [formData, setFormData] = useState({
+    name: "",
+    rut: "",
+    currentPlan: "free" as any,
+  });
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const filtered = MOCK_COMPANIES.filter(c => 
+  const companiesQuery = useMemoFirebase(() => {
+    if (!db || !isSuperAdmin) return null;
+    return collection(db, "companies");
+  }, [db, isSuperAdmin]);
+
+  const { data: realCompanies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
+
+  const companies = realCompanies && realCompanies.length > 0 ? realCompanies : MOCK_COMPANIES;
+  const isDemo = !realCompanies || realCompanies.length === 0;
+
+  const filtered = companies.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.rut.includes(searchTerm)
   );
 
-  const handleCreateCompany = (e: React.FormEvent) => {
+  const handleCreateCompany = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Función de Administrador",
-      description: "La creación de nuevos tenants está disponible en el plan Enterprise. Esta acción ha sido registrada.",
-    });
-    setIsCreateOpen(false);
+    if (!db) return;
+
+    setIsSubmitting(true);
+    try {
+      const colRef = collection(db, "companies");
+      const companyId = `comp-${Math.random().toString(36).substr(2, 9)}`;
+      
+      const newCompanyData = {
+        id: companyId,
+        name: formData.name,
+        rut: formData.rut || "S/I",
+        address: "Dirección por definir",
+        currentPlan: formData.currentPlan,
+        subscriptionStatus: "active",
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      await addDocumentNonBlocking(colRef, newCompanyData);
+
+      toast({
+        title: "Empresa Registrada",
+        description: `Se ha creado el entorno para ${formData.name} exitosamente.`,
+      });
+      
+      setIsCreateOpen(false);
+      setFormData({ name: "", rut: "", currentPlan: "free" });
+    } catch (error: any) {
+      toast({
+        title: "Error al crear",
+        description: error.message || "No se pudo registrar la empresa.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleImpersonate = (companyName: string) => {
@@ -76,6 +131,14 @@ export default function AdminCompaniesPage() {
       description: `Entrando al entorno de ${companyName}...`,
     });
   };
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -101,21 +164,33 @@ export default function AdminCompaniesPage() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Registrar Nuevo Tenant</DialogTitle>
-              <DialogDescription>Cree un nuevo espacio de trabajo para un cliente corporativo. El RUT podrá ser completado cuando el cliente contrate un plan.</DialogDescription>
+              <DialogDescription>Cree un nuevo espacio de trabajo independiente. No hay restricciones para tu cuenta de Súper Admin.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2">
                   <Label>Nombre de la Empresa / Razón Social *</Label>
-                  <Input placeholder="Ej: Servicios Industriales S.A." required />
+                  <Input 
+                    placeholder="Ej: Servicios Industriales S.A." 
+                    required 
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>RUT Empresa (Opcional)</Label>
-                  <Input placeholder="76.000.000-0" />
+                  <Input 
+                    placeholder="76.000.000-0" 
+                    value={formData.rut}
+                    onChange={(e) => setFormData({...formData, rut: e.target.value})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label>Plan de Suscripción Inicial</Label>
-                  <Select defaultValue="free">
+                  <Label>Plan de Suscripción</Label>
+                  <Select 
+                    value={formData.currentPlan} 
+                    onValueChange={(val) => setFormData({...formData, currentPlan: val})}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -128,7 +203,9 @@ export default function AdminCompaniesPage() {
                 </div>
               </div>
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full">Confirmar Registro</Button>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Confirmar Registro Maestro"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -147,66 +224,68 @@ export default function AdminCompaniesPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">MODO VISTA MOCK</Badge>}
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre / RUT</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Usuarios</TableHead>
-                <TableHead>Fecha Creación</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((company) => (
-                <TableRow key={company.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-bold">{company.name}</span>
-                      <span className="text-xs text-muted-foreground">{company.rut || 'RUT Pendiente'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={cn(
-                      company.subscriptionPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
-                      company.subscriptionPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
-                    )}>
-                      {(company.subscriptionPlan || 'FREE').toUpperCase()}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={cn(
-                      company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                    )}>
-                      {company.subscriptionStatus === 'active' ? 'ACTIVA' : 'BLOQUEADA'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    <div className="flex items-center gap-2">
-                      <span>12 / 50</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {mounted ? new Date(company.createdAt).toLocaleDateString() : '...'}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" title="Configurar Límites" onClick={() => toast({ title: "Configuración", description: "Cargando parámetros de suscripción..." })}>
-                        <Settings2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" title="Entrar como Admin de Empresa" onClick={() => handleImpersonate(company.name)}>
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {isCompaniesLoading ? (
+            <div className="py-10 text-center">
+              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+              Cargando tenantes...
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre / RUT</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha Creación</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((company) => (
+                  <TableRow key={company.id}>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-bold">{company.name}</span>
+                        <span className="text-xs text-muted-foreground">{company.rut || 'RUT Pendiente'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={cn(
+                        company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
+                        company.currentPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
+                      )}>
+                        {(company.currentPlan || 'FREE').toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={cn(
+                        company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                      )}>
+                        {company.subscriptionStatus === 'active' ? 'ACTIVA' : 'BLOQUEADA'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {mounted ? new Date(company.createdAt).toLocaleDateString() : '...'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" title="Configurar Límites" onClick={() => toast({ title: "Configuración", description: "Cargando parámetros de suscripción..." })}>
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" title="Entrar como Admin de Empresa" onClick={() => handleImpersonate(company.name)}>
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
