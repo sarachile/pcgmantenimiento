@@ -15,49 +15,21 @@
         "currentPlan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
         "subscriptionStatus": { "type": "string", "enum": ["active", "past_due", "canceled"] },
         "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "name", "rut", "isActive", "currentPlan", "createdAt"]
+      }
     },
-    "Client": {
-      "title": "Client",
+    "StaffMember": {
+      "title": "StaffMember",
       "type": "object",
-      "description": "Cliente final de la empresa.",
+      "description": "Personal operativo que interviene en las tareas.",
       "properties": {
         "id": { "type": "string" },
         "companyId": { "type": "string" },
         "name": { "type": "string" },
-        "rut": { "type": "string" },
-        "address": { "type": "string" },
-        "contactName": { "type": "string" },
-        "contactEmail": { "type": "string", "format": "email" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "companyId", "name", "rut", "createdAt"]
-    },
-    "User": {
-      "title": "User",
-      "type": "object",
-      "description": "Perfil de usuario con rol.",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "name": { "type": "string" },
-        "role": { "type": "string", "enum": ["superadmin", "companyAdmin", "supervisor", "tecnico", "reviewer"] },
+        "role": { "type": "string", "description": "Técnico, Especialista, Subcontrato, etc." },
+        "identification": { "type": "string" },
+        "phone": { "type": "string" },
         "active": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "email", "role", "active", "createdAt"]
-    },
-    "SuperAdmin": {
-      "title": "SuperAdmin",
-      "type": "object",
-      "description": "Registro privilegiado de administradores maestros.",
-      "properties": {
-        "id": { "type": "string" },
-        "email": { "type": "string" },
-        "name": { "type": "string" },
-        "grantedAt": { "type": "string", "format": "date-time" }
       }
     },
     "WorkOrder": {
@@ -66,72 +38,14 @@
       "description": "Orden de trabajo de mantenimiento.",
       "properties": {
         "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "clientId": { "type": "string" },
-        "assetId": { "type": "string" },
-        "description": { "type": "string" },
-        "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "aprobada", "rechazada"] },
-        "assignedToUserId": { "type": "string" },
-        "reviewerRequired": { "type": "boolean" },
-        "scheduledDate": { "type": "string", "format": "date-time" },
-        "durationDays": { "type": "number" },
-        "estimatedEndDate": { "type": "string", "format": "date-time" },
-        "checklist": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "task": { "type": "string" },
-              "completed": { "type": "boolean" },
-              "completedAt": { "type": "string", "format": "date-time" }
-            }
-          }
-        },
-        "clientSignatureUrl": { "type": "string" },
-        "technicianSignatureUrl": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "executedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "EmailNotification": {
-      "title": "EmailNotification",
-      "type": "object",
-      "description": "Documento para la extensión Trigger Email.",
-      "properties": {
-        "to": { "type": "string", "format": "email" },
-        "message": {
-          "type": "object",
-          "properties": {
-            "subject": { "type": "string" },
-            "html": { "type": "string" }
-          }
-        },
-        "delivery": {
-          "type": "object",
-          "properties": {
-            "state": { "type": "string" },
-            "error": { "type": "string" }
-          }
-        }
+        "assignedToStaffId": { "type": "string", "description": "Referencia al personal operativo." }
       }
     }
   },
-  "auth": {
-    "providers": ["password"]
-  },
   "firestore": {
-    "/companies/{companyId}": {
-      "schema": { "$ref": "#/backend/entities/Company" },
-      "description": "Documentos de empresa."
-    },
-    "/mail/{mailId}": {
-      "schema": { "$ref": "#/backend/entities/EmailNotification" },
-      "description": "Envíos de correo automáticos."
-    },
-    "/users/{userId}": {
-      "schema": { "$ref": "#/backend/entities/User" },
-      "description": "Perfiles de usuario."
+    "/companies/{companyId}/staff/{staffId}": {
+      "schema": { "$ref": "#/backend/entities/StaffMember" },
+      "description": "Personal operativo de la empresa."
     }
   }
 }

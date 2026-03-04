@@ -46,6 +46,18 @@ export interface User {
   createdAt: string;
 }
 
+export interface StaffMember {
+  id: string;
+  companyId: string;
+  name: string;
+  role: string; // Técnico, Especialista, Subcontrato, Supervisor, etc.
+  identification?: string; // RUT o ID interno
+  phone?: string;
+  email?: string;
+  active: boolean;
+  createdAt: string | any;
+}
+
 export interface Asset {
   id: string;
   companyId: string;
@@ -91,10 +103,8 @@ export interface WorkOrder {
   assetId?: string;
   description: string;
   status: OTStatus;
-  assignedTo?: string;
-  assignedToUserId?: string;
+  assignedToStaffId?: string; // Ahora apunta a StaffMember
   createdByUserId: string;
-  reviewerId?: string;
   reviewerRequired: boolean;
   scheduledDate?: string | any;
   durationDays?: number;
@@ -110,20 +120,6 @@ export interface WorkOrder {
   rejectedReason?: string;
   evidenceUrls?: string[];
   aiSummary?: string;
-}
-
-export interface Invoice {
-  id: string;
-  companyId: string;
-  clientId: string;
-  workOrderId: string;
-  amount: number;
-  status: DTEStatus;
-  simpleApiId?: string;
-  pdfUrl?: string;
-  xmlUrl?: string;
-  issuedBy: string;
-  issuedAt: string | any;
 }
 
 export interface DigitalLogbookEntry {

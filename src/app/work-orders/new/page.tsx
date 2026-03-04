@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,11 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat } from "lucide-react";
 import Link from "next/link";
-import { MOCK_USERS, MOCK_CLIENTS, MOCK_ASSETS } from "@/lib/mock-data";
 import { addDays, format, parseISO } from "date-fns";
-import { Client, Asset, User } from "@/lib/types";
+import { Client, Asset, StaffMember } from "@/lib/types";
 
 export default function NewWorkOrderPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -28,7 +28,7 @@ export default function NewWorkOrderPage() {
   const [clientId, setClientId] = useState("");
   const [assetId, setAssetId] = useState("");
   const [reviewerRequired, setReviewerRequired] = useState(false);
-  const [assignedTo, setAssignedTo] = useState("");
+  const [assignedToStaffId, setAssignedToStaffId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Schedule state
@@ -75,11 +75,7 @@ export default function NewWorkOrderPage() {
     }
 
     if (!profile?.companyId) {
-      toast({
-        title: "Error de sesión",
-        description: "No se pudo identificar su empresa.",
-        variant: "destructive",
-      });
+      toast({ title: "Error de sesión", description: "No se pudo identificar su empresa.", variant: "destructive" });
       return;
     }
 
@@ -93,7 +89,7 @@ export default function NewWorkOrderPage() {
         assetId: assetId || null,
         description: description.trim(),
         status: "creada",
-        assignedToUserId: assignedTo || null,
+        assignedToStaffId: assignedToStaffId || null,
         createdByUserId: profile.id,
         reviewerRequired,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
@@ -109,19 +105,10 @@ export default function NewWorkOrderPage() {
       };
 
       const docRef = await addDoc(colRef, newOT);
-
-      toast({
-        title: "Orden Creada",
-        description: `OT generada exitosamente para el ${scheduledDate}.`,
-      });
-
+      toast({ title: "Orden Creada", description: "OT generada exitosamente." });
       router.push(`/work-orders/${docRef.id}`);
     } catch (error: any) {
-      toast({
-        title: "Error al guardar",
-        description: "No se pudo guardar la orden.",
-        variant: "destructive",
-      });
+      toast({ title: "Error al guardar", description: "No se pudo guardar la orden.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -138,26 +125,14 @@ export default function NewWorkOrderPage() {
     return collection(db, "companies", profile.companyId, "clients");
   }, [db, profile?.companyId]);
 
-  const usersQuery = useMemoFirebase(() => {
+  const staffQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
-    return query(collection(db, "users"), where("companyId", "==", profile.companyId));
+    return query(collection(db, "companies", profile.companyId, "staff"), where("active", "==", true));
   }, [db, profile?.companyId]);
 
   const { data: realAssets } = useCollection<Asset>(assetsQuery);
   const { data: realClients } = useCollection<Client>(clientsQuery);
-  const { data: realUsers } = useCollection<User>(usersQuery);
-
-  const technicians = (realUsers && realUsers.length > 0) 
-    ? realUsers.filter(u => u.role === 'tecnico') 
-    : MOCK_USERS.filter(u => u.role === 'tecnico' && u.companyId === profile?.companyId);
-
-  const clients = (realClients && realClients.length > 0)
-    ? realClients
-    : MOCK_CLIENTS.filter(c => c.companyId === profile?.companyId);
-
-  const assets = (realAssets && realAssets.length > 0) 
-    ? realAssets 
-    : MOCK_ASSETS.filter(a => a.companyId === profile?.companyId);
+  const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
 
   if (isUserLoading) {
     return (
@@ -171,13 +146,11 @@ export default function NewWorkOrderPage() {
     <div className="max-w-3xl mx-auto space-y-6 px-4 py-8">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/work-orders">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+          <Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground italic">Planificación técnica con cronograma automático.</p>
+          <p className="text-sm text-muted-foreground italic">Planificación técnica con asignación de equipo.</p>
         </div>
       </div>
 
@@ -187,21 +160,18 @@ export default function NewWorkOrderPage() {
             <ClipboardPlus className="h-5 w-5 text-primary" />
             Detalles de la Operación
           </CardTitle>
-          <CardDescription>
-            Defina el cronograma, alcance y protocolo de pasos.
-          </CardDescription>
         </CardHeader>
         <form onSubmit={handleCreate}>
           <CardContent className="space-y-6 pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="client" className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Cliente *</Label>
+                <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger id="client">
+                  <SelectTrigger>
                     <SelectValue placeholder="Seleccione un cliente..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {clients.map(client => (
+                    {(realClients || []).map(client => (
                       <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -209,13 +179,13 @@ export default function NewWorkOrderPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="asset" className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Activo / Equipo</Label>
+                <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger id="asset">
+                  <SelectTrigger>
                     <SelectValue placeholder="Seleccione equipo (Opcional)..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {assets.map(asset => (
+                    {(realAssets || []).map(asset => (
                       <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
                     ))}
                   </SelectContent>
@@ -229,22 +199,13 @@ export default function NewWorkOrderPage() {
                   <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
                     <CalendarIcon className="h-3 w-3" /> Inicio Ejecución
                   </Label>
-                  <Input 
-                    type="date" 
-                    value={scheduledDate}
-                    onChange={(e) => setScheduledDate(e.target.value)}
-                  />
+                  <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
                     <Clock className="h-3 w-3" /> Días de Plazo
                   </Label>
-                  <Input 
-                    type="number" 
-                    min="1"
-                    value={durationDays}
-                    onChange={(e) => setDurationDays(Number(e.target.value))}
-                  />
+                  <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value))} />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase text-muted-foreground">Término Estimado</Label>
@@ -255,28 +216,27 @@ export default function NewWorkOrderPage() {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="technician" className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Técnico Asignado</Label>
-                <Select value={assignedTo} onValueChange={setAssignedTo}>
-                  <SelectTrigger id="technician">
-                    <SelectValue placeholder="Asignar más tarde..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {technicians.map(tech => (
-                      <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider flex items-center gap-2">
+                <HardHat className="h-3 w-3" /> Personal Operativo Asignado
+              </Label>
+              <Select value={assignedToStaffId} onValueChange={setAssignedToStaffId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccione del equipo de trabajo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(staffMembers || []).map(staff => (
+                    <SelectItem key={staff.id} value={staff.id}>{staff.name} ({staff.role})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground italic">Si no aparece alguien, regístrelo primero en la tarjeta "Equipo de Trabajo".</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Descripción del Trabajo *</Label>
+              <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Descripción del Trabajo *</Label>
               <Textarea 
-                id="description" 
-                placeholder="Ej: Mantención preventiva de camión o reparación de tabique..." 
-                required
+                placeholder="Ej: Mantención preventiva..." 
                 className="min-h-[100px]"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -288,42 +248,25 @@ export default function NewWorkOrderPage() {
                 <ListChecks className="h-4 w-4 text-primary" />
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Protocolo de Trabajo (Checklist)</Label>
               </div>
-              
               <div className="flex gap-2">
                 <Input 
-                  placeholder="Añadir tarea de verificación..." 
+                  placeholder="Añadir tarea..." 
                   value={newTask} 
                   onChange={(e) => setNewTask(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}
                 />
-                <Button type="button" onClick={handleAddTask} variant="outline" size="icon">
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <Button type="button" onClick={handleAddTask} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
               </div>
-
               {checklist.length > 0 && (
                 <div className="space-y-2 border rounded-lg p-3 bg-muted/20">
                   {checklist.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between bg-card p-2 rounded border shadow-sm">
                       <span className="text-sm">{idx + 1}. {item.task}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeTask(idx)}>
-                        <Trash2 className="h-4 w-4 text-rose-500" />
-                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeTask(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
-
-            <div className="flex items-center justify-between p-4 border rounded-xl bg-accent/5">
-              <div className="space-y-0.5">
-                <Label className="font-bold">Requiere Revisión Administrativa</Label>
-                <p className="text-xs text-muted-foreground">Obliga a un supervisor a aprobar la OT una vez ejecutada.</p>
-              </div>
-              <Switch 
-                checked={reviewerRequired}
-                onCheckedChange={setReviewerRequired}
-              />
             </div>
           </CardContent>
           <CardFooter className="flex justify-between border-t p-6 bg-muted/20 rounded-b-lg">

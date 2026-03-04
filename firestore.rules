@@ -48,31 +48,23 @@ service cloud.firestore {
     }
 
     // =========================
-    // 📧 MAIL (LOGS DE SERVER ACTIONS)
+    // 📧 MAIL (SERVER ACTIONS)
     // =========================
 
     match /mail/{mailId} {
       allow read: if isSuperAdmin();
-      allow create, update: if isSignedIn() && (isSuperAdmin() || getUserData().role == 'companyAdmin');
-      allow delete: if false;
+      allow create, update: if isSignedIn();
     }
 
     // =========================
-    // 👤 USERS
+    // 👤 USERS (ACCESO SISTEMA)
     // =========================
 
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-      
-      // Permitir listar para validar límites durante el registro (obligatorio para el flujo signup)
+      allow get: if isSignedIn();
       allow list: if true; 
-
       allow create: if isSignedIn();
-      allow update: if isSignedIn() &&
-        (
-          request.auth.uid == userId ||
-          isSuperAdmin()
-        );
+      allow update: if isSignedIn();
       allow delete: if isSuperAdmin();
     }
 
@@ -85,11 +77,15 @@ service cloud.firestore {
     // =========================
 
     match /companies/{companyId} {
-      // Permitir 'get' para validar el código de vinculación durante el registro sin estar logueado aún
       allow get: if true; 
-      
       allow list: if isSuperAdmin();
       allow create, update, delete: if isSuperAdmin();
+
+      // ---------- STAFF (PERSONAL OPERATIVO) ----------
+      match /staff/{staffId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+      }
 
       // ---------- CLIENTS ----------
       match /clients/{clientId} {
@@ -100,47 +96,24 @@ service cloud.firestore {
       // ---------- ASSETS ----------
       match /assets/{assetId} {
         allow read: if isCompanyMember(companyId);
-        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
-        allow delete: if hasRole(companyId, ['companyAdmin']);
-      }
-
-      // ---------- SPARE PARTS ----------
-      match /spareParts/{partId} {
-        allow read: if isCompanyMember(companyId);
-        allow create, update, delete: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
       }
 
       // ---------- WORK ORDERS ----------
       match /workOrders/{workOrderId} {
         allow list, get: if isCompanyMember(companyId);
-        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
-        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
+        allow create, update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
         allow delete: if hasRole(companyId, ['companyAdmin']);
 
-        // ---- PART USAGES ----
-        match /partUsages/{usageId} {
-          allow read: if isCompanyMember(companyId);
-          allow create: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
-        }
+        match /partUsages/{usageId} { allow read, write: if isCompanyMember(companyId); }
+        match /digitalLogbookEntries/{entryId} { allow read, write: if isCompanyMember(companyId); }
+      }
 
-        // ---- LOGBOOK ----
-        match /digitalLogbookEntries/{entryId} {
-          allow read: if isCompanyMember(companyId);
-          allow create: if isCompanyMember(companyId);
-        }
-
-        // ---- INVOICES ----
-        match /invoices/{invoiceId} {
-          allow read: if isCompanyMember(companyId);
-          allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-        }
+      // ---------- SPARE PARTS ----------
+      match /spareParts/{partId} {
+        allow read, write: if isCompanyMember(companyId);
       }
     }
-
-    // =========================
-    // 🔒 DEFAULT DENY
-    // =========================
 
     match /{document=**} {
       allow read, write: if false;
