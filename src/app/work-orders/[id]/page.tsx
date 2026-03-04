@@ -378,7 +378,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <div className="text-center md:text-left space-y-2">
                 <h3 className="font-black text-indigo-900 uppercase">Esperando Validación Externa</h3>
                 <p className="text-sm text-slate-600">El cliente debe evaluar y firmar vía QR o link de correo.</p>
-                <Button variant="outline" size="sm" asChild><a href={currentUrl} target="_blank">Abrir Portal Cliente</a></Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" asChild><a href={currentUrl} target="_blank">Abrir Portal Cliente</a></Button>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    navigator.clipboard.writeText(currentUrl);
+                    toast({ title: "Copiado", description: "Enlace de validación copiado al portapapeles." });
+                  }}><ExternalLink className="h-3 w-3 mr-2" /> Copiar Link</Button>
+                </div>
               </div>
             </Card>
           )}

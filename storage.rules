@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
@@ -6,8 +7,10 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Solución SaaS: Permitir lectura pública para reportes y escritura para firmas de clientes
-    // La seguridad reside en que el ID de la OT actúa como un token secreto
+    // Solución SaaS: Permitir lectura pública para reportes y escritura para firmas/evidencias
+    // La seguridad reside en que el ID de la OT es largo y actúa como un token secreto.
+    // Permitimos escritura pública para que el portal de cliente (que puede no tener sesión)
+    // suba su firma sin conflictos de token.
     match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
       allow read: if true;
       allow write: if true; 

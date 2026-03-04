@@ -111,7 +111,7 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
   const [asset, setAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState(1); // 1: Review, 2: Evaluation, 3: Signature, 4: Success, 5: Rejection
+  const [step, setStep] = useState(1); // 1: Review, 2: Evaluation, 3: Signature, 4: Success, 5: Rejection, 6: Confirm Reject
   const [rejectionReason, setRejectionReason] = useState("");
 
   const [ratings, setRatings] = useState({ quality: 0, timing: 0, safety: 0, documentation: 0 });
@@ -379,8 +379,8 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
               <CardContent className="p-6">
                 <SignaturePad isSaving={isSubmitting} onSave={handleFinalApprove} />
               </CardContent>
+              <Button variant="ghost" className="w-full text-slate-400 font-bold" onClick={() => setStep(2)}>Volver a evaluación</Button>
             </Card>
-            <Button variant="ghost" className="w-full text-slate-400 font-bold" onClick={() => setStep(2)}>Volver a evaluación</Button>
           </div>
         )}
 

@@ -19,15 +19,18 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let path = /databases/$(database)/documents/users/$(request.auth.uid);
+      return exists(path) ? get(path).data : null;
     }
 
     function isCompanyMember(companyId) {
-      return isSignedIn() && (isPlatformAdmin() || getUserData().companyId == companyId);
+      let userData = getUserData();
+      return isSignedIn() && (isPlatformAdmin() || (userData != null && userData.companyId == companyId));
     }
 
     function hasRole(role) {
-      return isSignedIn() && (isPlatformAdmin() || getUserData().role == role);
+      let userData = getUserData();
+      return isSignedIn() && (isPlatformAdmin() || (userData != null && userData.role == role));
     }
 
     function isOwner(userId) {
@@ -52,7 +55,7 @@ service cloud.firestore {
 
     match /companies/{companyId} {
       // Allow public get for the customer portal branding
-      allow get: if isCompanyMember(companyId) || true;
+      allow get: if true;
       allow list: if isPlatformAdmin();
       allow create: if isPlatformAdmin();
       allow update: if isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin'));
@@ -64,14 +67,14 @@ service cloud.firestore {
 
       match /clients/{clientId} {
         // Public get for portal info
-        allow get: if isCompanyMember(companyId) || true;
+        allow get: if true;
         allow list: if isCompanyMember(companyId);
         allow write: if isCompanyMember(companyId);
       }
 
       match /assets/{assetId} {
         // Public get for portal info
-        allow get: if isCompanyMember(companyId) || true;
+        allow get: if true;
         allow list: if isCompanyMember(companyId);
         allow write: if isCompanyMember(companyId);
       }
@@ -87,16 +90,16 @@ service cloud.firestore {
         allow get: if true; 
         allow list: if isCompanyMember(companyId);
         allow create: if isCompanyMember(companyId);
-        // Clients can update status/signature from portal
+        // Clients can update status/signature from portal if status is right
         allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
         allow delete: if isCompanyMember(companyId);
         
         match /digitalLogbookEntries/{entryId} {
-          allow read: if isCompanyMember(companyId) || true;
-          allow write: if isCompanyMember(companyId);
+          allow read: if true;
+          allow write: if isCompanyMember(companyId) || (get(/databases/$(database)/documents/companies/$(companyId)/workOrders/$(workOrderId)).data.status == 'pendiente cliente');
         }
         match /partUsages/{usageId} {
-          allow read: if isCompanyMember(companyId) || true;
+          allow read: if true;
           allow write: if isCompanyMember(companyId);
         }
       }
