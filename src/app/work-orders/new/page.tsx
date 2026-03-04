@@ -38,7 +38,7 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
-  // Usar IDs primitivos para las dependencias de las queries para evitar re-renders infinitos
+  // CRITICAL: Use primitive companyId for dependency stability to prevent infinite loops in Radix UI
   const companyId = profile?.companyId || "";
 
   const clientsQuery = useMemoFirebase(() => 
