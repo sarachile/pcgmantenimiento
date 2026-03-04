@@ -23,6 +23,7 @@ import {
   Plus, 
   Calendar as CalendarIcon, 
   ArrowRight,
+  ArrowLeft,
   Loader2,
   Clock,
   ClipboardList
@@ -91,9 +92,16 @@ export default function CalendarPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Calendario Operacional</h2>
-          <p className="text-muted-foreground">Planificación visual de servicios y mantenciones preventivas.</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Calendario Operacional</h2>
+            <p className="text-muted-foreground">Planificación visual de servicios y mantenciones preventivas.</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">MODO DEMO</Badge>}
