@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -39,7 +40,7 @@ export default function SignupPage() {
       let targetCompanyId = isSuperAdminAccount ? 'pcg-central' : companyCode.trim();
       let role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin'; 
 
-      // 1. SI NO ES SUPERADMIN, VALIDAR EMPRESA
+      // 1. VALIDACIÓN PRE-REGISTRO (Solo para usuarios normales)
       if (!isSuperAdminAccount) {
         if (!targetCompanyId) {
           throw new Error("Debe ingresar el código de vinculación de su empresa.");
@@ -68,10 +69,18 @@ export default function SignupPage() {
           throw new Error(`La empresa ha alcanzado el límite de ${maxUsers} usuarios para el plan ${currentPlan.toUpperCase()}.`);
         }
 
+        // Si ya hay un administrador, el siguiente es técnico por defecto
         if (usersSnap.size > 0) {
           role = 'tecnico';
         }
-      } else {
+      }
+
+      // 2. Crear usuario en Auth (A partir de aquí estamos autenticados)
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      const userId = userCredential.user.uid;
+
+      // 3. Si es Super Admin, asegurar que la empresa central exista (ahora tenemos auth)
+      if (isSuperAdminAccount) {
         const centralSnap = await getDoc(doc(db, 'companies', 'pcg-central'));
         if (!centralSnap.exists()) {
           await setDoc(doc(db, 'companies', 'pcg-central'), {
@@ -87,11 +96,7 @@ export default function SignupPage() {
         }
       }
 
-      // 2. Crear usuario en Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-      const userId = userCredential.user.uid;
-
-      // 3. Crear Perfil de Usuario
+      // 4. Crear Perfil de Usuario
       await setDoc(doc(db, 'users', userId), {
         id: userId,
         email: cleanEmail,
@@ -102,7 +107,7 @@ export default function SignupPage() {
         createdAt: new Date().toISOString(),
       });
 
-      // 4. Registro en colección de Súper Administradores si corresponde
+      // 5. Registro en colección de Súper Administradores si corresponde
       if (isSuperAdminAccount) {
         await setDoc(doc(db, 'superAdmins', userId), {
           id: userId,

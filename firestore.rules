@@ -62,10 +62,10 @@ service cloud.firestore {
     // =========================
 
     match /users/{userId} {
-      allow get: if isSignedIn() || request.auth.uid == userId;
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       
-      // Permitir listar para validar límites durante el registro
-      allow list: if isSignedIn();
+      // Permitir listar para validar límites durante el registro (obligatorio para el flujo signup)
+      allow list: if true; 
 
       allow create: if isSignedIn();
       allow update: if isSignedIn() &&
@@ -85,7 +85,7 @@ service cloud.firestore {
     // =========================
 
     match /companies/{companyId} {
-      // Permitir 'get' público para validar el código de vinculación en el registro
+      // Permitir 'get' para validar el código de vinculación durante el registro sin estar logueado aún
       allow get: if true; 
       
       allow list: if isSuperAdmin();
