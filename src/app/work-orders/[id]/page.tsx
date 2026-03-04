@@ -35,7 +35,10 @@ import {
   ShieldCheck,
   Zap,
   MessageSquare,
-  HardHat
+  HardHat,
+  Signature as SignatureIcon,
+  Eraser,
+  Check
 } from "lucide-react";
 import {
   Dialog,
@@ -67,6 +70,103 @@ import Image from "next/image";
 import { ChecklistItem, WorkOrder, DigitalLogbookEntry } from "@/lib/types";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 
+// Simple Signature Pad Component using Canvas
+function SignaturePad({ onSave, onCancel, isSaving, title }: { 
+  onSave: (blob: Blob) => void, 
+  onCancel: () => void, 
+  isSaving: boolean,
+  title: string
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#000';
+  }, []);
+
+  const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
+    setIsDrawing(true);
+    draw(e);
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx?.beginPath();
+  };
+
+  const draw = (e: React.MouseEvent | React.TouchEvent) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx?.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const handleSave = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob((blob) => {
+      if (blob) onSave(blob);
+    }, 'image/png');
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="border-2 border-dashed rounded-lg bg-white overflow-hidden touch-none">
+        <canvas
+          ref={canvasRef}
+          width={400}
+          height={200}
+          className="w-full cursor-crosshair"
+          onMouseDown={startDrawing}
+          onMouseUp={stopDrawing}
+          onMouseMove={draw}
+          onTouchStart={startDrawing}
+          onTouchEnd={stopDrawing}
+          onTouchMove={draw}
+        />
+      </div>
+      <div className="flex justify-between gap-2">
+        <Button variant="outline" size="sm" onClick={clearCanvas} disabled={isSaving}>
+          <Eraser className="h-4 w-4 mr-2" /> Limpiar
+        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSaving}>Cancelar</Button>
+          <Button size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+            Guardar Firma
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
@@ -81,6 +181,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
+  const [isSavingSignature, setIsSavingSignature] = useState(false);
+  const [signatureType, setSignatureType] = useState<'client' | 'technician' | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -166,7 +268,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
     setIsUploading(true);
     try {
-      const storagePath = `companies/${profile.companyId}/workOrders/${ot.id}/${Date.now()}_${file.name}`;
+      const storagePath = `companies/${profile.companyId}/workOrders/${ot.id}/evidence/${Date.now()}_${file.name}`;
       const imageRef = ref(storage, storagePath);
       
       await uploadBytes(imageRef, file);
@@ -193,6 +295,46 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSaveSignature = async (blob: Blob) => {
+    if (!signatureType || isMock || !profile || !ot || !otRef) {
+      if (isMock) toast({ title: "Modo Demo", description: "La firma requiere una base de datos real." });
+      return;
+    }
+
+    setIsSavingSignature(true);
+    try {
+      const fileName = `${signatureType}_signature_${Date.now()}.png`;
+      const storagePath = `companies/${profile.companyId}/workOrders/${ot.id}/signatures/${fileName}`;
+      const signatureRef = ref(storage, storagePath);
+
+      await uploadBytes(signatureRef, blob);
+      const downloadUrl = await getDownloadURL(signatureRef);
+
+      const updateData: any = { updatedAt: serverTimestamp() };
+      if (signatureType === 'client') updateData.clientSignatureUrl = downloadUrl;
+      else updateData.technicianSignatureUrl = downloadUrl;
+
+      updateDocumentNonBlocking(otRef, updateData);
+
+      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
+      await addDoc(logRef, {
+        workOrderId: ot.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'action_taken',
+        eventDetails: `Firma de ${signatureType === 'client' ? 'Cliente' : 'Técnico'} capturada.`,
+        actor: profile.id,
+      });
+
+      toast({ title: "Firma guardada", description: "El documento ha sido firmado exitosamente." });
+      setSignatureType(null);
+    } catch (error: any) {
+      toast({ title: "Error al firmar", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSavingSignature(false);
     }
   };
 
@@ -452,6 +594,76 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               ) : (
                 <div className="text-center py-6 text-muted-foreground italic text-sm">Sin protocolo definido.</div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <SignatureIcon className="h-5 w-5 text-primary" /> Cierre y Firmas Digitales
+              </CardTitle>
+              <CardDescription>Validación formal de la ejecución y recepción conforme.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <Label className="text-xs font-bold uppercase text-muted-foreground">Firma Técnico Responsable</Label>
+                  {ot.technicianSignatureUrl ? (
+                    <div className="border rounded-lg bg-white p-2 aspect-video relative">
+                      <Image src={ot.technicianSignatureUrl} alt="Firma Técnico" fill className="object-contain" />
+                    </div>
+                  ) : (
+                    <Dialog open={signatureType === 'technician'} onOpenChange={(open) => !open && setSignatureType(null)}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full" onClick={() => setSignatureType('technician')} disabled={isMock}>
+                          <Plus className="h-4 w-4 mr-2" /> Firmar como Técnico
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Firma del Técnico</DialogTitle>
+                          <DialogDescription>Use su dedo o mouse para firmar en el recuadro.</DialogDescription>
+                        </DialogHeader>
+                        <SignaturePad 
+                          title="Técnico" 
+                          isSaving={isSavingSignature} 
+                          onCancel={() => setSignatureType(null)} 
+                          onSave={handleSaveSignature} 
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-xs font-bold uppercase text-muted-foreground">Firma Cliente (Recepción)</Label>
+                  {ot.clientSignatureUrl ? (
+                    <div className="border rounded-lg bg-white p-2 aspect-video relative">
+                      <Image src={ot.clientSignatureUrl} alt="Firma Cliente" fill className="object-contain" />
+                    </div>
+                  ) : (
+                    <Dialog open={signatureType === 'client'} onOpenChange={(open) => !open && setSignatureType(null)}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full" onClick={() => setSignatureType('client')} disabled={isMock}>
+                          <Plus className="h-4 w-4 mr-2" /> Capturar Firma Cliente
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Firma del Cliente</DialogTitle>
+                          <DialogDescription>Solicite al cliente que firme en el recuadro para confirmar recepción.</DialogDescription>
+                        </DialogHeader>
+                        <SignaturePad 
+                          title="Cliente" 
+                          isSaving={isSavingSignature} 
+                          onCancel={() => setSignatureType(null)} 
+                          onSave={handleSaveSignature} 
+                        />
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
 

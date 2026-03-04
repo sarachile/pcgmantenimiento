@@ -74,6 +74,8 @@
             "required": ["id", "task", "completed"]
           }
         },
+        "clientSignatureUrl": { "type": "string" },
+        "technicianSignatureUrl": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" },
         "executedAt": { "type": "string", "format": "date-time" }
       },
