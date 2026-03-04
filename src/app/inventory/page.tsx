@@ -13,6 +13,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   Search, 
   Plus, 
@@ -23,16 +33,29 @@ import {
   Loader2,
   ArrowLeft
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
+import { collection, serverTimestamp } from "firebase/firestore";
 import { MOCK_SPARE_PARTS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 export default function InventoryPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  // Form states
+  const [newItem, setNewItem] = useState({
+    name: "",
+    sku: "",
+    stockActual: "",
+    stockMinimo: "",
+    unitPrice: ""
+  });
 
   const inventoryQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -48,6 +71,50 @@ export default function InventoryPage() {
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleCreateItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile?.companyId || !db) return;
+
+    if (!newItem.name || !newItem.sku || !newItem.stockActual) {
+      toast({
+        title: "Campos incompletos",
+        description: "Por favor complete los campos obligatorios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsAdding(true);
+    try {
+      const colRef = collection(db, "companies", profile.companyId, "spareParts");
+      await addDocumentNonBlocking(colRef, {
+        companyId: profile.companyId,
+        name: newItem.name,
+        sku: newItem.sku,
+        stockActual: Number(newItem.stockActual),
+        stockMinimo: Number(newItem.stockMinimo) || 0,
+        unitPrice: Number(newItem.unitPrice) || 0,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({
+        title: "Ítem registrado",
+        description: `${newItem.name} ha sido añadido al catálogo.`,
+      });
+      
+      setNewItem({ name: "", sku: "", stockActual: "", stockMinimo: "", unitPrice: "" });
+      setOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo registrar el ítem.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   if (isAuthLoading) {
     return (
@@ -75,9 +142,80 @@ export default function InventoryPage() {
           <Button variant="outline">
              <TrendingDown className="mr-2 h-4 w-4" /> Ajuste de Stock
           </Button>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
-          </Button>
+          
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Registrar Nuevo Ítem</DialogTitle>
+                <DialogDescription>
+                  Añada un nuevo material o insumo al catálogo maestro de su empresa.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateItem} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre del Ítem *</Label>
+                  <Input 
+                    id="name" 
+                    placeholder="Ej: Filtro de Aire, Aceite 10W40..." 
+                    value={newItem.name}
+                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sku">Referencia / SKU *</Label>
+                  <Input 
+                    id="sku" 
+                    placeholder="Código interno o de fabricante" 
+                    value={newItem.sku}
+                    onChange={(e) => setNewItem({...newItem, sku: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Stock Inicial *</Label>
+                    <Input 
+                      id="stock" 
+                      type="number" 
+                      value={newItem.stockActual}
+                      onChange={(e) => setNewItem({...newItem, stockActual: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="min-stock">Stock Mínimo</Label>
+                    <Input 
+                      id="min-stock" 
+                      type="number" 
+                      value={newItem.stockMinimo}
+                      onChange={(e) => setNewItem({...newItem, stockMinimo: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Precio Unitario ($)</Label>
+                  <Input 
+                    id="price" 
+                    type="number" 
+                    value={newItem.unitPrice}
+                    onChange={(e) => setNewItem({...newItem, unitPrice: e.target.value})}
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="submit" disabled={isAdding}>
+                    {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Guardar en Catálogo
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -96,7 +234,7 @@ export default function InventoryPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-amber-600">
-              {parts.filter(p => p.stockActual <= p.stockMinimo).length}
+              {parts.filter(p => Number(p.stockActual) <= Number(p.stockMinimo)).length}
             </div>
           </CardContent>
         </Card>
@@ -106,7 +244,7 @@ export default function InventoryPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              ${parts.reduce((acc, p) => acc + (p.stockActual * p.unitPrice), 0).toLocaleString()}
+              ${parts.reduce((acc, p) => acc + (Number(p.stockActual) * Number(p.unitPrice || 0)), 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -159,18 +297,18 @@ export default function InventoryPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm font-medium">
-                      ${part.unitPrice.toLocaleString()}
+                      ${Number(part.unitPrice || 0).toLocaleString()}
                     </TableCell>
                     <TableCell>
                       <span className={cn(
                         "font-bold",
-                        part.stockActual <= part.stockMinimo ? "text-rose-600" : "text-foreground"
+                        Number(part.stockActual) <= Number(part.stockMinimo) ? "text-rose-600" : "text-foreground"
                       )}>
                         {part.stockActual}
                       </span>
                     </TableCell>
                     <TableCell>
-                      {part.stockActual <= part.stockMinimo ? (
+                      {Number(part.stockActual) <= Number(part.stockMinimo) ? (
                         <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">
                           <AlertCircle className="mr-1 h-3 w-3" /> BAJO STOCK
                         </Badge>
