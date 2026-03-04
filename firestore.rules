@@ -10,7 +10,7 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      // Validación ultra-segura para el administrador maestro por email o registro en colección
+      // Validación prioritaria por email para evitar bloqueos de permisos
       return isSignedIn() && (
         request.auth.token.email == 'control@pcgoperacion.com' ||
         exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
@@ -33,11 +33,9 @@ service cloud.firestore {
     // --- REGLAS DE COLECCIONES ---
 
     // Colección para la extensión Trigger Email
-    match /mail/{mailId} {
-      // El administrador maestro siempre puede crear correos
-      // Otros usuarios pueden crear correos si están autenticados (flujos del sistema)
+    // Usamos comodín recursivo para asegurar compatibilidad total con la extensión
+    match /mail/{allPaths=**} {
       allow create: if isSignedIn();
-      // Solo el superadmin puede leer el historial de envíos para auditoría
       allow read, write: if isSuperAdmin();
     }
 
