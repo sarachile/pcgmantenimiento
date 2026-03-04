@@ -5,6 +5,10 @@ export type OTStatus = 'creada' | 'asignada' | 'ejecutada' | 'en revision' | 'ap
 
 export type AssetStatus = 'activo' | 'inactivo' | 'en mantenimiento';
 
+export type DTEStatus = 'pendiente' | 'enviado' | 'error' | 'aceptado_sii';
+
+export type DTEType = 'factura' | 'boleta' | 'guia';
+
 export interface Company {
   id: string;
   name: string;
@@ -91,5 +95,21 @@ export interface Review {
   reviewerId: string;
   status: 'approved' | 'rejected';
   comments: string;
+  createdAt: string;
+}
+
+export interface Invoice {
+  id: string;
+  companyId: string;
+  workOrderId: string;
+  issuerUserId: string;
+  status: DTEStatus;
+  dteType: DTEType;
+  folio?: number;
+  amount: number;
+  simpleApiId?: string;
+  errorDetails?: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
   createdAt: string;
 }

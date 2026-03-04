@@ -151,6 +151,28 @@
         "startDate": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "companyId", "plan", "status", "startDate"]
+    },
+    "Invoice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invoice",
+      "type": "object",
+      "description": "Documento Tributario Electrónico (DTE) emitido vía SimpleAPI.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "workOrderId": { "type": "string" },
+        "issuerUserId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pendiente", "enviado", "error", "aceptado_sii"] },
+        "dteType": { "type": "string", "enum": ["factura", "boleta", "guia"] },
+        "folio": { "type": "number" },
+        "amount": { "type": "number" },
+        "simpleApiId": { "type": "string" },
+        "errorDetails": { "type": "string" },
+        "pdfUrl": { "type": "string" },
+        "xmlUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "companyId", "workOrderId", "issuerUserId", "status", "dteType", "createdAt"]
     }
   },
   "auth": {
@@ -192,6 +214,10 @@
     "/companies/{companyId}/workOrders/{workOrderId}/reviews/{reviewId}": {
       "schema": { "$ref": "#/backend/entities/Review" },
       "description": "Revisiones de la OT."
+    },
+    "/companies/{companyId}/workOrders/{workOrderId}/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/backend/entities/Invoice" },
+      "description": "Facturas y documentos tributarios asociados a la OT."
     }
   }
 }

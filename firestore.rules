@@ -106,6 +106,14 @@ service cloud.firestore {
           allow create, update: if isCompanyMember(companyId) && 
                                  (hasRole(companyId, ['reviewer', 'supervisor', 'companyAdmin']));
         }
+
+        match /invoices/{invoiceId} {
+          allow read: if isCompanyMember(companyId);
+          allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']) && 
+                        get(/databases/$(database)/documents/companies/$(companyId)/workOrders/$(workOrderId)).data.status == 'aprobada';
+          allow update: if isSuperAdmin(); // Solo el sistema o superadmin actualiza folios/estados SII
+          allow delete: if false;
+        }
       }
       
       match /subscriptions/{subId} {
