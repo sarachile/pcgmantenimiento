@@ -7,6 +7,7 @@ import {
   CardContent, 
   CardHeader, 
   CardTitle, 
+  CardDescription
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,9 @@ import {
   Star,
   ShieldCheck,
   Send,
-  Users
+  Users,
+  QrCode,
+  ExternalLink
 } from "lucide-react";
 import {
   Dialog,
@@ -86,6 +89,7 @@ function EvaluationForm({
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
+                  type="button"
                   onClick={() => setRatings({ ...ratings, [c.key]: star })}
                   className={cn(
                     "p-1 transition-transform hover:scale-110",
@@ -113,7 +117,7 @@ function EvaluationForm({
         disabled={!canSubmit || isSaving}
         onClick={() => onSave(ratings, comment)}
       >
-        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Evaluación</>}
+        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Evaluación y Aprobar</>}
       </Button>
     </div>
   );
@@ -131,13 +135,23 @@ function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => 
     ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
   }, []);
 
+  const getCoordinates = (e: any) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  };
+
   const startDrawing = (e: any) => { 
     setIsDrawing(true); 
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d'); if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    const { x, y } = getCoordinates(e);
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
     ctx.beginPath();
     ctx.moveTo(x, y);
   };
@@ -146,21 +160,11 @@ function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => 
 
   const draw = (e: any) => {
     if (!isDrawing) return;
-    const canvas = canvasRef.current; if (!canvas) return;
-    const ctx = canvas.getContext('2d'); if (!ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.touches[0].clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.touches[0].clientY - rect.top;
-    
-    // Support for both mouse and touch
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    
-    if (clientX !== undefined && clientY !== undefined) {
-      const x = clientX - rect.left;
-      const y = clientY - rect.top;
-      ctx.lineTo(x, y); ctx.stroke();
-    }
+    const { x, y } = getCoordinates(e);
+    const ctx = canvasRef.current?.getContext('2d');
+    if (!ctx) return;
+    ctx.lineTo(x, y);
+    ctx.stroke();
   };
 
   return (
@@ -180,9 +184,9 @@ function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => 
         />
       </div>
       <div className="flex justify-between gap-2">
-        <Button variant="outline" size="sm" onClick={() => canvasRef.current?.getContext('2d')?.clearRect(0, 0, 400, 200)} disabled={isSaving}>Limpiar</Button>
+        <Button variant="outline" size="sm" onClick={() => canvasRef.current?.getContext('2d')?.clearRect(0, 0, 400, 200)} disabled={isDrawing || isSaving}>Limpiar</Button>
         <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
+          <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSaving}>Cancelar</Button>
           <Button size="sm" onClick={() => canvasRef.current?.toBlob(b => b && onSave(b), 'image/png')} disabled={isSaving}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Guardar Firma
           </Button>
@@ -196,7 +200,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile, isReviewer } = useUser();
+  const { profile, isReviewer, isSupervisor, isCompanyAdmin } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   const reportRef = useRef<HTMLDivElement>(null);
@@ -207,6 +211,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [signatureType, setSignatureType] = useState<'client' | 'technician' | null>(null);
   const [isEvalOpen, setIsEvalOpen] = useState(false);
   const [resolvedSignatures, setResolvedSignatures] = useState<{tech?: string, client?: string}>({});
+  const [currentUrl, setCurrentUrl] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setCurrentUrl(window.location.href);
+    }
+  }, []);
 
   const otRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -260,21 +271,15 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { return "N/A"; }
   };
 
-  /**
-   * Resuelve una URL de imagen a Base64 para evitar bloqueos CORS en Canvas/PDF.
-   */
   const getBase64Image = async (url: string) => {
     if (!url) return undefined;
     try {
-      // Intentar fetch con cache-bust para saltar bloqueos de CORS por cacheo incompleto
       const response = await fetch(url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now(), {
         mode: 'cors',
         credentials: 'omit'
       });
-      
       if (!response.ok) throw new Error('Fetch failed');
       const blob = await response.blob();
-      
       return new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
@@ -282,8 +287,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         reader.readAsDataURL(blob);
       });
     } catch (e) {
-      console.warn("CORS/Fetch error resolving signature for PDF. Falling back to direct URL.", e);
-      return url; // Si falla, devolvemos la URL y que html2canvas intente manejarlo
+      console.warn("CORS error resolving signature for PDF. Returning original URL.", e);
+      return url; 
     }
   };
 
@@ -293,23 +298,19 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     toast({ title: "Generando reporte...", description: "Procesando evidencias gráficas." });
     
     try {
-      // Resolvemos firmas a Base64 en paralelo antes de la captura
       const [techBase64, clientBase64] = await Promise.all([
         ot.technicianSignatureUrl ? getBase64Image(ot.technicianSignatureUrl) : Promise.resolve(undefined),
         ot.clientSignatureUrl ? getBase64Image(ot.clientSignatureUrl) : Promise.resolve(undefined)
       ]);
       
       setResolvedSignatures({ tech: techBase64, client: clientBase64 });
-
-      // Breve espera para que el componente oculto actualice sus src
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       const canvas = await html2canvas(reportRef.current, { 
         scale: 2, 
         useCORS: true, 
         backgroundColor: "#ffffff",
         logging: false,
-        allowTaint: false,
         imageTimeout: 15000
       });
       
@@ -320,10 +321,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`REPORTE_TECNICO_PCG_${ot.id}.pdf`);
-      
       toast({ title: "Reporte generado", description: "El documento se ha descargado." });
     } catch (e: any) { 
-      console.error("PDF Generation Error:", e);
       toast({ title: "Error al generar PDF", description: "Hubo un problema al procesar las imágenes.", variant: "destructive" }); 
     } finally { 
       setIsGeneratingPdf(false); 
@@ -346,7 +345,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         createdAt: serverTimestamp()
       };
       const evalDoc = await addDoc(evalCol, newEval);
-      updateDocumentNonBlocking(otRef!, { evaluationId: evalDoc.id, status: 'aprobada', reviewedAt: serverTimestamp() });
+      updateDocumentNonBlocking(otRef!, { 
+        evaluationId: evalDoc.id, 
+        status: 'aprobada', 
+        reviewedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
       toast({ title: "Evaluación enviada", description: "El trabajo ha sido aprobado y evaluado." });
       setIsEvalOpen(false);
     } catch (e: any) {
@@ -358,6 +362,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl m-10">Orden no encontrada.</div>;
+
+  const isClientAccess = isReviewer || (!profile?.role && !isDocLoading);
+  const showQrCode = ot.status === 'en revision' && ot.technicianSignatureUrl && !ot.clientSignatureUrl;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
@@ -402,7 +409,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             Descargar Informe PDF
           </Button>
           
-          {isReviewer && ot.status === 'en revision' && client?.evaluationEnabled && (
+          {(isReviewer || isSupervisor || isCompanyAdmin) && ot.status === 'en revision' && (
             <Dialog open={isEvalOpen} onOpenChange={setIsEvalOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-amber-600 hover:bg-amber-700 h-11 px-6 font-bold gap-2"><Star className="h-4 w-4" /> Aprobar y Evaluar</Button>
@@ -416,15 +423,43 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               </DialogContent>
             </Dialog>
           )}
-
-          {!isReviewer && ot.status !== 'aprobada' && (
-            <Button className="bg-emerald-600 hover:bg-emerald-700 h-11 px-6 font-bold" onClick={() => updateDocumentNonBlocking(otRef!, { status: 'aprobada', reviewedAt: serverTimestamp() })}>Finalizar Trabajo</Button>
-          )}
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
+          {/* SECCIÓN QR PARA CLIENTE */}
+          {showQrCode && !isClientAccess && (
+            <Card className="border-2 border-primary border-dashed bg-primary/5">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <div className="bg-white p-4 rounded-xl shadow-md border-2 border-primary/20 shrink-0">
+                    <img 
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUrl)}`} 
+                      alt="QR Validación"
+                      className="w-32 h-32"
+                    />
+                  </div>
+                  <div className="space-y-3 text-center md:text-left">
+                    <div className="flex items-center gap-2 justify-center md:justify-start">
+                      <QrCode className="h-5 w-5 text-primary" />
+                      <h3 className="text-lg font-black text-primary uppercase">Validación por el Cliente</h3>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                      Solicite al cliente que escanee este código con su móvil para que pueda <strong>evaluar el servicio</strong> y <strong>firmar la recepción conforme</strong> desde su propio dispositivo.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline" className="bg-white text-primary border-primary/20 h-6">SINCRONIZACIÓN REAL-TIME</Badge>
+                      <Button variant="link" className="h-6 p-0 text-xs font-bold gap-1" asChild>
+                        <a href={currentUrl} target="_blank"><ExternalLink className="h-3 w-3" /> Abrir enlace directo</a>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="border-none shadow-sm overflow-hidden">
             <CardHeader className="bg-muted/10 border-b"><CardTitle className="text-lg font-bold">Información de Campo</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-6">
@@ -546,7 +581,15 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 const sRef = ref(storage, path);
                 await uploadBytes(sRef, blob);
                 const url = await getDownloadURL(sRef);
-                updateDocumentNonBlocking(otRef!, signatureType === 'client' ? { clientSignatureUrl: url } : { technicianSignatureUrl: url });
+                const updateData: any = signatureType === 'client' ? { clientSignatureUrl: url } : { technicianSignatureUrl: url };
+                
+                // Si el técnico firma por primera vez, movemos a 'en revision'
+                if (signatureType === 'technician' && ot.status === 'creada') {
+                  updateData.status = 'en revision';
+                  updateData.executedAt = serverTimestamp();
+                }
+
+                updateDocumentNonBlocking(otRef!, { ...updateData, updatedAt: serverTimestamp() });
                 setSignatureType(null);
                 toast({ title: "Firma guardada", description: "La evidencia ha sido vinculada a la orden de trabajo." });
               } catch (e: any) {
