@@ -101,26 +101,26 @@ export default function AdminCompaniesPage() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Registrar Nuevo Tenant</DialogTitle>
-              <DialogDescription>Cree un nuevo espacio de trabajo para un cliente corporativo.</DialogDescription>
+              <DialogDescription>Cree un nuevo espacio de trabajo para un cliente corporativo. El RUT podrá ser completado cuando el cliente contrate un plan.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2 col-span-2">
-                  <Label>Nombre de la Empresa / Razón Social</Label>
+                  <Label>Nombre de la Empresa / Razón Social *</Label>
                   <Input placeholder="Ej: Servicios Industriales S.A." required />
                 </div>
                 <div className="space-y-2">
-                  <Label>RUT Empresa</Label>
-                  <Input placeholder="76.000.000-0" required />
+                  <Label>RUT Empresa (Opcional)</Label>
+                  <Input placeholder="76.000.000-0" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Plan de Suscripción</Label>
+                  <Label>Plan de Suscripción Inicial</Label>
                   <Select defaultValue="free">
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="free">Gratuito</SelectItem>
+                      <SelectItem value="free">Gratuito (Demo)</SelectItem>
                       <SelectItem value="pro">Plan Pro</SelectItem>
                       <SelectItem value="enterprise">Enterprise</SelectItem>
                     </SelectContent>
@@ -167,7 +167,7 @@ export default function AdminCompaniesPage() {
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-bold">{company.name}</span>
-                      <span className="text-xs text-muted-foreground">{company.rut}</span>
+                      <span className="text-xs text-muted-foreground">{company.rut || 'RUT Pendiente'}</span>
                     </div>
                   </TableCell>
                   <TableCell>
