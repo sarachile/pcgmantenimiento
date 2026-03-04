@@ -14,21 +14,43 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Search, 
   Plus, 
   ExternalLink, 
   Settings2,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Building2,
+  ShieldCheck
 } from "lucide-react";
 import { MOCK_COMPANIES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminCompaniesPage() {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -38,6 +60,22 @@ export default function AdminCompaniesPage() {
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.rut.includes(searchTerm)
   );
+
+  const handleCreateCompany = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast({
+      title: "Función de Administrador",
+      description: "La creación de nuevos tenants está disponible en el plan Enterprise. Esta acción ha sido registrada.",
+    });
+    setIsCreateOpen(false);
+  };
+
+  const handleImpersonate = (companyName: string) => {
+    toast({
+      title: "Acceso como Administrador",
+      description: `Entrando al entorno de ${companyName}...`,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -53,9 +91,48 @@ export default function AdminCompaniesPage() {
             <p className="text-muted-foreground">Administración de tenants y suscripciones de la plataforma.</p>
           </div>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
-        </Button>
+        
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Registrar Nuevo Tenant</DialogTitle>
+              <DialogDescription>Cree un nuevo espacio de trabajo para un cliente corporativo.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label>Nombre de la Empresa / Razón Social</Label>
+                  <Input placeholder="Ej: Servicios Industriales S.A." required />
+                </div>
+                <div className="space-y-2">
+                  <Label>RUT Empresa</Label>
+                  <Input placeholder="76.000.000-0" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Plan de Suscripción</Label>
+                  <Select defaultValue="free">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Gratuito</SelectItem>
+                      <SelectItem value="pro">Plan Pro</SelectItem>
+                      <SelectItem value="enterprise">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="w-full">Confirmar Registro</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card className="border-none shadow-sm">
@@ -98,7 +175,7 @@ export default function AdminCompaniesPage() {
                       company.subscriptionPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
                       company.subscriptionPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
                     )}>
-                      {company.subscriptionPlan.toUpperCase()}
+                      {(company.subscriptionPlan || 'FREE').toUpperCase()}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -111,7 +188,6 @@ export default function AdminCompaniesPage() {
                   <TableCell className="text-sm">
                     <div className="flex items-center gap-2">
                       <span>12 / 50</span>
-                      {12/50 > 0.8 && <AlertCircle className="h-3 w-3 text-amber-500" />}
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
@@ -119,10 +195,10 @@ export default function AdminCompaniesPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" title="Configurar Límites" onClick={() => toast({ title: "Configuración", description: "Cargando parámetros de suscripción..." })}>
                         <Settings2 className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" title="Entrar como Admin de Empresa" onClick={() => handleImpersonate(company.name)}>
                         <ExternalLink className="h-4 w-4" />
                       </Button>
                     </div>
