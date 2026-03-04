@@ -7,15 +7,15 @@ import { User } from '@/lib/types';
 
 /**
  * Hook para acceder al estado del usuario y su perfil en Firestore.
- * Estabilizado para evitar bucles de renderizado infinitos mediante comparación profunda de datos.
+ * Estabilizado mediante comparación profunda para evitar bucles de renderizado.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
   const [profile, setProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   
-  // Ref para comparar cambios reales en la estructura de datos
-  const lastProfileDataRef = useRef<string>("");
+  // Ref para rastrear la versión serializada del perfil y evitar actualizaciones innecesarias
+  const profileStringRef = useRef<string>("");
 
   useEffect(() => {
     let isMounted = true;
@@ -25,12 +25,13 @@ export function useUser() {
         if (isMounted) {
           setProfile(null);
           setIsProfileLoading(false);
-          lastProfileDataRef.current = "";
+          profileStringRef.current = "";
         }
         return;
       }
 
       try {
+        // Intentar cargar desde la colección de usuarios de empresa
         const userRef = doc(firestore, 'users', authUser.uid);
         const userSnap = await getDoc(userRef);
         
@@ -39,13 +40,13 @@ export function useUser() {
         if (userSnap.exists()) {
           newProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
-          // Intentar como administrador de plataforma
-          const superAdminRef = doc(firestore, 'platform_admins', authUser.uid);
-          const superAdminSnap = await getDoc(superAdminRef);
+          // Intentar cargar como administrador global
+          const adminRef = doc(firestore, 'platform_admins', authUser.uid);
+          const adminSnap = await getDoc(adminRef);
           
-          if (superAdminSnap.exists()) {
+          if (adminSnap.exists()) {
             newProfile = { 
-              ...(superAdminSnap.data() as any), 
+              ...(adminSnap.data() as any), 
               id: authUser.uid, 
               role: 'superadmin',
               companyId: 'pcg-central',
@@ -55,24 +56,21 @@ export function useUser() {
         }
 
         if (isMounted) {
-          // Comparar como string JSON para detectar cambios reales en los datos, 
-          // no solo en la referencia de memoria.
-          const dataString = JSON.stringify(newProfile);
-          if (lastProfileDataRef.current !== dataString) {
-            lastProfileDataRef.current = dataString;
+          const newProfileString = JSON.stringify(newProfile);
+          // Solo actualizamos el estado si los DATOS han cambiado realmente
+          if (profileStringRef.current !== newProfileString) {
+            profileStringRef.current = newProfileString;
             setProfile(newProfile);
           }
         }
-
       } catch (error) {
-        console.error("Error fetching user profile:", error);
+        console.error("Error al cargar perfil:", error);
       } finally {
         if (isMounted) setIsProfileLoading(false);
       }
     }
 
     fetchProfile();
-
     return () => { isMounted = false; };
   }, [authUser?.uid, firestore]);
 

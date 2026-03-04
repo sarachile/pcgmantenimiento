@@ -7,7 +7,7 @@ service firebase.storage {
     }
 
     // Ruta para evidencias y firmas de OTs
-    // Se permite lectura pública para facilitar la visualización en reportes y emails
+    // Se permite lectura pública para facilitar la visualización en reportes y emails sin tokens complejos
     match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
       allow read: if true;
       allow write: if isSignedIn();
@@ -19,8 +19,10 @@ service firebase.storage {
       allow write: if isSignedIn();
     }
 
+    // Por defecto, lectura pública para evitar errores de <img> y escritura solo para autenticados
     match /{allPaths=**} {
-      allow read, write: if isSignedIn();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
   }
 }

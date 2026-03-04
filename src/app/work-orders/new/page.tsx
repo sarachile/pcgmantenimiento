@@ -15,8 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
-import { Client, Asset, StaffMember, WorkOrder } from "@/lib/types";
-import { Badge } from "@/components/ui/badge";
+import { Client, Asset, StaffMember } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export default function NewWorkOrderPage() {
@@ -35,10 +34,12 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
+  // Inicializar fecha solo en el cliente para evitar errores de hidratación
   useEffect(() => {
     setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
   }, []);
 
+  // Cálculo de fecha de término estable mediante useMemo
   const estimatedEndDateStr = useMemo(() => {
     if (!scheduledDate || !durationDays) return "";
     try {
@@ -106,6 +107,7 @@ export default function NewWorkOrderPage() {
     }
   };
 
+  // Consultas estables a Firestore
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "clients");
@@ -125,12 +127,13 @@ export default function NewWorkOrderPage() {
   const { data: realAssets } = useCollection<Asset>(assetsQuery);
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
 
+  // Opciones de selectores memoizadas para evitar re-renders de Radix UI
   const clientOptions = useMemo(() => (
-    realClients?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
+    realClients?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || []
   ), [realClients]);
 
   const assetOptions = useMemo(() => (
-    realAssets?.map(a => <SelectItem key={a.id} value={a.id}>{a.name} ({a.code})</SelectItem>)
+    realAssets?.map(a => <SelectItem key={a.id} value={a.id}>{a.name} ({a.code})</SelectItem>) || []
   ), [realAssets]);
 
   if (isUserLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -155,14 +158,14 @@ export default function NewWorkOrderPage() {
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger><SelectValue placeholder={realClients ? "Seleccione cliente" : "Cargando..."} /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Seleccione cliente" /></SelectTrigger>
                   <SelectContent>{clientOptions}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger><SelectValue placeholder={realAssets ? "Seleccione equipo" : "Cargando..."} /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Seleccione equipo (Opcional)" /></SelectTrigger>
                   <SelectContent>{assetOptions}</SelectContent>
                 </Select>
               </div>
@@ -197,7 +200,7 @@ export default function NewWorkOrderPage() {
                     )}
                     onClick={() => toggleStaffSelection(staff.id)}
                   >
-                    <Checkbox checked={assignedToStaffIds.includes(staff.id)} readOnly />
+                    <Checkbox checked={assignedToStaffIds.includes(staff.id)} />
                     <div className="flex flex-col gap-0.5">
                       <p className="font-bold text-xs">{staff.name}</p>
                       <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
@@ -209,13 +212,13 @@ export default function NewWorkOrderPage() {
 
             <div className="space-y-2">
               <Label className="font-bold text-xs uppercase text-muted-foreground">Descripción de Trabajos *</Label>
-              <Textarea placeholder="Detalle técnico..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Textarea placeholder="Detalle técnico de los servicios a realizar..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
 
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Protocolo de Revisión</Label></div>
               <div className="flex gap-2">
-                <Input placeholder="Añadir tarea..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())} />
+                <Input placeholder="Añadir tarea al protocolo..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())} />
                 <Button type="button" onClick={handleAddTask} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
               </div>
               {checklist.length > 0 && (
