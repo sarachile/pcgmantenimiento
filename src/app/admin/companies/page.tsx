@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -51,15 +52,25 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp, setDoc, addDoc } from "firebase/firestore";
+import { 
+  useUser, 
+  useFirestore, 
+  useCollection, 
+  useMemoFirebase, 
+  updateDocumentNonBlocking,
+  setDocumentNonBlocking,
+  addDocumentNonBlocking,
+  errorEmitter,
+  FirestorePermissionError
+} from "@/firebase";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { Company, User } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
 export default function AdminCompaniesPage() {
   const { toast } = useToast();
-  const { isSuperAdmin, isLoading: isUserLoading } = useUser();
+  const { isSuperAdmin, profile, isLoading: isUserLoading } = useUser();
   const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -113,41 +124,36 @@ export default function AdminCompaniesPage() {
     c.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateCompany = async (e: React.FormEvent) => {
+  const handleCreateCompany = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db) return;
 
     setIsSubmitting(true);
-    try {
-      const companyId = `comp-${Math.random().toString(36).substr(2, 6)}`;
-      
-      await setDoc(doc(db, "companies", companyId), {
-        id: companyId,
-        name: formData.name,
-        rut: "", 
-        address: formData.address || "Dirección por definir",
-        currentPlan: formData.currentPlan,
-        subscriptionStatus: "active",
-        isActive: true,
-        createdAt: new Date().toISOString(),
-      });
+    const companyId = `comp-${Math.random().toString(36).substr(2, 6)}`;
+    const companyRef = doc(db, "companies", companyId);
+    
+    const companyData = {
+      id: companyId,
+      name: formData.name,
+      rut: "", 
+      address: formData.address || "Dirección por definir",
+      currentPlan: formData.currentPlan,
+      subscriptionStatus: "active",
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
 
-      toast({
-        title: "Empresa Registrada",
-        description: `Entorno creado exitosamente. ID: ${companyId}`,
-      });
-      
-      setIsCreateOpen(false);
-      setFormData({ name: "", address: "", currentPlan: "free" });
-    } catch (error: any) {
-      toast({
-        title: "Error al crear",
-        description: error.message || "No se pudo registrar la empresa.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    setDocumentNonBlocking(companyRef, companyData, { merge: true });
+    
+    // Optimistic UI response
+    toast({
+      title: "Solicitud Enviada",
+      description: `Creando entorno para ${formData.name}.`,
+    });
+    
+    setIsCreateOpen(false);
+    setFormData({ name: "", address: "", currentPlan: "free" });
+    setIsSubmitting(false);
   };
 
   const handleOpenConfig = (company: Company) => {
@@ -160,31 +166,23 @@ export default function AdminCompaniesPage() {
     setIsConfigOpen(true);
   };
 
-  const handleSaveConfig = async (e: React.FormEvent) => {
+  const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !selectedCompany) return;
 
-    try {
-      const companyRef = doc(db, "companies", selectedCompany.id);
-      updateDocumentNonBlocking(companyRef, {
-        currentPlan: configData.currentPlan,
-        subscriptionStatus: configData.subscriptionStatus,
-        isActive: configData.isActive,
-        updatedAt: serverTimestamp(),
-      });
+    const companyRef = doc(db, "companies", selectedCompany.id);
+    updateDocumentNonBlocking(companyRef, {
+      currentPlan: configData.currentPlan,
+      subscriptionStatus: configData.subscriptionStatus,
+      isActive: configData.isActive,
+      updatedAt: serverTimestamp(),
+    });
 
-      toast({
-        title: "Parámetros Actualizados",
-        description: `Configuración guardada para ${selectedCompany.name}.`,
-      });
-      setIsConfigOpen(false);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "No se pudieron guardar los cambios.",
-        variant: "destructive",
-      });
-    }
+    toast({
+      title: "Actualización en curso",
+      description: `Guardando parámetros para ${selectedCompany.name}.`,
+    });
+    setIsConfigOpen(false);
   };
 
   const handleViewDetails = (company: Company) => {
@@ -197,78 +195,78 @@ export default function AdminCompaniesPage() {
     setIsInviteOpen(true);
   };
 
-  const handleSendInvite = async (e: React.FormEvent) => {
+  const handleSendInvite = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !detailsCompany || !inviteEmail) return;
 
     setIsSendingInvite(true);
-    try {
-      // Registrar en la colección 'mail' para activar Trigger Email
-      const mailCol = collection(db, "mail");
-      await addDoc(mailCol, {
-        to: inviteEmail,
-        message: {
-          subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; color: #1f2937; background-color: #ffffff;">
-              <div style="text-align: center; margin-bottom: 24px;">
-                <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -1px;">PCGMANTENIMIENTO ERP</h1>
-                <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Solución de Gestión Industrial Avanzada</p>
+    
+    const mailCol = collection(db, "mail");
+    const mailData = {
+      to: inviteEmail,
+      message: {
+        subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; color: #1f2937; background-color: #ffffff;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -1px;">PCGMANTENIMIENTO ERP</h1>
+              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Solución de Gestión Industrial Avanzada</p>
+            </div>
+            
+            <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">Bienvenido a su Entorno Operativo</h2>
+            
+            <p>Estimados,</p>
+            <p>Su ecosistema de gestión para <strong>${detailsCompany.name}</strong> ha sido activado y está listo para la operación de campo y administrativa.</p>
+            
+            <p>Para comenzar, cada miembro del equipo debe registrarse en el portal oficial:</p>
+            
+            <div style="margin: 32px 0; text-align: center;">
+              <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                Completar Registro de Usuario
+              </a>
+              <p style="color: #64748b; font-size: 12px; margin-top: 12px;">Acceso vía: www.pcgmantenimiento.com</p>
+            </div>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+              <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; text-align: center;">Código de Vinculación Corporativa</p>
+              <div style="background-color: #ffffff; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px;">
+                ${detailsCompany.id}
               </div>
-              
-              <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">Bienvenido a su Entorno Operativo</h2>
-              
-              <p>Estimados,</p>
-              <p>Su ecosistema de gestión para <strong>${detailsCompany.name}</strong> ha sido activado y está listo para la operación de campo y administrativa.</p>
-              
-              <p>Para comenzar, cada miembro del equipo debe registrarse en el portal oficial:</p>
-              
-              <div style="margin: 32px 0; text-align: center;">
-                <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 166px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                  Completar Registro de Usuario
-                </a>
-                <p style="color: #64748b; font-size: 12px; margin-top: 12px;">Acceso vía: www.pcgmantenimiento.com</p>
-              </div>
-              
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-                <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; text-align: center;">Código de Vinculación Corporativa</p>
-                <div style="background-color: #ffffff; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px;">
-                  ${detailsCompany.id}
-                </div>
-                <p style="color: #b45309; font-size: 12px; font-weight: bold; margin-top: 12px; text-align: center;">
-                  * Este código vincula su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
-                </p>
-              </div>
-              
-              <div style="font-size: 13px; color: #64748b; line-height: 1.6;">
-                <p><strong>Nota de Seguridad:</strong> Este código permite el acceso a la infraestructura de datos de su empresa. Favor distribuirlo únicamente a personal autorizado.</p>
-              </div>
-              
-              <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
-              
-              <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
-                Este es un mensaje automático de la plataforma central de PCG OPERACIONES. Por favor no responda a esta casilla.
+              <p style="color: #b45309; font-size: 12px; font-weight: bold; margin-top: 12px; text-align: center;">
+                * Este código vincula su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
               </p>
             </div>
-          `,
-        },
-      });
+            
+            <div style="font-size: 13px; color: #64748b; line-height: 1.6;">
+              <p><strong>Nota de Seguridad:</strong> Este código permite el acceso a la infraestructura de datos de su empresa. Favor distribuirlo únicamente a personal autorizado.</p>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
+            
+            <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
+              Este es un mensaje automático de la plataforma central de PCG OPERACIONES. Por favor no responda a esta casilla.
+            </p>
+          </div>
+        `,
+      },
+    };
 
-      toast({
-        title: "Correo en camino",
-        description: `Invitación enviada exitosamente a ${inviteEmail}.`,
-      });
-      setIsSendingInvite(false);
-      setIsInviteOpen(false);
-      setInviteEmail("");
-    } catch (error: any) {
-      toast({
-        title: "Falla de envío",
-        description: error.message || "Error al procesar la solicitud de correo.",
-        variant: "destructive",
-      });
-      setIsSendingInvite(false);
-    }
+    addDocumentNonBlocking(mailCol, mailData).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: mailCol.path,
+        operation: 'create',
+        requestResourceData: mailData
+      }));
+    });
+
+    toast({
+      title: "Cola de Envío",
+      description: `Procesando invitación para ${inviteEmail}.`,
+    });
+    
+    setIsSendingInvite(false);
+    setIsInviteOpen(false);
+    setInviteEmail("");
   };
 
   const formatDate = (date: any) => {

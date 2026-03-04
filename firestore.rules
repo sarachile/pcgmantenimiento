@@ -10,7 +10,10 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin')
+      );
     }
 
     function isOwner(userId) {
@@ -30,28 +33,23 @@ service cloud.firestore {
     // Colección para la extensión Trigger Email
     match /mail/{mailId} {
       allow create: if isSignedIn();
-      allow read: if isSuperAdmin();
+      allow read, write: if isSuperAdmin();
     }
 
     match /superAdmins/{userId} {
-      // Permitir creación si es el propio usuario logueado
       allow create: if isOwner(userId);
       allow read: if isSignedIn() && (isOwner(userId) || isSuperAdmin());
       allow update, delete: if isSuperAdmin();
     }
 
     match /users/{userId} {
-      // Permitir creación inicial
       allow create: if isOwner(userId);
       allow read: if isSignedIn();
       allow update: if isOwner(userId) || isSuperAdmin();
     }
 
     match /companies/{companyId} {
-      // Permitir creación de la empresa durante el registro
       allow create: if isSignedIn();
-      
-      // Permitir lectura si es miembro, dueño o superadmin
       allow read: if isSignedIn() && (
         isSuperAdmin() || 
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId)
