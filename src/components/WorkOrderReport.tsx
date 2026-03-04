@@ -2,10 +2,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, User } from "@/lib/types";
+import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, User, PartUsage } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Package } from "lucide-react";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -14,10 +14,11 @@ interface WorkOrderReportProps {
   asset: Asset | null;
   logbook: DigitalLogbookEntry[];
   technician: User | null;
+  partUsages: PartUsage[];
 }
 
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
-  ({ company, workOrder, client, asset, logbook, technician }, ref) => {
+  ({ company, workOrder, client, asset, logbook, technician, partUsages }, ref) => {
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
@@ -102,27 +103,44 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           </div>
         </div>
 
-        {/* Dates Section */}
-        <div className="grid grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border mb-8">
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase">Inicio Programado</p>
-            <p className="text-xs font-bold">{formatDate(workOrder.scheduledDate)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase">Ejecución</p>
-            <p className="text-xs font-bold">{formatDate(workOrder.executedAt)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase">Revisión/Cierre</p>
-            <p className="text-xs font-bold">{formatDate(workOrder.reviewedAt || workOrder.updatedAt)}</p>
-          </div>
-        </div>
-
         {/* AI Summary */}
         {workOrder.aiSummary && (
           <div className="mb-8 p-6 bg-slate-50 rounded-2xl border-l-4 border-slate-900">
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">Resumen Ejecutivo (IA)</h3>
             <p className="text-sm leading-relaxed text-slate-700 italic">"{workOrder.aiSummary}"</p>
+          </div>
+        )}
+
+        {/* Materials Table */}
+        {partUsages && partUsages.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-1 mb-4">Materiales e Insumos Utilizados</h3>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-slate-100 text-slate-600">
+                  <th className="p-2 text-left">Descripción del Material</th>
+                  <th className="p-2 text-center">Cant.</th>
+                  <th className="p-2 text-right">Unitario</th>
+                  <th className="p-2 text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {partUsages.map((usage, idx) => (
+                  <tr key={idx} className="border-b">
+                    <td className="p-2 font-medium">{usage.partName}</td>
+                    <td className="p-2 text-center">{usage.quantity}</td>
+                    <td className="p-2 text-right">${usage.unitPrice.toLocaleString()}</td>
+                    <td className="p-2 text-right font-bold">${(usage.quantity * usage.unitPrice).toLocaleString()}</td>
+                  </tr>
+                ))}
+                <tr className="bg-slate-50">
+                  <td colSpan={3} className="p-2 text-right font-black uppercase">Total Neto Materiales</td>
+                  <td className="p-2 text-right font-black text-slate-900">
+                    ${partUsages.reduce((acc, p) => acc + (p.quantity * p.unitPrice), 0).toLocaleString()}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         )}
 
@@ -139,9 +157,6 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
                     </div>
                     <span className={`text-sm ${item.completed ? 'font-bold' : 'text-slate-400'}`}>{item.task}</span>
                   </div>
-                  {item.completed && (
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase">Completado</span>
-                  )}
                 </div>
               ))
             ) : (

@@ -8,6 +8,7 @@ import {
   MOCK_USERS,
   MOCK_CLIENTS,
   MOCK_ASSETS,
+  MOCK_SPARE_PARTS
 } from "@/lib/mock-data";
 import { 
   Card, 
@@ -38,7 +39,10 @@ import {
   Check,
   Calendar as CalendarIcon,
   Clock,
-  Plus
+  Plus,
+  Package,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 import {
   Dialog,
@@ -49,17 +53,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp, arrayUnion, query, orderBy } from "firebase/firestore";
+import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { doc, collection, addDoc, serverTimestamp, arrayUnion, query, orderBy, increment } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
-import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company } from "@/lib/types";
+import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company, PartUsage, SparePart } from "@/lib/types";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 import { format, parseISO } from "date-fns";
 import { WorkOrderReport } from "@/components/WorkOrderReport";
@@ -67,7 +87,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 // Simple Signature Pad Component using Canvas
-function SignaturePad({ onSave, onCancel, isSaving, title }: { 
+function SignaturePad({ onSave, onCancel, isSaving }: { 
   onSave: (blob: Blob) => void, 
   onCancel: () => void, 
   isSaving: boolean,
@@ -184,6 +204,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [signatureType, setSignatureType] = useState<'client' | 'technician' | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  // Material usage states
+  const [isAddingMaterial, setIsAddingMaterial] = useState(false);
+  const [selectedPartId, setSelectedPartId] = useState("");
+  const [partQuantity, setPartQuantity] = useState("1");
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -207,10 +232,22 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     );
   }, [db, profile?.companyId, otId]);
 
+  const partUsagesQuery = useMemoFirebase(() => {
+    if (!db || !profile?.companyId || otId.startsWith('OT-')) return null;
+    return collection(db, "companies", profile.companyId, "workOrders", otId, "partUsages");
+  }, [db, profile?.companyId, otId]);
+
+  const inventoryQuery = useMemoFirebase(() => {
+    if (!db || !profile?.companyId) return null;
+    return collection(db, "companies", profile.companyId, "spareParts");
+  }, [db, profile?.companyId]);
+
   // Firestore Data
   const { data: firestoreOt, isLoading: isDocLoading } = useDoc<WorkOrder>(otRef);
   const { data: company } = useDoc<Company>(companyRef);
   const { data: firestoreLogbook } = useCollection<DigitalLogbookEntry>(logbookQuery);
+  const { data: partUsages } = useCollection<PartUsage>(partUsagesQuery);
+  const { data: inventory } = useCollection<SparePart>(inventoryQuery);
 
   const ot = firestoreOt || MOCK_WORK_ORDERS.find(o => o.id === otId);
   const logbook = firestoreLogbook && firestoreLogbook.length > 0 ? firestoreLogbook : MOCK_LOGBOOK.filter(l => l.workOrderId === otId);
@@ -218,14 +255,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const isMock = !firestoreOt;
   const client = MOCK_CLIENTS.find(c => c.id === ot?.clientId) || null;
   const asset = MOCK_ASSETS.find(a => a.id === ot?.assetId) || null;
-  const technician = MOCK_USERS.find(u => u.id === ot?.assignedTo) || null;
+  const technician = MOCK_USERS.find(u => u.id === (ot?.assignedTo || ot?.assignedToUserId)) || null;
 
   const formatDate = (date: any) => {
     if (!mounted || !date) return '...';
     try {
-      if (typeof date === 'string') return new Date(date).toLocaleString();
-      if (date?.toDate) return date.toDate().toLocaleString();
-      return new Date(date).toLocaleString();
+      const d = date.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
+      return d.toLocaleString();
     } catch (e) {
       return 'N/A';
     }
@@ -235,7 +271,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!reportRef.current) return;
     setIsGeneratingPdf(true);
     try {
-      // Ensure the component is visible to html2canvas by placing it off-screen but not hidden
       const canvas = await html2canvas(reportRef.current, {
         scale: 2,
         useCORS: true,
@@ -245,10 +280,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       });
       
       const imgData = canvas.toDataURL("image/png");
-      if (!imgData || imgData === 'data:,') {
-        throw new Error("No se pudo capturar la imagen del reporte. Verifique que los datos estén cargados.");
-      }
-
       const pdf = new jsPDF("p", "mm", "a4");
       const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
@@ -259,10 +290,57 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       
       toast({ title: "Reporte generado", description: "El PDF se ha descargado exitosamente." });
     } catch (error: any) {
-      console.error("Error generating PDF:", error);
       toast({ title: "Error al generar PDF", description: error.message, variant: "destructive" });
     } finally {
       setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleAddMaterial = async () => {
+    if (!selectedPartId || isMock || !profile || !ot || !otRef) {
+      if (isMock) toast({ title: "Modo Demo", description: "El inventario requiere una base de datos real." });
+      return;
+    }
+
+    const part = inventory?.find(p => p.id === selectedPartId);
+    if (!part) return;
+
+    const qty = Number(partQuantity);
+    if (qty <= 0) return;
+
+    try {
+      const usageRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "partUsages");
+      await addDoc(usageRef, {
+        workOrderId: ot.id,
+        partId: part.id,
+        partName: part.name,
+        quantity: qty,
+        unitPrice: part.unitPrice,
+        usedAt: serverTimestamp(),
+      });
+
+      // Update inventory stock
+      const partRef = doc(db, "companies", profile.companyId, "spareParts", part.id);
+      updateDocumentNonBlocking(partRef, {
+        stockActual: increment(-qty)
+      });
+
+      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
+      await addDoc(logRef, {
+        workOrderId: ot.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'action_taken',
+        eventDetails: `Consumió material: ${part.name} (x${qty})`,
+        actor: profile.id,
+      });
+
+      toast({ title: "Material añadido", description: "Se ha descontado del inventario." });
+      setIsAddingMaterial(false);
+      setSelectedPartId("");
+      setPartQuantity("1");
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
@@ -379,32 +457,26 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const handleAddComment = async () => {
-    if (!manualComment.trim() || isMock || !profile || !ot) return;
-    
-    setIsAddingComment(true);
-    try {
-      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
-      await addDoc(logRef, {
-        workOrderId: ot.id,
-        companyId: profile.companyId,
-        timestamp: serverTimestamp(),
-        eventType: 'comment',
-        eventDetails: manualComment.trim(),
-        actor: profile.id,
-      });
-      setManualComment("");
-      toast({ title: "Comentario guardado", description: "Bitácora actualizada." });
-    } catch (error) {
-      toast({ title: "Error", description: "No se pudo guardar el comentario.", variant: "destructive" });
-    } finally {
-      setIsAddingComment(false);
-    }
+  const toggleChecklistItem = (taskId: string) => {
+    if (isMock || !ot || !otRef || !profile) return;
+
+    const updatedChecklist = ot.checklist?.map((item: ChecklistItem) => {
+      if (item.id === taskId) {
+        const newCompleted = !item.completed;
+        return { ...item, completed: newCompleted, completedAt: newCompleted ? new Date().toISOString() : null };
+      }
+      return item;
+    });
+
+    updateDocumentNonBlocking(otRef, {
+      checklist: updatedChecklist,
+      updatedAt: serverTimestamp()
+    });
   };
 
   const handleGenerateAiSummary = async () => {
     if (isMock || !ot) {
-      toast({ title: "Modo Demo", description: "La IA solo funciona con datos reales en la nube." });
+      toast({ title: "Modo Demo", description: "La IA requiere datos reales." });
       return;
     }
 
@@ -443,33 +515,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const toggleChecklistItem = (taskId: string) => {
-    if (isMock || !ot || !otRef || !profile) return;
-
-    const updatedChecklist = ot.checklist?.map((item: ChecklistItem) => {
-      if (item.id === taskId) {
-        const newCompleted = !item.completed;
-        return { ...item, completed: newCompleted, completedAt: newCompleted ? new Date().toISOString() : null };
-      }
-      return item;
-    });
-
-    updateDocumentNonBlocking(otRef, {
-      checklist: updatedChecklist,
-      updatedAt: serverTimestamp()
-    });
-
-    const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
-    addDoc(logRef, {
-      workOrderId: ot.id,
-      companyId: profile.companyId,
-      timestamp: serverTimestamp(),
-      eventType: 'action_taken',
-      eventDetails: `Actualizó tarea: ${updatedChecklist?.find(i => i.id === taskId)?.task}`,
-      actor: profile.id,
-    });
-  };
-
   if (isDocLoading) {
     return (
       <div className="flex h-[400px] items-center justify-center">
@@ -482,7 +527,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4 sm:px-0 relative">
-      {/* Hidden Report for PDF Capture - Using absolute off-screen instead of hidden for html2canvas compatibility */}
       <div className="absolute -left-[9999px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           ref={reportRef}
@@ -492,6 +536,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           asset={asset}
           logbook={logbook}
           technician={technician}
+          partUsages={partUsages || []}
         />
       </div>
 
@@ -519,32 +564,18 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />}
             Reporte PDF
           </Button>
-          {['en revision', 'ejecutada'].includes(ot.status) && (
+          {['en revision', 'ejecutada', 'creada', 'asignada'].includes(ot.status) && (
             <>
-              <Button variant="outline" className="text-rose-500" onClick={() => handleStatusChange('rechazada')}>
+              <Button variant="outline" className="text-rose-500" onClick={() => handleStatusChange('rechazada')} disabled={isUpdating}>
                 <XCircle className="mr-2 h-4 w-4" /> Rechazar
               </Button>
-              <Button className="bg-emerald-600" onClick={() => handleStatusChange('aprobada')}>
+              <Button className="bg-emerald-600" onClick={() => handleStatusChange('aprobada')} disabled={isUpdating}>
                 <CheckCircle2 className="mr-2 h-4 w-4" /> Aprobar
               </Button>
             </>
           )}
         </div>
       </div>
-
-      {ot.aiSummary && (
-        <Card className="border-none shadow-sm bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 border-amber-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold flex items-center gap-2 text-amber-700 dark:text-amber-400">
-              <Zap className="h-4 w-4 fill-current" />
-              ANÁLISIS INTELIGENTE (IA)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed italic">{ot.aiSummary}</p>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
@@ -558,40 +589,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 </div>
                 <div className="bg-muted/30 p-3 rounded-lg">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Activo / Equipo</p>
-                  <div className="flex items-center gap-1.5">
-                    <HardHat className="h-3 w-3 text-primary" />
-                    <p className="text-sm font-bold">{asset?.name || 'S/I'}</p>
-                  </div>
+                  <p className="text-sm font-bold">{asset?.name || 'S/I'}</p>
                 </div>
               </div>
-
-              {ot.scheduledDate && (
-                <div className="grid grid-cols-3 gap-4 border-t pt-4">
-                  <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Inicio Programado</p>
-                    <div className="flex items-center gap-1.5">
-                      <CalendarIcon className="h-3 w-3 text-primary" />
-                      <p className="text-sm font-bold">{formatDate(ot.scheduledDate).split(',')[0]}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Días Plazo</p>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3 w-3 text-primary" />
-                      <p className="text-sm font-bold">{ot.durationDays || 1} días</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Término Estimado</p>
-                    <p className="text-sm font-bold text-primary">{formatDate(ot.estimatedEndDate).split(',')[0]}</p>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <Label className="text-xs uppercase text-muted-foreground font-bold">Descripción técnica</Label>
-                <p className="mt-1 text-sm leading-relaxed">{ot.description}</p>
-              </div>
+              <p className="text-sm">{ot.description}</p>
             </CardContent>
           </Card>
 
@@ -599,95 +600,135 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <Camera className="h-5 w-5 text-primary" /> Registro Fotográfico
+                  <Package className="h-5 w-5 text-primary" /> Insumos y Repuestos
                 </CardTitle>
+                <Dialog open={isAddingMaterial} onOpenChange={setIsAddingMaterial}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={ot.status === 'aprobada' || isMock}>
+                      <Plus className="h-4 w-4 mr-2" /> Registrar Uso
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Añadir Material al Trabajo</DialogTitle>
+                      <DialogDescription>El stock se actualizará automáticamente en el inventario.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Seleccionar Repuesto</Label>
+                        <Select value={selectedPartId} onValueChange={setSelectedPartId}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccione del catálogo..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {inventory?.map(p => (
+                              <SelectItem key={p.id} value={p.id} disabled={p.stockActual <= 0}>
+                                {p.name} (Stock: {p.stockActual})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cantidad Utilizada</Label>
+                        <Input 
+                          type="number" 
+                          min="1" 
+                          value={partQuantity} 
+                          onChange={(e) => setPartQuantity(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setIsAddingMaterial(false)}>Cancelar</Button>
+                      <Button onClick={handleAddMaterial} disabled={!selectedPartId}>Confirmar Uso</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {partUsages && partUsages.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Repuesto</TableHead>
+                      <TableHead>Cantidad</TableHead>
+                      <TableHead>Precio Unit.</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {partUsages.map((usage) => (
+                      <TableRow key={usage.id}>
+                        <TableCell className="text-sm font-medium">{usage.partName}</TableCell>
+                        <TableCell className="text-sm">{usage.quantity}</TableCell>
+                        <TableCell className="text-sm">${usage.unitPrice.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-sm font-bold">
+                          ${(usage.quantity * usage.unitPrice).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/30">
+                      <TableCell colSpan={3} className="text-right font-bold">Total Materiales</TableCell>
+                      <TableCell className="text-right font-black text-primary">
+                        ${partUsages.reduce((acc, p) => acc + (p.quantity * p.unitPrice), 0).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground italic text-sm">No se han registrado materiales aún.</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2"><Camera className="h-5 w-5 text-primary" /> Evidencia Fotográfica</CardTitle>
                 <div className="relative">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading || isMock}
-                  >
+                  <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                  <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isUploading || isMock}>
                     {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                     Subir Foto
                   </Button>
                 </div>
               </div>
-              <CardDescription>Evidencia visual capturada durante la ejecución del trabajo.</CardDescription>
             </CardHeader>
             <CardContent>
-              {ot.evidenceUrls && ot.evidenceUrls.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {ot.evidenceUrls.map((url, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border bg-muted group">
-                      <Image 
-                        src={url} 
-                        alt={`Evidencia ${idx + 1}`} 
-                        fill 
-                        className="object-cover transition-transform group-hover:scale-105"
-                      />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-10 border-2 border-dashed rounded-lg bg-muted/20">
-                  <ImageIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No se han subido fotos de evidencia aún.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <ListChecks className="h-5 w-5 text-primary" /> Protocolo de Verificación
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {ot.checklist && ot.checklist.length > 0 ? (
-                ot.checklist.map((item) => (
-                  <div key={item.id} className="flex items-start gap-3 p-3 bg-card rounded-lg border shadow-sm">
-                    <Checkbox 
-                      id={item.id} 
-                      checked={item.completed} 
-                      onCheckedChange={() => toggleChecklistItem(item.id)}
-                      disabled={ot.status === 'aprobada' || ot.status === 'rechazada'}
-                    />
-                    <div className="flex-1">
-                      <Label htmlFor={item.id} className={cn("text-sm font-medium", item.completed && "line-through text-muted-foreground")}>
-                        {item.task}
-                      </Label>
-                      {item.completed && item.completedAt && (
-                        <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ COMPLETADO {formatDate(item.completedAt)}</p>
-                      )}
-                    </div>
+              <div className="grid grid-cols-3 gap-3">
+                {ot.evidenceUrls?.map((url, idx) => (
+                  <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border bg-muted">
+                    <Image src={url} alt="Evidencia" fill className="object-cover" />
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-6 text-muted-foreground italic text-sm">Sin protocolo definido.</div>
-              )}
+                ))}
+              </div>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <SignatureIcon className="h-5 w-5 text-primary" /> Cierre y Firmas Digitales
-              </CardTitle>
-              <CardDescription>Validación formal de la ejecución y recepción conforme.</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><ListChecks className="h-5 w-5 text-primary" /> Protocolo Técnico</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {ot.checklist?.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg">
+                  <Checkbox 
+                    checked={item.completed} 
+                    onCheckedChange={() => toggleChecklistItem(item.id)}
+                    disabled={ot.status === 'aprobada'}
+                  />
+                  <span className={cn("text-sm", item.completed && "line-through text-muted-foreground")}>{item.task}</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm">
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><SignatureIcon className="h-5 w-5 text-primary" /> Cierre y Firmas</CardTitle></CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <Label className="text-xs font-bold uppercase text-muted-foreground">Firma Técnico Responsable</Label>
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Firma Técnico</Label>
                   {ot.technicianSignatureUrl ? (
                     <div className="border rounded-lg bg-white p-2 aspect-video relative">
                       <Image src={ot.technicianSignatureUrl} alt="Firma Técnico" fill className="object-contain" />
@@ -696,27 +737,17 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <Dialog open={signatureType === 'technician'} onOpenChange={(open) => !open && setSignatureType(null)}>
                       <DialogTrigger asChild>
                         <Button variant="outline" className="w-full" onClick={() => setSignatureType('technician')} disabled={isMock}>
-                          <SignatureIcon className="h-4 w-4 mr-2" /> Firmar como Técnico
+                          Firmar Técnico
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Firma del Técnico</DialogTitle>
-                          <DialogDescription>Use su dedo o mouse para firmar en el recuadro.</DialogDescription>
-                        </DialogHeader>
-                        <SignaturePad 
-                          title="Técnico" 
-                          isSaving={isSavingSignature} 
-                          onCancel={() => setSignatureType(null)} 
-                          onSave={handleSaveSignature} 
-                        />
+                        <SignaturePad title="Técnico" isSaving={isSavingSignature} onCancel={() => setSignatureType(null)} onSave={handleSaveSignature} />
                       </DialogContent>
                     </Dialog>
                   )}
                 </div>
-
                 <div className="space-y-4">
-                  <Label className="text-xs font-bold uppercase text-muted-foreground">Firma Cliente (Recepción)</Label>
+                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">Firma Cliente</Label>
                   {ot.clientSignatureUrl ? (
                     <div className="border rounded-lg bg-white p-2 aspect-video relative">
                       <Image src={ot.clientSignatureUrl} alt="Firma Cliente" fill className="object-contain" />
@@ -725,20 +756,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <Dialog open={signatureType === 'client'} onOpenChange={(open) => !open && setSignatureType(null)}>
                       <DialogTrigger asChild>
                         <Button variant="outline" className="w-full" onClick={() => setSignatureType('client')} disabled={isMock}>
-                          <SignatureIcon className="h-4 w-4 mr-2" /> Capturar Firma Cliente
+                          Firma Cliente
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Firma del Cliente</DialogTitle>
-                          <DialogDescription>Solicite al cliente que firme en el recuadro para confirmar recepción.</DialogDescription>
-                        </DialogHeader>
-                        <SignaturePad 
-                          title="Cliente" 
-                          isSaving={isSavingSignature} 
-                          onCancel={() => setSignatureType(null)} 
-                          onSave={handleSaveSignature} 
-                        />
+                        <SignaturePad title="Cliente" isSaving={isSavingSignature} onCancel={() => setSignatureType(null)} onSave={handleSaveSignature} />
                       </DialogContent>
                     </Dialog>
                   )}
@@ -746,71 +768,43 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </CardContent>
           </Card>
-
-          <Card className="border-none shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Libro Digital de Obra</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {!['aprobada', 'rechazada'].includes(ot.status) && (
-                <div className="flex gap-2">
-                  <Textarea 
-                    placeholder="Añadir comentario o incidencia a la bitácora..." 
-                    className="min-h-[60px]"
-                    value={manualComment}
-                    onChange={(e) => setManualComment(e.target.value)}
-                  />
-                  <Button 
-                    className="self-end" 
-                    size="icon" 
-                    onClick={handleAddComment}
-                    disabled={isAddingComment || !manualComment.trim()}
-                  >
-                    {isAddingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
-                  </Button>
-                </div>
-              )}
-
-              <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-muted">
-                {logbook.map((entry) => (
-                  <div key={entry.id} className="relative">
-                    <div className="absolute -left-[23px] top-1 h-4 w-4 rounded-full bg-background border-2 border-primary" />
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">
-                          {entry.eventType === 'comment' ? 'COMENTARIO TÉCNICO' : entry.eventType.replace('_', ' ')}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">{formatDate(entry.timestamp)}</span>
-                      </div>
-                      <p className="text-sm font-medium">{entry.eventDetails}</p>
-                      <p className="text-[10px] text-muted-foreground">Responsable: {MOCK_USERS.find(u => u.id === entry.actor)?.name || 'Sistema'}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="space-y-6">
-          <Card className="border-none shadow-sm bg-primary/5">
-            <CardHeader><CardTitle className="text-sm">Estado del Servicio</CardTitle></CardHeader>
+          <Card className="border-none shadow-sm">
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Bitácora</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'].map((step, idx) => {
-                const steps = ['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'];
-                const currentIdx = steps.indexOf(ot.status);
-                const isDone = currentIdx >= idx;
-                return (
-                  <div key={step} className="flex items-center gap-3">
-                    <div className={cn("h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold", isDone ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground")}>
-                      {isDone ? "✓" : idx + 1}
-                    </div>
-                    <span className={cn("text-xs uppercase", isDone ? "font-bold text-foreground" : "text-muted-foreground")}>
-                      {step}
-                    </span>
+              <div className="flex gap-2">
+                <Textarea 
+                  placeholder="Comentario técnico..." 
+                  className="min-h-[60px]" 
+                  value={manualComment} 
+                  onChange={(e) => setManualComment(e.target.value)} 
+                />
+                <Button size="icon" onClick={() => {
+                  if (!manualComment.trim() || isMock || !profile) return;
+                  addDoc(collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries"), {
+                    workOrderId: ot.id,
+                    companyId: profile.companyId,
+                    timestamp: serverTimestamp(),
+                    eventType: 'comment',
+                    eventDetails: manualComment,
+                    actor: profile.id
+                  });
+                  setManualComment("");
+                }} disabled={!manualComment.trim() || isMock}>
+                  <MessageSquare className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="space-y-4 border-l pl-4">
+                {logbook.map((entry) => (
+                  <div key={entry.id} className="text-xs">
+                    <p className="font-bold text-primary uppercase">{entry.eventType.replace('_', ' ')}</p>
+                    <p className="text-muted-foreground">{entry.eventDetails}</p>
+                    <p className="text-[10px] text-muted-foreground opacity-70">{formatDate(entry.timestamp)}</p>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
