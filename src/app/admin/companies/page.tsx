@@ -143,8 +143,8 @@ export default function AdminCompaniesPage() {
     
     const companyData = {
       id: companyId,
-      name: formData.name,
-      rut: "", 
+      name: formData.name || "Nombre por definir",
+      rut: "RUT por definir", 
       address: formData.address || "Dirección por definir",
       currentPlan: formData.currentPlan,
       subscriptionStatus: "active",
@@ -156,7 +156,7 @@ export default function AdminCompaniesPage() {
     
     toast({
       title: "Entorno Generado",
-      description: `Se ha creado el acceso para ${formData.name}.`,
+      description: `Se ha creado el acceso para ${companyData.name}.`,
     });
     
     setIsCreateOpen(false);
@@ -346,10 +346,9 @@ export default function AdminCompaniesPage() {
             <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Nombre de la Empresa / Razón Social *</Label>
+                  <Label>Nombre de la Empresa / Razón Social</Label>
                   <Input 
                     placeholder="Ej: Servicios Industriales S.A." 
-                    required 
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />

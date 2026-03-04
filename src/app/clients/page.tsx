@@ -121,20 +121,25 @@ export default function ClientsPage() {
       return;
     }
 
+    const dataToSave = {
+      ...formData,
+      name: formData.name || "Nombre por definir",
+      rut: formData.rut || "RUT por definir",
+      address: formData.address || "Dirección por definir",
+      companyId: profile.companyId,
+      createdAt: serverTimestamp()
+    };
+
     if (editingClient) {
       const clientRef = doc(db, "companies", profile.companyId, "clients", editingClient.id);
       updateDocumentNonBlocking(clientRef, {
-        ...formData,
+        ...dataToSave,
         updatedAt: serverTimestamp()
       });
       toast({ title: "Cliente actualizado", description: "Los cambios han sido guardados." });
     } else {
       const colRef = collection(db, "companies", profile.companyId, "clients");
-      addDocumentNonBlocking(colRef, {
-        ...formData,
-        companyId: profile.companyId,
-        createdAt: serverTimestamp()
-      });
+      addDocumentNonBlocking(colRef, dataToSave);
       toast({ title: "Cliente registrado", description: "Nuevo cliente añadido exitosamente." });
     }
 
@@ -223,34 +228,31 @@ export default function ClientsPage() {
               <form onSubmit={handleSubmit} className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2 col-span-2 sm:col-span-1">
-                    <Label htmlFor="rut">RUT del Cliente *</Label>
+                    <Label htmlFor="rut">RUT del Cliente</Label>
                     <Input 
                       id="rut" 
                       placeholder="76.000.000-0" 
                       value={formData.rut}
                       onChange={(e) => setFormData({...formData, rut: e.target.value})}
-                      required
                     />
                   </div>
                   <div className="space-y-2 col-span-2 sm:col-span-1">
-                    <Label htmlFor="name">Razón Social *</Label>
+                    <Label htmlFor="name">Razón Social</Label>
                     <Input 
                       id="name" 
                       placeholder="Nombre de la empresa" 
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
-                      required
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="address">Dirección Principal *</Label>
+                  <Label htmlFor="address">Dirección Principal</Label>
                   <Input 
                     id="address" 
                     placeholder="Calle, Número, Ciudad" 
                     value={formData.address}
                     onChange={(e) => setFormData({...formData, address: e.target.value})}
-                    required
                   />
                 </div>
                 <div className="border-t pt-4">
