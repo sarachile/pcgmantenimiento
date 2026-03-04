@@ -17,7 +17,8 @@ import {
   Package,
   CalendarDays,
   Settings,
-  MessageCircleHeart
+  MessageCircleHeart,
+  LifeBuoy
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -60,6 +61,7 @@ const navItems: NavItem[] = [
   { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
+  { title: "Soporte Técnico", href: "/support", icon: LifeBuoy },
 ];
 
 // Items maestros (solo para Superadmin)
@@ -67,6 +69,7 @@ const adminItems: NavItem[] = [
   { title: "Control Maestro", href: "/admin", icon: Globe, roles: ['superadmin'] },
   { title: "Empresas Registradas", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
   { title: "Usuarios Globales", href: "/admin/users", icon: Users, roles: ['superadmin'] },
+  { title: "Tickets Globales", href: "/admin/support", icon: LifeBuoy, roles: ['superadmin'] },
   { title: "Estadísticas SaaS", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
 ];
 
@@ -84,12 +87,10 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
 
   const { data: company } = useDoc<Company>(companyRef);
 
-  // Si es superadmin, NO mostramos los navItems operativos
   const filteredItems = isSuperAdmin ? [] : navItems.filter(item => 
     !item.roles || item.roles.includes(userRole)
   );
 
-  // Si es superadmin, mostramos solo adminItems
   const filteredAdminItems = adminItems.filter(item => 
     item.roles?.includes(userRole)
   );
@@ -127,7 +128,6 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        {/* Solo mostramos el grupo de Menú Principal si NO somos superadmin */}
         {!isSuperAdmin && filteredItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
@@ -150,7 +150,6 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
           </SidebarGroup>
         )}
 
-        {/* Grupo exclusivo de Superadmin */}
         {filteredAdminItems.length > 0 && (
           <SidebarGroup>
             <SidebarGroupLabel className="text-primary font-bold">Administración Global</SidebarGroupLabel>

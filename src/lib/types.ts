@@ -11,6 +11,10 @@ export type PlanType = 'free' | 'pro' | 'enterprise';
 
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled';
 
+export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
+export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type TicketCategory = 'technical' | 'billing' | 'feature' | 'other';
+
 export interface Company {
   id: string;
   name: string;
@@ -23,6 +27,30 @@ export interface Company {
   createdAt: string | any;
   updatedAt?: string | any;
   requestedPlan?: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  companyId: string;
+  userName: string;
+  companyName: string;
+  subject: string;
+  description: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  category: TicketCategory;
+  createdAt: string | any;
+  updatedAt: string | any;
+}
+
+export interface TicketMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'user' | 'admin';
+  text: string;
+  timestamp: string | any;
 }
 
 export interface Client {
@@ -51,8 +79,8 @@ export interface StaffMember {
   id: string;
   companyId: string;
   name: string;
-  role: string; // Técnico, Especialista, Subcontrato, Supervisor, etc.
-  identification?: string; // RUT o ID interno
+  role: string; 
+  identification?: string; 
   phone?: string;
   email?: string;
   active: boolean;
@@ -129,18 +157,16 @@ export interface WorkOrder {
   createdByUserId: string;
   reviewerRequired: boolean;
   evaluationRequired: boolean;
-  approvalPin?: string; // Código de 6 dígitos para validar al cliente
+  approvalPin?: string; 
   scheduledDate?: string | any;
   durationDays?: number;
   estimatedEndDate?: string | any;
   checklist?: ChecklistItem[];
   clientSignatureUrl?: string;
   technicianSignatureUrl?: string;
-  // Campos para firma digital simple (Cliente)
   clientApprovalName?: string;
   clientApprovalDate?: string | any;
   clientApprovalCode?: string;
-  // Campos para firma digital simple (Técnico / Interna)
   technicianApprovalName?: string;
   technicianApprovalDate?: string | any;
   technicianApprovalCode?: string;
