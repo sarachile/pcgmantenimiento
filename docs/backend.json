@@ -19,6 +19,23 @@
       },
       "required": ["id", "name", "rut", "isActive", "currentPlan", "createdAt"]
     },
+    "Client": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Client",
+      "type": "object",
+      "description": "Cliente final al que la empresa presta servicios de mantención.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "name": { "type": "string" },
+        "rut": { "type": "string" },
+        "address": { "type": "string" },
+        "contactName": { "type": "string" },
+        "contactEmail": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "companyId", "name", "rut", "createdAt"]
+    },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
@@ -36,49 +53,38 @@
       },
       "required": ["id", "email", "role", "isActive", "createdAt"]
     },
-    "Subscription": {
+    "WorkOrder": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Subscription",
-      "description": "Historial de planes y estados de suscripción por empresa.",
+      "title": "WorkOrder",
+      "type": "object",
+      "description": "Orden de trabajo vinculada a una empresa, un cliente y un activo opcional.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "assetId": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "aprobada", "rechazada"] },
+        "assignedToUserId": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "reviewerRequired": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "executedAt": { "type": "string", "format": "date-time" },
+        "evidenceUrls": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "companyId", "clientId", "status", "createdAt"]
+    },
+    "DigitalLogbookEntry": {
+      "title": "DigitalLogbookEntry",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "plan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
-        "status": { "type": "string", "enum": ["active", "past_due", "canceled"] },
-        "startDate": { "type": "string", "format": "date-time" },
-        "endDate": { "type": "string", "format": "date-time" },
-        "billingCycle": { "type": "string", "enum": ["monthly", "yearly"] }
-      },
-      "required": ["id", "plan", "status", "startDate"]
-    },
-    "UsageStats": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "UsageStats",
-      "description": "Contadores de uso para control de límites de plan.",
-      "type": "object",
-      "properties": {
-        "activeUsersCount": { "type": "number" },
-        "workOrdersCreatedMonth": { "type": "number" },
-        "invoicesIssuedMonth": { "type": "number" },
-        "lastResetDate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["activeUsersCount", "workOrdersCreatedMonth", "invoicesIssuedMonth"]
-    },
-    "Payment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Payment",
-      "description": "Registro de pagos de suscripción.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "amount": { "type": "number" },
-        "currency": { "type": "string", "default": "CLP" },
-        "status": { "type": "string", "enum": ["paid", "pending", "failed"] },
-        "paymentMethod": { "type": "string" },
-        "transactionId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "amount", "status", "createdAt"]
+        "workOrderId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "eventType": { "type": "string" },
+        "eventDetails": { "type": "string" },
+        "actorUserId": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -89,17 +95,17 @@
       "schema": { "$ref": "#/backend/entities/Company" },
       "description": "Documentos de empresa."
     },
-    "/companies/{companyId}/subscriptions/{subId}": {
-      "schema": { "$ref": "#/backend/entities/Subscription" },
-      "description": "Historial de suscripciones."
+    "/companies/{companyId}/clients/{clientId}": {
+      "schema": { "$ref": "#/backend/entities/Client" },
+      "description": "Clientes de la empresa."
     },
-    "/companies/{companyId}/stats/usage": {
-      "schema": { "$ref": "#/backend/entities/UsageStats" },
-      "description": "Contadores de uso de la empresa."
+    "/companies/{companyId}/workOrders/{workOrderId}": {
+      "schema": { "$ref": "#/backend/entities/WorkOrder" },
+      "description": "Órdenes de trabajo de la empresa."
     },
-    "/companies/{companyId}/payments/{paymentId}": {
-      "schema": { "$ref": "#/backend/entities/Payment" },
-      "description": "Historial de pagos."
+    "/companies/{companyId}/workOrders/{workOrderId}/digitalLogbookEntries/{entryId}": {
+      "schema": { "$ref": "#/backend/entities/DigitalLogbookEntry" },
+      "description": "Entradas del libro digital por OT."
     },
     "/users/{userId}": {
       "schema": { "$ref": "#/backend/entities/User" },

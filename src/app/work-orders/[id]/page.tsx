@@ -5,7 +5,8 @@ import { use, useState, useEffect } from "react";
 import { 
   MOCK_WORK_ORDERS, 
   MOCK_LOGBOOK, 
-  MOCK_USERS 
+  MOCK_USERS,
+  MOCK_CLIENTS
 } from "@/lib/mock-data";
 import { 
   Card, 
@@ -27,7 +28,8 @@ import {
   Sparkles,
   ArrowLeft,
   MessageSquare,
-  Loader2
+  Loader2,
+  Building2
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -51,7 +53,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     setMounted(true);
   }, []);
 
-  // Intentar cargar de Firestore
   const otRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId || otId.startsWith('OT-')) return null;
     return doc(db, "companies", profile.companyId, "workOrders", otId);
@@ -59,10 +60,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const { data: firestoreOt, isLoading: isDocLoading } = useDoc(otRef);
 
-  // Determinar OT final (Firestore o Mock)
   const ot = firestoreOt || MOCK_WORK_ORDERS.find(o => o.id === otId);
   const logbook = MOCK_LOGBOOK.filter(l => l.workOrderId === otId);
   const isMock = !firestoreOt;
+
+  const client = MOCK_CLIENTS.find(c => c.id === ot?.clientId);
 
   const formatDate = (date: any) => {
     if (!mounted || !date) return '...';
@@ -167,6 +169,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <ClipboardList className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="bg-muted/30 p-4 rounded-lg flex items-start gap-3">
+                <Building2 className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase">Cliente</p>
+                  <p className="text-sm font-bold">{client?.name || 'Cliente no identificado'}</p>
+                  <p className="text-[10px] text-muted-foreground">{client?.rut}</p>
+                </div>
+              </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Descripción del Trabajo</label>
                 <p className="mt-1 text-base leading-relaxed">{ot.description}</p>
@@ -192,26 +202,18 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <Sparkles className="h-5 w-5 text-primary" />
                   Resumen Inteligente (IA)
                 </CardTitle>
-                <CardDescription>Generado automáticamente a partir del historial y detalles.</CardDescription>
+                <CardDescription>Análisis ejecutivo de la intervención.</CardDescription>
               </div>
-              <Button 
-                onClick={handleGenerateSummary} 
-                disabled={isGenerating}
-                variant="outline"
-                size="sm"
-                className="bg-background"
-              >
+              <Button onClick={handleGenerateSummary} disabled={isGenerating} variant="outline" size="sm" className="bg-background">
                 {isGenerating ? "Generando..." : "Actualizar"}
               </Button>
             </CardHeader>
             <CardContent>
               {aiSummary ? (
-                <div className="prose prose-sm max-w-none text-primary">
-                  {aiSummary}
-                </div>
+                <div className="prose prose-sm max-w-none text-primary">{aiSummary}</div>
               ) : (
-                <div className="text-center py-6 text-muted-foreground italic flex flex-col items-center gap-2">
-                   <p>Presione el botón para generar un resumen ejecutivo de la mantención.</p>
+                <div className="text-center py-6 text-muted-foreground italic">
+                   <p>Presione el botón para generar un resumen ejecutivo.</p>
                 </div>
               )}
             </CardContent>
@@ -223,7 +225,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <History className="h-5 w-5 text-muted-foreground" />
                 Libro Digital de Obra
               </CardTitle>
-              <CardDescription>Registro auditable e inmutable de eventos asociados.</CardDescription>
             </CardHeader>
             <CardContent>
               {logbook.length > 0 ? (
@@ -244,53 +245,17 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground text-sm italic">
-                  No hay registros en el libro para esta OT.
+                  No hay registros en el libro.
                 </div>
               )}
             </CardContent>
-            <CardFooter className="bg-muted/30 border-t p-4 rounded-b-lg">
-              <div className="flex w-full items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="h-4 w-4 text-primary" />
-                </div>
-                <input 
-                  className="flex-1 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground" 
-                  placeholder="Escribir un comentario en el libro..."
-                  disabled={ot.status === 'aprobada' || isMock}
-                />
-                <Button variant="ghost" size="sm" disabled={ot.status === 'aprobada' || isMock}>Registrar</Button>
-              </div>
-            </CardFooter>
           </Card>
         </div>
 
         <div className="space-y-6">
           <Card className="border-none shadow-sm">
             <CardHeader>
-              <CardTitle className="text-base">Información del Cliente</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-xl">🏢</div>
-                <div>
-                  <p className="text-sm font-bold">Planta Norte Industrial</p>
-                  <p className="text-xs text-muted-foreground">RUT: 76.888.222-1</p>
-                </div>
-              </div>
-              <Separator />
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-muted-foreground uppercase">Contraparte Técnica</p>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  <span className="text-sm">Marta Figueroa (Reviewer)</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm bg-accent/5">
-            <CardHeader>
-              <CardTitle className="text-base text-accent">Estado del Proceso</CardTitle>
+              <CardTitle className="text-base">Estado del Proceso</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">

@@ -18,11 +18,22 @@ export interface Company {
   name: string;
   rut: string;
   address: string;
-  currentPlan: PlanType;
+  subscriptionPlan: PlanType;
   subscriptionStatus: SubscriptionStatus;
   isActive: boolean;
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface Client {
+  id: string;
+  companyId: string;
+  name: string;
+  rut: string;
+  address: string;
+  contactName?: string;
+  contactEmail?: string;
+  createdAt: string;
 }
 
 export interface User {
@@ -31,72 +42,26 @@ export interface User {
   name: string;
   role: Role;
   companyId: string;
-  isActive: boolean;
+  active: boolean;
   createdAt: string;
-}
-
-export interface Subscription {
-  id: string;
-  plan: PlanType;
-  status: SubscriptionStatus;
-  startDate: string;
-  endDate?: string;
-  billingCycle: 'monthly' | 'yearly';
-}
-
-export interface UsageStats {
-  activeUsersCount: number;
-  workOrdersCreatedMonth: number;
-  invoicesIssuedMonth: number;
-  lastResetDate: string;
-}
-
-export interface Payment {
-  id: string;
-  amount: number;
-  currency: string;
-  status: 'paid' | 'pending' | 'failed';
-  paymentMethod: string;
-  transactionId?: string;
-  createdAt: string;
-}
-
-export interface Asset {
-  id: string;
-  companyId: string;
-  name: string;
-  code: string;
-  location: string;
-  status: AssetStatus;
-  lastMaintenanceAt?: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface SparePart {
-  id: string;
-  companyId: string;
-  name: string;
-  code: string;
-  currentStock: number;
-  minStock: number;
-  unit: string;
 }
 
 export interface WorkOrder {
   id: string;
   companyId: string;
+  clientId: string;
   assetId?: string;
   description: string;
   status: OTStatus;
+  assignedTo?: string;
   assignedToUserId?: string;
   createdByUserId: string;
   reviewerId?: string;
   reviewerRequired: boolean;
-  createdAt: string;
-  updatedAt: string;
-  executedAt?: string;
-  reviewedAt?: string;
+  createdAt: string | any;
+  updatedAt: string | any;
+  executedAt?: string | any;
+  reviewedAt?: string | any;
   approvedByUserId?: string;
   rejectedReason?: string;
   evidenceUrls?: string[];
@@ -105,24 +70,9 @@ export interface WorkOrder {
 export interface DigitalLogbookEntry {
   id: string;
   workOrderId: string;
+  companyId: string;
   timestamp: string;
   eventType: 'status_change' | 'action_taken' | 'comment' | 'system_alert';
   eventDetails: string;
-  actorUserId: string;
-}
-
-export interface Invoice {
-  id: string;
-  companyId: string;
-  workOrderId: string;
-  issuerUserId: string;
-  status: DTEStatus;
-  dteType: DTEType;
-  folio?: number;
-  amount: number;
-  simpleApiId?: string;
-  errorDetails?: string;
-  pdfUrl?: string;
-  xmlUrl?: string;
-  createdAt: string;
+  actor: string;
 }

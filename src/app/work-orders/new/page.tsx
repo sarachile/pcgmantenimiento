@@ -12,9 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, AlertCircle, Building2 } from "lucide-react";
 import Link from "next/link";
-import { MOCK_USERS } from "@/lib/mock-data";
+import { MOCK_USERS, MOCK_CLIENTS } from "@/lib/mock-data";
 
 export default function NewWorkOrderPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -23,6 +23,7 @@ export default function NewWorkOrderPage() {
   const { toast } = useToast();
 
   const [description, setDescription] = useState("");
+  const [clientId, setClientId] = useState("");
   const [reviewerRequired, setReviewerRequired] = useState(false);
   const [assignedTo, setAssignedTo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,10 +31,10 @@ export default function NewWorkOrderPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!description.trim()) {
+    if (!description.trim() || !clientId) {
       toast({
-        title: "Campo requerido",
-        description: "Por favor, ingrese una descripción para el trabajo.",
+        title: "Campos requeridos",
+        description: "Por favor, complete la descripción y seleccione un cliente.",
         variant: "destructive",
       });
       return;
@@ -54,6 +55,7 @@ export default function NewWorkOrderPage() {
       
       const newOT = {
         companyId: profile.companyId,
+        clientId,
         description: description.trim(),
         status: "creada",
         assignedToUserId: assignedTo || null,
@@ -90,8 +92,8 @@ export default function NewWorkOrderPage() {
     );
   }
 
-  // Filtrado de técnicos de la empresa actual (usando mocks para demo)
   const technicians = MOCK_USERS.filter(u => u.role === 'tecnico' && u.companyId === profile?.companyId);
+  const clients = MOCK_CLIENTS.filter(c => c.companyId === profile?.companyId);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 px-4 py-8">
@@ -103,7 +105,7 @@ export default function NewWorkOrderPage() {
         </Button>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground italic">Paso inicial del libro digital de obra.</p>
+          <p className="text-sm text-muted-foreground italic">Registro en el libro digital de obra.</p>
         </div>
       </div>
 
@@ -114,11 +116,29 @@ export default function NewWorkOrderPage() {
             Detalles de la Mantención
           </CardTitle>
           <CardDescription>
-            Toda la información ingresada será registrada de forma inmutable en el historial de la empresa.
+            La información será registrada de forma inmutable para auditorías futuras.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleCreate}>
           <CardContent className="space-y-6 pt-6">
+            <div className="space-y-2">
+              <Label htmlFor="client" className="font-bold">Cliente Seleccionado *</Label>
+              <Select value={clientId} onValueChange={setClientId}>
+                <SelectTrigger id="client" className="bg-background">
+                  <SelectValue placeholder="Seleccione un cliente..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.length > 0 ? (
+                    clients.map(client => (
+                      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="none" disabled>No hay clientes registrados</SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="description" className="font-bold">Descripción del Trabajo *</Label>
@@ -126,9 +146,9 @@ export default function NewWorkOrderPage() {
               </div>
               <Textarea 
                 id="description" 
-                placeholder="Describa detalladamente el problema o la tarea preventiva (ej: Falla en bomba de impulsión sector B)..." 
+                placeholder="Describa la tarea preventiva o falla..." 
                 required
-                className="min-h-[140px] resize-none focus:ring-2 focus:ring-primary/20"
+                className="min-h-[120px] resize-none"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -147,17 +167,16 @@ export default function NewWorkOrderPage() {
                         <SelectItem key={tech.id} value={tech.id}>{tech.name}</SelectItem>
                       ))
                     ) : (
-                      <SelectItem value="none" disabled>No se encontraron técnicos activos</SelectItem>
+                      <SelectItem value="none" disabled>Sin técnicos activos</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
-                <p className="text-[10px] text-muted-foreground">Puede dejarlo vacío para asignar después.</p>
               </div>
 
               <div className="flex items-center justify-between p-4 border-2 rounded-xl bg-accent/5 border-dashed border-accent/20">
                 <div className="space-y-0.5">
                   <Label className="font-bold">Requiere Reviewer</Label>
-                  <p className="text-xs text-muted-foreground">Obliga a una contraparte técnica a validar antes del cierre.</p>
+                  <p className="text-xs text-muted-foreground">Obliga validación externa.</p>
                 </div>
                 <Switch 
                   checked={reviewerRequired}
@@ -169,7 +188,7 @@ export default function NewWorkOrderPage() {
             <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-3">
               <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-800 leading-relaxed">
-                Al crear esta orden, se generará una entrada automática en el <strong>Libro Digital</strong>. Asegúrese de que la descripción sea clara para auditorías futuras.
+                Se generará una entrada automática en el <strong>Libro Digital</strong> vinculada al cliente seleccionado.
               </p>
             </div>
           </CardContent>
@@ -177,15 +196,8 @@ export default function NewWorkOrderPage() {
             <Button variant="outline" type="button" asChild disabled={isSubmitting}>
               <Link href="/work-orders">Cancelar</Link>
             </Button>
-            <Button type="submit" disabled={isSubmitting || !description.trim()} className="min-w-[160px]">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Registrando...
-                </>
-              ) : (
-                "Crear Orden de Trabajo"
-              )}
+            <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId} className="min-w-[160px]">
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Crear Orden de Trabajo"}
             </Button>
           </CardFooter>
         </form>
