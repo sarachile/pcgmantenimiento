@@ -38,7 +38,9 @@ import {
   HardHat,
   Signature as SignatureIcon,
   Eraser,
-  Check
+  Check,
+  Calendar as CalendarIcon,
+  Clock
 } from "lucide-react";
 import {
   Dialog,
@@ -69,6 +71,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
 import { ChecklistItem, WorkOrder, DigitalLogbookEntry } from "@/lib/types";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
+import { format, parseISO } from "date-fns";
 
 // Simple Signature Pad Component using Canvas
 function SignaturePad({ onSave, onCancel, isSaving, title }: { 
@@ -508,6 +511,30 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   </div>
                 </div>
               </div>
+
+              {ot.scheduledDate && (
+                <div className="grid grid-cols-3 gap-4 border-t pt-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Inicio Programado</p>
+                    <div className="flex items-center gap-1.5">
+                      <CalendarIcon className="h-3 w-3 text-primary" />
+                      <p className="text-sm font-bold">{format(ot.scheduledDate instanceof Date ? ot.scheduledDate : parseISO(ot.scheduledDate), 'dd/MM/yyyy')}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Días Plazo</p>
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-3 w-3 text-primary" />
+                      <p className="text-sm font-bold">{ot.durationDays || 1} días</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Término Estimado</p>
+                    <p className="text-sm font-bold text-primary">{ot.estimatedEndDate ? format(ot.estimatedEndDate instanceof Date ? ot.estimatedEndDate : parseISO(ot.estimatedEndDate), 'dd/MM/yyyy') : 'S/I'}</p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <Label className="text-xs uppercase text-muted-foreground font-bold">Descripción técnica</Label>
                 <p className="mt-1 text-sm leading-relaxed">{ot.description}</p>

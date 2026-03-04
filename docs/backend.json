@@ -62,6 +62,9 @@
         "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "aprobada", "rechazada"] },
         "assignedToUserId": { "type": "string" },
         "reviewerRequired": { "type": "boolean" },
+        "scheduledDate": { "type": "string", "format": "date-time", "description": "Fecha programada de inicio." },
+        "durationDays": { "type": "number", "description": "Días de plazo para ejecución." },
+        "estimatedEndDate": { "type": "string", "format": "date-time", "description": "Fecha estimada de término." },
         "checklist": {
           "type": "array",
           "items": {

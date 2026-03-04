@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
@@ -13,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, HardHat } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock } from "lucide-react";
 import Link from "next/link";
 import { MOCK_USERS, MOCK_CLIENTS, MOCK_ASSETS } from "@/lib/mock-data";
+import { addDays, format, parseISO } from "date-fns";
 
 export default function NewWorkOrderPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -30,9 +31,26 @@ export default function NewWorkOrderPage() {
   const [assignedTo, setAssignedTo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Schedule state
+  const [scheduledDate, setScheduledDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [durationDays, setDurationDays] = useState(1);
+  const [estimatedEndDate, setEstimatedEndDate] = useState("");
+
   // Checklist State
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
+
+  useEffect(() => {
+    if (scheduledDate && durationDays) {
+      try {
+        const start = parseISO(scheduledDate);
+        const end = addDays(start, Number(durationDays));
+        setEstimatedEndDate(format(end, 'yyyy-MM-dd'));
+      } catch (e) {
+        setEstimatedEndDate("");
+      }
+    }
+  }, [scheduledDate, durationDays]);
 
   const handleAddTask = () => {
     if (!newTask.trim()) return;
@@ -78,6 +96,9 @@ export default function NewWorkOrderPage() {
         assignedToUserId: assignedTo || null,
         createdByUserId: profile.id,
         reviewerRequired,
+        scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
+        durationDays: Number(durationDays),
+        estimatedEndDate: estimatedEndDate ? new Date(estimatedEndDate).toISOString() : null,
         checklist: checklist.map((item, idx) => ({
           id: `task-${idx}-${Date.now()}`,
           task: item.task,
@@ -91,7 +112,7 @@ export default function NewWorkOrderPage() {
 
       toast({
         title: "Orden Creada",
-        description: `OT generada exitosamente.`,
+        description: `OT generada exitosamente para el ${scheduledDate}.`,
       });
 
       router.push(`/work-orders/${docRef.id}`);
@@ -145,7 +166,7 @@ export default function NewWorkOrderPage() {
         </Button>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground italic">Registro en el libro digital de obra con protocolo.</p>
+          <p className="text-sm text-muted-foreground italic">Planificación técnica con cronograma automático.</p>
         </div>
       </div>
 
@@ -153,10 +174,10 @@ export default function NewWorkOrderPage() {
         <CardHeader className="bg-primary/5 border-b rounded-t-lg">
           <CardTitle className="flex items-center gap-2">
             <ClipboardPlus className="h-5 w-5 text-primary" />
-            Detalles de la Mantención
+            Detalles de la Operación
           </CardTitle>
           <CardDescription>
-            Defina el alcance y el protocolo de pasos a seguir.
+            Defina el cronograma, alcance y protocolo de pasos.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleCreate}>
@@ -191,6 +212,38 @@ export default function NewWorkOrderPage() {
               </div>
             </div>
 
+            <Card className="border shadow-none bg-muted/10">
+              <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
+                    <CalendarIcon className="h-3 w-3" /> Inicio Ejecución
+                  </Label>
+                  <Input 
+                    type="date" 
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
+                    <Clock className="h-3 w-3" /> Días de Plazo
+                  </Label>
+                  <Input 
+                    type="number" 
+                    min="1"
+                    value={durationDays}
+                    onChange={(e) => setDurationDays(Number(e.target.value))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase text-muted-foreground">Término Estimado</Label>
+                  <div className="h-10 px-3 flex items-center bg-background border rounded-md font-medium text-primary">
+                    {estimatedEndDate ? format(parseISO(estimatedEndDate), 'dd/MM/yyyy') : '...'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="technician" className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Técnico Asignado</Label>
@@ -211,7 +264,7 @@ export default function NewWorkOrderPage() {
               <Label htmlFor="description" className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Descripción del Trabajo *</Label>
               <Textarea 
                 id="description" 
-                placeholder="Ej: Mantención 5.000km Camión o Reparación de tabique sala n°2..." 
+                placeholder="Ej: Mantención preventiva de camión o reparación de tabique..." 
                 required
                 className="min-h-[100px]"
                 value={description}
@@ -227,7 +280,7 @@ export default function NewWorkOrderPage() {
               
               <div className="flex gap-2">
                 <Input 
-                  placeholder="Ej: Revisión de niveles o Pintura de terminación..." 
+                  placeholder="Añadir tarea de verificación..." 
                   value={newTask} 
                   onChange={(e) => setNewTask(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}

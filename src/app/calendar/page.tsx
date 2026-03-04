@@ -74,7 +74,9 @@ export default function CalendarPage() {
 
   const getOrdersForDay = (day: Date) => {
     return workOrders.filter(ot => {
-      const otDate = ot.createdAt?.toDate ? ot.createdAt.toDate() : parseISO(ot.createdAt);
+      // Prioritize scheduledDate for calendar positioning
+      const dateToUse = ot.scheduledDate || ot.createdAt;
+      const otDate = dateToUse?.toDate ? dateToUse.toDate() : parseISO(dateToUse);
       return isSameDay(day, otDate);
     });
   };
@@ -100,7 +102,7 @@ export default function CalendarPage() {
           </Button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Calendario Operacional</h2>
-            <p className="text-muted-foreground">Planificación visual de servicios y mantenciones preventivas.</p>
+            <p className="text-muted-foreground">Planificación visual basada en fechas de ejecución y plazos.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -238,6 +240,11 @@ export default function CalendarPage() {
                     <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
                       {ot.description}
                     </p>
+                    {ot.estimatedEndDate && (
+                      <p className="text-[10px] font-bold text-amber-600 mb-2">
+                        Término previsto: {format(ot.estimatedEndDate?.toDate ? ot.estimatedEndDate.toDate() : parseISO(ot.estimatedEndDate), 'dd/MM/yyyy')}
+                      </p>
+                    )}
                     <Button variant="ghost" size="sm" className="w-full h-8 text-xs font-bold group-hover:bg-primary group-hover:text-white" asChild>
                       <Link href={`/work-orders/${ot.id}`}>
                         Ver OT <ArrowRight className="ml-2 h-3 w-3" />

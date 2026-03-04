@@ -95,6 +95,9 @@ export interface WorkOrder {
   createdByUserId: string;
   reviewerId?: string;
   reviewerRequired: boolean;
+  scheduledDate?: string | any;
+  durationDays?: number;
+  estimatedEndDate?: string | any;
   checklist?: ChecklistItem[];
   clientSignatureUrl?: string;
   technicianSignatureUrl?: string;
