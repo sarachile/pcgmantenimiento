@@ -7,8 +7,8 @@ import {
   MOCK_LOGBOOK, 
   MOCK_USERS,
   MOCK_CLIENTS,
-  MOCK_SPARE_PARTS,
-  MOCK_ASSETS
+  MOCK_ASSETS,
+  MOCK_SPARE_PARTS
 } from "@/lib/mock-data";
 import { 
   Card, 
@@ -77,16 +77,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isAddingPart, setIsAddingPart] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [mounted, setMounted] = useState(false);
-
-  // Form states for spare parts
-  const [selectedPartId, setSelectedPartId] = useState("");
-  const [partQuantity, setPartQuantity] = useState("1");
 
   useEffect(() => {
     setMounted(true);
@@ -106,26 +101,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     );
   }, [db, profile?.companyId, otId]);
 
-  const partsUsageQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId || otId.startsWith('OT-')) return null;
-    return collection(db, "companies", profile.companyId, "workOrders", otId, "partUsages");
-  }, [db, profile?.companyId, otId]);
-
-  const inventoryQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId) return null;
-    return collection(db, "companies", profile.companyId, "spareParts");
-  }, [db, profile?.companyId]);
-
   // Firestore Data
   const { data: firestoreOt, isLoading: isDocLoading } = useDoc<WorkOrder>(otRef);
   const { data: firestoreLogbook } = useCollection<DigitalLogbookEntry>(logbookQuery);
-  const { data: firestorePartsUsage } = useCollection(partsUsageQuery);
-  const { data: inventoryParts } = useCollection(inventoryQuery);
 
   const ot = firestoreOt || MOCK_WORK_ORDERS.find(o => o.id === otId);
   const logbook = firestoreLogbook && firestoreLogbook.length > 0 ? firestoreLogbook : MOCK_LOGBOOK.filter(l => l.workOrderId === otId);
-  const partsUsage = firestorePartsUsage || [];
-  const parts = inventoryParts && inventoryParts.length > 0 ? inventoryParts : MOCK_SPARE_PARTS;
   
   const isMock = !firestoreOt;
   const client = MOCK_CLIENTS.find(c => c.id === ot?.clientId);
@@ -173,6 +154,45 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       toast({ title: "Error", description: "No se pudo actualizar.", variant: "destructive" });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || isMock || !profile || !ot || !otRef) {
+      if (isMock) toast({ title: "Modo Demo", description: "La subida de fotos requiere una base de datos real." });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const storagePath = `companies/${profile.companyId}/workOrders/${ot.id}/${Date.now()}_${file.name}`;
+      const imageRef = ref(storage, storagePath);
+      
+      await uploadBytes(imageRef, file);
+      const downloadUrl = await getDownloadURL(imageRef);
+
+      updateDocumentNonBlocking(otRef, {
+        evidenceUrls: arrayUnion(downloadUrl),
+        updatedAt: serverTimestamp()
+      });
+
+      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
+      await addDoc(logRef, {
+        workOrderId: ot.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'action_taken',
+        eventDetails: `Se añadió nueva evidencia fotográfica: ${file.name}`,
+        actor: profile.id,
+      });
+
+      toast({ title: "Foto subida", description: "La evidencia se guardó correctamente." });
+    } catch (error: any) {
+      toast({ title: "Error al subir", description: error.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -256,7 +276,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       updatedAt: serverTimestamp()
     });
 
-    // Simple non-blocking log
     const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
     addDoc(logRef, {
       workOrderId: ot.id,
@@ -281,7 +300,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const canReview = (isReviewer || isSupervisor || isCompanyAdmin) && ot.status === 'en revision';
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-10">
+    <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4 sm:px-0">
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-card p-6 rounded-xl border shadow-sm">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link>
@@ -356,6 +375,56 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
           <Card className="border-none shadow-sm">
             <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Camera className="h-5 w-5 text-primary" /> Registro Fotográfico
+                </CardTitle>
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading || isMock}
+                  >
+                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Subir Foto
+                  </Button>
+                </div>
+              </div>
+              <CardDescription>Evidencia visual capturada durante la ejecución del trabajo.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {ot.evidenceUrls && ot.evidenceUrls.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {ot.evidenceUrls.map((url, idx) => (
+                    <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border bg-muted group">
+                      <Image 
+                        src={url} 
+                        alt={`Evidencia ${idx + 1}`} 
+                        fill 
+                        className="object-cover transition-transform group-hover:scale-105"
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10 border-2 border-dashed rounded-lg bg-muted/20">
+                  <ImageIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No se han subido fotos de evidencia aún.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-sm">
+            <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <ListChecks className="h-5 w-5 text-primary" /> Protocolo de Verificación
               </CardTitle>
@@ -389,7 +458,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           <Card className="border-none shadow-sm">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Libro Digital de Obra</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-              {/* Manual Entry */}
               {!['aprobada', 'rechazada'].includes(ot.status) && (
                 <div className="flex gap-2">
                   <Textarea 
