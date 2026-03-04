@@ -3,17 +3,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- REGLA MAESTRA DE EMERGENCIA PARA ENVÍO DE CORREOS ---
-    // Esta regla permite que el Súper Administrador escriba en la colección 'mail'
-    // que es utilizada por la extensión Trigger Email.
+    // --- REGLAS DE ALTA PRIORIDAD ---
+
+    // Colección 'mail' para la extensión Trigger Email
+    // Permite que el Súper Administrador cree peticiones de correo
     match /mail/{mailId} {
       allow create: if request.auth != null && request.auth.token.email == 'control@pcgoperacion.com';
       allow read, update, delete: if request.auth != null && request.auth.token.email == 'control@pcgoperacion.com';
-    }
-
-    // Comodín para subrutas de correo si la extensión las requiere
-    match /mail/{allPaths=**} {
-      allow create, read, write: if request.auth != null && request.auth.token.email == 'control@pcgoperacion.com';
     }
 
     // --- FUNCIONES HELPER ---

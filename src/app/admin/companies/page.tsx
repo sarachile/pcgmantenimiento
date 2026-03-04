@@ -51,7 +51,7 @@ import {
   Info,
   AlertTriangle,
   CheckCircle2
-} from "lucide-center";
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -251,7 +251,6 @@ export default function AdminCompaniesPage() {
       },
     };
 
-    // addDocumentNonBlocking ya maneja internamente la emisión del error contextual de Firestore
     addDocumentNonBlocking(mailCol, mailData);
 
     toast({
