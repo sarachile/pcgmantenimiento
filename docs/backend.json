@@ -1,0 +1,530 @@
+{
+  "entities": {
+    "Company": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Company",
+      "type": "object",
+      "description": "Represents an individual company or tenant within the PCGMANTENIMIENTO SaaS platform. All company-specific data is isolated under this entity.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Company entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The official name of the company."
+        },
+        "rut": {
+          "type": "string",
+          "description": "The Chilean tax identification number (RUT) for the company."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the company."
+        },
+        "contactEmail": {
+          "type": "string",
+          "description": "The primary contact email address for the company.",
+          "format": "email"
+        },
+        "contactPhone": {
+          "type": "string",
+          "description": "The primary contact phone number for the company."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the company's account is currently active and can access the platform, typically linked to subscription status."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the company record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last update to the company record.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "rut",
+        "contactEmail",
+        "isActive",
+        "createdAt"
+      ]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents an individual user accessing the PCGMANTENIMIENTO platform, either as a superadmin or with roles within a specific company.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company this user belongs to. Null for 'superadmin' role. (Relationship: Company 1:N User)"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for login.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user, defining their permissions within a company or the platform. Possible values: 'superadmin', 'companyAdmin', 'supervisor', 'tecnico', 'reviewer'."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the user's account is currently active."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last update to the user record.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName",
+        "role",
+        "isActive",
+        "createdAt"
+      ]
+    },
+    "WorkOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkOrder",
+      "type": "object",
+      "description": "Represents a maintenance work order, tracking its lifecycle and details from creation to approval or rejection.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkOrder entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company that owns this work order. (Relationship: Company 1:N WorkOrder)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A concise title or summary for the work order."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the maintenance task or issue."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the work order. Possible values: 'creada', 'asignada', 'ejecutada', 'enRevision', 'aprobada', 'rechazada'."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the work order was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last update to the work order record.",
+          "format": "date-time"
+        },
+        "createdByUserId": {
+          "type": "string",
+          "description": "Reference to the User who created this work order. (Relationship: User 1:N WorkOrder)"
+        },
+        "assignedToUserId": {
+          "type": "string",
+          "description": "Reference to the User (tecnico or supervisor) currently assigned to this work order. (Relationship: User 1:N WorkOrder)"
+        },
+        "scheduledDateTime": {
+          "type": "string",
+          "description": "Planned date and time for the work order execution.",
+          "format": "date-time"
+        },
+        "completedDateTime": {
+          "type": "string",
+          "description": "Actual date and time when the work order was marked as completed.",
+          "format": "date-time"
+        },
+        "priority": {
+          "type": "string",
+          "description": "The urgency level of the work order. Possible values: 'low', 'medium', 'high', 'urgent'."
+        },
+        "locationDescription": {
+          "type": "string",
+          "description": "A description of the physical location where the maintenance work is to be performed."
+        },
+        "reviewerRequired": {
+          "type": "boolean",
+          "description": "Indicates if a formal review by a 'reviewer' role is mandatory for this specific work order before it can be approved."
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "title",
+        "description",
+        "status",
+        "createdAt",
+        "createdByUserId",
+        "priority",
+        "reviewerRequired"
+      ]
+    },
+    "DigitalLogbookEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DigitalLogbookEntry",
+      "type": "object",
+      "description": "Represents an immutable, auditable entry in the digital logbook associated with a specific Work Order, recording all significant events and changes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DigitalLogbookEntry entity."
+        },
+        "workOrderId": {
+          "type": "string",
+          "description": "Reference to the WorkOrder this logbook entry belongs to. (Relationship: WorkOrder 1:N DigitalLogbookEntry)"
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company that owns the parent work order. Denormalized for efficient queries and security rules. (Relationship: Company 1:N DigitalLogbookEntry)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when this logbook event occurred.",
+          "format": "date-time"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "The type of event recorded in this logbook entry. Possible values: 'statusChange', 'commentAdded', 'fileAttached', 'reviewInitiated', 'reviewCompleted', 'workOrderApproved', 'workOrderRejected', 'workOrderCreated', 'workOrderAssigned', 'workOrderExecuted'."
+        },
+        "actorUserId": {
+          "type": "string",
+          "description": "Reference to the User who performed the action recorded by this entry. (Relationship: User 1:N DigitalLogbookEntry)"
+        },
+        "details": {
+          "type": "string",
+          "description": "A descriptive text providing more context about the event."
+        },
+        "oldValue": {
+          "type": "string",
+          "description": "The value of a field before the change (e.g., previous status), if applicable."
+        },
+        "newValue": {
+          "type": "string",
+          "description": "The new value of a field after the change (e.g., new status), if applicable."
+        },
+        "isImmutable": {
+          "type": "boolean",
+          "description": "Flag indicating that this logbook entry, once associated with an approved WorkOrder, cannot be modified."
+        }
+      },
+      "required": [
+        "id",
+        "workOrderId",
+        "companyId",
+        "timestamp",
+        "eventType",
+        "actorUserId",
+        "details",
+        "isImmutable"
+      ]
+    },
+    "Review": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Review",
+      "type": "object",
+      "description": "Represents the formal review process for a WorkOrder, typically performed by an external 'reviewer' role, leading to approval or rejection.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Review entity."
+        },
+        "workOrderId": {
+          "type": "string",
+          "description": "Reference to the WorkOrder being reviewed. (Relationship: WorkOrder 1:0..1 Review)"
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company that owns the work order. Denormalized for efficient queries and security rules. (Relationship: Company 1:N Review)"
+        },
+        "reviewerId": {
+          "type": "string",
+          "description": "Reference to the User (with 'reviewer' role) who performed this review. (Relationship: User 1:N Review)"
+        },
+        "status": {
+          "type": "string",
+          "description": "The outcome of the review. Possible values: 'pending', 'approved', 'rejected'."
+        },
+        "submittedAt": {
+          "type": "string",
+          "description": "Timestamp when the review was submitted (started).",
+          "format": "date-time"
+        },
+        "reviewedAt": {
+          "type": "string",
+          "description": "Timestamp when the review was completed (approved or rejected).",
+          "format": "date-time"
+        },
+        "comments": {
+          "type": "string",
+          "description": "Optional comments or feedback provided by the reviewer."
+        },
+        "decisionDetails": {
+          "type": "string",
+          "description": "Specific reasons or notes pertaining to the review decision (approval or rejection)."
+        }
+      },
+      "required": [
+        "id",
+        "workOrderId",
+        "companyId",
+        "reviewerId",
+        "status",
+        "submittedAt"
+      ]
+    },
+    "Subscription": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription",
+      "type": "object",
+      "description": "Manages a company's subscription details to the PCGMANTENIMIENTO SaaS platform, including plan, status, and billing information.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Subscription entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company that holds this subscription. (Relationship: Company 1:N Subscription)"
+        },
+        "planName": {
+          "type": "string",
+          "description": "The name of the subscription plan (e.g., 'Free', 'Basic', 'Premium', 'Enterprise')."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The date when the subscription became active.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The date when the subscription is scheduled to expire or renew.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the subscription. Possible values: 'active', 'trial', 'cancelled', 'expired', 'pending'."
+        },
+        "priceAmount": {
+          "type": "number",
+          "description": "The monetary amount charged for the subscription plan."
+        },
+        "priceCurrency": {
+          "type": "string",
+          "description": "The currency code for the subscription price (e.g., 'CLP', 'USD')."
+        },
+        "paymentFrequency": {
+          "type": "string",
+          "description": "How often the subscription is billed. Possible values: 'monthly', 'annually'."
+        },
+        "autoRenew": {
+          "type": "boolean",
+          "description": "Indicates if the subscription is set to automatically renew at the end of its term."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the subscription record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp of the last update to the subscription record.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "planName",
+        "startDate",
+        "status",
+        "priceAmount",
+        "priceCurrency",
+        "paymentFrequency",
+        "autoRenew",
+        "createdAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/companies/{companyId}",
+        "definition": {
+          "entityName": "Company",
+          "schema": {
+            "$ref": "#/backend/entities/Company"
+          },
+          "description": "Root collection for all company (tenant) specific data. Each document represents a single company. This collection serves as the top-level data isolation boundary for multi-tenancy.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the Company."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/superAdmins/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Global collection for users with the 'superadmin' role. These users have platform-wide access and are not tied to a specific company. This uses the 'Existence over Content' pattern for global roles.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the superadmin User (Firebase Auth UID)."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Subcollection for users belonging to a specific company. Each document represents a user with their assigned role within that company. Includes denormalized 'companyId' for authorization independence.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the parent Company."
+            },
+            {
+              "name": "userId",
+              "description": "Unique identifier for the User (Firebase Auth UID)."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/subscriptions/{subscriptionId}",
+        "definition": {
+          "entityName": "Subscription",
+          "schema": {
+            "$ref": "#/backend/entities/Subscription"
+          },
+          "description": "Subcollection to store subscription details for each company. Denormalizes 'companyId' for authorization independence and simplified security rules.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the parent Company."
+            },
+            {
+              "name": "subscriptionId",
+              "description": "Unique identifier for the Subscription."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/workOrders/{workOrderId}",
+        "definition": {
+          "entityName": "WorkOrder",
+          "schema": {
+            "$ref": "#/backend/entities/WorkOrder"
+          },
+          "description": "Subcollection for work orders belonging to a specific company. Denormalizes 'companyId' for authorization independence. The 'reviewerRequired' field explicitly supports the optional reviewer workflow within the document.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the parent Company."
+            },
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the Work Order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/workOrders/{workOrderId}/digitalLogbookEntries/{entryId}",
+        "definition": {
+          "entityName": "DigitalLogbookEntry",
+          "schema": {
+            "$ref": "#/backend/entities/DigitalLogbookEntry"
+          },
+          "description": "Subcollection for immutable audit log entries related to a specific work order. Denormalizes 'companyId' and 'workOrderId' for authorization independence and simplified QAPs. The 'isImmutable' flag ensures audit trail integrity, enforced by rules.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the parent Company."
+            },
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the parent Work Order."
+            },
+            {
+              "name": "entryId",
+              "description": "Unique identifier for the Digital Logbook Entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/workOrders/{workOrderId}/reviews/{reviewId}",
+        "definition": {
+          "entityName": "Review",
+          "schema": {
+            "$ref": "#/backend/entities/Review"
+          },
+          "description": "Subcollection for formal reviews of a work order, typically by a 'reviewer'. Denormalizes 'companyId' and 'workOrderId' for authorization independence. Allows for tracking of individual reviews, even if only one is expected or if the review process is skipped.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the parent Company."
+            },
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the parent Work Order."
+            },
+            {
+              "name": "reviewId",
+              "description": "Unique identifier for the Review."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure for PCGMANTENIMIENTO is designed with a strong emphasis on multi-tenancy, granular role-based access control (RBAC), and adherence to the core design principles of authorization independence, structural segregation, and predictable data.  \n\n**Multi-Tenancy and Authorization Independence (CRITICAL):**\nThe cornerstone of this design is the `/companies/{companyId}` root collection. All company-specific data – `users`, `workOrders`, `subscriptions`, and their respective subcollections (`digitalLogbookEntries`, `reviews`) – are nested directly under their parent `/companies/{companyId}` path. This establishes a strict data isolation boundary for each tenant. Critically, to achieve **Authorization Independence**, every document in these subcollections (e.g., `users`, `workOrders`, `subscriptions`, `digitalLogbookEntries`, `reviews`) will explicitly include a `companyId` field, denormalizing the parent's identifier. For `digitalLogbookEntries` and `reviews`, the `workOrderId` will also be denormalized. This eliminates the need for `get()` calls in Firestore security rules to check parent document attributes, which is essential for atomic operations (transactions/batches) and robust rule evaluation. Rules can directly check `request.auth.uid`'s associated `companyId` (from their user document) against the `companyId` field in the document they are trying to access, making permission checks efficient and clear.\n\n**QAPs (Rules are not Filters) and Structural Segregation:**\nEach collection (e.g., `users`, `workOrders`, `digitalLogbookEntries`) is designed to have a **homogeneous security posture**. For instance, all documents within `/companies/{companyId}/workOrders` share the same fundamental security requirements: they belong to `companyId` and are accessible based on roles within that company. There is no mixing of public/private or draft/published items in the same collection (e.g., no 'public work orders' mixed with 'private work orders'). This structural segregation greatly simplifies security rules.  \n\nFor `list` operations (queries), the structure inherently supports QAPs. Because `companyId` is denormalized in every relevant document, a query like `db.collection('companies').doc(myCompanyId).collection('workOrders').where('status', '==', 'aprobada')` can be secured by a rule that simply checks if `request.auth.uid` belongs to `myCompanyId` and has the necessary role. The `companyId` in the path and denormalized in the document ensures the query is naturally scoped, and rules don't need to filter results after the fact.  \n\n**User & Role Management (DBAC):**\nUsers are split into two logical groups based on their role: platform `superadmins` and company-specific users. `superadmins` reside in a root collection `/superAdmins/{userId}`, employing the **Existence over Content** pattern for global roles. Company-specific users are in `/companies/{companyId}/users/{userId}`, where their `role` (`companyAdmin`, `supervisor`, `tecnico`, `reviewer`) and `companyId` are explicitly stored. This makes user authentication and role-based authorization in security rules straightforward and highly auditable, relying solely on `request.auth.uid` and database-stored roles.\n\n**Work Order Flow & Digital Logbook:**\nThe `WorkOrder` entity includes a `status` field (Finite State Machine: `creada` → `asignada` → `ejecutada` → `enRevision` → `aprobada`/`rechazada`) and a `reviewerRequired` boolean flag to manage the optional reviewer workflow. The `DigitalLogbookEntry` subcollection ensures an immutable, auditable record of all work order events. Its `isImmutable` field, enforced by security rules, guarantees the integrity of the audit trail once a work order is approved.\n\n**Scalability and Security Justification:**\n*   **Scalability:** The `/companies/{companyId}` root collection inherently shards data by tenant, preventing read/write hot spots across companies. Denormalization reduces cross-document reads, improving performance. The design avoids overly deep or complex hierarchies, which are often performance bottlenecks.\n*   **Security:** Path-based authorization (`/companies/{companyId}/...`) combined with denormalized `companyId` fields provides a highly secure multi-tenant environment. Role information stored directly in user documents (or the `superAdmins` collection) enables fine-grained RBAC with simple security rules. The `isImmutable` flag for logbook entries offers strong data integrity. The explicit `reviewerRequired` field in `WorkOrder` allows flexible workflow configuration directly within the data model, without compromising security rules.\n\nThis architecture provides a robust, efficient, and easily auditable foundation for the PCGMANTENIMIENTO ERP SaaS platform."
+  }
+}
