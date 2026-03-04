@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users } from "lucide-react";
 import Link from "next/link";
@@ -35,12 +35,10 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
-  // Estabilizar la fecha inicial para evitar desajustes de hidratación
   useEffect(() => {
     setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
   }, []);
 
-  // Calcular fecha de término como valor derivado puro (sin useEffect)
   const estimatedEndDateStr = useMemo(() => {
     if (!scheduledDate || !durationDays) return "";
     try {
@@ -99,24 +97,23 @@ export default function NewWorkOrderPage() {
       };
 
       const docRef = await addDoc(colRef, newOT);
-      toast({ title: "Orden Creada", description: "OT generada exitosamente." });
+      toast({ title: "Orden Creada" });
       router.push(`/work-orders/${docRef.id}`);
     } catch (error: any) {
-      toast({ title: "Error al guardar", description: "No se pudo guardar la orden.", variant: "destructive" });
+      toast({ title: "Error al guardar", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Queries estabilizadas con useMemoFirebase
-  const assetsQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId) return null;
-    return collection(db, "companies", profile.companyId, "assets");
-  }, [db, profile?.companyId]);
-
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "clients");
+  }, [db, profile?.companyId]);
+
+  const assetsQuery = useMemoFirebase(() => {
+    if (!db || !profile?.companyId) return null;
+    return collection(db, "companies", profile.companyId, "assets");
   }, [db, profile?.companyId]);
 
   const staffQuery = useMemoFirebase(() => {
@@ -124,46 +121,19 @@ export default function NewWorkOrderPage() {
     return query(collection(db, "companies", profile.companyId, "staff"), where("active", "==", true));
   }, [db, profile?.companyId]);
 
-  const activeWorkOrdersQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId) return null;
-    return query(
-      collection(db, "companies", profile.companyId, "workOrders"),
-      where("status", "in", ["creada", "asignada", "ejecutada", "en revision"])
-    );
-  }, [db, profile?.companyId]);
-
-  const { data: realAssets } = useCollection<Asset>(assetsQuery);
   const { data: realClients } = useCollection<Client>(clientsQuery);
-  const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
-  const { data: activeWorkOrders } = useCollection<WorkOrder>(activeWorkOrdersQuery);
+  const { data: realAssets } = useCollection<Asset>(assetsQuery);
+  const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
 
-  // Memoizar el mapa de personal ocupado
-  const staffBusyMap = useMemo(() => {
-    const busy: Record<string, string> = {};
-    activeWorkOrders?.forEach(ot => {
-      ot.assignedToStaffIds?.forEach(staffId => {
-        busy[staffId] = ot.id;
-      });
-    });
-    return busy;
-  }, [activeWorkOrders]);
-
-  // Memoizar las opciones de los selectores para evitar re-renders de Radix UI
   const clientOptions = useMemo(() => (
-    realClients?.map(client => (
-      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-    ))
+    realClients?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
   ), [realClients]);
 
   const assetOptions = useMemo(() => (
-    realAssets?.map(asset => (
-      <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
-    ))
+    realAssets?.map(a => <SelectItem key={a.id} value={a.id}>{a.name} ({a.code})</SelectItem>)
   ), [realAssets]);
 
-  if (isUserLoading) {
-    return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  }
+  if (isUserLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 px-4 py-8">
@@ -171,12 +141,12 @@ export default function NewWorkOrderPage() {
         <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground italic">Planificación técnica con asignación de equipo.</p>
+          <p className="text-sm text-muted-foreground italic">Planificación técnica centralizada.</p>
         </div>
       </div>
 
       <Card className="border-none shadow-lg">
-        <CardHeader className="bg-primary/5 border-b rounded-t-lg">
+        <CardHeader className="bg-primary/5 border-b">
           <CardTitle className="flex items-center gap-2"><ClipboardPlus className="h-5 w-5 text-primary" /> Detalles de la Operación</CardTitle>
         </CardHeader>
         <form onSubmit={handleCreate}>
@@ -185,99 +155,65 @@ export default function NewWorkOrderPage() {
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccione cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {clientOptions?.length ? clientOptions : <SelectItem value="_none" disabled>No hay clientes</SelectItem>}
-                    </SelectGroup>
-                  </SelectContent>
+                  <SelectTrigger><SelectValue placeholder={realClients ? "Seleccione cliente" : "Cargando..."} /></SelectTrigger>
+                  <SelectContent>{clientOptions}</SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccione equipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {assetOptions?.length ? assetOptions : <SelectItem value="_none" disabled>No hay activos</SelectItem>}
-                    </SelectGroup>
-                  </SelectContent>
+                  <SelectTrigger><SelectValue placeholder={realAssets ? "Seleccione equipo" : "Cargando..."} /></SelectTrigger>
+                  <SelectContent>{assetOptions}</SelectContent>
                 </Select>
               </div>
             </div>
 
-            <Card className="border shadow-none bg-muted/10">
-              <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><CalendarIcon className="h-3 w-3" /> Inicio</Label>
-                  <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/10 rounded-xl border">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><CalendarIcon className="h-3 w-3" /> Inicio</Label>
+                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><Clock className="h-3 w-3" /> Días Estimados</Label>
+                <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase text-muted-foreground">Término Estimado</Label>
+                <div className="h-10 px-3 flex items-center bg-background border rounded-md font-medium text-primary">
+                  {estimatedEndDateStr ? format(parseISO(estimatedEndDateStr), 'dd/MM/yyyy') : '...'}
                 </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground"><Clock className="h-3 w-3" /> Días</Label>
-                  <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase text-muted-foreground">Término Estimado</Label>
-                  <div className="h-10 px-3 flex items-center bg-background border rounded-md font-medium text-primary">
-                    {estimatedEndDateStr ? format(parseISO(estimatedEndDateStr), 'dd/MM/yyyy') : '...'}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             <div className="space-y-4">
               <Label className="font-bold text-xs uppercase text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Equipo Operativo Asignado</Label>
-              <div className="border rounded-xl bg-white p-4 space-y-3 max-h-[300px] overflow-y-auto">
-                {isStaffLoading ? (
-                  <div className="flex items-center justify-center p-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {staffMembers?.map(staff => {
-                      const busyOTId = staffBusyMap[staff.id];
-                      const isSelected = assignedToStaffIds.includes(staff.id);
-                      return (
-                        <div 
-                          key={staff.id} 
-                          className={cn(
-                            "flex items-center space-x-3 border p-3 rounded-xl transition-all cursor-pointer hover:bg-muted/50",
-                            isSelected ? "border-primary bg-primary/5" : "bg-white",
-                            busyOTId && !isSelected && "border-amber-200 bg-amber-50/50"
-                          )}
-                          onClick={() => toggleStaffSelection(staff.id)}
-                        >
-                          <Checkbox 
-                            id={`staff-${staff.id}`} 
-                            checked={isSelected}
-                            onCheckedChange={() => toggleStaffSelection(staff.id)}
-                            onClick={(e) => e.stopPropagation()} // Evitar doble ejecución
-                          />
-                          <div className="flex flex-col gap-0.5">
-                            <div className="font-bold flex items-center justify-between gap-2 text-xs">
-                              {staff.name}
-                              {busyOTId && <Badge variant="outline" className="text-[8px] h-4 bg-white text-amber-600">OT: {busyOTId}</Badge>}
-                            </div>
-                            <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
+                {staffMembers?.map(staff => (
+                  <div 
+                    key={staff.id} 
+                    className={cn(
+                      "flex items-center space-x-3 border p-3 rounded-xl transition-all cursor-pointer",
+                      assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 shadow-sm" : "bg-white hover:bg-muted/50"
+                    )}
+                    onClick={() => toggleStaffSelection(staff.id)}
+                  >
+                    <Checkbox checked={assignedToStaffIds.includes(staff.id)} readOnly />
+                    <div className="flex flex-col gap-0.5">
+                      <p className="font-bold text-xs">{staff.name}</p>
+                      <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
+                    </div>
                   </div>
-                )}
+                ))}
               </div>
             </div>
 
             <div className="space-y-2">
               <Label className="font-bold text-xs uppercase text-muted-foreground">Descripción de Trabajos *</Label>
-              <Textarea placeholder="Detalle técnico de los servicios..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Textarea placeholder="Detalle técnico..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
 
             <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Protocolo de Revisión (Checklist)</Label></div>
+              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Protocolo de Revisión</Label></div>
               <div className="flex gap-2">
                 <Input placeholder="Añadir tarea..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())} />
                 <Button type="button" onClick={handleAddTask} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
@@ -297,7 +233,7 @@ export default function NewWorkOrderPage() {
           <CardFooter className="flex justify-between border-t p-6 bg-muted/20">
             <Button variant="outline" type="button" asChild disabled={isSubmitting}><Link href="/work-orders">Cancelar</Link></Button>
             <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId} className="min-w-[140px]">
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Orden de Trabajo"}
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Orden"}
             </Button>
           </CardFooter>
         </form>

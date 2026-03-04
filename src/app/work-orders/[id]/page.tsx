@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -7,28 +6,18 @@ import {
   CardContent, 
   CardHeader, 
   CardTitle, 
-  CardDescription
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ClipboardList, 
   History, 
-  CheckCircle2, 
-  XCircle, 
   ArrowLeft,
   Loader2,
   FileDown,
-  Camera,
   ListChecks,
-  Zap,
   MessageSquare,
-  HardHat,
   Signature as SignatureIcon,
-  Eraser,
   Check,
-  Package,
-  Plus,
   Star,
   ShieldCheck,
   Send,
@@ -38,41 +27,22 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp, arrayUnion, query, orderBy, increment, where } from "firebase/firestore";
+import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { doc, collection, addDoc, serverTimestamp, query, orderBy, where } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import Image from "next/image";
-import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company, PartUsage, SparePart, Client, User, Asset, StaffMember, ServiceEvaluation } from "@/lib/types";
-import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
-import { format, parseISO } from "date-fns";
+import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, StaffMember } from "@/lib/types";
 import { WorkOrderReport } from "@/components/WorkOrderReport";
+import { FirebaseImage } from "@/components/FirebaseImage";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -127,9 +97,9 @@ function EvaluationForm({
         ))}
       </div>
       <div className="space-y-2">
-        <Label className="text-xs font-bold uppercase text-muted-foreground">Comentarios y Observaciones Fundadas</Label>
+        <Label className="text-xs font-bold uppercase text-muted-foreground">Comentarios y Observaciones</Label>
         <Textarea 
-          placeholder="Describa su experiencia detalladamente..." 
+          placeholder="Describa su experiencia..." 
           className="min-h-[100px] text-sm"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -140,13 +110,13 @@ function EvaluationForm({
         disabled={!canSubmit || isSaving}
         onClick={() => onSave(ratings, comment)}
       >
-        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Evaluación Oficial</>}
+        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Evaluación</>}
       </Button>
     </div>
   );
 }
 
-function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => void, onCancel: () => void, isSaving: boolean, title: string }) {
+function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => void, onCancel: () => void, isSaving: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
@@ -158,8 +128,19 @@ function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => 
     ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#000';
   }, []);
 
-  const startDrawing = (e: any) => { setIsDrawing(true); draw(e); };
-  const stopDrawing = () => { setIsDrawing(false); canvasRef.current?.getContext('2d')?.beginPath(); };
+  const startDrawing = (e: any) => { 
+    setIsDrawing(true); 
+    const canvas = canvasRef.current; if (!canvas) return;
+    const ctx = canvas.getContext('2d'); if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const stopDrawing = () => { setIsDrawing(false); };
+
   const draw = (e: any) => {
     if (!isDrawing) return;
     const canvas = canvasRef.current; if (!canvas) return;
@@ -167,19 +148,32 @@ function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => 
     const rect = canvas.getBoundingClientRect();
     const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
     const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
-    ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.lineTo(x, y); ctx.stroke();
   };
 
   return (
     <div className="space-y-4">
       <div className="border-2 border-dashed rounded-lg bg-white overflow-hidden touch-none">
-        <canvas ref={canvasRef} width={400} height={200} className="w-full cursor-crosshair" onMouseDown={startDrawing} onMouseUp={stopDrawing} onMouseMove={draw} onTouchStart={startDrawing} onTouchEnd={stopDrawing} onTouchMove={draw} />
+        <canvas 
+          ref={canvasRef} 
+          width={400} 
+          height={200} 
+          className="w-full cursor-crosshair h-[200px]" 
+          onMouseDown={startDrawing} 
+          onMouseUp={stopDrawing} 
+          onMouseMove={draw} 
+          onTouchStart={(e) => { e.preventDefault(); startDrawing(e); }} 
+          onTouchEnd={stopDrawing} 
+          onTouchMove={(e) => { e.preventDefault(); draw(e); }} 
+        />
       </div>
       <div className="flex justify-between gap-2">
         <Button variant="outline" size="sm" onClick={() => canvasRef.current?.getContext('2d')?.clearRect(0, 0, 400, 200)} disabled={isSaving}>Limpiar</Button>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={onCancel}>Cancelar</Button>
-          <Button size="sm" onClick={() => canvasRef.current?.toBlob(b => b && onSave(b), 'image/png')} disabled={isSaving}>{isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Guardar Firma</Button>
+          <Button size="sm" onClick={() => canvasRef.current?.toBlob(b => b && onSave(b), 'image/png')} disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />} Guardar Firma
+          </Button>
         </div>
       </div>
     </div>
@@ -200,9 +194,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [manualComment, setManualComment] = useState("");
   const [signatureType, setSignatureType] = useState<'client' | 'technician' | null>(null);
   const [isEvalOpen, setIsEvalOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => { setMounted(true); }, []);
 
   const otRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -214,10 +205,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const staffQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId || !ot?.assignedToStaffIds?.length) return null;
-    return query(
-      collection(db, "companies", profile.companyId, "staff"),
-      where("id", "in", ot.assignedToStaffIds)
-    );
+    return query(collection(db, "companies", profile.companyId, "staff"), where("id", "in", ot.assignedToStaffIds));
   }, [db, profile?.companyId, ot?.assignedToStaffIds]);
   const { data: assignedStaff } = useCollection<StaffMember>(staffQuery);
 
@@ -257,8 +245,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`PCG_${ot?.id}.pdf`);
       toast({ title: "Reporte generado" });
-    } catch (e: any) { toast({ title: "Error al generar PDF", variant: "destructive" }); }
-    finally { setIsGeneratingPdf(false); }
+    } catch (e: any) { 
+      toast({ title: "Error al generar PDF", variant: "destructive" }); 
+    } finally { 
+      setIsGeneratingPdf(false); 
+    }
   };
 
   const handleSaveEvaluation = async (ratings: any, comment: string) => {
@@ -278,7 +269,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       };
       const evalDoc = await addDoc(evalCol, newEval);
       updateDocumentNonBlocking(otRef!, { evaluationId: evalDoc.id, status: 'aprobada', reviewedAt: serverTimestamp() });
-      toast({ title: "Evaluación enviada", description: "Muchas gracias por su retroalimentación." });
+      toast({ title: "Evaluación enviada" });
       setIsEvalOpen(false);
     } catch (e: any) {
       toast({ title: "Error al evaluar", variant: "destructive" });
@@ -292,7 +283,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
-      {/* Hidden report for PDF generation */}
       <div className="absolute -left-[9999px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           ref={reportRef} 
@@ -333,7 +323,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                   <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-amber-600" /> Evaluación de Servicio</DialogTitle>
-                  <DialogDescription>Su opinión es fundamental para mejorar nuestra calidad técnica. Por favor, califique los siguientes criterios.</DialogDescription>
+                  <DialogDescription>Su opinión es fundamental para mejorar nuestra calidad técnica.</DialogDescription>
                 </DialogHeader>
                 <EvaluationForm isSaving={isUpdating} onSave={handleSaveEvaluation} />
               </DialogContent>
@@ -379,18 +369,30 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <CardContent className="grid grid-cols-2 gap-6">
               <div className="space-y-2 text-center">
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">Personal Responsable</p>
-                {ot.technicianSignatureUrl ? <div className="border rounded-lg p-2 aspect-video relative"><img src={ot.technicianSignatureUrl} className="w-full h-full object-contain" /></div> : <Button variant="outline" className="w-full" onClick={() => setSignatureType('technician')} disabled={isReviewer}>Firmar</Button>}
+                {ot.technicianSignatureUrl ? (
+                  <div className="border rounded-lg p-2 h-32 flex items-center justify-center bg-white shadow-inner">
+                    <FirebaseImage url={ot.technicianSignatureUrl} className="max-h-full" />
+                  </div>
+                ) : (
+                  <Button variant="outline" className="w-full" onClick={() => setSignatureType('technician')} disabled={isReviewer}>Firmar</Button>
+                )}
               </div>
               <div className="space-y-2 text-center">
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">Recepción Cliente</p>
-                {ot.clientSignatureUrl ? <div className="border rounded-lg p-2 aspect-video relative"><img src={ot.clientSignatureUrl} className="w-full h-full object-contain" /></div> : <Button variant="outline" className="w-full" onClick={() => setSignatureType('client')}>Firmar</Button>}
+                {ot.clientSignatureUrl ? (
+                  <div className="border rounded-lg p-2 h-32 flex items-center justify-center bg-white shadow-inner">
+                    <FirebaseImage url={ot.clientSignatureUrl} className="max-h-full" />
+                  </div>
+                ) : (
+                  <Button variant="outline" className="w-full" onClick={() => setSignatureType('client')}>Firmar</Button>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
-          <Card className="border-none shadow-sm">
+          <Card className="border-none shadow-sm h-fit">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Bitácora Operativa</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
@@ -403,7 +405,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   setManualComment("");
                 }}><MessageSquare className="h-4 w-4" /></Button>
               </div>
-              <div className="space-y-4 border-l pl-4">
+              <div className="space-y-4 border-l pl-4 max-h-[400px] overflow-y-auto">
                 {logbook?.map(entry => (
                   <div key={entry.id} className="text-xs">
                     <p className="font-bold text-primary uppercase">{entry.eventType}</p>
@@ -420,14 +422,22 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         <Dialog open={true} onOpenChange={() => setSignatureType(null)}>
           <DialogContent>
             <DialogHeader><DialogTitle>Capturar Firma: {signatureType === 'client' ? 'Cliente' : 'Personal'}</DialogTitle></DialogHeader>
-            <SignaturePad title={signatureType} isSaving={false} onCancel={() => setSignatureType(null)} onSave={async blob => {
-              const path = `companies/${profile?.companyId}/workOrders/${ot.id}/sig_${Date.now()}.png`;
-              const sRef = ref(storage!, path);
-              await uploadBytes(sRef, blob);
-              const url = await getDownloadURL(sRef);
-              updateDocumentNonBlocking(otRef!, signatureType === 'client' ? { clientSignatureUrl: url } : { technicianSignatureUrl: url });
-              setSignatureType(null);
-              toast({ title: "Firma guardada" });
+            <SignaturePad isSaving={isUpdating} onCancel={() => setSignatureType(null)} onSave={async blob => {
+              if (!profile?.companyId || !storage) return;
+              setIsUpdating(true);
+              try {
+                const path = `companies/${profile.companyId}/workOrders/${ot.id}/sig_${Date.now()}.png`;
+                const sRef = ref(storage, path);
+                await uploadBytes(sRef, blob);
+                const url = await getDownloadURL(sRef);
+                updateDocumentNonBlocking(otRef!, signatureType === 'client' ? { clientSignatureUrl: url } : { technicianSignatureUrl: url });
+                setSignatureType(null);
+                toast({ title: "Firma guardada" });
+              } catch (e: any) {
+                toast({ title: "Error al subir firma", variant: "destructive" });
+              } finally {
+                setIsUpdating(false);
+              }
             }} />
           </DialogContent>
         </Dialog>

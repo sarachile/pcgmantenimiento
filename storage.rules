@@ -2,26 +2,23 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Helper para verificar si el usuario está autenticado
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // REGLA PARA ÓRDENES DE TRABAJO (Firmas y Evidencias)
+    // Ruta para evidencias y firmas de OTs
+    // Se permite lectura pública para facilitar la visualización en reportes y emails
     match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
-      // Permitir lectura pública para que las URLs de descarga funcionen en reportes y <img>
       allow read: if true;
-      // Escritura permitida solo a usuarios autenticados
       allow write: if isSignedIn();
     }
     
-    // REGLA PARA BRANDING (Logotipos)
+    // Ruta para logotipos de empresa
     match /companies/{companyId}/branding/{fileName} {
       allow read: if true;
       allow write: if isSignedIn();
     }
 
-    // Regla por defecto para el resto del bucket
     match /{allPaths=**} {
       allow read, write: if isSignedIn();
     }

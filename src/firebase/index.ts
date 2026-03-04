@@ -6,14 +6,11 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// IMPORTANT: Ensure firebaseConfig is used to avoid missing storageBucket errors
 export function initializeFirebase() {
   if (!getApps().length) {
-    // Always use config object to ensure bucket and other services are correctly linked
     const firebaseApp = initializeApp(firebaseConfig);
     return getSdks(firebaseApp);
   }
-
   return getSdks(getApp());
 }
 
