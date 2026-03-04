@@ -61,12 +61,12 @@ const navItems: NavItem[] = [
   { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
-  { title: "Soporte Técnico", href: "/support", icon: LifeBuoy },
 ];
 
 // Items maestros (solo para Superadmin)
 const adminItems: NavItem[] = [
   { title: "Control Maestro", href: "/admin", icon: Globe, roles: ['superadmin'] },
+  { title: "Soporte Técnico", href: "/support", icon: LifeBuoy, roles: ['superadmin'] },
   { title: "Empresas Registradas", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
   { title: "Usuarios Globales", href: "/admin/users", icon: Users, roles: ['superadmin'] },
   { title: "Tickets Globales", href: "/admin/support", icon: LifeBuoy, roles: ['superadmin'] },

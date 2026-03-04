@@ -41,8 +41,9 @@ service cloud.firestore {
 
     match /supportTickets/{ticketId} {
       allow create: if isSignedIn();
-      allow read: if isPlatformAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isPlatformAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow list: if isPlatformAdmin();
+      allow get: if isPlatformAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update: if isPlatformAdmin();
       
       match /messages/{messageId} {
         allow read: if isSignedIn();

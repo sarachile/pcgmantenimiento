@@ -35,7 +35,7 @@ import {
   Loader2,
   ArrowLeft
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where, orderBy, doc } from "firebase/firestore";
 import { SupportTicket, Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -44,9 +44,10 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { sendSystemEmail } from "@/actions/email";
+import { redirect } from "next/navigation";
 
 export default function SupportPage() {
-  const { profile, isLoading: isAuthLoading } = useUser();
+  const { profile, isSuperAdmin, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -59,6 +60,12 @@ export default function SupportPage() {
     priority: "medium" as any
   });
 
+  useEffect(() => {
+    if (!isAuthLoading && !isSuperAdmin) {
+      redirect("/dashboard");
+    }
+  }, [isAuthLoading, isSuperAdmin]);
+
   const companyRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return doc(db, "companies", profile.companyId);
@@ -66,13 +73,13 @@ export default function SupportPage() {
   const { data: company } = useDoc<Company>(companyRef);
 
   const ticketsQuery = useMemoFirebase(() => {
-    if (!db || !profile?.id) return null;
+    if (!db || !profile?.id || !isSuperAdmin) return null;
     return query(
       collection(db, "supportTickets"),
       where("userId", "==", profile.id),
       orderBy("createdAt", "desc")
     );
-  }, [db, profile?.id]);
+  }, [db, profile?.id, isSuperAdmin]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection<SupportTicket>(ticketsQuery);
 
@@ -319,18 +326,4 @@ export default function SupportPage() {
       </div>
     </div>
   );
-}
-
-// Hook auxiliar para cargar empresa
-function useDoc<T>(ref: any) {
-  const [data, setData] = useState<T | null>(null);
-  useEffect(() => {
-    if (!ref) return;
-    import('firebase/firestore').then(({ onSnapshot }) => {
-      return onSnapshot(ref, (snap: any) => {
-        if (snap.exists()) setData({ ...snap.data(), id: snap.id } as T);
-      });
-    });
-  }, [ref]);
-  return { data };
 }
