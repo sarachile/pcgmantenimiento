@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -40,14 +39,15 @@ import {
   ArrowLeft,
   Building2,
   Loader2,
-  ShieldCheck
+  ShieldCheck,
+  Save
 } from "lucide-react";
 import { MOCK_COMPANIES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking } from "@/firebase";
-import { collection, serverTimestamp } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { Company } from "@/lib/types";
 
 export default function AdminCompaniesPage() {
@@ -56,14 +56,22 @@ export default function AdminCompaniesPage() {
   const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
+  
+  // Create Company State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Form State
   const [formData, setFormData] = useState({
     name: "",
     rut: "",
     currentPlan: "free" as any,
+  });
+
+  // Config Subscription State
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [configData, setConfigData] = useState({
+    currentPlan: "free" as any,
+    subscriptionStatus: "active" as any,
   });
 
   useEffect(() => {
@@ -77,10 +85,10 @@ export default function AdminCompaniesPage() {
 
   const { data: realCompanies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
 
-  const companies = realCompanies && realCompanies.length > 0 ? realCompanies : MOCK_COMPANIES;
+  const companies = realCompanies && realCompanies.length > 0 ? realCompanies : (MOCK_COMPANIES as any);
   const isDemo = !realCompanies || realCompanies.length === 0;
 
-  const filtered = companies.filter(c => 
+  const filtered = companies.filter((c: any) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.rut.includes(searchTerm)
   );
@@ -97,7 +105,7 @@ export default function AdminCompaniesPage() {
       const newCompanyData = {
         id: companyId,
         name: formData.name,
-        rut: formData.rut || "S/I",
+        rut: formData.rut || "",
         address: "Dirección por definir",
         currentPlan: formData.currentPlan,
         subscriptionStatus: "active",
@@ -122,6 +130,51 @@ export default function AdminCompaniesPage() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenConfig = (company: Company) => {
+    setSelectedCompany(company);
+    setConfigData({
+      currentPlan: company.currentPlan || "free",
+      subscriptionStatus: company.subscriptionStatus || "active",
+    });
+    setIsConfigOpen(true);
+  };
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !selectedCompany) return;
+
+    if (isDemo) {
+      toast({
+        title: "Modo Demo",
+        description: "No se pueden actualizar parámetros en modo de vista previa.",
+        variant: "destructive",
+      });
+      setIsConfigOpen(false);
+      return;
+    }
+
+    try {
+      const companyRef = doc(db, "companies", selectedCompany.id);
+      updateDocumentNonBlocking(companyRef, {
+        currentPlan: configData.currentPlan,
+        subscriptionStatus: configData.subscriptionStatus,
+        updatedAt: serverTimestamp(),
+      });
+
+      toast({
+        title: "Suscripción Actualizada",
+        description: `Límites y estado actualizados para ${selectedCompany.name}.`,
+      });
+      setIsConfigOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar los cambios.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -245,7 +298,7 @@ export default function AdminCompaniesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((company) => (
+                {filtered.map((company: Company) => (
                   <TableRow key={company.id}>
                     <TableCell>
                       <div className="flex flex-col">
@@ -263,9 +316,12 @@ export default function AdminCompaniesPage() {
                     </TableCell>
                     <TableCell>
                       <Badge className={cn(
-                        company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                        company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-700" : 
+                        company.subscriptionStatus === 'past_due' ? "bg-amber-100 text-amber-700" :
+                        "bg-rose-100 text-rose-700"
                       )}>
-                        {company.subscriptionStatus === 'active' ? 'ACTIVA' : 'BLOQUEADA'}
+                        {company.subscriptionStatus === 'active' ? 'ACTIVA' : 
+                         company.subscriptionStatus === 'past_due' ? 'VENCIDA' : 'BLOQUEADA'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -273,7 +329,12 @@ export default function AdminCompaniesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" title="Configurar Límites" onClick={() => toast({ title: "Configuración", description: "Cargando parámetros de suscripción..." })}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          title="Configurar Parámetros de Suscripción" 
+                          onClick={() => handleOpenConfig(company)}
+                        >
                           <Settings2 className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" title="Entrar como Admin de Empresa" onClick={() => handleImpersonate(company.name)}>
@@ -288,6 +349,69 @@ export default function AdminCompaniesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog para Configurar Parámetros de Suscripción */}
+      <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Configurar Suscripción</DialogTitle>
+            <DialogDescription>
+              Ajuste el plan y estado de la cuenta para {selectedCompany?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveConfig} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Plan de Servicio</Label>
+              <Select 
+                value={configData.currentPlan} 
+                onValueChange={(val) => setConfigData({...configData, currentPlan: val})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">Plan Inicio (Demo)</SelectItem>
+                  <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
+                  <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Estado de Facturación</Label>
+              <Select 
+                value={configData.subscriptionStatus} 
+                onValueChange={(val) => setConfigData({...configData, subscriptionStatus: val})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Activa / Al Día</SelectItem>
+                  <SelectItem value="past_due">Vencida / Pendiente Pago</SelectItem>
+                  <SelectItem value="canceled">Suspendida / Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">Resumen de Límites</p>
+              <div className="flex justify-between text-xs">
+                <span>Clientes:</span>
+                <span className="font-bold">{configData.currentPlan === 'free' ? '1' : configData.currentPlan === 'pro' ? '5' : '15'}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span>Usuarios:</span>
+                <span className="font-bold">{configData.currentPlan === 'free' ? '1' : configData.currentPlan === 'pro' ? '3' : '5'}</span>
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="submit" className="w-full">
+                <Save className="h-4 w-4 mr-2" />
+                Guardar Parámetros
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
