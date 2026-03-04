@@ -37,21 +37,22 @@ export default function NewWorkOrderPage() {
   const [durationDays, setDurationDays] = useState(1);
   const [estimatedEndDate, setEstimatedEndDate] = useState("");
 
-  // Checklist State
-  const [checklist, setChecklist] = useState<{task: string}[]>([]);
-  const [newTask, setNewTask] = useState("");
-
   useEffect(() => {
     if (scheduledDate && durationDays) {
       try {
         const start = parseISO(scheduledDate);
         const end = addDays(start, Number(durationDays));
-        setEstimatedEndDate(format(end, 'yyyy-MM-dd'));
+        const formattedDate = format(end, 'yyyy-MM-dd');
+        if (estimatedEndDate !== formattedDate) {
+          setEstimatedEndDate(formattedDate);
+        }
       } catch (e) {
-        setEstimatedEndDate("");
+        if (estimatedEndDate !== "") {
+          setEstimatedEndDate("");
+        }
       }
     }
-  }, [scheduledDate, durationDays]);
+  }, [scheduledDate, durationDays, estimatedEndDate]);
 
   const handleAddTask = () => {
     if (!newTask.trim()) return;
@@ -167,6 +168,10 @@ export default function NewWorkOrderPage() {
     return busy;
   }, [activeWorkOrders]);
 
+  // Checklist State
+  const [checklist, setChecklist] = useState<{task: string}[]>([]);
+  const [newTask, setNewTask] = useState("");
+
   if (isUserLoading) {
     return (
       <div className="flex h-[400px] items-center justify-center">
@@ -204,12 +209,14 @@ export default function NewWorkOrderPage() {
                     <SelectValue placeholder={isClientsLoading ? "Cargando clientes..." : "Seleccione un cliente..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {realClients && realClients.length > 0 ? (
+                    {isClientsLoading ? (
+                      <SelectItem value="loading" disabled>Cargando lista...</SelectItem>
+                    ) : realClients && realClients.length > 0 ? (
                       realClients.map(client => (
                         <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
                       ))
                     ) : (
-                      <div className="p-2 text-xs text-muted-foreground text-center">No hay clientes registrados</div>
+                      <SelectItem value="none" disabled>No hay clientes registrados</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -222,12 +229,14 @@ export default function NewWorkOrderPage() {
                     <SelectValue placeholder={isAssetsLoading ? "Cargando activos..." : "Seleccione equipo (Opcional)..."} />
                   </SelectTrigger>
                   <SelectContent>
-                    {realAssets && realAssets.length > 0 ? (
+                    {isAssetsLoading ? (
+                      <SelectItem value="loading" disabled>Cargando activos...</SelectItem>
+                    ) : realAssets && realAssets.length > 0 ? (
                       realAssets.map(asset => (
                         <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
                       ))
                     ) : (
-                      <div className="p-2 text-xs text-muted-foreground text-center">No hay activos en catálogo</div>
+                      <SelectItem value="none" disabled>No hay activos en catálogo</SelectItem>
                     )}
                   </SelectContent>
                 </Select>
