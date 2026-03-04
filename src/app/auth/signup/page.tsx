@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -10,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { ShieldPlus, Loader2, Building2, AlertCircle } from 'lucide-react';
+import { ShieldPlus, Loader2, Building2, AlertCircle, KeyRound, User } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -38,18 +37,18 @@ export default function SignupPage() {
 
     try {
       let targetCompanyId = isSuperAdminAccount ? 'pcg-central' : companyCode.trim();
-      let role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin'; // Por defecto el primero que se registra en una empresa es admin
+      let role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin'; 
 
       // 1. SI NO ES SUPERADMIN, VALIDAR EMPRESA
       if (!isSuperAdminAccount) {
         if (!targetCompanyId) {
-          throw new Error("Debe ingresar un código de acceso de empresa.");
+          throw new Error("Debe ingresar el código de vinculación de su empresa.");
         }
 
         const companySnap = await getDoc(doc(db, 'companies', targetCompanyId));
         
         if (!companySnap.exists()) {
-          throw new Error("El código de empresa no es válido o no existe.");
+          throw new Error("El código de acceso no es válido. Verifíquelo con su administrador.");
         }
 
         const companyData = companySnap.data();
@@ -66,15 +65,13 @@ export default function SignupPage() {
         const maxUsers = planLimits[currentPlan] || 1;
 
         if (usersSnap.size >= maxUsers) {
-          throw new Error(`La empresa ha alcanzado el límite de ${maxUsers} usuarios para el plan ${currentPlan.toUpperCase()}. El administrador debe mejorar el plan.`);
+          throw new Error(`La empresa ha alcanzado el límite de ${maxUsers} usuarios para el plan ${currentPlan.toUpperCase()}.`);
         }
 
-        // Si ya hay usuarios, los nuevos se registran como 'tecnico' por defecto
         if (usersSnap.size > 0) {
           role = 'tecnico';
         }
       } else {
-        // Lógica especial para crear la empresa central si no existe
         const centralSnap = await getDoc(doc(db, 'companies', 'pcg-central'));
         if (!centralSnap.exists()) {
           await setDoc(doc(db, 'companies', 'pcg-central'), {
@@ -143,55 +140,63 @@ export default function SignupPage() {
             <ShieldPlus className="h-8 w-8 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold tracking-tight">Registro de Usuario</CardTitle>
-          <CardDescription>Vincule su cuenta a una empresa registrada</CardDescription>
+          <CardDescription>Cree su perfil personal y vincúlelo a su empresa</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Corporativo</Label>
-              <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input id="email" type="email" placeholder="nombre@empresa.cl" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             
             {!isSuperAdminEmail && (
-              <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                <Label htmlFor="companyCode" className="flex items-center gap-2">
-                  <Building2 className="h-3 w-3" /> Código de Acceso Empresa
+              <div className="space-y-2 p-4 bg-primary/5 rounded-xl border border-primary/10 animate-in fade-in slide-in-from-top-2">
+                <Label htmlFor="companyCode" className="flex items-center gap-2 text-primary font-bold">
+                  <Building2 className="h-4 w-4" /> Código de Acceso Empresa
                 </Label>
                 <Input 
                   id="companyCode" 
                   required 
                   placeholder="Ej: comp-xxxxx"
+                  className="bg-white border-primary/20"
                   value={companyCode} 
                   onChange={(e) => setCompanyCode(e.target.value)} 
                 />
-                <p className="text-[10px] text-muted-foreground italic">
-                  * Solicite este código a su Súper Administrador.
+                <p className="text-[10px] text-primary/70 italic leading-tight">
+                  * Este código vincula su cuenta a su organización. Solicítelo a su jefe de área o administrador.
                 </p>
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">Su Nombre Completo</Label>
-              <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
+              <Label htmlFor="name" className="flex items-center gap-2">
+                <User className="h-3.5 w-3.5 text-muted-foreground" /> Nombre Completo
+              </Label>
+              <Input id="name" placeholder="Ej: Juan Soto" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña de Acceso</Label>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Label htmlFor="password" className="flex items-center gap-2">
+                <KeyRound className="h-3.5 w-3.5 text-muted-foreground" /> Contraseña Personal
+              </Label>
+              <Input id="password" type="password" placeholder="Mínimo 6 caracteres" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <p className="text-[10px] text-muted-foreground italic">
+                * Esta es su clave privada para entrar al sistema. No es el código de empresa.
+              </p>
             </div>
 
             {isSuperAdminEmail && (
               <Alert className="bg-primary/5 border-primary/20">
                 <AlertCircle className="h-4 w-4 text-primary" />
                 <AlertDescription className="text-xs font-medium text-primary">
-                  Detectado: Registro de Súper Administrador Maestro.
+                  Identidad Confirmada: Registro de Administrador de Infraestructura.
                 </AlertDescription>
               </Alert>
             )}
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button className="w-full" type="submit" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Finalizar y Entrar"}
+            <Button className="w-full h-12 text-sm font-bold" type="submit" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Finalizar y Acceder al ERP"}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
               ¿Ya tiene una cuenta? <Link href="/auth/login" className="text-primary hover:underline">Inicie sesión</Link>

@@ -554,10 +554,13 @@ export default function AdminCompaniesPage() {
                     www.pcgmantenimiento.com <ExternalLink className="h-3 w-3" />
                   </Link>
                 </div>
-                <p>Utilicen el siguiente <strong>Código de Acceso Maestro</strong> en el formulario de registro corporativo:</p>
+                <p>Utilicen el siguiente <strong>Código de Acceso Maestro</strong> en el campo correspondiente del formulario de registro corporativo:</p>
                 <div className="bg-white p-3 text-center rounded-lg border-2 border-primary/20 font-mono font-black text-xl text-primary tracking-widest shadow-sm">
                   {detailsCompany?.id}
                 </div>
+                <p className="text-[10px] text-amber-600 font-bold mt-2">
+                  * Importante: Este código es solo para vincular su cuenta a la empresa. Su contraseña personal la define usted en el paso siguiente.
+                </p>
                 <p className="text-[10px] text-slate-500 italic mt-4">
                   * Este código permite la vinculación segura de usuarios a su organización. Por seguridad, no lo comparta fuera de su equipo técnico.
                 </p>
