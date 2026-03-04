@@ -26,7 +26,7 @@ import {
   ArrowLeft
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, updateDoc } from "firebase/firestore";
+import { collection, doc, updateDoc, query, where } from "firebase/firestore";
 import { MOCK_USERS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -45,12 +45,16 @@ export default function TeamPage() {
 
   const usersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
-    return collection(db, "users");
+    // Filtrar por companyId para cumplir con las reglas de seguridad
+    return query(collection(db, "users"), where("companyId", "==", profile.companyId));
   }, [db, profile?.companyId]);
 
   const { data: realUsers, isLoading: isUsersLoading } = useCollection(usersQuery);
 
-  const companyUsers = (realUsers || MOCK_USERS).filter(u => u.companyId === profile?.companyId);
+  const companyUsers = realUsers && realUsers.length > 0 
+    ? realUsers 
+    : MOCK_USERS.filter(u => u.companyId === profile?.companyId);
+    
   const isDemo = !realUsers || realUsers.length === 0;
 
   const filtered = companyUsers.filter(u => 

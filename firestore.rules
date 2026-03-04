@@ -14,23 +14,25 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      return isSignedIn() && getUserData().role == 'superadmin';
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) || 
+        getUserData().role == 'superadmin'
+      );
     }
 
     function isCompanyMember(companyId) {
-      let globalUser = getUserData();
-      return isSignedIn() && (globalUser.companyId == companyId || isSuperAdmin());
+      return isSignedIn() && (getUserData().companyId == companyId || isSuperAdmin());
     }
 
     function hasRole(companyId, roles) {
-      let globalUser = getUserData();
-      return isSignedIn() && (globalUser.role in roles || isSuperAdmin());
+      return isSignedIn() && (getUserData().role in roles || isSuperAdmin());
     }
 
     // --- REGLAS ---
 
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin() || isCompanyMember(resource.data.companyId));
+      allow list: if isSignedIn() && (isSuperAdmin() || (request.query.filters.companyId != null && isCompanyMember(request.query.filters.companyId)));
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
     }
