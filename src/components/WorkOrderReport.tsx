@@ -2,10 +2,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, User, PartUsage } from "@/lib/types";
+import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, User, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Package } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Package, Users } from "lucide-react";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -13,12 +13,12 @@ interface WorkOrderReportProps {
   client: Client | null;
   asset: Asset | null;
   logbook: DigitalLogbookEntry[];
-  technician: User | null;
+  assignedStaff: StaffMember[];
   partUsages: PartUsage[];
 }
 
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
-  ({ company, workOrder, client, asset, logbook, technician, partUsages }, ref) => {
+  ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages }, ref) => {
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
@@ -103,6 +103,25 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           </div>
         </div>
 
+        {/* Personnel Section */}
+        <div className="mb-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2 flex items-center gap-2">
+            <Users className="h-3 w-3" /> Equipo Responsable Asignado
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {assignedStaff && assignedStaff.length > 0 ? (
+              assignedStaff.map(s => (
+                <div key={s.id} className="bg-white px-3 py-1.5 rounded-lg border shadow-sm flex flex-col">
+                  <span className="text-sm font-bold">{s.name}</span>
+                  <span className="text-[9px] text-muted-foreground uppercase">{s.role}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs italic text-blue-400">Sin personal asignado específicamente.</p>
+            )}
+          </div>
+        </div>
+
         {/* AI Summary */}
         {workOrder.aiSummary && (
           <div className="mb-8 p-6 bg-slate-50 rounded-2xl border-l-4 border-slate-900">
@@ -165,25 +184,6 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           </div>
         </div>
 
-        {/* Evidence Photos */}
-        {workOrder.evidenceUrls && workOrder.evidenceUrls.length > 0 && (
-          <div className="mb-8">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-1 mb-4">Evidencia Fotográfica</h3>
-            <div className="grid grid-cols-3 gap-2">
-              {workOrder.evidenceUrls.map((url, idx) => (
-                <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border bg-slate-100">
-                  <img 
-                    src={url} 
-                    alt="Evidencia" 
-                    className="w-full h-full object-cover" 
-                    crossOrigin="anonymous"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Signatures */}
         <div className="mt-auto pt-12">
           <div className="grid grid-cols-2 gap-12">
@@ -198,8 +198,10 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
                   />
                 )}
               </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase">Firma Técnico Responsable</p>
-              <p className="text-xs font-bold">{technician?.name || "Técnico Asignado"}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase">Firma Personal Responsable</p>
+              <p className="text-[9px] font-bold text-slate-600">
+                {assignedStaff.map(s => s.name).join(' / ') || "Técnicos Asignados"}
+              </p>
             </div>
             <div className="text-center">
               <div className="h-24 relative border-b border-slate-300 mb-2 flex items-center justify-center">

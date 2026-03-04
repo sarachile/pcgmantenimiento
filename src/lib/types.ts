@@ -125,7 +125,7 @@ export interface WorkOrder {
   assetId?: string;
   description: string;
   status: OTStatus;
-  assignedToStaffId?: string; // Ahora apunta a StaffMember
+  assignedToStaffIds?: string[]; // Ahora soporta múltiples IDs de StaffMember
   createdByUserId: string;
   reviewerRequired: boolean;
   scheduledDate?: string | any;

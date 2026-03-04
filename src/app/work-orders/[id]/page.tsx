@@ -1,7 +1,7 @@
 
 "use client";
 
-import { use, useState, useEffect, useRef } from "react";
+import { use, useState, useEffect, useRef, useMemo } from "react";
 import { 
   Card, 
   CardContent, 
@@ -31,7 +31,8 @@ import {
   Plus,
   Star,
   ShieldCheck,
-  Send
+  Send,
+  Users
 } from "lucide-react";
 import {
   Dialog,
@@ -65,7 +66,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp, arrayUnion, query, orderBy, increment } from "firebase/firestore";
+import { doc, collection, addDoc, serverTimestamp, arrayUnion, query, orderBy, increment, where } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
 import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company, PartUsage, SparePart, Client, User, Asset, StaffMember, ServiceEvaluation } from "@/lib/types";
@@ -195,8 +196,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const reportRef = useRef<HTMLDivElement>(null);
   
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [signatureType, setSignatureType] = useState<'client' | 'technician' | null>(null);
@@ -213,11 +212,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const { data: ot, isLoading: isDocLoading } = useDoc<WorkOrder>(otRef);
   const { data: company } = useDoc<Company>(useMemoFirebase(() => db && profile?.companyId ? doc(db, "companies", profile.companyId) : null, [db, profile?.companyId]));
 
-  const staffRef = useMemoFirebase(() => {
-    if (!db || !profile?.companyId || !ot?.assignedToStaffId) return null;
-    return doc(db, "companies", profile.companyId, "staff", ot.assignedToStaffId);
-  }, [db, profile?.companyId, ot?.assignedToStaffId]);
-  const { data: staffMember } = useDoc<StaffMember>(staffRef);
+  const staffQuery = useMemoFirebase(() => {
+    if (!db || !profile?.companyId || !ot?.assignedToStaffIds?.length) return null;
+    return query(
+      collection(db, "companies", profile.companyId, "staff"),
+      where("id", "in", ot.assignedToStaffIds)
+    );
+  }, [db, profile?.companyId, ot?.assignedToStaffIds]);
+  const { data: assignedStaff } = useCollection<StaffMember>(staffQuery);
 
   const clientRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId || !ot?.clientId) return null;
@@ -292,7 +294,16 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
       {/* Hidden report for PDF generation */}
       <div className="absolute -left-[9999px] top-0 pointer-events-none opacity-0">
-        <WorkOrderReport ref={reportRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} logbook={logbook || []} technician={staffMember ? { name: staffMember.name } as any : null} partUsages={partUsages || []} />
+        <WorkOrderReport 
+          ref={reportRef} 
+          company={company || null} 
+          workOrder={ot} 
+          client={client || null} 
+          asset={asset || null} 
+          logbook={logbook || []} 
+          assignedStaff={assignedStaff || []} 
+          partUsages={partUsages || []} 
+        />
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-card p-6 rounded-xl border shadow-sm">
@@ -302,9 +313,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <h2 className="text-2xl font-bold">{ot.id}</h2>
             <Badge variant={ot.status === 'aprobada' ? 'default' : 'outline'}>{ot.status.toUpperCase()}</Badge>
           </div>
-          <p className="text-muted-foreground text-sm flex items-center gap-2">
-            <HardHat className="h-3 w-3" /> Responsable: {staffMember?.name || 'Por asignar'}
-          </p>
+          <div className="text-muted-foreground text-sm flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+            <span className="flex items-center gap-1.5"><Users className="h-3 w-3" /> Equipo Responsable:</span>
+            {assignedStaff && assignedStaff.length > 0 ? (
+              assignedStaff.map(s => <Badge key={s.id} variant="secondary" className="text-[10px] h-5">{s.name}</Badge>)
+            ) : (
+              <span className="italic">Por asignar</span>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf}>{isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Reporte PDF</Button>

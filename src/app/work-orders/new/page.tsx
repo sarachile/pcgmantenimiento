@@ -10,13 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat, UserPlus } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
 
 export default function NewWorkOrderPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -27,8 +28,7 @@ export default function NewWorkOrderPage() {
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
   const [assetId, setAssetId] = useState("");
-  const [reviewerRequired, setReviewerRequired] = useState(false);
-  const [assignedToStaffId, setAssignedToStaffId] = useState("");
+  const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Schedule state
@@ -62,6 +62,14 @@ export default function NewWorkOrderPage() {
     setChecklist(checklist.filter((_, i) => i !== index));
   };
 
+  const toggleStaffSelection = (staffId: string) => {
+    setAssignedToStaffIds(prev => 
+      prev.includes(staffId) 
+        ? prev.filter(id => id !== staffId) 
+        : [...prev, staffId]
+    );
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -89,9 +97,9 @@ export default function NewWorkOrderPage() {
         assetId: assetId || null,
         description: description.trim(),
         status: "creada",
-        assignedToStaffId: assignedToStaffId || null,
+        assignedToStaffIds: assignedToStaffIds, // Arreglo de IDs
         createdByUserId: profile.id,
-        reviewerRequired,
+        reviewerRequired: false,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
         estimatedEndDate: estimatedEndDate ? new Date(estimatedEndDate).toISOString() : null,
@@ -127,7 +135,6 @@ export default function NewWorkOrderPage() {
 
   const staffQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
-    // IMPORTANTE: Aseguramos que la subcolección sea la correcta bajo el tenant del perfil
     return query(
       collection(db, "companies", profile.companyId, "staff"), 
       where("active", "==", true)
@@ -228,34 +235,66 @@ export default function NewWorkOrderPage() {
               </CardContent>
             </Card>
 
-            <div className="space-y-2">
+            <div className="space-y-4">
               <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider flex items-center gap-2">
-                <HardHat className="h-3 w-3" /> Personal Operativo Asignado
+                <Users className="h-3 w-3" /> Personal Operativo Asignado (Múltiple)
               </Label>
-              <Select value={assignedToStaffId} onValueChange={setAssignedToStaffId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={isStaffLoading ? "Cargando equipo..." : "Seleccione del equipo de trabajo..."} />
-                </SelectTrigger>
-                <SelectContent>
-                  {isStaffLoading ? (
-                    <div className="flex items-center justify-center p-4">
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    </div>
-                  ) : staffMembers && staffMembers.length > 0 ? (
-                    staffMembers.map(staff => (
-                      <SelectItem key={staff.id} value={staff.id}>{staff.name} ({staff.role})</SelectItem>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center space-y-2">
-                      <p className="text-xs text-muted-foreground">No hay personal activo registrado.</p>
-                      <Button variant="outline" size="sm" asChild className="w-full h-7 text-[10px]">
-                        <Link href="/team"><UserPlus className="h-3 w-3 mr-1" /> Ir a Equipo</Link>
-                      </Button>
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-              <p className="text-[10px] text-muted-foreground italic">El personal disponible corresponde a los trabajadores asociados a su empresa.</p>
+              
+              <div className="border rounded-lg bg-white p-4 space-y-3 max-h-[250px] overflow-y-auto">
+                {isStaffLoading ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  </div>
+                ) : staffMembers && staffMembers.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {staffMembers.map(staff => (
+                      <div key={staff.id} className="flex items-center space-x-2 border p-2 rounded-md hover:bg-muted/30 transition-colors">
+                        <Checkbox 
+                          id={`staff-${staff.id}`} 
+                          checked={assignedToStaffIds.includes(staff.id)}
+                          onCheckedChange={() => toggleStaffSelection(staff.id)}
+                        />
+                        <label 
+                          htmlFor={`staff-${staff.id}`}
+                          className="text-xs font-medium leading-none cursor-pointer flex-1"
+                        >
+                          <p className="font-bold">{staff.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase">{staff.role}</p>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 space-y-2">
+                    <p className="text-xs text-muted-foreground italic">No hay personal operativo activo registrado.</p>
+                    <Button variant="outline" size="sm" asChild className="h-7 text-[10px]">
+                      <Link href="/team">Ir a Gestión de Equipo</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {assignedToStaffIds.length > 0 ? (
+                  assignedToStaffIds.map(id => {
+                    const name = staffMembers?.find(s => s.id === id)?.name || "Cargando...";
+                    return (
+                      <Badge key={id} variant="secondary" className="gap-1 pl-2 pr-1 h-6">
+                        {name}
+                        <button 
+                          type="button" 
+                          onClick={() => toggleStaffSelection(id)}
+                          className="ml-1 rounded-full hover:bg-muted p-0.5"
+                        >
+                          <Trash2 className="h-3 w-3 text-rose-500" />
+                        </button>
+                      </Badge>
+                    );
+                  })
+                ) : (
+                  <p className="text-[10px] text-muted-foreground">Ningún participante seleccionado aún.</p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
