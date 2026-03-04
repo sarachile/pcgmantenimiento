@@ -184,11 +184,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     toast({ title: "Generando reporte técnico...", description: "Procesando certificados y evidencias." });
     try {
       await new Promise(r => setTimeout(r, 1000));
-      const canv = await html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", imageTimeout: 20000 });
-      const img = canv.toDataURL("image/png");
+      const canv = await html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", imageTimeout: 30000 });
+      const imgData = canv.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pw = pdf.internal.pageSize.getWidth();
-      pdf.addImage(img, "PNG", 0, 0, pw, (canv.height * pw) / canv.width);
+      pdf.addImage(imgData, "PNG", 0, 0, pw, (canv.height * pw) / canv.width);
       pdf.save(`REPORTE_PCG_${ot.id}.pdf`);
       toast({ title: "PDF Generado Exitosamente" });
     } catch (e) { toast({ title: "Error al generar PDF", variant: "destructive" }); } finally { setIsGeneratingPdf(false); }

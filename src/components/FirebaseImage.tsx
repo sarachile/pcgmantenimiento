@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 interface FirebaseImageProps {
   url?: string;
@@ -12,57 +13,51 @@ interface FirebaseImageProps {
 }
 
 /**
- * Componente para renderizar imágenes de Firebase Storage.
- * Nota: No usamos crossOrigin="anonymous" aquí para evitar pre-flights de CORS
- * que fallen si el bucket no tiene una política permisiva, asegurando visibilidad en la UI.
+ * Componente robusto para renderizar imágenes de Firebase Storage.
+ * Utiliza next/image para optimización y maneja estados de error de forma defensiva.
  */
 export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    // Resetear estados si cambia la URL
     setLoading(true);
     setError(false);
   }, [url]);
 
-  if (!url) {
+  // Si no hay URL o hubo un error, mostramos un placeholder elegante en lugar de una imagen rota
+  if (!url || error) {
     return (
-      <div className={cn("flex items-center justify-center bg-muted/10 border border-dashed rounded-2xl min-h-[100px]", className)}>
-        <ImageOff className="h-5 w-5 text-muted-foreground/30" />
+      <div className={cn("flex flex-col items-center justify-center bg-muted/10 border border-dashed rounded-2xl min-h-[100px] p-4 text-muted-foreground/30", className)}>
+        <ImageOff className="h-6 w-6 mb-2" />
+        {error && <span className="text-[10px] font-black uppercase tracking-widest text-rose-400">Error de carga</span>}
       </div>
     );
   }
 
   return (
-    <div className={cn("relative flex items-center justify-center overflow-hidden", className)}>
+    <div className={cn("relative flex items-center justify-center overflow-hidden bg-slate-50", className)}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-50 animate-pulse z-10">
           <Loader2 className="h-5 w-5 animate-spin text-primary/30" />
         </div>
       )}
       
-      <img 
+      <Image 
         src={url} 
         alt={alt} 
+        fill
         className={cn(
-          "max-h-full object-contain transition-opacity duration-500", 
-          loading ? "opacity-0" : "opacity-100",
-          error && "hidden"
+          "object-contain transition-opacity duration-500", 
+          loading ? "opacity-0" : "opacity-100"
         )}
         onLoad={() => setLoading(false)}
         onError={() => {
           setLoading(false);
           setError(true);
         }}
+        unoptimized // Desactivamos proxy de optimización para evitar problemas de CORS con Storage
       />
-
-      {error && (
-        <div className="flex flex-col items-center justify-center p-4 text-rose-400 bg-rose-50 w-full h-full rounded-2xl">
-          <ImageOff className="h-6 w-6 mb-2" />
-          <span className="text-[10px] font-black uppercase tracking-widest">Error de carga</span>
-        </div>
-      )}
     </div>
   );
 }

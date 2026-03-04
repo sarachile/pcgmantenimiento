@@ -57,7 +57,6 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
                 src={company.logoUrl} 
                 alt="Logo Empresa" 
                 className="w-full h-full object-contain p-2" 
-                crossOrigin="anonymous"
               />
             </div>
           ) : (
@@ -170,7 +169,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
           <div className="grid grid-cols-2 gap-4">
             {workOrder.evidenceUrls.map((url, i) => (
               <div key={i} className="aspect-video rounded-2xl overflow-hidden border-2 border-slate-100 bg-slate-50">
-                <img src={url} alt={`Evidencia ${i+1}`} className="w-full h-full object-cover" crossOrigin="anonymous" />
+                <img src={url} alt={`Evidencia ${i+1}`} className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
@@ -214,7 +213,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
                 </>
               ) : showQrInPdf ? (
                 <div className="flex flex-col items-center gap-1">
-                  <img src={qrCodeUrl} alt="QR Validacion" className="h-20 w-20" crossOrigin="anonymous" />
+                  <img src={qrCodeUrl} alt="QR Validacion" className="h-20 w-20" />
                   <span className="text-[7px] font-black text-primary uppercase tracking-widest">Escanee para Validar Digitalmente</span>
                 </div>
               ) : (
