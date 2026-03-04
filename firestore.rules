@@ -11,7 +11,6 @@ service cloud.firestore {
     
     function isSuperAdmin() {
       if (!isSignedIn()) return false;
-      // Verificación directa en la colección privilegiada
       return exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
     }
 
@@ -33,27 +32,27 @@ service cloud.firestore {
       // Permitir creación si es el propio usuario (necesario para el registro inicial)
       allow create: if isOwner(userId);
       allow read: if isOwner(userId) || isSuperAdmin();
+      allow update, delete: if isSuperAdmin();
     }
 
     match /users/{userId} {
       // Permitir creación y edición del propio perfil
       allow create: if isOwner(userId);
       allow get: if isSignedIn();
-      allow list: if isSignedIn() && isSuperAdmin();
+      allow list: if isSignedIn();
       allow update: if isOwner(userId) || isSuperAdmin();
     }
 
     match /companies/{companyId} {
-      // Permitir creación inicial de la empresa por cualquier usuario autenticado
+      // Permitir creación inicial si está autenticado
       allow create: if isSignedIn();
-      allow get: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
+      // Permitir lectura y actualización si es miembro o superadmin
+      allow read, update: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
       allow list: if isSuperAdmin();
-      allow update: if isSuperAdmin() || isCompanyMember(companyId);
 
-      // Regla comodín para subcolecciones de empresa
+      // Regla para subcolecciones de empresa (clientes, activos, OTs, etc.)
       match /{allPaths=**} {
-        allow read: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
-        allow write: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
+        allow read, write: if isSignedIn() && (isSuperAdmin() || isCompanyMember(companyId));
       }
     }
   }

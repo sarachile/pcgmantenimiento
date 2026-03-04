@@ -43,8 +43,30 @@ export default function SignupPage() {
       const role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin';
       const companyId = isSuperAdminAccount ? 'pcg-central' : `comp-${Math.random().toString(36).substr(2, 9)}`;
 
-      // 2. Registrar empresa (Tenant)
-      // Usamos los campos exactos del backend.json
+      // IMPORTANTE: El orden de creación es crítico para las reglas de seguridad
+      
+      // 2. Crear Perfil de Usuario PRIMERO
+      await setDoc(doc(db, 'users', userId), {
+        id: userId,
+        email: cleanEmail,
+        name: name,
+        role: role,
+        companyId: companyId,
+        active: true,
+        createdAt: new Date().toISOString(),
+      });
+
+      // 3. Registro en colección de Súper Administradores si corresponde
+      if (isSuperAdminAccount) {
+        await setDoc(doc(db, 'superAdmins', userId), {
+          id: userId,
+          email: cleanEmail,
+          name: name,
+          grantedAt: new Date().toISOString(),
+        });
+      }
+
+      // 4. Registrar empresa (Tenant) DESPUÉS de que el usuario tiene perfil
       await setDoc(doc(db, 'companies', companyId), {
         id: companyId,
         name: isSuperAdminAccount ? 'PCG OPERACIONES CENTRAL' : (companyName || 'Mi Empresa'),
@@ -53,45 +75,21 @@ export default function SignupPage() {
         isActive: true,
         currentPlan: isSuperAdminAccount ? 'enterprise' : 'free',
         subscriptionStatus: 'active',
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
       });
-
-      // 3. Crear Perfil de Usuario
-      await setDoc(doc(db, 'users', userId), {
-        id: userId,
-        email: cleanEmail,
-        name: name,
-        role: role,
-        companyId: companyId,
-        active: true,
-        createdAt: serverTimestamp(),
-      });
-
-      // 4. Registro en colección de Súper Administradores si corresponde
-      if (isSuperAdminAccount) {
-        await setDoc(doc(db, 'superAdmins', userId), {
-          id: userId,
-          email: cleanEmail,
-          name: name,
-          grantedAt: serverTimestamp(),
-        });
-      }
 
       toast({
         title: isSuperAdminAccount ? "Acceso Maestro Activado" : "Cuenta creada",
         description: "Bienvenido a PCGMANTENIMIENTO. Redirigiendo...",
       });
       
-      // Forzamos una pequeña espera para asegurar propagación
-      setTimeout(() => {
-        router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
-      }, 500);
+      router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
 
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
         title: "Error al registrarse",
-        description: error.message || "No se pudo completar el registro técnico.",
+        description: error.message || "No se pudo completar el registro.",
         variant: "destructive",
       });
     } finally {

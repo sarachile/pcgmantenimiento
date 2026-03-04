@@ -17,7 +17,7 @@ export interface Company {
   rut: string;
   address: string;
   logoUrl?: string;
-  subscriptionPlan: PlanType;
+  currentPlan: PlanType;
   subscriptionStatus: SubscriptionStatus;
   isActive: boolean;
   createdAt: string | any;
