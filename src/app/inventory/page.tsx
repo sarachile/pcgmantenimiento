@@ -45,7 +45,7 @@ export default function InventoryPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [open, setOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Form states
   const [newItem, setNewItem] = useState({
@@ -73,12 +73,20 @@ export default function InventoryPage() {
 
   const handleCreateItem = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile?.companyId || !db) return;
+    
+    if (!db || !profile?.companyId) {
+      toast({
+        title: "Error de sesión",
+        description: "No se pudo identificar su empresa. Intente reingresar.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     if (!newItem.name || !newItem.sku || !newItem.stockActual) {
       toast({
         title: "Campos incompletos",
-        description: "Por favor complete los campos obligatorios.",
+        description: "Por favor complete los campos obligatorios marcados con *.",
         variant: "destructive"
       });
       return;
@@ -105,14 +113,15 @@ export default function InventoryPage() {
       errorEmitter.emit('permission-error', permissionError);
     });
 
-    // Proceed immediately for a responsive UI
+    // UI updates immediately
     toast({
       title: "Ítem registrado",
       description: `${newItem.name} ha sido añadido al catálogo.`,
     });
     
+    // Reset and close
     setNewItem({ name: "", sku: "", stockActual: "", stockMinimo: "", unitPrice: "" });
-    setOpen(false);
+    setIsDialogOpen(false);
   };
 
   if (isAuthLoading) {
@@ -142,7 +151,7 @@ export default function InventoryPage() {
              <TrendingDown className="mr-2 h-4 w-4" /> Ajuste de Stock
           </Button>
           
-          <Dialog open={open} onOpenChange={setOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
@@ -207,7 +216,7 @@ export default function InventoryPage() {
                   />
                 </div>
                 <DialogFooter className="pt-4">
-                  <Button type="submit">
+                  <Button type="submit" className="w-full sm:w-auto">
                     <Plus className="h-4 w-4 mr-2" />
                     Guardar en Catálogo
                   </Button>
