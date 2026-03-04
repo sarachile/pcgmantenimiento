@@ -207,9 +207,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const companyRef = useMemoFirebase(() => db && profile?.companyId ? doc(db, "companies", profile.companyId) : null, [db, profile?.companyId]);
   const { data: company } = useDoc<Company>(companyRef);
 
-  // Consulta para obtener la información de los miembros del equipo asignados
+  // Consulta robusta para personal asignado
   const staffQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId || !ot?.assignedToStaffIds?.length) return null;
+    if (!db || !profile?.companyId || !ot?.assignedToStaffIds || ot.assignedToStaffIds.length === 0) return null;
     return query(
       collection(db, "companies", profile.companyId, "staff"), 
       where("__name__", "in", ot.assignedToStaffIds)
@@ -253,14 +253,18 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const handleDownloadPdf = async () => {
     if (!reportRef.current) return;
     setIsGeneratingPdf(true);
-    toast({ title: "Generando reporte...", description: "Por favor espere un momento." });
+    toast({ title: "Generando reporte...", description: "Procesando evidencias gráficas." });
     
+    // Pequeña espera para asegurar que las imágenes del reporte (oculto) se hayan renderizado
+    await new Promise(resolve => setTimeout(resolve, 500));
+
     try {
       const canvas = await html2canvas(reportRef.current, { 
         scale: 2, 
         useCORS: true, 
         backgroundColor: "#ffffff",
-        logging: false
+        logging: false,
+        allowTaint: true
       });
       
       const imgData = canvas.toDataURL("image/png");
@@ -271,10 +275,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`REPORTE_PCG_${ot?.id}.pdf`);
       
-      toast({ title: "Reporte generado", description: "El archivo PDF se ha descargado exitosamente." });
+      toast({ title: "Reporte generado", description: "Documento descargado." });
     } catch (e: any) { 
       console.error("PDF Generation Error:", e);
-      toast({ title: "Error al generar PDF", description: "Asegúrese de que todas las imágenes se hayan cargado correctamente.", variant: "destructive" }); 
+      toast({ title: "Error al generar PDF", description: "Reintente en unos segundos.", variant: "destructive" }); 
     } finally { 
       setIsGeneratingPdf(false); 
     }
@@ -307,12 +311,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   };
 
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl m-10">Orden no encontrada o eliminada.</div>;
+  if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl m-10">Orden no encontrada.</div>;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
-      {/* REPORTE OCULTO PARA PDF */}
-      <div className="fixed -left-[2000px] top-0 pointer-events-none opacity-0">
+      {/* REPORTE OCULTO PARA PDF - Mejorado para visualización robusta */}
+      <div className="fixed -left-[5000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           ref={reportRef} 
           company={company || null} 

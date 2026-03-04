@@ -151,11 +151,11 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           </div>
         </div>
 
-        {/* SECCIÓN DE FIRMAS DIGITALES */}
+        {/* SECCIÓN DE FIRMAS DIGITALES - Rediseñada para ser robusta en PDF */}
         <div className="mt-auto pt-16 border-t-2 border-slate-100">
           <div className="grid grid-cols-2 gap-20">
             <div className="text-center space-y-4">
-              <div className="h-32 border-b-2 border-slate-200 flex items-center justify-center bg-slate-50/50 rounded-t-2xl overflow-hidden">
+              <div className="h-32 border-b-2 border-slate-200 flex items-center justify-center bg-slate-50/50 rounded-t-2xl overflow-hidden relative">
                 {workOrder.technicianSignatureUrl ? (
                   <img 
                     src={workOrder.technicianSignatureUrl} 
@@ -173,7 +173,7 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
               </div>
             </div>
             <div className="text-center space-y-4">
-              <div className="h-32 border-b-2 border-slate-200 flex items-center justify-center bg-slate-50/50 rounded-t-2xl overflow-hidden">
+              <div className="h-32 border-b-2 border-slate-200 flex items-center justify-center bg-slate-50/50 rounded-t-2xl overflow-hidden relative">
                 {workOrder.clientSignatureUrl ? (
                   <img 
                     src={workOrder.clientSignatureUrl} 
