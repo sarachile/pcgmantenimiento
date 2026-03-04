@@ -5,7 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, ClipboardList } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, QrCode } from "lucide-react";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -17,6 +17,7 @@ interface WorkOrderReportProps {
   partUsages: PartUsage[];
   techSignatureBase64?: string;
   clientSignatureBase64?: string;
+  qrCodeUrl?: string;
   forwardedRef?: React.Ref<HTMLDivElement>;
 }
 
@@ -30,6 +31,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
   partUsages, 
   techSignatureBase64, 
   clientSignatureBase64,
+  qrCodeUrl,
   forwardedRef
 }) => {
     
@@ -41,6 +43,8 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
     } catch (e) { return "N/A"; }
   };
 
+  const showQrInPdf = workOrder.reviewerRequired && !workOrder.clientSignatureUrl && qrCodeUrl;
+
   return (
     <div 
       ref={forwardedRef} 
@@ -48,6 +52,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
       id="work-order-report"
       style={{ fontFamily: 'Inter, sans-serif' }}
     >
+      {/* Header */}
       <div className="flex justify-between items-start border-b-4 border-slate-900 pb-8 mb-8">
         <div className="flex gap-6 items-center">
           {company?.logoUrl ? (
@@ -81,6 +86,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
+      {/* Client & Asset Info */}
       <div className="grid grid-cols-2 gap-10 mb-10">
         <div className="space-y-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2">ENTIDAD CLIENTE</h3>
@@ -106,6 +112,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
+      {/* Staff Info */}
       <div className="mb-10 p-6 bg-slate-50 rounded-2xl border-2 border-slate-100">
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 mb-4 flex items-center gap-2">
           <Users className="h-4 w-4" /> PERSONAL TÉCNICO RESPONSABLE
@@ -124,6 +131,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
+      {/* Description */}
       <div className="mb-10">
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2 mb-4">DETALLE DE LOS TRABAJOS</h3>
         <div className="p-6 bg-white border-2 border-slate-100 rounded-2xl min-h-[100px]">
@@ -131,6 +139,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
+      {/* Checklist */}
       <div className="mb-10">
         <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2 mb-4">PROTOCOLOS DE VERIFICACIÓN</h3>
         <div className="grid grid-cols-1 gap-2">
@@ -156,8 +165,10 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
+      {/* Signatures Area */}
       <div className="mt-auto pt-16 border-t-2 border-slate-100">
         <div className="grid grid-cols-2 gap-20">
+          {/* Tech Signature */}
           <div className="text-center space-y-4">
             <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
               {(techSignatureBase64 || workOrder.technicianSignatureUrl) && (
@@ -177,17 +188,23 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
               <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Validado vía PCGMANTENIMIENTO</p>
             </div>
           </div>
+
+          {/* Client Signature or QR */}
           <div className="text-center space-y-4">
             <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
-              {(clientSignatureBase64 || workOrder.clientSignatureUrl) && (
+              {clientSignatureBase64 || workOrder.clientSignatureUrl ? (
                 <img 
                   src={clientSignatureBase64 || workOrder.clientSignatureUrl} 
                   alt="Firma Cliente" 
                   className="max-h-full max-w-full object-contain" 
                   crossOrigin="anonymous"
                 />
-              )}
-              {!clientSignatureBase64 && !workOrder.clientSignatureUrl && (
+              ) : showQrInPdf ? (
+                <div className="flex flex-col items-center gap-1">
+                  <img src={qrCodeUrl} alt="QR Validacion" className="h-24 w-24" crossOrigin="anonymous" />
+                  <span className="text-[7px] font-black text-primary uppercase tracking-widest">Escanee para Validar</span>
+                </div>
+              ) : (
                 <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Recepción Cliente</span>
               )}
             </div>
@@ -199,6 +216,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
+      {/* Footer */}
       <div className="mt-16 text-center border-t border-slate-100 pt-6">
         <p className="text-[8px] text-slate-300 font-black uppercase tracking-[0.4em] mb-1">
           PCGMANTENIMIENTO ERP - SISTEMA DE GESTIÓN INDUSTRIAL AVANZADA

@@ -271,9 +271,15 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { return "N/A"; }
   };
 
+  const qrUrl = useMemo(() => {
+    if (!currentUrl) return "";
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
+  }, [currentUrl]);
+
   const getBase64Image = async (url: string) => {
     if (!url) return undefined;
     try {
+      // Usar cache-busting para evitar bloqueos de caché que podrían ignorar encabezados CORS
       const response = await fetch(url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now(), {
         mode: 'cors',
         credentials: 'omit'
@@ -287,7 +293,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         reader.readAsDataURL(blob);
       });
     } catch (e) {
-      console.warn("CORS error resolving signature for PDF. Returning original URL.", e);
+      console.warn("CORS error resolving image for PDF. Returning original URL.", e);
       return url; 
     }
   };
@@ -304,6 +310,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       ]);
       
       setResolvedSignatures({ tech: techBase64, client: clientBase64 });
+      
+      // Pequeña espera para que el DOM se actualice con las imágenes Base64
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const canvas = await html2canvas(reportRef.current, { 
@@ -363,11 +371,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl m-10">Orden no encontrada.</div>;
 
-  const isClientAccess = isReviewer || (!profile?.role && !isDocLoading);
   const showQrCode = ot.reviewerRequired && ot.technicianSignatureUrl && !ot.clientSignatureUrl;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
+      {/* Elemento oculto para generación de PDF */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           forwardedRef={reportRef} 
@@ -380,6 +388,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           partUsages={partUsages || []}
           techSignatureBase64={resolvedSignatures.tech}
           clientSignatureBase64={resolvedSignatures.client}
+          qrCodeUrl={qrUrl}
         />
       </div>
 
@@ -433,7 +442,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <div className="flex flex-col md:flex-row items-center gap-6">
                   <div className="bg-white p-4 rounded-xl shadow-md border-2 border-primary/20 shrink-0">
                     <img 
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUrl)}`} 
+                      src={qrUrl} 
                       alt="QR Validación"
                       className="w-32 h-32"
                     />

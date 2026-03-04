@@ -49,6 +49,7 @@ export default function NewWorkOrderPage() {
 
   const companyId = profile?.companyId;
 
+  // Consultas estables con dependencias primitivas
   const clientsQuery = useMemoFirebase(() => 
     db && companyId ? collection(db, "companies", companyId, "clients") : null, 
     [db, companyId]
