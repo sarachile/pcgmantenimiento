@@ -170,13 +170,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
     setIsUploading(true);
     try {
-      // 1. Upload to Storage
       const storagePath = `companies/${profile.companyId}/workOrders/${ot.id}/evidence/${Date.now()}_${file.name}`;
-      const storageRef = ref(storage) || ref(storage, storagePath);
       const snapshot = await uploadBytes(ref(storage, storagePath), file);
       const downloadUrl = await getDownloadURL(snapshot.ref);
 
-      // 2. Update Firestore OT
       if (otRef) {
         updateDocumentNonBlocking(otRef, {
           evidenceUrls: arrayUnion(downloadUrl),
@@ -184,7 +181,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         });
       }
 
-      // 3. Log event
       const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
       await addDoc(logRef, {
         workOrderId: ot.id,
@@ -197,7 +193,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       toast({ title: "Evidencia cargada", description: "La foto se ha guardado correctamente." });
     } catch (error: any) {
-      console.error(error);
       toast({ title: "Error al subir", description: error.message, variant: "destructive" });
     } finally {
       setIsUploading(false);
@@ -207,7 +202,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const handleRegisterPart = async () => {
     if (isMock) {
-      toast({ title: "Modo Demo", description: "Registro de repuesto simulado." });
+      toast({ title: "Modo Demo", description: "Registro de consumo simulado." });
       return;
     }
     if (!profile || !selectedPartId || !ot) return;
@@ -245,11 +240,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         actor: profile.id,
       });
 
-      toast({ title: "Repuesto registrado", description: "Stock actualizado y bitácora guardada." });
+      toast({ title: "Consumo registrado", description: "Inventario actualizado y bitácora guardada." });
       setSelectedPartId("");
       setPartQuantity("1");
     } catch (error) {
-      toast({ title: "Error", description: "No se pudo registrar el repuesto.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo registrar el consumo.", variant: "destructive" });
     } finally {
       setIsAddingPart(false);
     }
@@ -271,7 +266,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-card p-6 rounded-xl border shadow-sm">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link>
@@ -289,7 +283,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             </Badge>
             {isMock && <Badge variant="outline" className="text-amber-600 bg-amber-50">EJEMPLO</Badge>}
           </div>
-          <p className="text-muted-foreground text-sm">Creada: {formatDate(ot.createdAt)}</p>
+          <p className="text-muted-foreground text-sm">
+            Creada el {formatDate(ot.createdAt)}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           {ot.status === 'aprobada' && (
@@ -312,9 +308,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {/* Main Details */}
           <Card className="border-none shadow-sm">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><ClipboardList className="h-5 w-5 text-primary" /> Detalles Técnicos</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><ClipboardList className="h-5 w-5 text-primary" /> Detalles de la Intervención</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-muted/30 p-3 rounded-lg">
@@ -322,7 +317,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <p className="text-sm font-bold">{client?.name || 'Cargando...'}</p>
                 </div>
                 <div className="bg-muted/30 p-3 rounded-lg">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Técnico</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Técnico Asignado</p>
                   <p className="text-sm font-bold">{MOCK_USERS.find(u => u.id === (ot.assignedTo || (ot as any).assignedToUserId))?.name || 'Sin asignar'}</p>
                 </div>
               </div>
@@ -333,12 +328,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             </CardContent>
           </Card>
 
-          {/* Evidence Section */}
           <Card className="border-none shadow-sm overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-lg flex items-center gap-2"><Camera className="h-5 w-5 text-primary" /> Evidencia Fotográfica</CardTitle>
-                <CardDescription>Respaldo visual de la intervención.</CardDescription>
+                <CardDescription>Respaldo visual de la intervención técnica.</CardDescription>
               </div>
               {canUploadEvidence && (
                 <div>
@@ -356,7 +350,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     disabled={isUploading}
                   >
                     {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                    Subir Foto
+                    Cargar Foto
                   </Button>
                 </div>
               )}
@@ -385,37 +379,36 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               ) : (
                 <div className="text-center py-12 border-2 border-dashed rounded-xl bg-muted/10">
                   <ImageIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">No se ha cargado evidencia fotográfica aún.</p>
+                  <p className="text-sm text-muted-foreground">No se ha cargado evidencia visual aún.</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Spare Parts Usage */}
           <Card className="border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-lg flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> Repuestos Utilizados</CardTitle>
-                <CardDescription>Materiales consumidos en esta intervención.</CardDescription>
+                <CardTitle className="text-lg flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> Insumos y Materiales</CardTitle>
+                <CardDescription>Recursos consumidos en esta OT.</CardDescription>
               </div>
               {canEditParts && (
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline"><Plus className="mr-2 h-4 w-4" /> Registrar Uso</Button>
+                    <Button size="sm" variant="outline"><Plus className="mr-2 h-4 w-4" /> Registrar Consumo</Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Registrar Consumo de Repuesto</DialogTitle>
-                      <DialogDescription>Seleccione el ítem y la cantidad. El stock se descontará automáticamente.</DialogDescription>
+                      <DialogTitle>Registrar Consumo de Material</DialogTitle>
+                      <DialogDescription>Seleccione el ítem del inventario y la cantidad utilizada.</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
-                        <Label>Repuesto</Label>
+                        <Label>Ítem / Insumo</Label>
                         <Select value={selectedPartId} onValueChange={setSelectedPartId}>
-                          <SelectTrigger><SelectValue placeholder="Seleccione..." /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Seleccione un recurso..." /></SelectTrigger>
                           <SelectContent>
                             {parts.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.name} (Stock: {p.stockActual})</SelectItem>
+                              <SelectItem key={p.id} value={p.id}>{p.name} (Disponible: {p.stockActual})</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -427,7 +420,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     </div>
                     <DialogFooter>
                       <Button onClick={handleRegisterPart} disabled={isAddingPart || !selectedPartId}>
-                        {isAddingPart ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Registro"}
+                        {isAddingPart ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Uso"}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -440,7 +433,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   {partsUsage.map((u: any) => (
                     <div key={u.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/10">
                       <div>
-                        <p className="text-sm font-bold">{u.partName || 'Repuesto'}</p>
+                        <p className="text-sm font-bold">{u.partName || 'Ítem'}</p>
                         <p className="text-xs text-muted-foreground">{u.quantity} unidad(es)</p>
                       </div>
                       <p className="text-sm font-mono text-primary">${(u.quantity * u.unitPrice).toLocaleString()}</p>
@@ -451,12 +444,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-6 text-muted-foreground italic text-sm border-2 border-dashed rounded-lg">No se han registrado repuestos.</div>
+                <div className="text-center py-6 text-muted-foreground italic text-sm border-2 border-dashed rounded-lg">No se han registrado consumos.</div>
               )}
             </CardContent>
           </Card>
 
-          {/* Logbook */}
           <Card className="border-none shadow-sm">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Libro Digital de Obra</CardTitle></CardHeader>
             <CardContent>
@@ -477,16 +469,15 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground text-sm">Sin registros.</div>
+                <div className="text-center py-8 text-muted-foreground text-sm">Bitácora sin registros actuales.</div>
               )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Sidebar Status */}
         <div className="space-y-6">
           <Card className="border-none shadow-sm bg-primary/5">
-            <CardHeader><CardTitle className="text-sm">Progreso del Servicio</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">Ciclo de Vida del Servicio</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'].map((step, idx) => {
                 const steps = ['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'];

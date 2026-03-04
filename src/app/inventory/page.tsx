@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -68,16 +67,16 @@ export default function InventoryPage() {
             </Link>
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Inventario</h2>
-            <p className="text-muted-foreground">Gestión de insumos y materiales para mantenimiento.</p>
+            <h2 className="text-3xl font-bold tracking-tight">Inventario de Insumos</h2>
+            <p className="text-muted-foreground">Gestión de materiales, repuestos y recursos para mantenimiento.</p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline">
-             <TrendingDown className="mr-2 h-4 w-4" /> Bajar Stock
+             <TrendingDown className="mr-2 h-4 w-4" /> Ajuste de Stock
           </Button>
           <Button>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo Repuesto
+            <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
           </Button>
         </div>
       </div>
@@ -85,7 +84,7 @@ export default function InventoryPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-none shadow-sm bg-blue-50/50">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Items en Inventario</CardTitle>
+            <CardTitle className="text-sm font-medium">Ítems Registrados</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{parts.length}</div>
@@ -132,13 +131,13 @@ export default function InventoryPage() {
           {isPartsLoading ? (
             <div className="py-10 text-center">
               <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-              Cargando inventario...
+              Cargando catálogo...
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Repuesto / SKU</TableHead>
+                  <TableHead>Ítem / Referencia (SKU)</TableHead>
                   <TableHead>Precio Unitario</TableHead>
                   <TableHead>Stock Actual</TableHead>
                   <TableHead>Estado Stock</TableHead>
@@ -173,11 +172,11 @@ export default function InventoryPage() {
                     <TableCell>
                       {part.stockActual <= part.stockMinimo ? (
                         <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">
-                          <AlertCircle className="mr-1 h-3 w-3" /> CRÍTICO
+                          <AlertCircle className="mr-1 h-3 w-3" /> BAJO STOCK
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                          ÓPTIMO
+                          DISPONIBLE
                         </Badge>
                       )}
                     </TableCell>
