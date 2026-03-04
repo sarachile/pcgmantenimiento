@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat, UserPlus, Users, AlertTriangle, Info } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, Info } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember, WorkOrder } from "@/lib/types";
@@ -26,33 +26,31 @@ export default function NewWorkOrderPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  // Form Basic State
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
   const [assetId, setAssetId] = useState("");
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Schedule state
-  const [scheduledDate, setScheduledDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  // Schedule state - Initialize with empty string to avoid hydration mismatch
+  const [scheduledDate, setScheduledDate] = useState("");
   const [durationDays, setDurationDays] = useState(1);
-  const [estimatedEndDate, setEstimatedEndDate] = useState("");
 
-  // FIX: Se elimina estimatedEndDate de las dependencias para romper el bucle circular
+  // Set initial date on mount only
   useEffect(() => {
-    if (scheduledDate && durationDays) {
-      try {
-        const start = parseISO(scheduledDate);
-        const end = addDays(start, Number(durationDays));
-        const formattedDate = format(end, 'yyyy-MM-dd');
-        
-        // Uso de actualización funcional para evitar renders innecesarios
-        setEstimatedEndDate((prev) => {
-          if (prev !== formattedDate) return formattedDate;
-          return prev;
-        });
-      } catch (e) {
-        setEstimatedEndDate((prev) => prev !== "" ? "" : prev);
-      }
+    setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
+  }, []);
+
+  // Use useMemo for derived state instead of useEffect to prevent update loops
+  const estimatedEndDate = useMemo(() => {
+    if (!scheduledDate || !durationDays) return "";
+    try {
+      const start = parseISO(scheduledDate);
+      const end = addDays(start, Number(durationDays));
+      return format(end, 'yyyy-MM-dd');
+    } catch (e) {
+      return "";
     }
   }, [scheduledDate, durationDays]);
 
@@ -129,7 +127,7 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  // Queries memoizadas para evitar re-renders constantes
+  // Stable queries using useMemoFirebase
   const assetsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "assets");
@@ -171,6 +169,23 @@ export default function NewWorkOrderPage() {
     return busy;
   }, [activeWorkOrders]);
 
+  // Memoize Select items to prevent unnecessary re-renders inside SelectContent
+  const clientOptions = useMemo(() => {
+    if (isClientsLoading) return <SelectItem value="loading" disabled>Cargando lista...</SelectItem>;
+    if (!realClients || realClients.length === 0) return <SelectItem value="none" disabled>Sin clientes registrados</SelectItem>;
+    return realClients.map(client => (
+      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+    ));
+  }, [isClientsLoading, realClients]);
+
+  const assetOptions = useMemo(() => {
+    if (isAssetsLoading) return <SelectItem value="loading" disabled>Cargando activos...</SelectItem>;
+    if (!realAssets || realAssets.length === 0) return <SelectItem value="none" disabled>Sin activos en catálogo</SelectItem>;
+    return realAssets.map(asset => (
+      <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
+    ));
+  }, [isAssetsLoading, realAssets]);
+
   if (isUserLoading) {
     return (
       <div className="flex h-[400px] items-center justify-center">
@@ -205,19 +220,10 @@ export default function NewWorkOrderPage() {
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger>
-                    {/* Estabilización del placeholder para evitar bucles de foco en Radix Select */}
                     <SelectValue placeholder="Seleccione un cliente..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {isClientsLoading ? (
-                      <SelectItem value="loading" disabled>Cargando lista...</SelectItem>
-                    ) : realClients && realClients.length > 0 ? (
-                      realClients.map(client => (
-                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" disabled>No hay clientes registrados</SelectItem>
-                    )}
+                    {clientOptions}
                   </SelectContent>
                 </Select>
               </div>
@@ -229,15 +235,7 @@ export default function NewWorkOrderPage() {
                     <SelectValue placeholder="Seleccione equipo (Opcional)..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {isAssetsLoading ? (
-                      <SelectItem value="loading" disabled>Cargando activos...</SelectItem>
-                    ) : realAssets && realAssets.length > 0 ? (
-                      realAssets.map(asset => (
-                        <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="none" disabled>No hay activos en catálogo</SelectItem>
-                    )}
+                    {assetOptions}
                   </SelectContent>
                 </Select>
               </div>
@@ -260,7 +258,12 @@ export default function NewWorkOrderPage() {
                   <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
                     <Clock className="h-3 w-3" /> Días de Plazo
                   </Label>
-                  <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value))} />
+                  <Input 
+                    type="number" 
+                    min="1" 
+                    value={durationDays} 
+                    onChange={(e) => setDurationDays(e.target.value ? Number(e.target.value) : 1)} 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase text-muted-foreground">Término Estimado</Label>
