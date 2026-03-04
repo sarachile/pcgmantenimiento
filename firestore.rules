@@ -33,7 +33,6 @@ service cloud.firestore {
 
     // --- REGLAS ---
 
-    // Perfiles globales (necesarios para el hook useUser y validaciones)
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       allow create: if isSignedIn();
@@ -66,7 +65,7 @@ service cloud.firestore {
         allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
 
         allow update: if isCompanyMember(companyId) && (
-          // Admins y Supervisores pueden hacer todo (incluyendo saltarse al reviewer)
+          // Admins y Supervisores pueden hacer todo
           hasRole(companyId, ['companyAdmin', 'supervisor']) ||
           
           // Técnicos solo pueden actualizar si están asignados y no es para aprobar
@@ -74,12 +73,11 @@ service cloud.firestore {
            resource.data.assignedToUserId == request.auth.uid && 
            request.resource.data.status != 'aprobada') ||
           
-          // Reviewers solo pueden actualizar si están asignados
+          // Reviewers asignados
           (hasRole(companyId, ['reviewer']) && 
            resource.data.reviewerId == request.auth.uid)
         );
 
-        // Libro Digital Inmutable
         match /digitalLogbookEntries/{entryId} {
           allow read: if isCompanyMember(companyId);
           allow create: if isCompanyMember(companyId) && 
@@ -87,7 +85,6 @@ service cloud.firestore {
           allow update, delete: if false; // INMUTABILIDAD
         }
 
-        // Revisiones Formales
         match /reviews/{reviewId} {
           allow read: if isCompanyMember(companyId);
           allow create, update: if isCompanyMember(companyId) && 

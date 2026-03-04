@@ -5,41 +5,16 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Company",
       "type": "object",
-      "description": "Entidad principal que representa a una empresa cliente (tenant). Aísla todos los datos operativos.",
+      "description": "Entidad principal que representa a una empresa cliente (tenant).",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "ID único de la empresa."
-        },
-        "name": {
-          "type": "string",
-          "description": "Nombre legal de la empresa."
-        },
-        "rut": {
-          "type": "string",
-          "description": "Rol Único Tributario (Chile)."
-        },
-        "address": {
-          "type": "string",
-          "description": "Dirección física de la casa matriz."
-        },
-        "isActive": {
-          "type": "boolean",
-          "description": "Estado de la cuenta de la empresa (bloquea acceso total si es false)."
-        },
-        "currentPlan": {
-          "type": "string",
-          "enum": ["free", "pro", "enterprise"],
-          "description": "Plan actual de suscripción."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "rut": { "type": "string" },
+        "address": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "currentPlan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "name", "rut", "isActive", "currentPlan", "createdAt"]
     },
@@ -49,72 +24,81 @@
       "type": "object",
       "description": "Perfil de usuario con rol y vinculación a empresa.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "UID de Firebase Auth."
-        },
-        "companyId": {
-          "type": "string",
-          "description": "Referencia a la empresa a la que pertenece. Nulo si es superadmin."
-        },
-        "email": {
-          "type": "string",
-          "format": "email"
-        },
-        "firstName": {
-          "type": "string"
-        },
-        "lastName": {
-          "type": "string"
-        },
-        "role": {
-          "type": "string",
-          "enum": ["superadmin", "companyAdmin", "supervisor", "tecnico", "reviewer"],
-          "description": "Rol jerárquico dentro de la plataforma o empresa."
-        },
-        "isActive": {
-          "type": "boolean",
-          "description": "Permite deshabilitar el acceso individual del usuario."
-        },
-        "createdAt": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "createdBy": {
-          "type": "string",
-          "description": "UID del usuario que creó este perfil (Auditoría)."
-        }
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "companyAdmin", "supervisor", "tecnico", "reviewer"] },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "email", "role", "isActive", "createdAt"]
+    },
+    "WorkOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkOrder",
+      "type": "object",
+      "description": "Orden de Trabajo para mantenimiento industrial.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "aprobada", "rechazada"] },
+        "assignedToUserId": { "type": "string", "description": "UID del técnico asignado." },
+        "reviewerId": { "type": "string", "description": "UID del revisor asignado (opcional)." },
+        "reviewerRequired": { "type": "boolean", "description": "Indica si requiere aprobación de un reviewer externo." },
+        "createdByUserId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "executedAt": { "type": "string", "format": "date-time" },
+        "reviewedAt": { "type": "string", "format": "date-time" },
+        "approvedByUserId": { "type": "string" },
+        "evidenceUrls": { "type": "array", "items": { "type": "string" }, "description": "Links a fotos/documentos en Storage." },
+        "rejectedReason": { "type": "string" }
+      },
+      "required": ["id", "companyId", "description", "status", "reviewerRequired", "createdAt"]
+    },
+    "DigitalLogbookEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DigitalLogbookEntry",
+      "type": "object",
+      "description": "Entrada inmutable en el libro digital de obra.",
+      "properties": {
+        "id": { "type": "string" },
+        "workOrderId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "eventType": { "type": "string", "enum": ["status_change", "action_taken", "comment", "system_alert"] },
+        "eventDetails": { "type": "string" },
+        "actorUserId": { "type": "string" }
+      },
+      "required": ["id", "workOrderId", "timestamp", "eventType", "eventDetails", "actorUserId"]
+    },
+    "Review": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Review",
+      "type": "object",
+      "description": "Revisión formal de una OT por un revisor o supervisor.",
+      "properties": {
+        "id": { "type": "string" },
+        "workOrderId": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["approved", "rejected"] },
+        "comments": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "workOrderId", "reviewerId", "status", "createdAt"]
     },
     "Subscription": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Subscription",
       "type": "object",
-      "description": "Historial y estado de facturación de la empresa.",
       "properties": {
-        "id": {
-          "type": "string"
-        },
-        "companyId": {
-          "type": "string"
-        },
-        "plan": {
-          "type": "string",
-          "enum": ["free", "pro", "enterprise"]
-        },
-        "status": {
-          "type": "string",
-          "enum": ["active", "past_due", "canceled", "trialing"]
-        },
-        "startDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "endDate": {
-          "type": "string",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
+        "status": { "type": "string", "enum": ["active", "past_due", "canceled"] },
+        "startDate": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "companyId", "plan", "status", "startDate"]
     }
@@ -123,39 +107,33 @@
     "providers": ["password"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/companies/{companyId}",
-        "definition": {
-          "entityName": "Company",
-          "schema": { "$ref": "#/backend/entities/Company" },
-          "description": "Colección raíz de empresas."
-        }
-      },
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": { "$ref": "#/backend/entities/User" },
-          "description": "Mapeo global de perfiles para login y redirección."
-        }
-      },
-      {
-        "path": "/companies/{companyId}/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": { "$ref": "#/backend/entities/User" },
-          "description": "Subcolección de usuarios por empresa para reglas de seguridad eficientes."
-        }
-      },
-      {
-        "path": "/companies/{companyId}/subscriptions/{subId}",
-        "definition": {
-          "entityName": "Subscription",
-          "schema": { "$ref": "#/backend/entities/Subscription" },
-          "description": "Historial de suscripciones y planes de la empresa."
-        }
-      }
-    ]
+    "/companies/{companyId}": {
+      "schema": { "$ref": "#/backend/entities/Company" },
+      "description": "Documentos de empresa."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "Perfiles de usuario globales."
+    },
+    "/companies/{companyId}/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "Copia de usuario para reglas de seguridad."
+    },
+    "/companies/{companyId}/workOrders/{workOrderId}": {
+      "schema": { "$ref": "#/backend/entities/WorkOrder" },
+      "description": "Órdenes de trabajo de la empresa."
+    },
+    "/companies/{companyId}/workOrders/{workOrderId}/digitalLogbookEntries/{entryId}": {
+      "schema": { "$ref": "#/backend/entities/DigitalLogbookEntry" },
+      "description": "Entradas del libro digital (Inmutable)."
+    },
+    "/companies/{companyId}/workOrders/{workOrderId}/reviews/{reviewId}": {
+      "schema": { "$ref": "#/backend/entities/Review" },
+      "description": "Revisiones de la OT."
+    },
+    "/companies/{companyId}/subscriptions/{subId}": {
+      "schema": { "$ref": "#/backend/entities/Subscription" },
+      "description": "Historial de suscripciones."
+    }
   }
 }
