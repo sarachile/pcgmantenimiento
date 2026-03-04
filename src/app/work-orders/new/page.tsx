@@ -61,13 +61,13 @@ export default function NewWorkOrderPage() {
     setChecklist(prev => prev.filter((_, i) => i !== index));
   };
 
-  const toggleStaffSelection = (staffId: string) => {
+  const toggleStaffSelection = useCallback((staffId: string) => {
     setAssignedToStaffIds(prev => 
       prev.includes(staffId) 
         ? prev.filter(id => id !== staffId) 
         : [...prev, staffId]
     );
-  };
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();

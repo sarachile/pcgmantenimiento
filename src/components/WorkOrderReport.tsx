@@ -5,7 +5,7 @@ import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, Staf
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users } from "lucide-react";
-import { ref, getDownloadURL } from "firebase/storage";
+import { ref as storageRef, getDownloadURL } from "firebase/storage";
 import { useStorage } from "@/firebase";
 
 interface WorkOrderReportProps {
@@ -23,7 +23,7 @@ interface WorkOrderReportProps {
  * Resuelve las firmas dinámicamente antes de renderizar para evitar errores de tokens expirados.
  */
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
-  ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages }, ref) => {
+  ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages }, forwardedRef) => {
     const [isMounted, setIsMounted] = useState(false);
     const storage = useStorage();
     const [techSigUrl, setTechSigUrl] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
       };
 
       if (isMounted) resolveSignatures();
-    }, [isMounted, workOrder, storage]);
+    }, [isMounted, workOrder.technicianSignatureUrl, workOrder.clientSignatureUrl, storage]);
 
     // Helper para extraer referencia de una URL
     const fromUrl = (url: string) => {
@@ -62,7 +62,7 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
       const pathStart = decodedUrl.indexOf('/o/') + 3;
       const pathEnd = decodedUrl.indexOf('?', pathStart);
       const extractedPath = pathEnd === -1 ? decodedUrl.substring(pathStart) : decodedUrl.substring(pathStart, pathEnd);
-      return ref(storage!, extractedPath);
+      return storageRef(storage!, extractedPath);
     };
 
     const formatDate = (date: any) => {
@@ -77,7 +77,7 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
 
     return (
       <div 
-        ref={ref} 
+        ref={forwardedRef} 
         className="bg-white p-12 text-slate-900 w-[800px] mx-auto min-h-[1100px]"
         id="work-order-report"
         style={{ fontFamily: 'Inter, sans-serif' }}
