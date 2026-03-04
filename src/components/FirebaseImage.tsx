@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,8 +12,9 @@ interface FirebaseImageProps {
 }
 
 /**
- * Componente para renderizar imágenes de Firebase Storage con soporte para CORS.
- * Añade crossOrigin="anonymous" por defecto para compatibilidad con html2canvas.
+ * Componente para renderizar imágenes de Firebase Storage.
+ * Nota: No usamos crossOrigin="anonymous" aquí para evitar pre-flights de CORS
+ * que fallen si el bucket no tiene una política permisiva, asegurando visibilidad en la UI.
  */
 export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,6 @@ export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageP
           setLoading(false);
           setError(true);
         }}
-        crossOrigin="anonymous"
       />
 
       {error && (

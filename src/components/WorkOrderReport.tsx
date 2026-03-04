@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -18,7 +19,7 @@ interface WorkOrderReportProps {
 
 /**
  * Reporte optimizado para exportación a PDF.
- * Usa 'forwardedRef' para evitar colisiones con la función ref de Firebase Storage.
+ * Usa bordes sólidos para las firmas para asegurar visibilidad estructural incluso si fallan imágenes.
  */
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
   ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages }, forwardedRef) => {
@@ -151,20 +152,20 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           </div>
         </div>
 
-        {/* SECCIÓN DE FIRMAS DIGITALES - Rediseñada para ser robusta en PDF */}
+        {/* SECCIÓN DE FIRMAS DIGITALES - Rediseñada con líneas físicas de borde */}
         <div className="mt-auto pt-16 border-t-2 border-slate-100">
           <div className="grid grid-cols-2 gap-20">
             <div className="text-center space-y-4">
-              <div className="h-32 border-b-2 border-slate-200 flex items-center justify-center bg-slate-50/50 rounded-t-2xl overflow-hidden relative">
+              <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
                 {workOrder.technicianSignatureUrl ? (
                   <img 
                     src={workOrder.technicianSignatureUrl} 
                     alt="Firma Técnico" 
-                    className="max-h-full max-w-full object-contain mix-blend-multiply" 
+                    className="max-h-full max-w-full object-contain" 
                     crossOrigin="anonymous" 
                   />
                 ) : (
-                  <span className="text-[10px] text-slate-300 italic font-bold uppercase tracking-widest">Pendiente Firma Técnico</span>
+                  <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Firma Técnico</span>
                 )}
               </div>
               <div>
@@ -173,16 +174,16 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
               </div>
             </div>
             <div className="text-center space-y-4">
-              <div className="h-32 border-b-2 border-slate-200 flex items-center justify-center bg-slate-50/50 rounded-t-2xl overflow-hidden relative">
+              <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
                 {workOrder.clientSignatureUrl ? (
                   <img 
                     src={workOrder.clientSignatureUrl} 
                     alt="Firma Cliente" 
-                    className="max-h-full max-w-full object-contain mix-blend-multiply" 
+                    className="max-h-full max-w-full object-contain" 
                     crossOrigin="anonymous" 
                   />
                 ) : (
-                  <span className="text-[10px] text-slate-300 italic font-bold uppercase tracking-widest">Pendiente Recepción Cliente</span>
+                  <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Recepción Cliente</span>
                 )}
               </div>
               <div>

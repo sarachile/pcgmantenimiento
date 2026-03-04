@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -256,7 +257,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     toast({ title: "Generando reporte...", description: "Procesando evidencias gráficas." });
     
     // Pequeña espera para asegurar que las imágenes del reporte (oculto) se hayan renderizado
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 800));
 
     try {
       const canvas = await html2canvas(reportRef.current, { 
@@ -264,7 +265,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         useCORS: true, 
         backgroundColor: "#ffffff",
         logging: false,
-        allowTaint: true
+        allowTaint: false
       });
       
       const imgData = canvas.toDataURL("image/png");
