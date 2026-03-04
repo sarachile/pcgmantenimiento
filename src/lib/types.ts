@@ -134,10 +134,14 @@ export interface WorkOrder {
   checklist?: ChecklistItem[];
   clientSignatureUrl?: string;
   technicianSignatureUrl?: string;
-  // Campos para firma digital simple
+  // Campos para firma digital simple (Cliente)
   clientApprovalName?: string;
   clientApprovalDate?: string | any;
   clientApprovalCode?: string;
+  // Campos para firma digital simple (Técnico / Interna)
+  technicianApprovalName?: string;
+  technicianApprovalDate?: string | any;
+  technicianApprovalCode?: string;
   createdAt: string | any;
   updatedAt: string | any;
   executedAt?: string | any;

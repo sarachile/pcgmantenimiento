@@ -5,7 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check } from "lucide-react";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -15,7 +15,6 @@ interface WorkOrderReportProps {
   logbook: DigitalLogbookEntry[];
   assignedStaff: StaffMember[];
   partUsages: PartUsage[];
-  techSignatureBase64?: string;
   qrCodeUrl?: string;
   forwardedRef?: React.Ref<HTMLDivElement>;
 }
@@ -28,7 +27,6 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
   logbook, 
   assignedStaff, 
   partUsages, 
-  techSignatureBase64, 
   qrCodeUrl,
   forwardedRef
 }) => {
@@ -182,19 +180,19 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
       {/* Signatures Area */}
       <div className="mt-auto pt-16 border-t-2 border-slate-100">
         <div className="grid grid-cols-2 gap-20">
-          {/* Tech Signature */}
+          {/* Tech Digital Seal */}
           <div className="text-center space-y-4">
-            <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
-              {(techSignatureBase64 || workOrder.technicianSignatureUrl) && (
-                <img 
-                  src={techSignatureBase64 || workOrder.technicianSignatureUrl} 
-                  alt="Firma Técnico" 
-                  className="max-h-full max-w-full object-contain" 
-                  crossOrigin="anonymous"
-                />
-              )}
-              {!techSignatureBase64 && !workOrder.technicianSignatureUrl && (
-                <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Firma Técnico</span>
+            <div className="h-32 border-2 border-slate-900 flex flex-col items-center justify-center bg-slate-50/30 p-4 rounded-xl relative">
+              {workOrder.technicianApprovalCode ? (
+                <>
+                  <Check className="h-8 w-8 text-emerald-600 mb-2" />
+                  <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">VALIDACIÓN TÉCNICA DIGITAL</p>
+                  <p className="text-[9px] font-bold text-slate-600 mt-1">{workOrder.technicianApprovalName}</p>
+                  <p className="text-[8px] font-mono text-slate-400 mt-2">CÓD: {workOrder.technicianApprovalCode}</p>
+                  <p className="text-[8px] font-bold text-slate-400">{formatDateLabel(workOrder.technicianApprovalDate)}</p>
+                </>
+              ) : (
+                <span className="text-[9px] text-slate-300 italic font-bold uppercase">Pendiente Sello Técnico</span>
               )}
             </div>
             <div>
@@ -203,7 +201,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
             </div>
           </div>
 
-          {/* Digital Approval Record */}
+          {/* Digital Approval Record (Client) */}
           <div className="text-center space-y-4">
             <div className="h-32 border-2 border-slate-900 flex flex-col items-center justify-center bg-slate-50/50 p-4 relative rounded-xl">
               {workOrder.clientApprovalCode ? (

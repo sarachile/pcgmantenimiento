@@ -147,67 +147,6 @@ function InternalApprovalForm({
   );
 }
 
-function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => void, onCancel: () => void, isSaving: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#000000';
-  }, []);
-
-  const getCoordinates = (e: any) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    return { x: clientX - rect.left, y: clientY - rect.top };
-  };
-
-  const startDrawing = (e: any) => { 
-    setIsDrawing(true); 
-    const { x, y } = getCoordinates(e);
-    canvasRef.current?.getContext('2d')?.beginPath();
-    canvasRef.current?.getContext('2d')?.moveTo(x, y);
-  };
-
-  const stopDrawing = () => { setIsDrawing(false); };
-
-  const draw = (e: any) => {
-    if (!isDrawing) return;
-    const { x, y } = getCoordinates(e);
-    const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx) return;
-    ctx.lineTo(x, y); ctx.stroke();
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="border-4 border-slate-100 rounded-2xl bg-white overflow-hidden touch-none shadow-inner">
-        <canvas 
-          ref={canvasRef} width={400} height={250} className="w-full cursor-crosshair h-[250px]" 
-          onMouseDown={startDrawing} onMouseUp={stopDrawing} onMouseMove={draw} 
-          onTouchStart={(e) => { e.preventDefault(); startDrawing(e); }} 
-          onTouchEnd={stopDrawing} onTouchMove={(e) => { e.preventDefault(); draw(e); }} 
-        />
-      </div>
-      <div className="flex justify-between gap-4">
-        <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={() => canvasRef.current?.getContext('2d')?.clearRect(0, 0, 400, 250)} disabled={isSaving}>Limpiar</Button>
-        <div className="flex gap-2 flex-[2]">
-          <Button variant="ghost" className="flex-1 h-12" onClick={onCancel} disabled={isSaving}>Cancelar</Button>
-          <Button className="flex-[2] h-12 rounded-xl" onClick={() => canvasRef.current?.toBlob(b => b && onSave(b), 'image/png')} disabled={isSaving}>
-            {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <><Check className="mr-2 h-4 w-4" /> Guardar Firma</>}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
@@ -223,9 +162,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [manualComment, setManualComment] = useState("");
-  const [signatureType, setSignatureType] = useState<'technician' | null>(null);
-  const [isEvalOpen, setIsEvalOpen] = useState(false);
-  const [resolvedSignatures, setResolvedSignatures] = useState<{tech?: string, client?: string}>({});
+  const [isSealDialogOpen, setIsSealDialogOpen] = useState(false);
   const [currentUrl, setCurrentUrl] = useState("");
 
   useEffect(() => {
@@ -330,17 +267,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     setIsGeneratingPdf(true);
     toast({ title: "Generando reporte técnico...", description: "Procesando certificados y evidencias." });
     try {
-      const getBase64 = async (url: string) => {
-        try {
-          const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now());
-          const blob = await resp.blob();
-          return new Promise<string>((res) => { const r = new FileReader(); r.onloadend = () => res(r.result as string); r.readAsDataURL(blob); });
-        } catch (e) { return undefined; }
-      };
-      const t = ot.technicianSignatureUrl ? await getBase64(ot.technicianSignatureUrl) : undefined;
-      setResolvedSignatures({ tech: t });
-      
-      await new Promise(r => setTimeout(r, 1500));
+      await new Promise(r => setTimeout(r, 1000));
       const canv = await html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", imageTimeout: 20000 });
       const img = canv.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
@@ -364,9 +291,36 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       if (ot.reviewerRequired && client?.contactEmail) {
         await handleResendEmail();
       }
-      setIsEvalOpen(false);
+      setIsSealDialogOpen(false);
       toast({ title: "Aprobación Interna Completada" });
     } catch (e: any) { toast({ title: "Error crítico", description: e.message, variant: "destructive" }); } finally { setIsUpdating(false); }
+  };
+
+  const handleTechnicianDigitalSeal = async () => {
+    if (!otRef || !profile) return;
+    setIsUpdating(true);
+    try {
+      const techCode = `TECH-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+      const data: any = { 
+        technicianApprovalName: profile.name,
+        technicianApprovalDate: serverTimestamp(),
+        technicianApprovalCode: techCode,
+        updatedAt: serverTimestamp()
+      };
+      
+      if (ot?.status === 'creada' || ot?.status === 'rechazada') { 
+        data.status = 'en revision'; 
+        data.executedAt = serverTimestamp(); 
+      }
+      
+      updateDocumentNonBlocking(otRef, data);
+      setIsSealDialogOpen(false);
+      toast({ title: "Sello Técnico Generado" });
+    } catch (e: any) { 
+      toast({ title: "Error al generar sello", variant: "destructive" }); 
+    } finally { 
+      setIsUpdating(false); 
+    }
   };
 
   const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -391,7 +345,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
-        <WorkOrderReport forwardedRef={reportRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} logbook={logbook || []} assignedStaff={assignedStaff || []} partUsages={partUsages || []} techSignatureBase64={resolvedSignatures.tech} qrCodeUrl={qrUrl} />
+        <WorkOrderReport forwardedRef={reportRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} logbook={logbook || []} assignedStaff={assignedStaff || []} partUsages={partUsages || []} qrCodeUrl={qrUrl} />
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-white p-6 rounded-[2rem] border shadow-sm sticky top-4 z-20 backdrop-blur-md bg-white/90">
@@ -413,7 +367,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Exportar PDF
           </Button>
           {(isSupervisor || isCompanyAdmin) && (ot.status === 'en revision' || ot.status === 'rechazada') && (
-            <Dialog open={isEvalOpen} onOpenChange={setIsEvalOpen}>
+            <Dialog open={isSealDialogOpen} onOpenChange={setIsSealDialogOpen}>
               <DialogTrigger asChild>
                 <Button className={cn("rounded-xl h-11 px-6 font-bold shadow-lg text-white", ot.status === 'rechazada' ? "bg-rose-600" : "bg-amber-600")}>
                   {ot.status === 'rechazada' ? "Reiniciar Validación" : "Aprobación Interna"}
@@ -538,19 +492,38 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="p-6"><CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2"><SignatureIcon className="h-5 w-5" /> Firmas y Validaciones</CardTitle></CardHeader>
+            <CardHeader className="p-6"><CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2"><SignatureIcon className="h-5 w-5" /> Firmas y Validaciones Digitales</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-2 gap-8 p-6 bg-slate-50/50 border-t">
               <div className="text-center space-y-3">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Firma Técnico Responsable</p>
-                {ot.technicianSignatureUrl ? (
-                  <div className="h-40 border-2 rounded-[2rem] bg-white flex items-center justify-center p-4 shadow-inner">
-                    <FirebaseImage url={ot.technicianSignatureUrl} className="max-h-full" />
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Validación Técnico Responsable</p>
+                {ot.technicianApprovalCode ? (
+                  <div className="h-40 border-2 rounded-[2rem] bg-white flex flex-col items-center justify-center p-6 shadow-inner gap-2">
+                    <Check className="h-8 w-8 text-emerald-600" />
+                    <p className="text-[10px] font-black text-emerald-900 uppercase">Sello Técnico Digital</p>
+                    <p className="text-[9px] font-bold text-slate-400">{ot.technicianApprovalName}</p>
+                    <p className="text-[8px] font-mono text-slate-300 mt-1">{ot.technicianApprovalCode}</p>
                   </div>
                 ) : (
-                  <Button variant="outline" className="w-full h-40 border-4 border-dashed rounded-[2rem] flex-col gap-3 group" onClick={() => setSignatureType('technician')} disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'}>
-                    <SignatureIcon className="h-8 w-8 text-slate-300 group-hover:text-primary group-hover:scale-110 transition-all" />
-                    <span className="text-[10px] font-black text-slate-400 uppercase">Capturar Firma Técnico</span>
-                  </Button>
+                  <Dialog open={isSealDialogOpen} onOpenChange={setIsSealDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full h-40 border-4 border-dashed rounded-[2rem] flex-col gap-3 group" disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'}>
+                        <Fingerprint className="h-8 w-8 text-slate-300 group-hover:text-primary group-hover:scale-110 transition-all" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase">Emitir Sello Técnico Digital</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[400px] rounded-[2.5rem]">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-black italic">Validación Técnica Digital</DialogTitle>
+                        <DialogDescription>¿Confirma la ejecución conforme de los trabajos? Se generará un sello digital con su nombre y fecha.</DialogDescription>
+                      </DialogHeader>
+                      <div className="pt-4 flex flex-col gap-3">
+                        <Button className="h-12 rounded-xl font-bold" onClick={handleTechnicianDigitalSeal} disabled={isUpdating}>
+                          {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : "Confirmar y Sellar Digitalmente"}
+                        </Button>
+                        <Button variant="ghost" onClick={() => setIsSealDialogOpen(false)} disabled={isUpdating}>Cancelar</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 )}
               </div>
               <div className="text-center space-y-3">
@@ -613,31 +586,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
         </div>
       </div>
-
-      {signatureType && (
-        <Dialog open={true} onOpenChange={() => setSignatureType(null)}>
-          <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
-            <DialogHeader><DialogTitle className="text-2xl font-black italic">Firma Técnico Responsable</DialogTitle></DialogHeader>
-            <SignaturePad isSaving={isUpdating} onCancel={() => setSignatureType(null)} onSave={async b => {
-              if (!companyId || !storage) return;
-              setIsUpdating(true);
-              try {
-                const sRef = ref(storage, `companies/${companyId}/workOrders/${ot.id}/sig_${Date.now()}`);
-                await uploadBytes(sRef, b);
-                const url = await getDownloadURL(sRef);
-                const data: any = { technicianSignatureUrl: url };
-                if (ot.status === 'creada' || ot.status === 'rechazada') { 
-                  data.status = 'en revision'; 
-                  data.executedAt = serverTimestamp(); 
-                }
-                updateDocumentNonBlocking(otRef!, { ...data, updatedAt: serverTimestamp() });
-                setSignatureType(null);
-                toast({ title: "Firma técnico guardada" });
-              } catch (e: any) { toast({ title: "Error al guardar firma", description: e.message, variant: "destructive" }); } finally { setIsUpdating(false); }
-            }} />
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 }
