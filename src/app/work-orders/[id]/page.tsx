@@ -32,7 +32,10 @@ import {
   XCircle,
   AlertTriangle,
   Plus,
-  Fingerprint
+  Fingerprint,
+  ClipboardList,
+  Calendar as CalendarIcon,
+  Clock
 } from "lucide-react";
 import {
   Dialog,
@@ -211,9 +214,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       
       updateDocumentNonBlocking(otRef, data);
       
-      // Si pasa a pendiente cliente, enviar el correo automáticamente
       if (nextStatus === 'pendiente cliente' && client?.contactEmail) {
-        // Ejecutamos el envío de correo de forma asíncrona para no bloquear
         handleResendEmail();
       }
 
@@ -320,6 +321,62 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </Card>
           )}
+
+          {/* Tarjeta de Información General */}
+          <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
+            <CardHeader className="bg-primary/5 p-6 border-b">
+              <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" /> Información de la Orden
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cliente / Entidad</p>
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-bold text-slate-900">{client?.name || "Cargando..."}</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Equipo / Activo</p>
+                  <div className="flex items-center gap-2">
+                    <HardHat className="h-4 w-4 text-slate-500" />
+                    <p className="text-sm font-bold text-slate-700">{asset?.name || "Sin activo específico"}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Fecha de Inicio</p>
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-slate-500" />
+                    <p className="text-sm font-bold text-slate-700">{formatDateLabel(ot.scheduledDate)}</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Plazo de Ejecución</p>
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-slate-500" />
+                    <p className="text-sm font-bold text-slate-700">
+                      {ot.durationDays || 1} días 
+                      <span className="text-[10px] font-medium text-slate-400 ml-1">
+                        (Hasta: {formatDateLabel(ot.estimatedEndDate)})
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Detalle de los Trabajos</p>
+                <div className="bg-slate-50 p-4 rounded-2xl border text-sm text-slate-700 leading-relaxed italic">
+                  "{ot.description}"
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {ot.status === 'aprobada' && ot.clientApprovalCode && (
             <Card className="bg-emerald-50 border-2 border-emerald-200 p-6 rounded-3xl flex items-center gap-6 shadow-sm">
