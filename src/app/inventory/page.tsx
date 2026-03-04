@@ -30,18 +30,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Search, 
   Plus, 
   Package, 
-  AlertCircle,
-  TrendingDown,
+  AlertCircle, 
   MoreVertical,
   Loader2,
   ArrowLeft,
-  Settings2
+  Settings2,
+  TrendingUp,
+  TrendingDown,
+  Edit,
+  Trash2
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, serverTimestamp, addDoc, doc, increment } from "firebase/firestore";
 import { MOCK_SPARE_PARTS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -55,6 +66,7 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   // Form states for new item
   const [newItem, setNewItem] = useState({
@@ -67,7 +79,6 @@ export default function InventoryPage() {
 
   // Form states for adjustment
   const [adjustment, setAdjustment] = useState({
-    partId: "",
     type: "entrada", // entrada o salida
     quantity: "",
     reason: ""
@@ -116,13 +127,13 @@ export default function InventoryPage() {
 
   const handleAdjustStock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !profile?.companyId || !adjustment.partId) return;
+    if (!db || !profile?.companyId || !selectedItem) return;
 
     const qty = Number(adjustment.quantity);
     if (isNaN(qty) || qty <= 0) return;
 
     const finalQty = adjustment.type === "entrada" ? qty : -qty;
-    const partRef = doc(db, "companies", profile.companyId, "spareParts", adjustment.partId);
+    const partRef = doc(db, "companies", profile.companyId, "spareParts", selectedItem.id);
 
     updateDocumentNonBlocking(partRef, {
       stockActual: increment(finalQty)
@@ -130,11 +141,30 @@ export default function InventoryPage() {
 
     toast({
       title: "Stock Ajustado",
-      description: `Se ha registrado una ${adjustment.type} de ${qty} unidades.`,
+      description: `Se ha registrado una ${adjustment.type} de ${qty} unidades para ${selectedItem.name}.`,
     });
 
-    setAdjustment({ partId: "", type: "entrada", quantity: "", reason: "" });
+    setAdjustment({ type: "entrada", quantity: "", reason: "" });
     setIsAdjustOpen(false);
+    setSelectedItem(null);
+  };
+
+  const openAdjustDialog = (item: any, type: "entrada" | "salida") => {
+    setSelectedItem(item);
+    setAdjustment({ ...adjustment, type });
+    setIsAdjustOpen(true);
+  };
+
+  const handleDeleteItem = (item: any) => {
+    if (isDemo) {
+      toast({ title: "Modo Demo", description: "No se pueden eliminar ítems de ejemplo.", variant: "destructive" });
+      return;
+    }
+    if (!db || !profile?.companyId) return;
+
+    const partRef = doc(db, "companies", profile.companyId, "spareParts", item.id);
+    deleteDocumentNonBlocking(partRef);
+    toast({ title: "Ítem eliminado", description: `${item.name} ha sido removido del catálogo.` });
   };
 
   if (isAuthLoading) {
@@ -159,157 +189,136 @@ export default function InventoryPage() {
             <p className="text-muted-foreground">Gestión de materiales y repuestos para mantenimiento.</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <TrendingDown className="mr-2 h-4 w-4" /> Ajuste de Stock
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Ajustar Stock Manualmente</DialogTitle>
-                <DialogDescription>
-                  Corrija el inventario físico o registre mermas y entradas directas.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleAdjustStock} className="space-y-4 py-4">
+        
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Registrar Nuevo Ítem</DialogTitle>
+              <DialogDescription>
+                Añada un nuevo material o insumo al catálogo maestro.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateItem} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nombre del Ítem *</Label>
+                <Input 
+                  id="name" 
+                  placeholder="Ej: Filtro de Aire, Aceite 10W40..." 
+                  value={newItem.name}
+                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sku">Referencia / SKU *</Label>
+                <Input 
+                  id="sku" 
+                  placeholder="Código interno" 
+                  value={newItem.sku}
+                  onChange={(e) => setNewItem({...newItem, sku: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Ítem a ajustar</Label>
-                  <Select 
-                    value={adjustment.partId} 
-                    onValueChange={(val) => setAdjustment({...adjustment, partId: val})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione un ítem..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {parts.map(p => (
-                        <SelectItem key={p.id} value={p.id}>{p.name} ({p.sku})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Tipo de Ajuste</Label>
-                    <Select 
-                      value={adjustment.type} 
-                      onValueChange={(val) => setAdjustment({...adjustment, type: val as "entrada" | "salida"})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="entrada">Entrada (+)</SelectItem>
-                        <SelectItem value="salida">Salida (-)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Cantidad</Label>
-                    <Input 
-                      type="number" 
-                      placeholder="0"
-                      value={adjustment.quantity}
-                      onChange={(e) => setAdjustment({...adjustment, quantity: e.target.value})}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Motivo del Ajuste</Label>
+                  <Label htmlFor="stock">Stock Inicial *</Label>
                   <Input 
-                    placeholder="Ej: Cuadratura inventario físico..." 
-                    value={adjustment.reason}
-                    onChange={(e) => setAdjustment({...adjustment, reason: e.target.value})}
-                  />
-                </div>
-                <DialogFooter className="pt-4">
-                  <Button type="submit" className="w-full">
-                    <Settings2 className="h-4 w-4 mr-2" />
-                    Aplicar Ajuste
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-          
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Registrar Nuevo Ítem</DialogTitle>
-                <DialogDescription>
-                  Añada un nuevo material o insumo al catálogo maestro.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateItem} className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nombre del Ítem *</Label>
-                  <Input 
-                    id="name" 
-                    placeholder="Ej: Filtro de Aire, Aceite 10W40..." 
-                    value={newItem.name}
-                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sku">Referencia / SKU *</Label>
-                  <Input 
-                    id="sku" 
-                    placeholder="Código interno" 
-                    value={newItem.sku}
-                    onChange={(e) => setNewItem({...newItem, sku: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="stock">Stock Inicial *</Label>
-                    <Input 
-                      id="stock" 
-                      type="number" 
-                      value={newItem.stockActual}
-                      onChange={(e) => setNewItem({...newItem, stockActual: e.target.value})}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="min-stock">Stock Mínimo</Label>
-                    <Input 
-                      id="min-stock" 
-                      type="number" 
-                      value={newItem.stockMinimo}
-                      onChange={(e) => setNewItem({...newItem, stockMinimo: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Precio Unitario ($)</Label>
-                  <Input 
-                    id="price" 
+                    id="stock" 
                     type="number" 
-                    value={newItem.unitPrice}
-                    onChange={(e) => setNewItem({...newItem, unitPrice: e.target.value})}
+                    value={newItem.stockActual}
+                    onChange={(e) => setNewItem({...newItem, stockActual: e.target.value})}
+                    required
                   />
                 </div>
-                <DialogFooter className="pt-4">
-                  <Button type="submit" className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Guardar en Catálogo
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+                <div className="space-y-2">
+                  <Label htmlFor="min-stock">Stock Mínimo</Label>
+                  <Input 
+                    id="min-stock" 
+                    type="number" 
+                    value={newItem.stockMinimo}
+                    onChange={(e) => setNewItem({...newItem, stockMinimo: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Precio Unitario ($)</Label>
+                <Input 
+                  id="price" 
+                  type="number" 
+                  value={newItem.unitPrice}
+                  onChange={(e) => setNewItem({...newItem, unitPrice: e.target.value})}
+                />
+              </div>
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Guardar en Catálogo
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
+
+      {/* Ajuste de Stock Dialog (Triggered from row actions) */}
+      <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Ajustar Stock: {selectedItem?.name}</DialogTitle>
+            <DialogDescription>
+              {adjustment.type === 'entrada' ? 'Registre el ingreso de material al inventario.' : 'Registre la salida o merma de material.'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAdjustStock} className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tipo de Ajuste</Label>
+                <Select 
+                  value={adjustment.type} 
+                  onValueChange={(val) => setAdjustment({...adjustment, type: val as "entrada" | "salida"})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="entrada">Entrada (+)</SelectItem>
+                    <SelectItem value="salida">Salida (-)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Cantidad</Label>
+                <Input 
+                  type="number" 
+                  placeholder="0"
+                  value={adjustment.quantity}
+                  onChange={(e) => setAdjustment({...adjustment, quantity: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Motivo (Opcional)</Label>
+              <Input 
+                placeholder="Ej: Cuadratura inventario físico..." 
+                value={adjustment.reason}
+                onChange={(e) => setAdjustment({...adjustment, reason: e.target.value})}
+              />
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="submit" className="w-full">
+                <Settings2 className="h-4 w-4 mr-2" />
+                Aplicar Ajuste
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="border-none shadow-sm bg-blue-50/50">
@@ -411,9 +420,33 @@ export default function InventoryPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuLabel>Gestión de Stock</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => openAdjustDialog(part, "entrada")}>
+                            <TrendingUp className="mr-2 h-4 w-4 text-emerald-500" /> Registrar Ingreso
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openAdjustDialog(part, "salida")}>
+                            <TrendingDown className="mr-2 h-4 w-4 text-rose-500" /> Registrar Salida
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Opciones Ítem</DropdownMenuLabel>
+                          <DropdownMenuItem>
+                            <Edit className="mr-2 h-4 w-4" /> Editar Datos
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-rose-600"
+                            onClick={() => handleDeleteItem(part)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar del Catálogo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
