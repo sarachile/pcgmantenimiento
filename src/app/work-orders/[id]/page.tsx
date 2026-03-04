@@ -37,7 +37,8 @@ import {
   Eraser,
   Check,
   Calendar as CalendarIcon,
-  Clock
+  Clock,
+  Plus
 } from "lucide-react";
 import {
   Dialog,
