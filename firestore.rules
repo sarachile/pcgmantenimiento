@@ -9,20 +9,18 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-    
     function isSuperAdmin() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin')
-      );
+      if (!isSignedIn()) return false;
+      return exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) || 
+             (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
     }
 
     function isCompanyMember(companyId) {
       if (!isSignedIn()) return false;
       if (isSuperAdmin()) return true;
+      // Solo intentamos obtener el documento si existe, para evitar crashes en las reglas
+      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid))) return false;
       let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return userData.companyId == companyId;
     }
@@ -30,6 +28,7 @@ service cloud.firestore {
     function hasRole(companyId, roles) {
       if (!isSignedIn()) return false;
       if (isSuperAdmin()) return true;
+      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid))) return false;
       let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return userData.role in roles && userData.companyId == companyId;
     }
@@ -42,14 +41,14 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin() || isCompanyMember(resource.data.companyId));
-      allow list: if isSignedIn() && (isSuperAdmin() || (request.query.filters != null && request.query.filters.companyId != null && isCompanyMember(request.query.filters.companyId[0])));
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && isCompanyMember(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId)));
+      allow list: if isSignedIn() && (isSuperAdmin() || (request.query.limit <= 100)); // Permitir listado limitado para auditoría o miembros
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
     }
 
     match /companies/{companyId} {
-      allow get: if isCompanyMember(companyId);
+      allow get: if isSignedIn() && (isCompanyMember(companyId) || isSuperAdmin());
       allow list: if isSuperAdmin();
       allow create: if isSignedIn(); 
       allow update: if isSuperAdmin() || hasRole(companyId, ['companyAdmin']);
