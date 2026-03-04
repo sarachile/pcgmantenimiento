@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -46,7 +45,8 @@ import {
   Mail,
   Shield,
   Send,
-  ExternalLink
+  ExternalLink,
+  Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -202,11 +202,11 @@ export default function AdminCompaniesPage() {
     if (!detailsCompany) return;
 
     setIsSendingInvite(true);
-    // Simulación de envío de correo
+    // Simulación de envío de correo comercial profesional
     setTimeout(() => {
       toast({
         title: "Invitación Enviada",
-        description: `Se ha enviado el código ${detailsCompany.id} a ${inviteEmail}.`,
+        description: `Se ha notificado a ${inviteEmail} con las credenciales de acceso para www.pcgmantenimiento.com.`,
       });
       setIsSendingInvite(false);
       setIsInviteOpen(false);
@@ -519,37 +519,53 @@ export default function AdminCompaniesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Invitación por Email */}
+      {/* Dialog Invitación por Email Profesional */}
       <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Enviar Invitación Formal</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              Notificación de Credenciales
+            </DialogTitle>
             <DialogDescription>
-              Envíe el código de acceso a {detailsCompany?.name} para que sus colaboradores se registren.
+              Envíe el código maestro de activación para <strong>{detailsCompany?.name}</strong>.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSendInvite} className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="invite-email">Correo Electrónico del Cliente</Label>
+              <Label htmlFor="invite-email">Correo Electrónico de Contacto</Label>
               <Input 
                 id="invite-email" 
                 type="email" 
-                placeholder="ejemplo@cliente.cl" 
+                placeholder="gerencia@cliente.cl" 
                 required 
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
               />
             </div>
-            <div className="bg-muted/30 p-4 rounded-lg space-y-2 border">
-              <p className="text-[10px] font-black uppercase text-muted-foreground">Vista Previa del Mensaje:</p>
-              <div className="text-[11px] text-slate-600 leading-relaxed italic">
-                "Hola, se ha creado tu entorno en PCGMANTENIMIENTO. <br/>
-                Usa el código: <strong>{detailsCompany?.id}</strong> en la página de registro corporativo."
+            <div className="bg-slate-50 p-5 rounded-xl space-y-3 border border-slate-200">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Vista Previa de Notificación SaaS:</p>
+              <div className="text-[12px] text-slate-700 leading-relaxed space-y-2">
+                <p>Estimados,</p>
+                <p>Les damos la bienvenida a <strong>PCGMANTENIMIENTO ERP</strong>. Su entorno de gestión industrial ha sido configurado y se encuentra listo para operar.</p>
+                <p>Para comenzar, cada miembro del equipo debe registrarse en nuestra plataforma oficial:</p>
+                <div className="py-1">
+                  <Link href="https://www.pcgmantenimiento.com" className="text-primary font-bold hover:underline flex items-center gap-1">
+                    www.pcgmantenimiento.com <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+                <p>Utilicen el siguiente <strong>Código de Acceso Maestro</strong> en el formulario de registro corporativo:</p>
+                <div className="bg-white p-3 text-center rounded-lg border-2 border-primary/20 font-mono font-black text-xl text-primary tracking-widest shadow-sm">
+                  {detailsCompany?.id}
+                </div>
+                <p className="text-[10px] text-slate-500 italic mt-4">
+                  * Este código permite la vinculación segura de usuarios a su organización. Por seguridad, no lo comparta fuera de su equipo técnico.
+                </p>
               </div>
             </div>
             <DialogFooter className="pt-4">
-              <Button type="submit" className="w-full" disabled={isSendingInvite}>
-                {isSendingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><Send className="mr-2 h-4 w-4" /> Enviar Código Maestro</>}
+              <Button type="submit" className="w-full h-12 text-sm font-bold gap-2" disabled={isSendingInvite}>
+                {isSendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Credenciales Corporativas</>}
               </Button>
             </DialogFooter>
           </form>
