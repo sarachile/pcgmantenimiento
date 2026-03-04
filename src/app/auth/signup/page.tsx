@@ -43,7 +43,7 @@ export default function SignupPage() {
       const role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin';
       const companyId = isSuperAdminAccount ? 'pcg-central' : `comp-${Math.random().toString(36).substr(2, 9)}`;
 
-      // 2. Crear Perfil de Usuario
+      // 2. Crear Perfil de Usuario (Primero para que las reglas lo reconozcan)
       await setDoc(doc(db, 'users', userId), {
         id: userId,
         email: cleanEmail,
@@ -81,13 +81,16 @@ export default function SignupPage() {
         description: "Bienvenido a PCGMANTENIMIENTO. Redirigiendo...",
       });
       
-      router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
+      // Pequeño delay para asegurar propagación en Firestore
+      setTimeout(() => {
+        router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
+      }, 500);
 
     } catch (error: any) {
       console.error("Signup error:", error);
       toast({
         title: "Error al registrarse",
-        description: error.message || "No se pudo completar el registro de datos en el sistema.",
+        description: error.message || "No se pudo completar el registro.",
         variant: "destructive",
       });
     } finally {
@@ -116,7 +119,7 @@ export default function SignupPage() {
               <Input 
                 id="company" 
                 required 
-                placeholder={email.toLowerCase().trim() === SUPERADMIN_EMAIL ? "PCG OPERACIONES CENTRAL" : "Ej: Mi Empresa S.A."}
+                placeholder="Ej: Mi Empresa S.A."
                 value={companyName} 
                 onChange={(e) => setCompanyName(e.target.value)} 
               />
