@@ -6,16 +6,16 @@ import { doc, getDoc } from 'firebase/firestore';
 import { User } from '@/lib/types';
 
 /**
- * Hook de usuario optimizado para evitar bucles de renderizado.
- * Utiliza comparación de strings para detectar cambios reales en el perfil.
+ * Hook de usuario altamente estable para evitar bucles de renderizado.
+ * Utiliza una llave de datos serializada para prevenir actualizaciones de estado innecesarias.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
   const [profile, setProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   
-  // Ref para prevenir re-renders infinitos comparando el contenido de los datos
-  const profileDataKeyRef = useRef<string>("");
+  // Ref para rastrear la identidad de los datos y evitar re-renders infinitos
+  const profileKeyRef = useRef<string>("");
 
   useEffect(() => {
     let isMounted = true;
@@ -25,7 +25,7 @@ export function useUser() {
         if (isMounted) {
           setProfile(null);
           setIsProfileLoading(false);
-          profileDataKeyRef.current = "";
+          profileKeyRef.current = "";
         }
         return;
       }
@@ -39,7 +39,7 @@ export function useUser() {
         if (userSnap.exists()) {
           fetchedProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
-          // Intento fallback para superadmins
+          // Fallback para administradores de plataforma
           const adminRef = doc(firestore, 'platform_admins', authUser.uid);
           const adminSnap = await getDoc(adminRef);
           
@@ -55,11 +55,14 @@ export function useUser() {
         }
 
         if (isMounted) {
-          // Creamos una llave única basada en los datos críticos
-          const profileKey = fetchedProfile ? `${fetchedProfile.id}-${fetchedProfile.role}-${fetchedProfile.companyId}` : "none";
+          // Generamos una llave de identidad basada en datos críticos
+          const currentDataKey = fetchedProfile 
+            ? `${fetchedProfile.id}-${fetchedProfile.role}-${fetchedProfile.companyId}-${fetchedProfile.active}`
+            : "none";
           
-          if (profileDataKeyRef.current !== profileKey) {
-            profileDataKeyRef.current = profileKey;
+          // Solo actualizamos el estado si los datos reales han cambiado
+          if (profileKeyRef.current !== currentDataKey) {
+            profileKeyRef.current = currentDataKey;
             setProfile(fetchedProfile);
           }
         }
@@ -82,7 +85,6 @@ export function useUser() {
     profile,
     isLoading,
     isAuthenticated,
-    isAdmin: profile?.role === 'companyAdmin' || profile?.role === 'superadmin',
     isSuperAdmin: profile?.role === 'superadmin',
     isCompanyAdmin: profile?.role === 'companyAdmin',
     isTechnician: profile?.role === 'tecnico',

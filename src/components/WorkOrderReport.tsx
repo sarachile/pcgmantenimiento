@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -18,26 +17,19 @@ interface WorkOrderReportProps {
 }
 
 /**
- * Componente de reporte para exportación PDF.
- * Usa las URLs directamente para máxima estabilidad y evita el shadowing de 'ref'.
+ * Reporte optimizado para PDF.
+ * Importante: Se renombra 'ref' a 'forwardedRef' para evitar conflicto con la función ref de Firebase.
  */
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
   ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages }, forwardedRef) => {
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-      setIsMounted(true);
-    }, []);
-
+    
     const formatDate = (date: any) => {
-      if (!isMounted || !date) return "...";
+      if (!date) return "...";
       try {
         const d = date.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
         return format(d, "PPP 'a las' p", { locale: es });
       } catch (e) { return "N/A"; }
     };
-
-    if (!isMounted) return null;
 
     return (
       <div 
@@ -46,7 +38,7 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
         id="work-order-report"
         style={{ fontFamily: 'Inter, sans-serif' }}
       >
-        {/* Header Section */}
+        {/* Encabezado */}
         <div className="flex justify-between items-start border-b-2 border-slate-200 pb-8 mb-8">
           <div className="flex gap-4 items-center">
             {company?.logoUrl ? (
@@ -80,10 +72,10 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           </div>
         </div>
 
-        {/* Info Grid */}
+        {/* Información General */}
         <div className="grid grid-cols-2 gap-8 mb-8">
           <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-1">Información del Cliente</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-1">Cliente</h3>
             <div className="space-y-1">
               <p className="text-sm font-bold">{client?.name || "Cliente S/I"}</p>
               <p className="text-xs text-slate-500">RUT: {client?.rut || "S/I"}</p>
@@ -93,106 +85,73 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
             </div>
           </div>
           <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-1">Equipo / Activo</h3>
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-1">Activo</h3>
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-sm font-bold">
                 <HardHat className="h-4 w-4" />
                 {asset?.name || "Equipo S/I"}
               </div>
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-mono">Código: {asset?.code || "S/I"}</p>
-              <p className="text-xs text-slate-500 italic">{asset?.location || "Ubicación S/I"}</p>
+              <p className="text-xs text-slate-500 uppercase font-mono">ID: {asset?.code || "S/I"}</p>
             </div>
           </div>
         </div>
 
-        {/* Personnel Section */}
+        {/* Personal */}
         <div className="mb-8 p-4 bg-blue-50 rounded-xl border border-blue-100">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600 mb-2 flex items-center gap-2">
-            <Users className="h-3 w-3" /> Equipo Responsable Asignado
+            <Users className="h-3 w-3" /> Técnicos Responsables
           </h3>
           <div className="flex flex-wrap gap-2">
-            {assignedStaff && assignedStaff.length > 0 ? (
-              assignedStaff.map(s => (
-                <div key={s.id} className="bg-white px-3 py-1.5 rounded-lg border shadow-sm flex flex-col">
-                  <span className="text-sm font-bold">{s.name}</span>
-                  <span className="text-[9px] text-muted-foreground uppercase">{s.role}</span>
-                </div>
-              ))
-            ) : (
-              <p className="text-xs italic text-blue-400">Sin personal asignado específicamente.</p>
-            )}
+            {assignedStaff.map(s => (
+              <div key={s.id} className="bg-white px-3 py-1 rounded-lg border text-sm font-bold">
+                {s.name} <span className="text-[9px] text-muted-foreground uppercase font-normal ml-1">({s.role})</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* AI Summary */}
-        {workOrder.aiSummary && (
-          <div className="mb-8 p-6 bg-slate-50 rounded-2xl border-l-4 border-slate-900">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">Resumen Ejecutivo (IA)</h3>
-            <p className="text-sm leading-relaxed text-slate-700 italic">"{workOrder.aiSummary}"</p>
-          </div>
-        )}
-
-        {/* Checklist */}
+        {/* Protocolo */}
         <div className="mb-8">
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-1 mb-4">Protocolo de Trabajo Realizado</h3>
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 border-b pb-1 mb-4">Protocolo Técnico</h3>
           <div className="grid grid-cols-1 gap-2">
-            {workOrder.checklist && workOrder.checklist.length > 0 ? (
-              workOrder.checklist.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
-                  <div className="flex items-center gap-3">
-                    <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${item.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
-                      {item.completed && <CheckCircle2 className="h-3 w-3" />}
-                    </div>
-                    <span className={`text-sm ${item.completed ? 'font-bold' : 'text-slate-400'}`}>{item.task}</span>
+            {workOrder.checklist?.map((item) => (
+              <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                <div className="flex items-center gap-3">
+                  <div className={`h-4 w-4 rounded-full border-2 flex items-center justify-center ${item.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
+                    {item.completed && <CheckCircle2 className="h-3 w-3" />}
                   </div>
+                  <span className={`text-sm ${item.completed ? 'font-bold' : 'text-slate-400'}`}>{item.task}</span>
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-slate-400 italic">No se registraron tareas en el protocolo.</p>
-            )}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Signatures */}
+        {/* Firmas */}
         <div className="mt-auto pt-12">
           <div className="grid grid-cols-2 gap-12">
             <div className="text-center">
-              <div className="h-24 relative border-b border-slate-300 mb-2 flex items-center justify-center overflow-hidden">
+              <div className="h-24 border-b border-slate-300 mb-2 flex items-center justify-center overflow-hidden">
                 {workOrder.technicianSignatureUrl && (
-                  <img 
-                    src={workOrder.technicianSignatureUrl} 
-                    alt="Firma Técnico" 
-                    className="max-h-full object-contain" 
-                    crossOrigin="anonymous" 
-                  />
+                  <img src={workOrder.technicianSignatureUrl} alt="Firma Técnico" className="max-h-full object-contain" crossOrigin="anonymous" />
                 )}
               </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase">Firma Personal Responsable</p>
-              <p className="text-[9px] font-bold text-slate-600">
-                {assignedStaff.map(s => s.name).join(' / ') || "Técnicos Asignados"}
-              </p>
+              <p className="text-[10px] font-black text-slate-400 uppercase">Firma Técnico</p>
             </div>
             <div className="text-center">
-              <div className="h-24 relative border-b border-slate-300 mb-2 flex items-center justify-center overflow-hidden">
+              <div className="h-24 border-b border-slate-300 mb-2 flex items-center justify-center overflow-hidden">
                 {workOrder.clientSignatureUrl && (
-                  <img 
-                    src={workOrder.clientSignatureUrl} 
-                    alt="Firma Cliente" 
-                    className="max-h-full object-contain" 
-                    crossOrigin="anonymous" 
-                  />
+                  <img src={workOrder.clientSignatureUrl} alt="Firma Cliente" className="max-h-full object-contain" crossOrigin="anonymous" />
                 )}
               </div>
-              <p className="text-[10px] font-black text-slate-400 uppercase">Firma Cliente (Recepción)</p>
-              <p className="text-xs font-bold">{client?.contactName || "Recepción Conforme"}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase">Firma Recepción Cliente</p>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="mt-12 text-center border-t pt-4">
           <p className="text-[8px] text-slate-300 font-bold uppercase tracking-[0.2em]">
-            Documento generado por PCGMANTENIMIENTO ERP - Propiedad de {company?.name || "Plataforma Central"}
+            PCGMANTENIMIENTO ERP - Documento Digital Auditado
           </p>
         </div>
       </div>

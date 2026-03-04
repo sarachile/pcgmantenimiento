@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
@@ -45,20 +44,8 @@ export default function NewWorkOrderPage() {
       const start = parseISO(scheduledDate);
       const end = addDays(start, Number(durationDays));
       return format(end, 'yyyy-MM-dd');
-    } catch (e) {
-      return "";
-    }
+    } catch (e) { return ""; }
   }, [scheduledDate, durationDays]);
-
-  const handleAddTask = () => {
-    if (!newTask.trim()) return;
-    setChecklist(prev => [...prev, { task: newTask.trim() }]);
-    setNewTask("");
-  };
-
-  const removeTask = (index: number) => {
-    setChecklist(prev => prev.filter((_, i) => i !== index));
-  };
 
   const toggleStaffSelection = (staffId: string) => {
     setAssignedToStaffIds(prev => 
@@ -106,20 +93,10 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  const clientsQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId) return null;
-    return collection(db, "companies", profile.companyId, "clients");
-  }, [db, profile?.companyId]);
-
-  const assetsQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId) return null;
-    return collection(db, "companies", profile.companyId, "assets");
-  }, [db, profile?.companyId]);
-
-  const staffQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId) return null;
-    return query(collection(db, "companies", profile.companyId, "staff"), where("active", "==", true));
-  }, [db, profile?.companyId]);
+  // Consultas estables
+  const clientsQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "clients") : null, [db, profile?.companyId]);
+  const assetsQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "assets") : null, [db, profile?.companyId]);
+  const staffQuery = useMemoFirebase(() => db && profile?.companyId ? query(collection(db, "companies", profile.companyId, "staff"), where("active", "==", true)) : null, [db, profile?.companyId]);
 
   const { data: realClients } = useCollection<Client>(clientsQuery);
   const { data: realAssets } = useCollection<Asset>(assetsQuery);
@@ -133,7 +110,7 @@ export default function NewWorkOrderPage() {
         <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground">Registre la planificación técnica para su equipo.</p>
+          <p className="text-sm text-muted-foreground">Planificación técnica centralizada.</p>
         </div>
       </div>
 
@@ -156,7 +133,7 @@ export default function NewWorkOrderPage() {
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger><SelectValue placeholder="Opcional: Seleccione equipo" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Seleccione equipo (Opcional)" /></SelectTrigger>
                   <SelectContent>
                     {realAssets?.map(a => <SelectItem key={a.id} value={a.id}>{a.name} ({a.code})</SelectItem>)}
                   </SelectContent>
@@ -182,22 +159,19 @@ export default function NewWorkOrderPage() {
             </div>
 
             <div className="space-y-4">
-              <Label className="font-bold text-xs uppercase text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Equipo Operativo Asignado</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
+              <Label className="font-bold text-xs uppercase text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Técnicos Asignados</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {staffMembers?.map(staff => (
                   <div 
                     key={staff.id} 
                     className={cn(
-                      "flex items-center space-x-3 border p-3 rounded-xl transition-all cursor-pointer select-none",
-                      assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 shadow-sm" : "bg-white hover:bg-muted/50"
+                      "flex items-center space-x-3 border p-3 rounded-xl transition-all cursor-pointer",
+                      assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5" : "bg-white hover:bg-muted/50"
                     )}
                     onClick={() => toggleStaffSelection(staff.id)}
                   >
-                    <Checkbox 
-                      checked={assignedToStaffIds.includes(staff.id)} 
-                      onCheckedChange={() => {}} // El clic lo maneja el div padre para evitar doble evento
-                    />
-                    <div className="flex flex-col gap-0.5">
+                    <Checkbox checked={assignedToStaffIds.includes(staff.id)} onCheckedChange={() => {}} />
+                    <div className="flex flex-col">
                       <p className="font-bold text-xs">{staff.name}</p>
                       <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
                     </div>
@@ -208,21 +182,21 @@ export default function NewWorkOrderPage() {
 
             <div className="space-y-2">
               <Label className="font-bold text-xs uppercase text-muted-foreground">Descripción de Trabajos *</Label>
-              <Textarea placeholder="Detalle técnico de los servicios a realizar..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Textarea placeholder="Detalle técnico de los servicios..." className="min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
 
             <div className="space-y-4 pt-4 border-t">
-              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Protocolo de Revisión</Label></div>
+              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Checklist de Revisión</Label></div>
               <div className="flex gap-2">
-                <Input placeholder="Tarea a realizar..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())} />
-                <Button type="button" onClick={handleAddTask} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
+                <Input placeholder="Nueva tarea..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), checklist.push({task: newTask.trim()}), setNewTask(""))} />
+                <Button type="button" onClick={() => {if(newTask.trim()) setChecklist([...checklist, {task: newTask.trim()}]); setNewTask("");}} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
               </div>
               {checklist.length > 0 && (
                 <div className="space-y-2 border rounded-lg p-3 bg-muted/20">
                   {checklist.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between bg-card p-2 rounded border">
                       <span className="text-sm">{idx + 1}. {item.task}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeTask(idx)}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4 text-rose-500" /></Button>
                     </div>
                   ))}
                 </div>
@@ -231,7 +205,7 @@ export default function NewWorkOrderPage() {
           </CardContent>
           <CardFooter className="flex justify-between border-t p-6 bg-muted/20">
             <Button variant="outline" type="button" asChild disabled={isSubmitting}><Link href="/work-orders">Cancelar</Link></Button>
-            <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId} className="min-w-[140px]">
+            <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Orden"}
             </Button>
           </CardFooter>
