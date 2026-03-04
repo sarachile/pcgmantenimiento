@@ -1,10 +1,12 @@
 
-"use client";
+'use client';
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Separator } from "@/components/ui/separator";
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { useUser, useFirebase, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Company } from "@/lib/types";
 import { Loader2 } from "lucide-react";
@@ -14,8 +16,15 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { profile, isLoading } = useUser();
-  const db = useFirestore();
+  const { profile, isLoading, isAuthenticated } = useUser();
+  const { firestore: db } = useFirebase();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/auth/login");
+    }
+  }, [isLoading, isAuthenticated, router]);
 
   const companyRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -31,6 +40,8 @@ export default function DashboardLayout({
       </div>
     );
   }
+
+  if (!isAuthenticated) return null;
 
   return (
     <SidebarProvider>

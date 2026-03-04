@@ -10,17 +10,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShieldPlus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+
+const SUPERADMIN_EMAIL = 'control@pcgoperacion';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [role, setRole] = useState('companyAdmin');
   const [loading, setLoading] = useState(false);
   
   const auth = useAuth();
@@ -36,16 +36,22 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const userId = userCredential.user.uid;
 
-      // 2. Create Company (Simplified for MVP)
-      const companyId = `comp-${Math.random().toString(36).substr(2, 9)}`;
+      // Check if it's the reserved superadmin account
+      const isSuperAdminAccount = email.toLowerCase() === SUPERADMIN_EMAIL.toLowerCase();
+      const role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin';
+      const companyId = isSuperAdminAccount ? 'pcg-central' : `comp-${Math.random().toString(36).substr(2, 9)}`;
+
+      // 2. Create Company
       await setDoc(doc(db, 'companies', companyId), {
         id: companyId,
-        name: companyName,
+        name: isSuperAdminAccount ? 'PCG OPERACIONES CENTRAL' : companyName,
         createdAt: serverTimestamp(),
         isActive: true,
+        subscriptionPlan: isSuperAdminAccount ? 'enterprise' : 'free',
+        subscriptionStatus: 'active',
       });
 
-      // 3. Create User Profile (Global lookup for multi-tenant isolation)
+      // 3. Create User Profile
       await setDoc(doc(db, 'users', userId), {
         id: userId,
         email,
@@ -53,24 +59,27 @@ export default function SignupPage() {
         role,
         companyId,
         createdAt: serverTimestamp(),
-        isActive: true,
+        active: true,
       });
 
-      // 4. Mirror in company subcollection for security rules efficiency
-      await setDoc(doc(db, 'companies', companyId, 'users', userId), {
-        id: userId,
-        email,
-        name,
-        role,
-        companyId,
-        createdAt: serverTimestamp(),
-      });
+      // 4. If Superadmin, register in the privileged collection for security rules
+      if (isSuperAdminAccount) {
+        await setDoc(doc(db, 'superAdmins', userId), {
+          id: userId,
+          email,
+          name,
+          grantedAt: serverTimestamp(),
+        });
+      }
 
       toast({
-        title: "Cuenta creada",
-        description: "Bienvenido a PCGMANTENIMIENTO. Redirigiendo...",
+        title: isSuperAdminAccount ? "Acceso Maestro Activado" : "Cuenta creada",
+        description: isSuperAdminAccount 
+          ? "Bienvenido al Centro de Control PCG." 
+          : "Bienvenido a PCGMANTENIMIENTO. Redirigiendo...",
       });
-      router.push('/dashboard');
+      
+      router.push(isSuperAdminAccount ? '/admin' : '/dashboard');
     } catch (error: any) {
       toast({
         title: "Error al registrarse",
@@ -98,10 +107,12 @@ export default function SignupPage() {
               <Label htmlFor="name">Nombre Completo</Label>
               <Input id="name" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="company">Nombre de la Empresa</Label>
-              <Input id="company" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
-            </div>
+            {email.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase() && (
+              <div className="space-y-2">
+                <Label htmlFor="company">Nombre de la Empresa</Label>
+                <Input id="company" required={email.toLowerCase() !== SUPERADMIN_EMAIL.toLowerCase()} value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email Corporativo</Label>
               <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
