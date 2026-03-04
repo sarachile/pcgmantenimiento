@@ -69,7 +69,9 @@ export interface PartUsage {
   id: string;
   workOrderId: string;
   partId: string;
+  partName: string;
   quantity: number;
+  unitPrice: number;
   usedAt: string | any;
 }
 
@@ -100,6 +102,7 @@ export interface WorkOrder {
   approvedByUserId?: string;
   rejectedReason?: string;
   evidenceUrls?: string[];
+  aiSummary?: string;
 }
 
 export interface Invoice {
@@ -120,7 +123,7 @@ export interface DigitalLogbookEntry {
   id: string;
   workOrderId: string;
   companyId: string;
-  timestamp: string;
+  timestamp: string | any;
   eventType: 'status_change' | 'action_taken' | 'comment' | 'system_alert';
   eventDetails: string;
   actor: string;

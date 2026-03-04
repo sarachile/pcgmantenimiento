@@ -7,7 +7,8 @@ import {
   MOCK_LOGBOOK, 
   MOCK_USERS,
   MOCK_CLIENTS,
-  MOCK_SPARE_PARTS
+  MOCK_SPARE_PARTS,
+  MOCK_ASSETS
 } from "@/lib/mock-data";
 import { 
   Card, 
@@ -31,7 +32,10 @@ import {
   Camera,
   Image as ImageIcon,
   ListChecks,
-  ShieldCheck
+  ShieldCheck,
+  Zap,
+  MessageSquare,
+  HardHat
 } from "lucide-react";
 import {
   Dialog,
@@ -52,14 +56,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp, increment, arrayUnion } from "firebase/firestore";
+import { doc, collection, addDoc, serverTimestamp, increment, arrayUnion, query, orderBy } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
-import { ChecklistItem } from "@/lib/types";
+import { ChecklistItem, WorkOrder, DigitalLogbookEntry } from "@/lib/types";
+import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -73,6 +79,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isUpdating, setIsUpdating] = useState(false);
   const [isAddingPart, setIsAddingPart] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [manualComment, setManualComment] = useState("");
+  const [isAddingComment, setIsAddingComment] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   // Form states for spare parts
@@ -91,7 +100,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const logbookQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId || otId.startsWith('OT-')) return null;
-    return collection(db, "companies", profile.companyId, "workOrders", otId, "digitalLogbookEntries");
+    return query(
+      collection(db, "companies", profile.companyId, "workOrders", otId, "digitalLogbookEntries"),
+      orderBy("timestamp", "desc")
+    );
   }, [db, profile?.companyId, otId]);
 
   const partsUsageQuery = useMemoFirebase(() => {
@@ -105,8 +117,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   }, [db, profile?.companyId]);
 
   // Firestore Data
-  const { data: firestoreOt, isLoading: isDocLoading } = useDoc(otRef);
-  const { data: firestoreLogbook } = useCollection(logbookQuery);
+  const { data: firestoreOt, isLoading: isDocLoading } = useDoc<WorkOrder>(otRef);
+  const { data: firestoreLogbook } = useCollection<DigitalLogbookEntry>(logbookQuery);
   const { data: firestorePartsUsage } = useCollection(partsUsageQuery);
   const { data: inventoryParts } = useCollection(inventoryQuery);
 
@@ -117,6 +129,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   
   const isMock = !firestoreOt;
   const client = MOCK_CLIENTS.find(c => c.id === ot?.clientId);
+  const asset = MOCK_ASSETS.find(a => a.id === ot?.assetId);
 
   const formatDate = (date: any) => {
     if (!mounted || !date) return '...';
@@ -163,24 +176,76 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  const handleAddComment = async () => {
+    if (!manualComment.trim() || isMock || !profile || !ot) return;
+    
+    setIsAddingComment(true);
+    try {
+      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
+      await addDoc(logRef, {
+        workOrderId: ot.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'comment',
+        eventDetails: manualComment.trim(),
+        actor: profile.id,
+      });
+      setManualComment("");
+      toast({ title: "Comentario guardado", description: "Bitácora actualizada." });
+    } catch (error) {
+      toast({ title: "Error", description: "No se pudo guardar el comentario.", variant: "destructive" });
+    } finally {
+      setIsAddingComment(false);
+    }
+  };
+
+  const handleGenerateAiSummary = async () => {
+    if (isMock || !ot) {
+      toast({ title: "Modo Demo", description: "La IA solo funciona con datos reales en la nube." });
+      return;
+    }
+
+    setIsGeneratingAi(true);
+    try {
+      const result = await generateWorkOrderSummary({
+        workOrder: {
+          id: ot.id,
+          description: ot.description,
+          status: ot.status as any,
+          createdAt: ot.createdAt?.toDate ? ot.createdAt.toDate().toISOString() : ot.createdAt,
+          companyId: ot.companyId,
+        },
+        digitalLogbookEntries: logbook.map(l => ({
+          id: l.id,
+          timestamp: l.timestamp?.toDate ? l.timestamp.toDate().toISOString() : l.timestamp,
+          eventType: l.eventType,
+          eventDetails: l.eventDetails,
+          actor: l.actor,
+          workOrderId: l.workOrderId
+        }))
+      });
+
+      if (otRef) {
+        updateDocumentNonBlocking(otRef, {
+          aiSummary: result.summary,
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      toast({ title: "Resumen Generado", description: "La IA ha procesado la bitácora." });
+    } catch (error: any) {
+      toast({ title: "Error de IA", description: error.message, variant: "destructive" });
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
   const toggleChecklistItem = (taskId: string) => {
     if (isMock || !ot || !otRef || !profile) return;
 
     const updatedChecklist = ot.checklist?.map((item: ChecklistItem) => {
       if (item.id === taskId) {
         const newCompleted = !item.completed;
-        
-        // Log the completion/uncompletion in logbook
-        const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
-        addDoc(logRef, {
-          workOrderId: ot.id,
-          companyId: profile.companyId,
-          timestamp: serverTimestamp(),
-          eventType: 'action_taken',
-          eventDetails: `${newCompleted ? 'Completó' : 'Desmarcó'} tarea: ${item.task}`,
-          actor: profile.id,
-        });
-
         return { ...item, completed: newCompleted, completedAt: newCompleted ? new Date().toISOString() : null };
       }
       return item;
@@ -191,98 +256,16 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       updatedAt: serverTimestamp()
     });
 
-    toast({ title: "Checklist actualizado", description: "El progreso se ha guardado." });
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || isMock) {
-      if (isMock) toast({ title: "Modo Demo", description: "Subida de archivos no disponible en modo demo." });
-      return;
-    }
-
-    if (!profile || !ot) return;
-
-    setIsUploading(true);
-    try {
-      const storagePath = `companies/${profile.companyId}/workOrders/${ot.id}/evidence/${Date.now()}_${file.name}`;
-      const snapshot = await uploadBytes(ref(storage, storagePath), file);
-      const downloadUrl = await getDownloadURL(snapshot.ref);
-
-      if (otRef) {
-        updateDocumentNonBlocking(otRef, {
-          evidenceUrls: arrayUnion(downloadUrl),
-          updatedAt: serverTimestamp()
-        });
-      }
-
-      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
-      await addDoc(logRef, {
-        workOrderId: ot.id,
-        companyId: profile.companyId,
-        timestamp: serverTimestamp(),
-        eventType: 'action_taken',
-        eventDetails: `Se cargó nueva evidencia fotográfica: ${file.name}`,
-        actor: profile.id,
-      });
-
-      toast({ title: "Evidencia cargada", description: "La foto se ha guardado correctamente." });
-    } catch (error: any) {
-      toast({ title: "Error al subir", description: error.message, variant: "destructive" });
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const handleRegisterPart = async () => {
-    if (isMock) {
-      toast({ title: "Modo Demo", description: "Registro de consumo simulado." });
-      return;
-    }
-    if (!profile || !selectedPartId || !ot) return;
-
-    const part = parts.find(p => p.id === selectedPartId);
-    if (!part) return;
-
-    const qty = parseInt(partQuantity);
-    if (isNaN(qty) || qty <= 0) return;
-
-    setIsAddingPart(true);
-    try {
-      const usageRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "partUsages");
-      await addDoc(usageRef, {
-        workOrderId: ot.id,
-        partId: selectedPartId,
-        partName: part.name,
-        quantity: qty,
-        unitPrice: part.unitPrice,
-        usedAt: serverTimestamp(),
-      });
-
-      const partRef = doc(db, "companies", profile.companyId, "spareParts", selectedPartId);
-      updateDocumentNonBlocking(partRef, {
-        stockActual: increment(-qty)
-      });
-
-      const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
-      await addDoc(logRef, {
-        workOrderId: ot.id,
-        companyId: profile.companyId,
-        timestamp: serverTimestamp(),
-        eventType: 'action_taken',
-        eventDetails: `Se utilizaron ${qty} unidad(es) de ${part.name}.`,
-        actor: profile.id,
-      });
-
-      toast({ title: "Consumo registrado", description: "Inventario actualizado y bitácora guardada." });
-      setSelectedPartId("");
-      setPartQuantity("1");
-    } catch (error) {
-      toast({ title: "Error", description: "No se pudo registrar el consumo.", variant: "destructive" });
-    } finally {
-      setIsAddingPart(false);
-    }
+    // Simple non-blocking log
+    const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
+    addDoc(logRef, {
+      workOrderId: ot.id,
+      companyId: profile.companyId,
+      timestamp: serverTimestamp(),
+      eventType: 'action_taken',
+      eventDetails: `Actualizó tarea: ${updatedChecklist?.find(i => i.id === taskId)?.task}`,
+      actor: profile.id,
+    });
   };
 
   if (isDocLoading) {
@@ -293,12 +276,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     );
   }
 
-  if (!ot) return <div className="p-8 text-center">Orden de trabajo no encontrada.</div>;
+  if (!ot) return <div className="p-8 text-center">Orden no encontrada.</div>;
 
   const canReview = (isReviewer || isSupervisor || isCompanyAdmin) && ot.status === 'en revision';
-  const canEditParts = (isTechnician || isSupervisor || isCompanyAdmin) && !['aprobada', 'rechazada'].includes(ot.status);
-  const canUploadEvidence = (isTechnician || isSupervisor || isCompanyAdmin) && !['aprobada', 'rechazada'].includes(ot.status);
-  const canInteractChecklist = (isTechnician || isSupervisor || isCompanyAdmin) && !['aprobada', 'rechazada'].includes(ot.status);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
@@ -307,31 +287,24 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           <Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold">{ot.id}</h2>
-            <Badge variant={ot.status === 'aprobada' ? 'default' : 'outline'} className={cn(
-              ot.status === 'creada' && "border-blue-500 text-blue-500",
-              ot.status === 'en revision' && "border-amber-500 text-amber-500",
-              ot.status === 'aprobada' && "bg-emerald-500 text-white",
-              ot.status === 'rechazada' && "border-rose-500 text-rose-500"
-            )}>
+            <Badge variant={ot.status === 'aprobada' ? 'default' : 'outline'}>
               {ot.status.toUpperCase()}
             </Badge>
-            {isMock && <Badge variant="outline" className="text-amber-600 bg-amber-50">EJEMPLO</Badge>}
           </div>
           <p className="text-muted-foreground text-sm">
             Creada el {formatDate(ot.createdAt)}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {ot.status === 'aprobada' && (
-            <Button className="bg-primary">
-              <Receipt className="mr-2 h-4 w-4" /> Facturar
-            </Button>
-          )}
+          <Button variant="outline" onClick={handleGenerateAiSummary} disabled={isGeneratingAi}>
+            {isGeneratingAi ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2 text-amber-500 fill-amber-500" />}
+            Resumen IA
+          </Button>
           {canReview && (
             <>
-              <Button variant="outline" className="text-rose-500 border-rose-200" onClick={() => handleStatusChange('rechazada')}>
+              <Button variant="outline" className="text-rose-500" onClick={() => handleStatusChange('rechazada')}>
                 <XCircle className="mr-2 h-4 w-4" /> Rechazar
               </Button>
               <Button className="bg-emerald-600" onClick={() => handleStatusChange('aprobada')}>
@@ -342,253 +315,136 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
+      {ot.aiSummary && (
+        <Card className="border-none shadow-sm bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/20 border-amber-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <Zap className="h-4 w-4 fill-current" />
+              ANÁLISIS INTELIGENTE (IA)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-relaxed italic">{ot.aiSummary}</p>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
           <Card className="border-none shadow-sm">
-            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><ClipboardList className="h-5 w-5 text-primary" /> Detalles de la Intervención</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CardHeader><CardTitle className="text-lg">Detalles de la OT</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="bg-muted/30 p-3 rounded-lg">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Cliente</p>
-                  <p className="text-sm font-bold">{client?.name || 'Cargando...'}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Cliente</p>
+                  <p className="text-sm font-bold">{client?.name || 'S/I'}</p>
                 </div>
                 <div className="bg-muted/30 p-3 rounded-lg">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Técnico Asignado</p>
-                  <p className="text-sm font-bold">{MOCK_USERS.find(u => u.id === (ot.assignedTo || (ot as any).assignedToUserId))?.name || 'Sin asignar'}</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Activo / Equipo</p>
+                  <div className="flex items-center gap-1.5">
+                    <HardHat className="h-3 w-3 text-primary" />
+                    <p className="text-sm font-bold">{asset?.name || 'S/I'}</p>
+                  </div>
                 </div>
               </div>
               <div>
-                <Label className="text-xs uppercase text-muted-foreground">Descripción del Trabajo</Label>
+                <Label className="text-xs uppercase text-muted-foreground font-bold">Descripción técnica</Label>
                 <p className="mt-1 text-sm leading-relaxed">{ot.description}</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Checklist Section */}
-          <Card className="border-none shadow-sm bg-primary/5">
+          <Card className="border-none shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <ListChecks className="h-5 w-5 text-primary" /> 
-                Protocolo de Verificación
+                <ListChecks className="h-5 w-5 text-primary" /> Protocolo de Verificación
               </CardTitle>
-              <CardDescription>Pasos obligatorios definidos para esta mantención.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               {ot.checklist && ot.checklist.length > 0 ? (
-                <div className="space-y-4">
-                  {ot.checklist.map((item: ChecklistItem) => (
-                    <div key={item.id} className="flex items-start gap-3 p-3 bg-card rounded-lg border shadow-sm transition-colors hover:bg-accent/5">
-                      <Checkbox 
-                        id={item.id} 
-                        checked={item.completed} 
-                        onCheckedChange={() => toggleChecklistItem(item.id)}
-                        disabled={!canInteractChecklist}
-                        className="mt-1"
-                      />
-                      <div className="flex-1">
-                        <Label 
-                          htmlFor={item.id} 
-                          className={cn(
-                            "text-sm font-medium cursor-pointer",
-                            item.completed && "line-through text-muted-foreground"
-                          )}
-                        >
-                          {item.task}
-                        </Label>
-                        {item.completed && item.completedAt && (
-                          <p className="text-[10px] text-emerald-600 font-bold mt-1 uppercase flex items-center gap-1">
-                            <ShieldCheck className="h-3 w-3" /> Verificado {formatDate(item.completedAt)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="pt-2">
-                    <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
-                      <span>Progreso del protocolo</span>
-                      <span>
-                        {ot.checklist.filter((i: ChecklistItem) => i.completed).length} / {ot.checklist.length}
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
-                      <div 
-                        className="bg-primary h-full transition-all duration-500" 
-                        style={{ width: `${(ot.checklist.filter((i: ChecklistItem) => i.completed).length / ot.checklist.length) * 100}%` }}
-                      />
+                ot.checklist.map((item) => (
+                  <div key={item.id} className="flex items-start gap-3 p-3 bg-card rounded-lg border shadow-sm">
+                    <Checkbox 
+                      id={item.id} 
+                      checked={item.completed} 
+                      onCheckedChange={() => toggleChecklistItem(item.id)}
+                      disabled={ot.status === 'aprobada' || ot.status === 'rechazada'}
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor={item.id} className={cn("text-sm font-medium", item.completed && "line-through text-muted-foreground")}>
+                        {item.task}
+                      </Label>
+                      {item.completed && item.completedAt && (
+                        <p className="text-[10px] text-emerald-600 font-bold mt-1">✓ COMPLETADO {formatDate(item.completedAt)}</p>
+                      )}
                     </div>
                   </div>
-                </div>
+                ))
               ) : (
-                <div className="text-center py-8 text-muted-foreground italic text-sm bg-background/50 border-2 border-dashed rounded-xl">
-                  No se definió un protocolo específico para esta orden.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2"><Camera className="h-5 w-5 text-primary" /> Evidencia Fotográfica</CardTitle>
-                <CardDescription>Respaldo visual de la intervención técnica.</CardDescription>
-              </div>
-              {canUploadEvidence && (
-                <div>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                  />
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                    Cargar Foto
-                  </Button>
-                </div>
-              )}
-            </CardHeader>
-            <CardContent className="pt-4">
-              {ot.evidenceUrls && ot.evidenceUrls.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {ot.evidenceUrls.map((url, idx) => (
-                    <Dialog key={idx}>
-                      <DialogTrigger asChild>
-                        <div className="relative aspect-square rounded-lg overflow-hidden border group cursor-pointer">
-                          <Image src={url} alt={`Evidencia ${idx + 1}`} fill className="object-cover group-hover:scale-105 transition-transform" />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <ImageIcon className="text-white h-6 w-6" />
-                          </div>
-                        </div>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-3xl">
-                        <div className="relative aspect-video w-full">
-                          <Image src={url} alt={`Evidencia ${idx + 1}`} fill className="object-contain" />
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 border-2 border-dashed rounded-xl bg-muted/10">
-                  <ImageIcon className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">No se ha cargado evidencia visual aún.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2"><Package className="h-5 w-5 text-primary" /> Insumos y Materiales</CardTitle>
-                <CardDescription>Recursos consumidos en esta OT.</CardDescription>
-              </div>
-              {canEditParts && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline"><Plus className="mr-2 h-4 w-4" /> Registrar Consumo</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Registrar Consumo de Material</DialogTitle>
-                      <DialogDescription>Seleccione el ítem del inventario y la cantidad utilizada.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Ítem / Insumo</Label>
-                        <Select value={selectedPartId} onValueChange={setSelectedPartId}>
-                          <SelectTrigger><SelectValue placeholder="Seleccione un recurso..." /></SelectTrigger>
-                          <SelectContent>
-                            {parts.map(p => (
-                              <SelectItem key={p.id} value={p.id}>{p.name} (Disponible: {p.stockActual})</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Cantidad</Label>
-                        <Input type="number" min="1" value={partQuantity} onChange={(e) => setPartQuantity(e.target.value)} />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button onClick={handleRegisterPart} disabled={isAddingPart || !selectedPartId}>
-                        {isAddingPart ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Uso"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </CardHeader>
-            <CardContent>
-              {partsUsage.length > 0 ? (
-                <div className="space-y-3">
-                  {partsUsage.map((u: any) => (
-                    <div key={u.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/10">
-                      <div>
-                        <p className="text-sm font-bold">{u.partName || 'Ítem'}</p>
-                        <p className="text-xs text-muted-foreground">{u.quantity} unidad(es)</p>
-                      </div>
-                      <p className="text-sm font-mono text-primary">${(u.quantity * u.unitPrice).toLocaleString()}</p>
-                    </div>
-                  ))}
-                  <div className="pt-3 flex justify-end">
-                    <p className="text-sm font-bold">Total Materiales: ${partsUsage.reduce((acc: number, u: any) => acc + (u.quantity * u.unitPrice), 0).toLocaleString()}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground italic text-sm border-2 border-dashed rounded-lg">No se han registrado consumos.</div>
+                <div className="text-center py-6 text-muted-foreground italic text-sm">Sin protocolo definido.</div>
               )}
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-sm">
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Libro Digital de Obra</CardTitle></CardHeader>
-            <CardContent>
-              {logbook.length > 0 ? (
-                <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-muted">
-                  {logbook.map((entry) => (
-                    <div key={entry.id} className="relative">
-                      <div className="absolute -left-[23px] top-1 h-4 w-4 rounded-full bg-background border-2 border-primary ring-2 ring-background" />
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-primary uppercase">{entry.eventType?.replace('_', ' ')}</span>
-                          <span className="text-[10px] text-muted-foreground">{formatDate(entry.timestamp)}</span>
-                        </div>
-                        <p className="text-sm font-medium">{entry.eventDetails}</p>
-                        <p className="text-[10px] text-muted-foreground">Responsable: {MOCK_USERS.find(u => u.id === entry.actor)?.name || 'Sistema'}</p>
-                      </div>
-                    </div>
-                  ))}
+            <CardContent className="space-y-6">
+              {/* Manual Entry */}
+              {!['aprobada', 'rechazada'].includes(ot.status) && (
+                <div className="flex gap-2">
+                  <Textarea 
+                    placeholder="Añadir comentario o incidencia a la bitácora..." 
+                    className="min-h-[60px]"
+                    value={manualComment}
+                    onChange={(e) => setManualComment(e.target.value)}
+                  />
+                  <Button 
+                    className="self-end" 
+                    size="icon" 
+                    onClick={handleAddComment}
+                    disabled={isAddingComment || !manualComment.trim()}
+                  >
+                    {isAddingComment ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
+                  </Button>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground text-sm">Bitácora sin registros actuales.</div>
               )}
+
+              <div className="relative pl-6 space-y-6 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-muted">
+                {logbook.map((entry) => (
+                  <div key={entry.id} className="relative">
+                    <div className="absolute -left-[23px] top-1 h-4 w-4 rounded-full bg-background border-2 border-primary" />
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">
+                          {entry.eventType === 'comment' ? 'COMENTARIO TÉCNICO' : entry.eventType.replace('_', ' ')}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">{formatDate(entry.timestamp)}</span>
+                      </div>
+                      <p className="text-sm font-medium">{entry.eventDetails}</p>
+                      <p className="text-[10px] text-muted-foreground">Responsable: {MOCK_USERS.find(u => u.id === entry.actor)?.name || 'Sistema'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
           <Card className="border-none shadow-sm bg-primary/5">
-            <CardHeader><CardTitle className="text-sm">Ciclo de Vida del Servicio</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">Estado del Servicio</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'].map((step, idx) => {
                 const steps = ['creada', 'asignada', 'ejecutada', 'en revision', 'aprobada'];
                 const currentIdx = steps.indexOf(ot.status);
-                const isDone = currentIdx > idx;
-                const isActive = ot.status === step;
+                const isDone = currentIdx >= idx;
                 return (
                   <div key={step} className="flex items-center gap-3">
-                    <div className={cn("h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold", isActive ? "bg-primary text-white" : isDone ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground")}>
+                    <div className={cn("h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold", isDone ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground")}>
                       {isDone ? "✓" : idx + 1}
                     </div>
-                    <span className={cn("text-xs", isActive ? "font-bold text-foreground" : isDone ? "text-emerald-600" : "text-muted-foreground")}>
-                      {step.toUpperCase()}
+                    <span className={cn("text-xs uppercase", isDone ? "font-bold text-foreground" : "text-muted-foreground")}>
+                      {step}
                     </span>
                   </div>
                 );
