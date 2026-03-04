@@ -7,7 +7,7 @@ import { User } from '@/lib/types';
 
 /**
  * Hook para acceder al estado del usuario y su perfil en Firestore.
- * Estabilizado para evitar bucles infinitos de re-renderizado.
+ * Estabilizado para evitar bucles infinitos de re-renderizado y conflictos de exportación.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
@@ -15,14 +15,18 @@ export function useUser() {
   const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function fetchProfile() {
       if (!authUser || !firestore) {
-        setProfile(null);
-        setIsProfileLoading(false);
+        if (isMounted) {
+          setProfile(null);
+          setIsProfileLoading(false);
+        }
         return;
       }
 
-      setIsProfileLoading(true);
+      if (isMounted) setIsProfileLoading(true);
       
       try {
         const userRef = doc(firestore, 'users', authUser.uid);
@@ -33,6 +37,7 @@ export function useUser() {
         if (userSnap.exists()) {
           newProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
+          // Intentar como superAdmin si no existe en la colección de usuarios regulares
           const superAdminRef = doc(firestore, 'superAdmins', authUser.uid);
           const superAdminSnap = await getDoc(superAdminRef);
           
@@ -47,30 +52,37 @@ export function useUser() {
           }
         }
 
-        // Comparación simple para evitar cambios de identidad si los datos son idénticos
-        setProfile(prev => {
-          if (!newProfile) return null;
-          if (prev && JSON.stringify(prev) === JSON.stringify(newProfile)) {
-            return prev;
-          }
-          return newProfile;
-        });
+        if (isMounted) {
+          setProfile(prev => {
+            if (!newProfile) return null;
+            // Evitar re-renders si el perfil no ha cambiado realmente
+            if (prev && JSON.stringify(prev) === JSON.stringify(newProfile)) {
+              return prev;
+            }
+            return newProfile;
+          });
+        }
 
       } catch (error) {
         console.error("Error fetching user profile:", error);
       } finally {
-        setIsProfileLoading(false);
+        if (isMounted) setIsProfileLoading(false);
       }
     }
 
     fetchProfile();
-  }, [authUser?.uid, firestore]); // Depender del UID en lugar del objeto authUser completo
+
+    return () => { isMounted = false; };
+  }, [authUser?.uid, firestore]);
+
+  const isLoading = isAuthLoading || isProfileLoading;
+  const isAuthenticated = !!authUser;
 
   return {
     user: authUser,
     profile,
-    isLoading: isAuthLoading || isProfileLoading,
-    isAuthenticated: !!authUser,
+    isLoading,
+    isAuthenticated,
     isAdmin: profile?.role === 'companyAdmin' || profile?.role === 'superadmin',
     isSuperAdmin: profile?.role === 'superadmin',
     isCompanyAdmin: profile?.role === 'companyAdmin',

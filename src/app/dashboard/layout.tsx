@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from "react";
@@ -6,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Separator } from "@/components/ui/separator";
-import { useUser, useFirebase, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Company } from "@/lib/types";
 import { Loader2 } from "lucide-react";
@@ -17,10 +16,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { profile, isLoading, isAuthenticated } = useUser();
-  const { firestore: db } = useFirebase();
+  const db = useFirestore();
   const router = useRouter();
 
   useEffect(() => {
+    // Solo redirigir si el estado de carga ha terminado y no hay sesión activa
     if (!isLoading && !isAuthenticated) {
       router.push("/auth/login");
     }
@@ -33,6 +33,7 @@ export default function DashboardLayout({
 
   const { data: company } = useDoc<Company>(companyRef);
 
+  // Mientras carga el estado inicial, mostramos un loader para evitar parpadeos
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -41,6 +42,7 @@ export default function DashboardLayout({
     );
   }
 
+  // Si no está autenticado y no está cargando, la redirección se maneja en el useEffect
   if (!isAuthenticated) return null;
 
   return (
