@@ -34,24 +34,26 @@ import {
 import { 
   Search, 
   Plus, 
-  ExternalLink, 
   Settings2,
-  AlertCircle,
   ArrowLeft,
-  Building2,
   Loader2,
-  ShieldCheck,
   Save,
   Copy,
-  Key
+  Users,
+  Eye,
+  Calendar,
+  Building2,
+  Mail,
+  Shield
 } from "lucide-react";
-import { MOCK_COMPANIES } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { Company } from "@/lib/types";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { collection, doc, serverTimestamp, setDoc, query, where } from "firebase/firestore";
+import { Company, User } from "@/lib/types";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 
 export default function AdminCompaniesPage() {
   const { toast } = useToast();
@@ -65,7 +67,7 @@ export default function AdminCompaniesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
-    rut: "",
+    address: "",
     currentPlan: "free" as any,
   });
 
@@ -78,6 +80,10 @@ export default function AdminCompaniesPage() {
     isActive: true
   });
 
+  // Details / Users State
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [detailsCompany, setDetailsCompany] = useState<Company | null>(null);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -87,12 +93,16 @@ export default function AdminCompaniesPage() {
     return collection(db, "companies");
   }, [db, isSuperAdmin]);
 
-  const { data: realCompanies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
+  const { data: companies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
 
-  const companies = realCompanies && realCompanies.length > 0 ? realCompanies : (MOCK_COMPANIES as any);
-  const isDemo = !realCompanies || realCompanies.length === 0;
+  // Fetch all users to count/show in details (simplified for admin)
+  const usersQuery = useMemoFirebase(() => {
+    if (!db || !isSuperAdmin) return null;
+    return collection(db, "users");
+  }, [db, isSuperAdmin]);
+  const { data: allUsers } = useCollection<User>(usersQuery);
 
-  const filtered = companies.filter((c: any) => 
+  const filtered = (companies || []).filter((c: Company) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -105,12 +115,11 @@ export default function AdminCompaniesPage() {
     try {
       const companyId = `comp-${Math.random().toString(36).substr(2, 6)}`;
       
-      // Usar setDoc para controlar el ID
       await setDoc(doc(db, "companies", companyId), {
         id: companyId,
         name: formData.name,
-        rut: formData.rut || "Pendiente",
-        address: "Dirección por definir",
+        rut: "", // Se pedirá en la suscripción
+        address: formData.address || "Dirección por definir",
         currentPlan: formData.currentPlan,
         subscriptionStatus: "active",
         isActive: true,
@@ -119,11 +128,11 @@ export default function AdminCompaniesPage() {
 
       toast({
         title: "Empresa Registrada",
-        description: `Código de acceso: ${companyId}. Entréguelo al cliente para su registro.`,
+        description: `Código de acceso: ${companyId}. Entréguelo al cliente.`,
       });
       
       setIsCreateOpen(false);
-      setFormData({ name: "", rut: "", currentPlan: "free" });
+      setFormData({ name: "", address: "", currentPlan: "free" });
     } catch (error: any) {
       toast({
         title: "Error al crear",
@@ -133,14 +142,6 @@ export default function AdminCompaniesPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copiado",
-      description: "Código de acceso copiado al portapapeles.",
-    });
   };
 
   const handleOpenConfig = (company: Company) => {
@@ -157,16 +158,6 @@ export default function AdminCompaniesPage() {
     e.preventDefault();
     if (!db || !selectedCompany) return;
 
-    if (isDemo && selectedCompany.id.startsWith('comp-1')) {
-      toast({
-        title: "Modo Demo",
-        description: "No se pueden actualizar parámetros en modo de vista previa.",
-        variant: "destructive",
-      });
-      setIsConfigOpen(false);
-      return;
-    }
-
     try {
       const companyRef = doc(db, "companies", selectedCompany.id);
       updateDocumentNonBlocking(companyRef, {
@@ -177,8 +168,8 @@ export default function AdminCompaniesPage() {
       });
 
       toast({
-        title: "Suscripción Actualizada",
-        description: `Parámetros guardados para ${selectedCompany.name}.`,
+        title: "Parámetros Actualizados",
+        description: `Configuración guardada para ${selectedCompany.name}.`,
       });
       setIsConfigOpen(false);
     } catch (error: any) {
@@ -188,6 +179,25 @@ export default function AdminCompaniesPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleViewDetails = (company: Company) => {
+    setDetailsCompany(company);
+    setIsDetailsOpen(true);
+  };
+
+  const formatDate = (date: any) => {
+    if (!mounted || !date) return '...';
+    try {
+      const d = date?.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
+      return format(d, "dd MMM yyyy", { locale: es });
+    } catch (e) {
+      return 'N/A';
+    }
+  };
+
+  const getCompanyUsers = (compId: string) => {
+    return (allUsers || []).filter(u => u.companyId === compId);
   };
 
   if (isUserLoading) {
@@ -209,7 +219,7 @@ export default function AdminCompaniesPage() {
           </Button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Gestión de Empresas</h2>
-            <p className="text-muted-foreground">Administración de tenants y códigos de acceso.</p>
+            <p className="text-muted-foreground">Control central de tenants, usuarios y planes activos.</p>
           </div>
         </div>
         
@@ -235,36 +245,34 @@ export default function AdminCompaniesPage() {
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>RUT Empresa (Opcional)</Label>
-                    <Input 
-                      placeholder="76.000.000-0" 
-                      value={formData.rut}
-                      onChange={(e) => setFormData({...formData, rut: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Plan Asignado</Label>
-                    <Select 
-                      value={formData.currentPlan} 
-                      onValueChange={(val) => setFormData({...formData, currentPlan: val})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="free">Demo (1/1)</SelectItem>
-                        <SelectItem value="pro">Pro (5/3)</SelectItem>
-                        <SelectItem value="enterprise">Enterprise (15/5)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label>Dirección Inicial</Label>
+                  <Input 
+                    placeholder="Calle, Ciudad..." 
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Plan de Inicio</Label>
+                  <Select 
+                    value={formData.currentPlan} 
+                    onValueChange={(val) => setFormData({...formData, currentPlan: val})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="free">Plan Inicio (Demo)</SelectItem>
+                      <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
+                      <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Empresa y Código"}
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Entorno y Código"}
                 </Button>
               </DialogFooter>
             </form>
@@ -274,17 +282,14 @@ export default function AdminCompaniesPage() {
 
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar por nombre o código ID..." 
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">VISTA PREVIA</Badge>}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar por nombre o código..." 
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -297,93 +302,201 @@ export default function AdminCompaniesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre / RUT</TableHead>
-                  <TableHead>Código de Acceso</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <TableHead>Empresa / Inicio</TableHead>
+                  <TableHead>Código Acceso</TableHead>
+                  <TableHead>Plan / Estado</TableHead>
+                  <TableHead>Usuarios</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((company: Company) => (
-                  <TableRow key={company.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-bold">{company.name}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase">{company.rut || 'RUT Pendiente'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">
-                          {company.id}
-                        </code>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6" 
-                          onClick={() => copyToClipboard(company.id)}
-                          title="Copiar Código"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn(
-                        "text-[10px] font-bold uppercase",
-                        company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
-                        company.currentPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
-                      )}>
-                        {company.currentPlan || 'FREE'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={cn(
-                        "text-[10px] font-bold",
-                        !company.isActive ? "bg-rose-100 text-rose-700" :
-                        company.subscriptionStatus === 'active' ? "bg-emerald-100 text-emerald-700" : 
-                        "bg-amber-100 text-amber-700"
-                      )}>
-                        {!company.isActive ? 'INACTIVA' : 
-                         company.subscriptionStatus === 'active' ? 'AL DÍA' : 'VENCIDA'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleOpenConfig(company)}
-                        >
-                          <Settings2 className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" title="Simular Entrada">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {filtered.map((company: Company) => {
+                  const companyUsers = getCompanyUsers(company.id);
+                  return (
+                    <TableRow key={company.id} className="group">
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-900">{company.name}</span>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <Calendar className="h-3 w-3" /> {formatDate(company.createdAt)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">
+                            {company.id}
+                          </code>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" 
+                            onClick={() => {
+                              navigator.clipboard.writeText(company.id);
+                              toast({ title: "Copiado", description: "Código de acceso copiado." });
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className={cn(
+                            "w-fit text-[9px] font-black uppercase",
+                            company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
+                            company.currentPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
+                          )}>
+                            {company.currentPlan || 'FREE'}
+                          </Badge>
+                          <span className={cn(
+                            "text-[10px] font-bold",
+                            !company.isActive ? "text-rose-600" : "text-emerald-600"
+                          )}>
+                            {company.isActive ? 'OPERATIVA' : 'SUSPENDIDA'}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Users className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm font-medium">{companyUsers.length}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleViewDetails(company)}
+                            title="Ver Ficha y Usuarios"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleOpenConfig(company)}
+                            title="Ajustar Plan"
+                          >
+                            <Settings2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
 
-      {/* Dialog para Configurar Parámetros de Suscripción */}
+      {/* Dialog Ficha de Empresa y Usuarios */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-primary/10 p-2 rounded-lg">
+                <Building2 className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-2xl font-black">{detailsCompany?.name}</DialogTitle>
+                <DialogDescription>ID de Entorno: {detailsCompany?.id}</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-muted/30 p-3 rounded-lg border">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">RUT Empresa</p>
+                <p className="text-sm font-bold">{detailsCompany?.rut || 'Sin registrar'}</p>
+              </div>
+              <div className="bg-muted/30 p-3 rounded-lg border">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Plan Activo</p>
+                <Badge variant="default" className="text-[10px] h-5">{detailsCompany?.currentPlan?.toUpperCase()}</Badge>
+              </div>
+              <div className="bg-muted/30 p-3 rounded-lg border">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Estado Pago</p>
+                <p className="text-sm font-bold capitalize text-emerald-600">{detailsCompany?.subscriptionStatus}</p>
+              </div>
+              <div className="bg-muted/30 p-3 rounded-lg border">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Fecha Registro</p>
+                <p className="text-sm font-bold">{formatDate(detailsCompany?.createdAt)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-black uppercase tracking-widest text-primary border-b pb-2 flex items-center gap-2">
+                <Users className="h-4 w-4" /> Usuarios Vinculados ({getCompanyUsers(detailsCompany?.id || '').length})
+              </h3>
+              
+              <div className="border rounded-xl overflow-hidden bg-card">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead className="text-[10px] uppercase font-bold">Nombre / Email</TableHead>
+                      <TableHead className="text-[10px] uppercase font-bold text-center">Rol</TableHead>
+                      <TableHead className="text-[10px] uppercase font-bold text-right">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getCompanyUsers(detailsCompany?.id || '').length > 0 ? (
+                      getCompanyUsers(detailsCompany?.id || '').map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-bold">{user.name}</span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Mail className="h-2 w-2" /> {user.email}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex flex-col items-center gap-1">
+                              <Shield className={cn("h-3 w-3", user.role === 'companyAdmin' ? "text-primary" : "text-muted-foreground")} />
+                              <span className="text-[9px] font-bold uppercase">{user.role}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={user.active ? "default" : "secondary"} className="text-[9px]">
+                              {user.active ? "ACTIVO" : "INACTIVO"}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic text-sm">
+                          No hay usuarios registrados aún en esta empresa.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="w-full" onClick={() => setIsDetailsOpen(false)}>Cerrar Ficha</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Suscripción */}
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Parámetros de Empresa</DialogTitle>
+            <DialogTitle>Parámetros Comerciales</DialogTitle>
             <DialogDescription>
-              Ajuste el estado y plan para {selectedCompany?.name}.
+              Ajuste el nivel de servicio para {selectedCompany?.name}.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveConfig} className="space-y-4 py-4">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Nivel de Servicio</Label>
+                <Label>Plan de Suscripción</Label>
                 <Select 
                   value={configData.currentPlan} 
                   onValueChange={(val) => setConfigData({...configData, currentPlan: val})}
