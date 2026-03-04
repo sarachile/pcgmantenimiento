@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -33,11 +32,11 @@ export default function NewWorkOrderPage() {
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Schedule state - Initialize with empty string to avoid hydration mismatch
+  // Schedule state - Initialize safely for hydration
   const [scheduledDate, setScheduledDate] = useState("");
   const [durationDays, setDurationDays] = useState(1);
 
-  // Set initial date on mount only
+  // Set initial date on mount only to prevent hydration mismatch
   useEffect(() => {
     setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
   }, []);
@@ -59,12 +58,12 @@ export default function NewWorkOrderPage() {
 
   const handleAddTask = () => {
     if (!newTask.trim()) return;
-    setChecklist([...checklist, { task: newTask.trim() }]);
+    setChecklist(prev => [...prev, { task: newTask.trim() }]);
     setNewTask("");
   };
 
   const removeTask = (index: number) => {
-    setChecklist(checklist.filter((_, i) => i !== index));
+    setChecklist(prev => prev.filter((_, i) => i !== index));
   };
 
   const toggleStaffSelection = (staffId: string) => {
@@ -78,10 +77,10 @@ export default function NewWorkOrderPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!description.trim() || !clientId) {
+    if (!description.trim() || !clientId || clientId === "loading" || clientId === "none") {
       toast({
         title: "Campos requeridos",
-        description: "Por favor, complete la descripción y seleccione un cliente.",
+        description: "Por favor, complete la descripción y seleccione un cliente válido.",
         variant: "destructive",
       });
       return;
@@ -171,16 +170,16 @@ export default function NewWorkOrderPage() {
 
   // Memoize Select items to prevent unnecessary re-renders inside SelectContent
   const clientOptions = useMemo(() => {
-    if (isClientsLoading) return <SelectItem value="loading" disabled>Cargando lista...</SelectItem>;
-    if (!realClients || realClients.length === 0) return <SelectItem value="none" disabled>Sin clientes registrados</SelectItem>;
+    if (isClientsLoading) return <SelectItem key="loading" value="loading" disabled>Cargando lista...</SelectItem>;
+    if (!realClients || realClients.length === 0) return <SelectItem key="none" value="none" disabled>Sin clientes registrados</SelectItem>;
     return realClients.map(client => (
       <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
     ));
   }, [isClientsLoading, realClients]);
 
   const assetOptions = useMemo(() => {
-    if (isAssetsLoading) return <SelectItem value="loading" disabled>Cargando activos...</SelectItem>;
-    if (!realAssets || realAssets.length === 0) return <SelectItem value="none" disabled>Sin activos en catálogo</SelectItem>;
+    if (isAssetsLoading) return <SelectItem key="loading" value="loading" disabled>Cargando activos...</SelectItem>;
+    if (!realAssets || realAssets.length === 0) return <SelectItem key="none" value="none" disabled>Sin activos en catálogo</SelectItem>;
     return realAssets.map(asset => (
       <SelectItem key={asset.id} value={asset.id}>{asset.name} ({asset.code})</SelectItem>
     ));
@@ -218,7 +217,9 @@ export default function NewWorkOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Cliente *</Label>
-                <Select value={clientId} onValueChange={setClientId}>
+                <Select value={clientId} onValueChange={(val) => {
+                  if (val !== "loading" && val !== "none") setClientId(val);
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione un cliente..." />
                   </SelectTrigger>
@@ -230,7 +231,9 @@ export default function NewWorkOrderPage() {
 
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Activo / Equipo</Label>
-                <Select value={assetId} onValueChange={setAssetId}>
+                <Select value={assetId} onValueChange={(val) => {
+                  if (val !== "loading" && val !== "none") setAssetId(val);
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione equipo (Opcional)..." />
                   </SelectTrigger>
@@ -312,14 +315,14 @@ export default function NewWorkOrderPage() {
                             className="text-xs font-medium leading-none flex-1 cursor-pointer"
                           >
                             <div className="flex flex-col gap-0.5">
-                              <p className="font-bold flex items-center justify-between gap-2">
+                              <div className="font-bold flex items-center justify-between gap-2">
                                 {staff.name}
                                 {busyOTId && (
                                   <Badge variant="outline" className="text-[8px] h-4 bg-white text-amber-700 border-amber-200">
                                     EN OT: {busyOTId}
                                   </Badge>
                                 )}
-                              </p>
+                              </div>
                               <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
                             </div>
                           </label>
@@ -400,7 +403,7 @@ export default function NewWorkOrderPage() {
             <Button variant="outline" type="button" asChild disabled={isSubmitting}>
               <Link href="/work-orders">Cancelar</Link>
             </Button>
-            <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId} className="min-w-[140px]">
+            <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId || clientId === "loading"} className="min-w-[140px]">
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Crear OT"}
             </Button>
           </CardFooter>

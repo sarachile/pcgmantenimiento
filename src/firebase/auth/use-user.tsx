@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,7 +7,7 @@ import { User } from '@/lib/types';
 
 /**
  * Hook para acceder al estado del usuario y su perfil en Firestore.
- * Identifica correctamente a superadmins y roles de empresa.
+ * Estabilizado para evitar bucles infinitos de re-renderizado.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
@@ -26,27 +25,37 @@ export function useUser() {
       setIsProfileLoading(true);
       
       try {
-        // 1. Primero intentar obtener el perfil del usuario
         const userRef = doc(firestore, 'users', authUser.uid);
         const userSnap = await getDoc(userRef);
         
+        let newProfile: User | null = null;
+
         if (userSnap.exists()) {
-          setProfile({ ...(userSnap.data() as any), id: authUser.uid } as User);
+          newProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
-          // 2. Si no existe en 'users', verificar si es un súper admin en la colección privilegiada
           const superAdminRef = doc(firestore, 'superAdmins', authUser.uid);
           const superAdminSnap = await getDoc(superAdminRef);
           
           if (superAdminSnap.exists()) {
-            setProfile({ 
+            newProfile = { 
               ...(superAdminSnap.data() as any), 
               id: authUser.uid, 
               role: 'superadmin',
               companyId: 'pcg-central',
               active: true
-            } as User);
+            } as User;
           }
         }
+
+        // Comparación simple para evitar cambios de identidad si los datos son idénticos
+        setProfile(prev => {
+          if (!newProfile) return null;
+          if (prev && JSON.stringify(prev) === JSON.stringify(newProfile)) {
+            return prev;
+          }
+          return newProfile;
+        });
+
       } catch (error) {
         console.error("Error fetching user profile:", error);
       } finally {
@@ -55,7 +64,7 @@ export function useUser() {
     }
 
     fetchProfile();
-  }, [authUser, firestore]);
+  }, [authUser?.uid, firestore]); // Depender del UID en lugar del objeto authUser completo
 
   return {
     user: authUser,
