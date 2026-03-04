@@ -5,7 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, QrCode, Camera } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera } from "lucide-react";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -16,7 +16,6 @@ interface WorkOrderReportProps {
   assignedStaff: StaffMember[];
   partUsages: PartUsage[];
   techSignatureBase64?: string;
-  clientSignatureBase64?: string;
   qrCodeUrl?: string;
   forwardedRef?: React.Ref<HTMLDivElement>;
 }
@@ -30,7 +29,6 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
   assignedStaff, 
   partUsages, 
   techSignatureBase64, 
-  clientSignatureBase64,
   qrCodeUrl,
   forwardedRef
 }) => {
@@ -43,7 +41,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
     } catch (e) { return "N/A"; }
   };
 
-  const showQrInPdf = workOrder.reviewerRequired && !workOrder.clientSignatureUrl && qrCodeUrl;
+  const showQrInPdf = workOrder.reviewerRequired && !workOrder.clientApprovalCode && qrCodeUrl;
 
   return (
     <div 
@@ -126,7 +124,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
               </div>
             ))
           ) : (
-            <p className="text-xs text-slate-400 italic col-span-2">No se ha registrado información de personal para esta orden.</p>
+            <p className="text-xs text-slate-400 italic col-span-2">Sin personal registrado.</p>
           )}
         </div>
       </div>
@@ -160,7 +158,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
               </div>
             ))
           ) : (
-            <p className="text-xs text-slate-400 italic">No se definieron ítems de control para esta tarea.</p>
+            <p className="text-xs text-slate-400 italic">No se definieron protocolos.</p>
           )}
         </div>
       </div>
@@ -201,31 +199,32 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
             </div>
             <div>
               <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Firma Técnico Responsable</p>
-              <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Validado vía PCGMANTENIMIENTO</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Sello Operativo PCG</p>
             </div>
           </div>
 
-          {/* Client Signature or QR */}
+          {/* Digital Approval Record */}
           <div className="text-center space-y-4">
-            <div className="h-32 border-b-2 border-slate-900 flex items-center justify-center bg-slate-50/30 relative">
-              {clientSignatureBase64 || workOrder.clientSignatureUrl ? (
-                <img 
-                  src={clientSignatureBase64 || workOrder.clientSignatureUrl} 
-                  alt="Firma Cliente" 
-                  className="max-h-full max-w-full object-contain" 
-                  crossOrigin="anonymous"
-                />
+            <div className="h-32 border-2 border-slate-900 flex flex-col items-center justify-center bg-slate-50/50 p-4 relative rounded-xl">
+              {workOrder.clientApprovalCode ? (
+                <>
+                  <Fingerprint className="h-8 w-8 text-slate-900 mb-2" />
+                  <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">APROBACIÓN DIGITAL CONFORME</p>
+                  <p className="text-[9px] font-bold text-slate-600 mt-1">{workOrder.clientApprovalName}</p>
+                  <p className="text-[8px] font-mono text-slate-400 mt-2">ID: {workOrder.clientApprovalCode}</p>
+                  <p className="text-[8px] font-bold text-slate-400">{formatDateLabel(workOrder.clientApprovalDate)}</p>
+                </>
               ) : showQrInPdf ? (
                 <div className="flex flex-col items-center gap-1">
-                  <img src={qrCodeUrl} alt="QR Validacion" className="h-24 w-24" crossOrigin="anonymous" />
-                  <span className="text-[7px] font-black text-primary uppercase tracking-widest">Escanee para Validar</span>
+                  <img src={qrCodeUrl} alt="QR Validacion" className="h-20 w-20" crossOrigin="anonymous" />
+                  <span className="text-[7px] font-black text-primary uppercase tracking-widest">Escanee para Validar Digitalmente</span>
                 </div>
               ) : (
-                <span className="text-[9px] text-slate-300 italic font-bold uppercase">Espacio para Recepción Cliente</span>
+                <span className="text-[9px] text-slate-300 italic font-bold uppercase">Pendiente Validación Cliente</span>
               )}
             </div>
             <div>
-              <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Firma Recepción Conforme</p>
+              <p className="text-[11px] font-black text-slate-900 uppercase tracking-[0.2em]">Validación Recepción Cliente</p>
               <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Entidad: {client?.name || "Cliente"}</p>
             </div>
           </div>

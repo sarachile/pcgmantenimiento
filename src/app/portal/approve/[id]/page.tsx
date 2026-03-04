@@ -1,7 +1,7 @@
 
 "use client";
 
-import { use, useState, useEffect, useRef, useMemo } from "react";
+import { use, useState, useEffect, useMemo } from "react";
 import { 
   Card, 
   CardContent, 
@@ -17,86 +17,25 @@ import {
   Check, 
   Loader2, 
   ArrowLeft,
-  Signature as SignatureIcon,
   Send,
   Building2,
   HardHat,
-  ListChecks,
   Camera,
-  Image as ImageIcon,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Fingerprint
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { initializeFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { WorkOrder, Client, Company, Asset } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { FirebaseImage } from "@/components/FirebaseImage";
 import { useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-
-function SignaturePad({ onSave, isSaving }: { onSave: (blob: Blob) => void, isSaving: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = '#000000';
-  }, []);
-
-  const getCoordinates = (e: any) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-    return { x: clientX - rect.left, y: clientY - rect.top };
-  };
-
-  const startDrawing = (e: any) => { 
-    setIsDrawing(true); 
-    const { x, y } = getCoordinates(e);
-    canvasRef.current?.getContext('2d')?.beginPath();
-    canvasRef.current?.getContext('2d')?.moveTo(x, y);
-  };
-
-  const stopDrawing = () => { setIsDrawing(false); };
-
-  const draw = (e: any) => {
-    if (!isDrawing) return;
-    const { x, y } = getCoordinates(e);
-    const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx) return;
-    ctx.lineTo(x, y); ctx.stroke();
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="border-4 border-indigo-100 rounded-3xl bg-white overflow-hidden touch-none shadow-inner">
-        <canvas 
-          ref={canvasRef} width={400} height={250} className="w-full cursor-crosshair h-[250px]" 
-          onMouseDown={startDrawing} onMouseUp={stopDrawing} onMouseMove={draw} 
-          onTouchStart={(e) => { e.preventDefault(); startDrawing(e); }} 
-          onTouchEnd={stopDrawing} onTouchMove={(e) => { e.preventDefault(); draw(e); }} 
-        />
-      </div>
-      <div className="flex justify-between gap-4">
-        <Button variant="outline" className="flex-1 h-12 rounded-2xl" onClick={() => canvasRef.current?.getContext('2d')?.clearRect(0, 0, 400, 250)} disabled={isSaving}>Limpiar</Button>
-        <Button className="flex-1 h-12 rounded-2xl bg-indigo-600 font-black shadow-lg" onClick={() => canvasRef.current?.toBlob(b => b && onSave(b), 'image/png')} disabled={isSaving}>
-          {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <><Check className="mr-2 h-4 w-4" /> Confirmar Firma</>}
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 export default function ExternalApprovalPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -111,13 +50,13 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
   const [asset, setAsset] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [step, setStep] = useState(1); // 1: Review, 2: Evaluation, 3: Signature, 4: Success, 5: Rejection, 6: Confirm Reject
+  const [step, setStep] = useState(1); // 1: Review, 2: Evaluation, 3: Confirmation, 4: Success, 5: Rejection, 6: Confirm Reject
   const [rejectionReason, setRejectionReason] = useState("");
 
   const [ratings, setRatings] = useState({ quality: 0, timing: 0, safety: 0, documentation: 0 });
   const [comment, setComment] = useState("");
 
-  const { firestore, storage } = useMemo(() => initializeFirebase(), []);
+  const { firestore } = useMemo(() => initializeFirebase(), []);
 
   useEffect(() => {
     async function loadData() {
@@ -153,14 +92,13 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
     loadData();
   }, [firestore, otId, companyId]);
 
-  const handleFinalApprove = async (signatureBlob: Blob) => {
-    if (!ot || !company || !firestore || !storage) return;
+  const handleFinalDigitalApproval = async () => {
+    if (!ot || !company || !firestore) return;
     setIsSubmitting(true);
     try {
-      const path = `companies/${company.id}/workOrders/${ot.id}/client_sig_${Date.now()}.png`;
-      const sRef = ref(storage, path);
-      await uploadBytes(sRef, signatureBlob);
-      const signatureUrl = await getDownloadURL(sRef);
+      // Generar código de validación único
+      const verificationCode = `PCG-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+      const approvalDate = new Date().toISOString();
 
       const evalCol = collection(firestore, "companies", company.id, "evaluations");
       const evalDoc = await addDoc(evalCol, {
@@ -168,7 +106,7 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
         clientId: ot.clientId,
         companyId: company.id,
         reviewerId: "external_client",
-        reviewerName: client?.contactName || "Cliente Externo",
+        reviewerName: client?.contactName || "Responsable Cliente",
         ratings,
         comment,
         createdAt: serverTimestamp()
@@ -176,14 +114,16 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
 
       const otRef = doc(firestore, "companies", company.id, "workOrders", ot.id);
       updateDocumentNonBlocking(otRef, {
-        clientSignatureUrl: signatureUrl,
+        clientApprovalName: client?.contactName || "Responsable Cliente",
+        clientApprovalDate: serverTimestamp(),
+        clientApprovalCode: verificationCode,
         evaluationId: evalDoc.id,
         status: 'aprobada',
         updatedAt: serverTimestamp()
       });
 
       setStep(4);
-      toast({ title: "¡Gracias!", description: "Su aprobación ha sido registrada con éxito." });
+      toast({ title: "¡Gracias!", description: "Su aprobación digital ha sido registrada con éxito." });
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {
@@ -230,8 +170,8 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
             <Check className="h-10 w-10 text-emerald-600" />
           </div>
           <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tighter italic">Servicio Finalizado</h2>
-          <p className="text-slate-500 font-medium leading-relaxed">Esta orden de trabajo ya ha sido validada y cerrada por su organización.</p>
-          <Button className="mt-8 w-full h-12 rounded-2xl bg-indigo-600 font-black shadow-lg" asChild><Link href="/">Volver al Inicio</Link></Button>
+          <p className="text-slate-500 font-medium leading-relaxed">Esta orden de trabajo ya cuenta con aprobación digital conforme.</p>
+          <Button className="mt-8 w-full h-12 rounded-2xl bg-indigo-600 font-black shadow-lg text-white" asChild><a href="/">Cerrar Portal</a></Button>
         </Card>
       </div>
     );
@@ -304,20 +244,11 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
                     </div>
                   </div>
                 )}
-
-                {ot.technicianSignatureUrl && (
-                  <div className="space-y-3 pt-6 border-t border-dashed">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Firma Responsable Técnico</Label>
-                    <div className="h-32 border-4 border-dashed rounded-3xl flex items-center justify-center p-4 bg-slate-50 shadow-inner">
-                      <FirebaseImage url={ot.technicianSignatureUrl} className="max-h-full" />
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
             
             <div className="flex flex-col gap-4">
-              <Button className="w-full h-16 rounded-2xl bg-indigo-600 text-lg font-black shadow-xl shadow-indigo-200 uppercase tracking-widest" onClick={() => setStep(2)}>Siguiente: Evaluar Servicio <ArrowLeft className="ml-2 h-5 w-5 rotate-180" /></Button>
+              <Button className="w-full h-16 rounded-2xl bg-indigo-600 text-white text-lg font-black shadow-xl shadow-indigo-200 uppercase tracking-widest" onClick={() => setStep(2)}>Siguiente: Evaluar Servicio <ArrowLeft className="ml-2 h-5 w-5 rotate-180" /></Button>
               <Button variant="ghost" className="text-rose-500 font-black h-12 uppercase tracking-widest hover:bg-rose-50" onClick={() => setStep(6)}>
                 <AlertTriangle className="h-4 w-4 mr-2" /> Reportar Disconformidad
               </Button>
@@ -364,27 +295,47 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
             </Card>
             <div className="flex gap-4">
               <Button variant="outline" className="flex-1 h-16 rounded-2xl font-black text-slate-400 uppercase tracking-widest" onClick={() => setStep(1)}>Atrás</Button>
-              <Button className="flex-[2] h-16 rounded-2xl bg-indigo-600 font-black shadow-xl shadow-indigo-200 uppercase tracking-widest" disabled={!Object.values(ratings).every(r => r > 0)} onClick={() => setStep(3)}>Continuar a la Firma</Button>
+              <Button className="flex-[2] h-16 rounded-2xl bg-indigo-600 text-white font-black shadow-xl shadow-indigo-200 uppercase tracking-widest" disabled={!Object.values(ratings).every(r => r > 0)} onClick={() => setStep(3)}>Continuar a Confirmación</Button>
             </div>
           </div>
         )}
 
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
-            <Card className="rounded-[2.5rem] border-none shadow-xl">
-              <CardHeader className="p-10 text-center">
-                <div className="bg-indigo-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <SignatureIcon className="h-10 w-10 text-indigo-600" />
+            <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden">
+              <CardHeader className="p-10 text-center bg-indigo-50/50 border-b">
+                <div className="bg-indigo-600 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-200">
+                  <Fingerprint className="h-10 w-10 text-white" />
                 </div>
-                <CardTitle className="text-2xl font-black uppercase tracking-tighter italic">Firma de Conformidad</CardTitle>
-                <CardDescription className="font-medium text-base">Al firmar acepta la recepción conforme de los trabajos descritos.</CardDescription>
+                <CardTitle className="text-2xl font-black uppercase tracking-tighter italic">Aprobación Digital</CardTitle>
+                <CardDescription className="font-medium text-base">Está a punto de emitir un sello de conformidad técnica para esta orden.</CardDescription>
               </CardHeader>
-              <CardContent className="p-10 pt-0">
-                <SignaturePad isSaving={isSubmitting} onSave={handleFinalApprove} />
+              <CardContent className="p-10 space-y-8">
+                <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-4">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-black text-slate-400 uppercase tracking-widest">Aprobador Responsable</span>
+                    <span className="font-bold text-slate-900">{client?.contactName || "Responsable Autorizado"}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-black text-slate-400 uppercase tracking-widest">Fecha Operación</span>
+                    <span className="font-bold text-slate-900">{format(new Date(), "dd/MM/yyyy HH:mm 'hrs'", { locale: es })}</span>
+                  </div>
+                  <div className="pt-4 border-t border-slate-200 text-[10px] text-slate-500 leading-relaxed italic">
+                    Al confirmar, se generará un código de verificación único vinculado a su identidad corporativa, validando la recepción conforme de los servicios descritos.
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  <Button 
+                    className="w-full h-16 rounded-2xl bg-indigo-600 text-white text-lg font-black shadow-xl shadow-indigo-200 uppercase tracking-widest" 
+                    onClick={handleFinalDigitalApproval}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Confirmar y Aprobar Servicio"}
+                  </Button>
+                  <Button variant="ghost" className="w-full text-slate-400 font-black uppercase text-[10px] tracking-[0.3em]" onClick={() => setStep(2)}>Volver a evaluación</Button>
+                </div>
               </CardContent>
-              <div className="px-10 pb-8">
-                <Button variant="ghost" className="w-full text-slate-400 font-black uppercase text-[10px] tracking-[0.3em]" onClick={() => setStep(2)}>Volver a evaluación</Button>
-              </div>
             </Card>
           </div>
         )}
@@ -397,7 +348,7 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
               </div>
               <h2 className="text-4xl font-black text-slate-900 mb-6 tracking-tighter uppercase italic">¡Servicio Aprobado!</h2>
               <p className="text-slate-500 font-bold text-lg mb-12 leading-relaxed">
-                Su validación ha sido registrada. La Orden de Trabajo ha sido cerrada y el reporte técnico final está disponible para su descarga.
+                Su sello de validación digital ha sido generado. La Orden de Trabajo ha sido cerrada y el certificado final ya está disponible para el equipo técnico.
               </p>
               <div className="space-y-6">
                 <p className="text-[11px] font-black text-indigo-400 uppercase tracking-[0.5em]">PCGMANTENIMIENTO ERP</p>
@@ -453,7 +404,7 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
             <div className="flex gap-4">
               <Button variant="outline" className="flex-1 h-16 rounded-2xl font-black text-slate-400 uppercase tracking-widest" onClick={() => setStep(1)}>Cancelar</Button>
               <Button 
-                className="flex-2 h-16 rounded-2xl bg-rose-600 font-black shadow-xl shadow-rose-200 uppercase tracking-widest" 
+                className="flex-[2] h-16 rounded-2xl bg-rose-600 text-white font-black shadow-xl shadow-rose-200 uppercase tracking-widest" 
                 disabled={!rejectionReason.trim() || isSubmitting} 
                 onClick={handleReject}
               >
