@@ -26,7 +26,9 @@ import {
   Users,
   QrCode,
   ExternalLink,
-  Mail
+  Mail,
+  Building2,
+  HardHat
 } from "lucide-react";
 import {
   Dialog,
@@ -202,7 +204,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile, isReviewer, isSupervisor, isCompanyAdmin, isTechnician } = useUser();
+  const { profile, isReviewer, isSupervisor, isCompanyAdmin } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   const reportRef = useRef<HTMLDivElement>(null);
@@ -365,19 +367,69 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       if (ot.reviewerRequired && client?.contactEmail) {
         const approvalLink = currentUrl;
+        const techNames = assignedStaff?.map(s => s.name).join(', ') || "Equipo Técnico";
+        
         await sendSystemEmail({
           to: client.contactEmail,
-          subject: `Solicitud de Aprobación OT ${ot.id} - ${company?.name}`,
+          subject: `SOLICITUD DE APROBACIÓN: OT ${ot.id} - ${company?.name || 'PCGMANTENIMIENTO'}`,
           html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-              <h2 style="color: #1e3a8a;">Aprobación de Servicio Técnico</h2>
-              <p>Estimados,</p>
-              <p>La Orden de Trabajo <strong>${ot.id}</strong> ha sido completada y validada internamente por nuestro equipo de supervisión.</p>
-              <p>Solicitamos su revisión final y firma de conformidad a través de nuestro portal seguro:</p>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${approvalLink}" style="background-color: #1e3a8a; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acceder al Portal de Aprobación</a>
+            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; color: #1e293b; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+              <div style="background-color: #1e3a8a; padding: 40px 32px; text-align: center;">
+                <h1 style="color: #ffffff; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px; text-transform: uppercase;">Notificación de Servicio Técnico</h1>
+                <p style="color: #bfdbfe; font-size: 14px; margin-top: 8px; font-weight: 500;">Gestión de Mantenimiento Industrial Avanzada</p>
               </div>
-              <p style="font-size: 12px; color: #666;">Este es un mensaje automático de ${company?.name}.</p>
+              
+              <div style="padding: 32px;">
+                <p style="font-size: 16px; line-height: 1.6;">Estimados <strong>${client?.name}</strong>,</p>
+                <p style="font-size: 15px; line-height: 1.6; color: #475569;">Le informamos que la intervención técnica programada ha sido completada y validada por nuestra supervisión técnica. A continuación, se detallan los pormenores de la Orden de Trabajo:</p>
+                
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 24px 0;">
+                  <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                      <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 40%;">ID de Operación:</td>
+                      <td style="padding: 8px 0; font-size: 14px; font-weight: 800; color: #1e3a8a;">${ot.id}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Equipo / Activo:</td>
+                      <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${asset?.name || 'S/I'} [${asset?.code || 'N/A'}]</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Fecha Ejecución:</td>
+                      <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${formatDateLabel(ot.executedAt || new Date())}</td>
+                    </tr>
+                    <tr>
+                      <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Personal Responsable:</td>
+                      <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${techNames}</td>
+                    </tr>
+                  </table>
+                </div>
+
+                <div style="margin-bottom: 32px;">
+                  <h3 style="font-size: 13px; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin-bottom: 12px; border-left: 4px solid #1e3a8a; padding-left: 12px;">Descripción de Trabajos Realizados:</h3>
+                  <div style="background-color: #ffffff; border: 1px solid #f1f5f9; padding: 16px; border-radius: 8px; font-size: 14px; color: #334155; font-style: italic; line-height: 1.5;">
+                    ${ot.description}
+                  </div>
+                </div>
+
+                <p style="font-size: 14px; line-height: 1.6; color: #475569; text-align: center; margin-bottom: 24px;">Para formalizar la recepción conforme y finalizar el proceso administrativo, solicitamos su revisión y firma digital a través de nuestro portal de validación:</p>
+
+                <div style="text-align: center; margin: 32px 0;">
+                  <a href="${approvalLink}" style="background-color: #1e3a8a; color: #ffffff; padding: 18px 36px; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);">
+                    REVISAR Y FIRMAR SERVICIO
+                  </a>
+                </div>
+
+                <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 16px; display: flex; align-items: flex-start; gap: 12px;">
+                  <div style="font-size: 12px; color: #92400e;">
+                    <strong>Nota de Seguridad:</strong> Este enlace es personal y exclusivo para la validación de la Orden de Trabajo ${ot.id}. Una vez firmado, el documento PDF final será generado automáticamente.
+                  </div>
+                </div>
+              </div>
+              
+              <div style="background-color: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+                <p style="font-size: 11px; color: #94a3b8; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Enviado por la plataforma central de ${company?.name || 'PCG OPERACIONES'}</p>
+                <p style="font-size: 10px; color: #cbd5e1; margin-top: 4px;">Este es un mensaje automático, por favor no responda directamente.</p>
+              </div>
             </div>
           `
         });

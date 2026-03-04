@@ -96,7 +96,7 @@ service cloud.firestore {
     }
 
     match /mail/{mailId} {
-      allow read, write: if isPlatformAdmin();
+      allow read, write: if isPlatformAdmin() || isSignedIn();
     }
   }
 }
