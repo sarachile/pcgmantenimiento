@@ -37,8 +37,7 @@ export default function NewWorkOrderPage() {
   const [durationDays, setDurationDays] = useState(1);
   const [estimatedEndDate, setEstimatedEndDate] = useState("");
 
-  // Logic to update estimated end date when scheduled date or duration changes
-  // We use a separate state and check for equality to prevent infinite loops
+  // FIX: Se elimina estimatedEndDate de las dependencias para romper el bucle circular
   useEffect(() => {
     if (scheduledDate && durationDays) {
       try {
@@ -46,6 +45,7 @@ export default function NewWorkOrderPage() {
         const end = addDays(start, Number(durationDays));
         const formattedDate = format(end, 'yyyy-MM-dd');
         
+        // Uso de actualización funcional para evitar renders innecesarios
         setEstimatedEndDate((prev) => {
           if (prev !== formattedDate) return formattedDate;
           return prev;
@@ -129,7 +129,7 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  // Fetching data with memoized queries
+  // Queries memoizadas para evitar re-renders constantes
   const assetsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "assets");
@@ -205,7 +205,8 @@ export default function NewWorkOrderPage() {
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={isClientsLoading ? "Cargando..." : "Seleccione un cliente..."} />
+                    {/* Estabilización del placeholder para evitar bucles de foco en Radix Select */}
+                    <SelectValue placeholder="Seleccione un cliente..." />
                   </SelectTrigger>
                   <SelectContent>
                     {isClientsLoading ? (
@@ -225,7 +226,7 @@ export default function NewWorkOrderPage() {
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={isAssetsLoading ? "Cargando..." : "Seleccione equipo (Opcional)..."} />
+                    <SelectValue placeholder="Seleccione equipo (Opcional)..." />
                   </SelectTrigger>
                   <SelectContent>
                     {isAssetsLoading ? (
