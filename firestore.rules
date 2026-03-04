@@ -52,9 +52,7 @@ service cloud.firestore {
     // =========================
 
     match /mail/{mailId} {
-      // El SuperAdmin debe poder leer para el monitor
       allow read: if isSuperAdmin();
-      // Permitir creación y actualización para registrar el éxito/error del Server Action
       allow create, update: if isSignedIn() && (isSuperAdmin() || getUserData().role == 'companyAdmin');
       allow delete: if false;
     }
@@ -64,14 +62,11 @@ service cloud.firestore {
     // =========================
 
     match /users/{userId} {
-      allow get: if isSignedIn() &&
-        (
-          request.auth.uid == userId ||
-          isSuperAdmin() ||
-          (userExists() && isCompanyMember(resource.data.companyId))
-        );
+      allow get: if isSignedIn() || request.auth.uid == userId;
+      
+      // Permitir listar para validar límites durante el registro
+      allow list: if isSignedIn();
 
-      allow list: if isSuperAdmin();
       allow create: if isSignedIn();
       allow update: if isSignedIn() &&
         (
@@ -90,7 +85,9 @@ service cloud.firestore {
     // =========================
 
     match /companies/{companyId} {
-      allow get: if isCompanyMember(companyId);
+      // Permitir 'get' público para validar el código de vinculación en el registro
+      allow get: if true; 
+      
       allow list: if isSuperAdmin();
       allow create, update, delete: if isSuperAdmin();
 
