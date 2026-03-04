@@ -44,13 +44,15 @@ import {
   Calendar,
   Building2,
   Mail,
-  Shield
+  Shield,
+  Send,
+  ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp, setDoc, query, where } from "firebase/firestore";
+import { collection, doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Company, User } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -84,6 +86,11 @@ export default function AdminCompaniesPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsCompany, setDetailsCompany] = useState<Company | null>(null);
 
+  // Invite State
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -95,7 +102,6 @@ export default function AdminCompaniesPage() {
 
   const { data: companies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
 
-  // Fetch all users to count/show in details (simplified for admin)
   const usersQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
     return collection(db, "users");
@@ -118,7 +124,7 @@ export default function AdminCompaniesPage() {
       await setDoc(doc(db, "companies", companyId), {
         id: companyId,
         name: formData.name,
-        rut: "", // Se pedirá en la suscripción
+        rut: "", 
         address: formData.address || "Dirección por definir",
         currentPlan: formData.currentPlan,
         subscriptionStatus: "active",
@@ -186,6 +192,28 @@ export default function AdminCompaniesPage() {
     setIsDetailsOpen(true);
   };
 
+  const handleOpenInvite = (company: Company) => {
+    setDetailsCompany(company);
+    setIsInviteOpen(true);
+  };
+
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!detailsCompany) return;
+
+    setIsSendingInvite(true);
+    // Simulación de envío de correo
+    setTimeout(() => {
+      toast({
+        title: "Invitación Enviada",
+        description: `Se ha enviado el código ${detailsCompany.id} a ${inviteEmail}.`,
+      });
+      setIsSendingInvite(false);
+      setIsInviteOpen(false);
+      setInviteEmail("");
+    }, 1500);
+  };
+
   const formatDate = (date: any) => {
     if (!mounted || !date) return '...';
     try {
@@ -212,7 +240,7 @@ export default function AdminCompaniesPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+          <Button variant="ghost" size="icon" asChild title="Volver al Panel Maestro">
             <Link href="/admin">
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -231,8 +259,8 @@ export default function AdminCompaniesPage() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Registrar Nuevo Cliente</DialogTitle>
-              <DialogDescription>Cree el entorno para que el cliente pueda registrar sus usuarios.</DialogDescription>
+              <DialogTitle>Registrar Nuevo Cliente (Tenant)</DialogTitle>
+              <DialogDescription>Cree el entorno para que el cliente pueda registrar sus usuarios operativos.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
               <div className="space-y-4">
@@ -246,7 +274,7 @@ export default function AdminCompaniesPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Dirección Inicial</Label>
+                  <Label>Dirección Inicial (Opcional)</Label>
                   <Input 
                     placeholder="Calle, Ciudad..." 
                     value={formData.address}
@@ -272,7 +300,7 @@ export default function AdminCompaniesPage() {
               </div>
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Entorno y Código"}
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Entorno y Código Maestro"}
                 </Button>
               </DialogFooter>
             </form>
@@ -347,7 +375,7 @@ export default function AdminCompaniesPage() {
                             company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
                             company.currentPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
                           )}>
-                            {company.currentPlan || 'FREE'}
+                            {company.currentPlan?.toUpperCase() || 'FREE'}
                           </Badge>
                           <span className={cn(
                             "text-[10px] font-bold",
@@ -377,7 +405,7 @@ export default function AdminCompaniesPage() {
                             variant="ghost" 
                             size="icon" 
                             onClick={() => handleOpenConfig(company)}
-                            title="Ajustar Plan"
+                            title="Ajustar Suscripción"
                           >
                             <Settings2 className="h-4 w-4" />
                           </Button>
@@ -396,14 +424,19 @@ export default function AdminCompaniesPage() {
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="bg-primary/10 p-2 rounded-lg">
-                <Building2 className="h-6 w-6 text-primary" />
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="flex items-center gap-3">
+                <div className="bg-primary/10 p-2 rounded-lg">
+                  <Building2 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-black">{detailsCompany?.name}</DialogTitle>
+                  <DialogDescription>ID de Entorno: {detailsCompany?.id}</DialogDescription>
+                </div>
               </div>
-              <div>
-                <DialogTitle className="text-2xl font-black">{detailsCompany?.name}</DialogTitle>
-                <DialogDescription>ID de Entorno: {detailsCompany?.id}</DialogDescription>
-              </div>
+              <Button size="sm" variant="outline" className="gap-2" onClick={() => handleOpenInvite(detailsCompany!)}>
+                <Send className="h-3.5 w-3.5" /> Invitar por Email
+              </Button>
             </div>
           </DialogHeader>
           
@@ -411,15 +444,17 @@ export default function AdminCompaniesPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-muted/30 p-3 rounded-lg border">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">RUT Empresa</p>
-                <p className="text-sm font-bold">{detailsCompany?.rut || 'Sin registrar'}</p>
+                <p className="text-sm font-bold">{detailsCompany?.rut || 'Pendiente'}</p>
               </div>
               <div className="bg-muted/30 p-3 rounded-lg border">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Plan Activo</p>
                 <Badge variant="default" className="text-[10px] h-5">{detailsCompany?.currentPlan?.toUpperCase()}</Badge>
               </div>
               <div className="bg-muted/30 p-3 rounded-lg border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Estado Pago</p>
-                <p className="text-sm font-bold capitalize text-emerald-600">{detailsCompany?.subscriptionStatus}</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Estado Operativo</p>
+                <p className={cn("text-sm font-bold capitalize", detailsCompany?.isActive ? "text-emerald-600" : "text-rose-600")}>
+                  {detailsCompany?.isActive ? 'Activo' : 'Suspendido'}
+                </p>
               </div>
               <div className="bg-muted/30 p-3 rounded-lg border">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Fecha Registro</p>
@@ -481,6 +516,43 @@ export default function AdminCompaniesPage() {
           <DialogFooter>
             <Button variant="outline" className="w-full" onClick={() => setIsDetailsOpen(false)}>Cerrar Ficha</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Invitación por Email */}
+      <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Enviar Invitación Formal</DialogTitle>
+            <DialogDescription>
+              Envíe el código de acceso a {detailsCompany?.name} para que sus colaboradores se registren.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSendInvite} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Correo Electrónico del Cliente</Label>
+              <Input 
+                id="invite-email" 
+                type="email" 
+                placeholder="ejemplo@cliente.cl" 
+                required 
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+            <div className="bg-muted/30 p-4 rounded-lg space-y-2 border">
+              <p className="text-[10px] font-black uppercase text-muted-foreground">Vista Previa del Mensaje:</p>
+              <div className="text-[11px] text-slate-600 leading-relaxed italic">
+                "Hola, se ha creado tu entorno en PCGMANTENIMIENTO. <br/>
+                Usa el código: <strong>{detailsCompany?.id}</strong> en la página de registro corporativo."
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="submit" className="w-full" disabled={isSendingInvite}>
+                {isSendingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <><Send className="mr-2 h-4 w-4" /> Enviar Código Maestro</>}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
