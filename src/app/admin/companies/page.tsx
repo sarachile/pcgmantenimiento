@@ -30,7 +30,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/select";
 import { 
   Search, 
   Plus, 
@@ -225,7 +225,7 @@ export default function AdminCompaniesPage() {
               <p>Para comenzar, cada miembro del equipo debe registrarse en el portal oficial:</p>
               
               <div style="margin: 32px 0; text-align: center;">
-                <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 166px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                   Completar Registro de Usuario
                 </a>
                 <p style="color: #64748b; font-size: 12px; margin-top: 12px;">Acceso vía: www.pcgmantenimiento.com</p>

@@ -27,6 +27,12 @@ service cloud.firestore {
 
     // --- REGLAS DE COLECCIONES ---
 
+    // Colección para la extensión Trigger Email
+    match /mail/{mailId} {
+      allow create: if isSignedIn();
+      allow read: if isSuperAdmin();
+    }
+
     match /superAdmins/{userId} {
       // Permitir creación si es el propio usuario logueado
       allow create: if isOwner(userId);
