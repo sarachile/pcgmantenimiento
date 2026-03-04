@@ -56,7 +56,7 @@ service cloud.firestore {
     match /companies/{companyId} {
       // Allow public get for the customer portal branding
       allow get: if true;
-      allow list: if isPlatformAdmin();
+      allow list: if isPlatformAdmin() || isSignedIn();
       allow create: if isPlatformAdmin();
       allow update: if isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin'));
       allow delete: if isPlatformAdmin();
@@ -77,6 +77,10 @@ service cloud.firestore {
         allow get: if true;
         allow list: if isCompanyMember(companyId);
         allow write: if isCompanyMember(companyId);
+      }
+
+      match /spareParts/{partId} {
+        allow read, write: if isCompanyMember(companyId);
       }
 
       match /evaluations/{evalId} {
