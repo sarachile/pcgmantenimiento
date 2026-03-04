@@ -188,8 +188,33 @@ export default function NewWorkOrderPage() {
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center gap-2 mb-2"><ListChecks className="h-4 w-4 text-primary" /><Label className="font-bold text-xs uppercase text-muted-foreground">Checklist de Revisión</Label></div>
               <div className="flex gap-2">
-                <Input placeholder="Nueva tarea..." value={newTask} onChange={(e) => setNewTask(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), checklist.push({task: newTask.trim()}), setNewTask(""))} />
-                <Button type="button" onClick={() => {if(newTask.trim()) setChecklist([...checklist, {task: newTask.trim()}]); setNewTask("");}} variant="outline" size="icon"><Plus className="h-4 w-4" /></Button>
+                <Input 
+                  placeholder="Nueva tarea..." 
+                  value={newTask} 
+                  onChange={(e) => setNewTask(e.target.value)} 
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (newTask.trim()) {
+                        setChecklist(prev => [...prev, { task: newTask.trim() }]);
+                        setNewTask("");
+                      }
+                    }
+                  }} 
+                />
+                <Button 
+                  type="button" 
+                  onClick={() => {
+                    if(newTask.trim()) {
+                      setChecklist(prev => [...prev, { task: newTask.trim() }]);
+                      setNewTask("");
+                    }
+                  }} 
+                  variant="outline" 
+                  size="icon"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
               {checklist.length > 0 && (
                 <div className="space-y-2 border rounded-lg p-3 bg-muted/20">

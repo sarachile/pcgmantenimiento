@@ -1,8 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ref, getDownloadURL } from 'firebase/storage';
-import { useStorage } from '@/firebase';
+import { useState } from 'react';
 import { Loader2, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -14,48 +12,49 @@ interface FirebaseImageProps {
 
 /**
  * Componente robusto para cargar imágenes de Firebase Storage.
- * Prioriza la URL directa si existe, de lo contrario muestra un placeholder de error.
+ * Maneja estados de carga y error de forma atómica para evitar bucles de renderizado.
  */
 export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageProps) {
-  const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
-    if (!url) {
-      setLoading(false);
-      setError(true);
-      return;
-    }
-    setError(false);
-    setLoading(true);
-  }, [url]);
-
-  if (error || !url) {
+  if (!url) {
     return (
       <div className={cn("flex items-center justify-center bg-muted/10 border border-dashed rounded-lg min-h-[100px]", className)}>
-        <ImageOff className="h-4 w-4 text-muted-foreground/50" />
+        <ImageOff className="h-4 w-4 text-muted-foreground/30" />
       </div>
     );
   }
 
   return (
-    <div className={cn("relative flex items-center justify-center", className)}>
+    <div className={cn("relative flex items-center justify-center overflow-hidden", className)}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/5 animate-pulse">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/30" />
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground/20" />
         </div>
       )}
+      
       <img 
         src={url} 
         alt={alt} 
-        className={cn("max-h-full object-contain transition-opacity duration-300", loading ? "opacity-0" : "opacity-100")}
+        className={cn(
+          "max-h-full object-contain transition-opacity duration-300", 
+          loading ? "opacity-0" : "opacity-100",
+          error && "hidden"
+        )}
         onLoad={() => setLoading(false)}
         onError={() => {
           setLoading(false);
           setError(true);
         }}
-        crossOrigin="anonymous"
       />
+
+      {error && (
+        <div className="flex flex-col items-center justify-center p-4 text-rose-400 bg-rose-50 w-full h-full rounded-lg">
+          <ImageOff className="h-5 w-5 mb-1" />
+          <span className="text-[8px] font-bold uppercase">Error de carga</span>
+        </div>
+      )}
     </div>
   );
 }

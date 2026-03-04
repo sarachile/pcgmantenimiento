@@ -18,7 +18,7 @@ interface WorkOrderReportProps {
 
 /**
  * Reporte optimizado para PDF.
- * Importante: Se renombra 'ref' a 'forwardedRef' para evitar conflicto con la función ref de Firebase.
+ * Se renombra el parámetro 'ref' a 'forwardedRef' para evitar conflictos con la función ref de Firebase Storage.
  */
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
   ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages }, forwardedRef) => {
@@ -133,7 +133,12 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
             <div className="text-center">
               <div className="h-24 border-b border-slate-300 mb-2 flex items-center justify-center overflow-hidden">
                 {workOrder.technicianSignatureUrl && (
-                  <img src={workOrder.technicianSignatureUrl} alt="Firma Técnico" className="max-h-full object-contain" crossOrigin="anonymous" />
+                  <img 
+                    src={workOrder.technicianSignatureUrl} 
+                    alt="Firma Técnico" 
+                    className="max-h-full object-contain" 
+                    crossOrigin="anonymous" 
+                  />
                 )}
               </div>
               <p className="text-[10px] font-black text-slate-400 uppercase">Firma Técnico</p>
@@ -141,7 +146,12 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
             <div className="text-center">
               <div className="h-24 border-b border-slate-300 mb-2 flex items-center justify-center overflow-hidden">
                 {workOrder.clientSignatureUrl && (
-                  <img src={workOrder.clientSignatureUrl} alt="Firma Cliente" className="max-h-full object-contain" crossOrigin="anonymous" />
+                  <img 
+                    src={workOrder.clientSignatureUrl} 
+                    alt="Firma Cliente" 
+                    className="max-h-full object-contain" 
+                    crossOrigin="anonymous" 
+                  />
                 )}
               </div>
               <p className="text-[10px] font-black text-slate-400 uppercase">Firma Recepción Cliente</p>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -30,7 +29,8 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  FileCheck
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
@@ -38,6 +38,7 @@ import { collection, doc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { WorkOrder } from "@/lib/types";
 
 export default function WorkOrdersPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -55,7 +56,7 @@ export default function WorkOrdersPage() {
     return collection(db, "companies", profile.companyId, "workOrders");
   }, [db, profile?.companyId]);
 
-  const { data: realWorkOrders, isLoading: isOrdersLoading } = useCollection(workOrdersQuery);
+  const { data: realWorkOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
   const handleDelete = (id: string) => {
     if (!profile?.companyId) return;
@@ -151,6 +152,7 @@ export default function WorkOrdersPage() {
                 <TableRow className="bg-muted/30">
                   <TableHead>ID</TableHead>
                   <TableHead>Descripción</TableHead>
+                  <TableHead>Evidencia</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Fecha Creación</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -160,10 +162,27 @@ export default function WorkOrdersPage() {
                 {filteredOTs.map((ot) => (
                   <TableRow key={ot.id} className="hover:bg-muted/20 transition-colors">
                     <TableCell className="font-bold text-primary">{ot.id}</TableCell>
-                    <TableCell className="max-w-[300px] truncate">{ot.description}</TableCell>
+                    <TableCell className="max-w-[250px] truncate">{ot.description}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1.5">
+                        {ot.technicianSignatureUrl && (
+                          <div className="h-7 w-7 rounded border bg-white flex items-center justify-center overflow-hidden shadow-sm" title="Firma Técnico">
+                            <img src={ot.technicianSignatureUrl} className="max-h-full object-contain" />
+                          </div>
+                        )}
+                        {ot.clientSignatureUrl && (
+                          <div className="h-7 w-7 rounded border bg-blue-50 flex items-center justify-center overflow-hidden shadow-sm" title="Firma Cliente">
+                            <img src={ot.clientSignatureUrl} className="max-h-full object-contain" />
+                          </div>
+                        )}
+                        {!ot.technicianSignatureUrl && !ot.clientSignatureUrl && (
+                          <span className="text-[10px] text-muted-foreground italic">Sin registro</span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <span className={cn(
-                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        "inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase",
                         ot.status === 'creada' && "bg-blue-100 text-blue-700",
                         ot.status === 'asignada' && "bg-indigo-100 text-indigo-700",
                         ot.status === 'ejecutada' && "bg-purple-100 text-purple-700",
@@ -171,10 +190,10 @@ export default function WorkOrdersPage() {
                         ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700",
                         ot.status === 'rechazada' && "bg-rose-100 text-rose-700"
                       )}>
-                        {ot.status.charAt(0).toUpperCase() + ot.status.slice(1)}
+                        {ot.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
+                    <TableCell className="text-muted-foreground text-[10px] font-medium">
                       {formatTableDate(ot.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">

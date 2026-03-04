@@ -6,8 +6,8 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Solución SaaS: Lectura pública de evidencias para visualización en reportes y emails
-    // Escritura restringida a personal autenticado
+    // Solución SaaS: Lectura pública de evidencias para visualización en reportes y navegador
+    // Esto asegura que <img> con URLs de descarga funcionen siempre.
     match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
       allow read: if true;
       allow write: if isSignedIn();
@@ -18,7 +18,7 @@ service firebase.storage {
       allow write: if isSignedIn();
     }
 
-    // Regla por defecto: Lectura permitida para activos públicos, escritura privada
+    // Regla por defecto
     match /{allPaths=**} {
       allow read: if true;
       allow write: if isSignedIn();
