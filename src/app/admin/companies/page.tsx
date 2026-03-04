@@ -253,7 +253,9 @@ export default function AdminCompaniesPage() {
       },
     };
 
+    // Usamos addDocumentNonBlocking que emitirá FirestorePermissionError si falla
     addDocumentNonBlocking(mailCol, mailData).catch(async (error) => {
+      // Ya lo maneja addDocumentNonBlocking internamente, pero forzamos por si acaso
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: "mail",
         operation: 'create',

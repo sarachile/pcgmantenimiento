@@ -3,18 +3,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- FUNCIONES HELPER ---
+    // --- FUNCIONES HELPER CRÍTICAS ---
     
     function isSignedIn() {
       return request.auth != null;
     }
     
     function isSuperAdmin() {
-      // Prioridad absoluta al email del dueño del SaaS
+      // Prioridad absoluta y comprobación directa del email del dueño
       return isSignedIn() && (
         request.auth.token.email == 'control@pcgoperacion.com' ||
-        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin')
+        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid))
       );
     }
 
@@ -32,9 +31,9 @@ service cloud.firestore {
 
     // --- REGLAS DE COLECCIONES ---
 
-    // Colección para la extensión Trigger Email
-    // REGLA SIMPLIFICADA: Si el email es el del controlador, se permite TODO en mail.
-    match /mail/{mailId} {
+    // Colección 'mail' para la extensión Trigger Email
+    // REGLA DE EMERGENCIA: Permiso total para el administrador maestro en esta ruta
+    match /mail/{allPaths=**} {
       allow create, read, write: if isSignedIn() && (request.auth.token.email == 'control@pcgoperacion.com' || isSuperAdmin());
     }
 
