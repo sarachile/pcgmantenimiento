@@ -339,6 +339,72 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  const generateEmailHtml = (subject: string) => {
+    const techNames = assignedStaff?.map(s => s.name).join(', ') || "Equipo Técnico";
+    const approvalLink = currentUrl;
+    
+    return `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; color: #1e293b; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="background-color: #1e3a8a; padding: 40px 32px; text-align: center;">
+          <h1 style="color: #ffffff; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px; text-transform: uppercase;">${subject}</h1>
+          <p style="color: #bfdbfe; font-size: 14px; margin-top: 8px; font-weight: 500;">Gestión de Mantenimiento Industrial Avanzada</p>
+        </div>
+        
+        <div style="padding: 32px;">
+          <p style="font-size: 16px; line-height: 1.6;">Estimados <strong>${client?.name}</strong>,</p>
+          <p style="font-size: 15px; line-height: 1.6; color: #475569;">Le informamos que la intervención técnica programada ha sido completada y validada por nuestra supervisión técnica. A continuación, se detallan los pormenores de la Orden de Trabajo:</p>
+          
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 24px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 40%;">ID de Operación:</td>
+                <td style="padding: 8px 0; font-size: 14px; font-weight: 800; color: #1e3a8a;">${ot?.id}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Equipo / Activo:</td>
+                <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${asset?.name || 'S/I'} [${asset?.code || 'N/A'}]</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Fecha Ejecución:</td>
+                <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${formatDateLabel(ot?.executedAt || new Date())}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Personal Responsable:</td>
+                <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${techNames}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="margin-bottom: 32px;">
+            <h3 style="font-size: 13px; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin-bottom: 12px; border-left: 4px solid #1e3a8a; padding-left: 12px;">Descripción de Trabajos Realizados:</h3>
+            <div style="background-color: #ffffff; border: 1px solid #f1f5f9; padding: 16px; border-radius: 8px; font-size: 14px; color: #334155; font-style: italic; line-height: 1.5;">
+              ${ot?.description}
+            </div>
+          </div>
+
+          <p style="font-size: 14px; line-height: 1.6; color: #475569; text-align: center; margin-bottom: 24px;">Para formalizar la recepción conforme y finalizar el proceso administrativo, solicitamos su revisión y firma digital a través de nuestro portal de validación:</p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${approvalLink}" style="background-color: #1e3a8a; color: #ffffff; padding: 18px 36px; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);">
+              REVISAR Y FIRMAR SERVICIO
+            </a>
+          </div>
+
+          <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 16px; display: flex; align-items: flex-start; gap: 12px;">
+            <div style="font-size: 12px; color: #92400e;">
+              <strong>Nota de Seguridad:</strong> Este enlace es personal y exclusivo para la validación de la Orden de Trabajo ${ot?.id}. Una vez firmado, el documento PDF final será generado automáticamente.
+            </div>
+          </div>
+        </div>
+        
+        <div style="background-color: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+          <p style="font-size: 11px; color: #94a3b8; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Enviado por la plataforma central de ${company?.name || 'PCG OPERACIONES'}</p>
+          <p style="font-size: 10px; color: #cbd5e1; margin-top: 4px;">Este es un mensaje automático, por favor no responda directamente.</p>
+        </div>
+      </div>
+    `;
+  };
+
   const handleInternalApproval = async (ratings: any, comment: string) => {
     if (!db || !profile || !ot || !otRef) return;
     setIsUpdating(true);
@@ -366,72 +432,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       });
 
       if (ot.reviewerRequired && client?.contactEmail) {
-        const approvalLink = currentUrl;
-        const techNames = assignedStaff?.map(s => s.name).join(', ') || "Equipo Técnico";
-        
+        const htmlContent = generateEmailHtml(`SOLICITUD DE APROBACIÓN: OT ${ot.id}`);
         await sendSystemEmail({
           to: client.contactEmail,
           subject: `SOLICITUD DE APROBACIÓN: OT ${ot.id} - ${company?.name || 'PCGMANTENIMIENTO'}`,
-          html: `
-            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 650px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; color: #1e293b; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-              <div style="background-color: #1e3a8a; padding: 40px 32px; text-align: center;">
-                <h1 style="color: #ffffff; font-size: 24px; font-weight: 800; margin: 0; letter-spacing: -0.5px; text-transform: uppercase;">Notificación de Servicio Técnico</h1>
-                <p style="color: #bfdbfe; font-size: 14px; margin-top: 8px; font-weight: 500;">Gestión de Mantenimiento Industrial Avanzada</p>
-              </div>
-              
-              <div style="padding: 32px;">
-                <p style="font-size: 16px; line-height: 1.6;">Estimados <strong>${client?.name}</strong>,</p>
-                <p style="font-size: 15px; line-height: 1.6; color: #475569;">Le informamos que la intervención técnica programada ha sido completada y validada por nuestra supervisión técnica. A continuación, se detallan los pormenores de la Orden de Trabajo:</p>
-                
-                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 24px 0;">
-                  <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                      <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; width: 40%;">ID de Operación:</td>
-                      <td style="padding: 8px 0; font-size: 14px; font-weight: 800; color: #1e3a8a;">${ot.id}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Equipo / Activo:</td>
-                      <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${asset?.name || 'S/I'} [${asset?.code || 'N/A'}]</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Fecha Ejecución:</td>
-                      <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${formatDateLabel(ot.executedAt || new Date())}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 8px 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;">Personal Responsable:</td>
-                      <td style="padding: 8px 0; font-size: 14px; font-weight: 600;">${techNames}</td>
-                    </tr>
-                  </table>
-                </div>
-
-                <div style="margin-bottom: 32px;">
-                  <h3 style="font-size: 13px; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin-bottom: 12px; border-left: 4px solid #1e3a8a; padding-left: 12px;">Descripción de Trabajos Realizados:</h3>
-                  <div style="background-color: #ffffff; border: 1px solid #f1f5f9; padding: 16px; border-radius: 8px; font-size: 14px; color: #334155; font-style: italic; line-height: 1.5;">
-                    ${ot.description}
-                  </div>
-                </div>
-
-                <p style="font-size: 14px; line-height: 1.6; color: #475569; text-align: center; margin-bottom: 24px;">Para formalizar la recepción conforme y finalizar el proceso administrativo, solicitamos su revisión y firma digital a través de nuestro portal de validación:</p>
-
-                <div style="text-align: center; margin: 32px 0;">
-                  <a href="${approvalLink}" style="background-color: #1e3a8a; color: #ffffff; padding: 18px 36px; text-decoration: none; border-radius: 12px; font-weight: 800; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);">
-                    REVISAR Y FIRMAR SERVICIO
-                  </a>
-                </div>
-
-                <div style="background-color: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 16px; display: flex; align-items: flex-start; gap: 12px;">
-                  <div style="font-size: 12px; color: #92400e;">
-                    <strong>Nota de Seguridad:</strong> Este enlace es personal y exclusivo para la validación de la Orden de Trabajo ${ot.id}. Una vez firmado, el documento PDF final será generado automáticamente.
-                  </div>
-                </div>
-              </div>
-              
-              <div style="background-color: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
-                <p style="font-size: 11px; color: #94a3b8; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 1px;">Enviado por la plataforma central de ${company?.name || 'PCG OPERACIONES'}</p>
-                <p style="font-size: 10px; color: #cbd5e1; margin-top: 4px;">Este es un mensaje automático, por favor no responda directamente.</p>
-              </div>
-            </div>
-          `
+          html: htmlContent
         });
         toast({ title: "Validación Solicitada", description: "Se ha enviado el link de aprobación al cliente." });
       } else {
@@ -441,6 +446,28 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       setIsEvalOpen(false);
     } catch (e: any) {
       toast({ title: "Error al evaluar", description: e.message, variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleResendInvitation = async () => {
+    if (!ot || !client?.contactEmail || !company) {
+      toast({ title: "Datos insuficientes", description: "No hay un correo de contacto definido para este cliente.", variant: "destructive" });
+      return;
+    }
+    
+    setIsUpdating(true);
+    try {
+      const htmlContent = generateEmailHtml(`RE-ENVÍO: SOLICITUD DE APROBACIÓN - OT ${ot.id}`);
+      await sendSystemEmail({
+        to: client.contactEmail,
+        subject: `RE-ENVÍO: SOLICITUD DE APROBACIÓN: OT ${ot.id} - ${company?.name || 'PCGMANTENIMIENTO'}`,
+        html: htmlContent
+      });
+      toast({ title: "Invitación Enviada", description: `Se ha re-enviado el acceso a ${client.contactEmail}` });
+    } catch (e: any) {
+      toast({ title: "Error en envío", description: e.message, variant: "destructive" });
     } finally {
       setIsUpdating(false);
     }
@@ -533,8 +560,15 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       <Button variant="outline" size="sm" className="h-8 gap-2" asChild>
                         <a href={currentUrl} target="_blank"><ExternalLink className="h-3 w-3" /> Ver Portal Cliente</a>
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-8 gap-2 text-indigo-600 font-bold">
-                        <Mail className="h-3 w-3" /> Re-enviar Invitación
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 gap-2 text-indigo-600 font-bold"
+                        onClick={handleResendInvitation}
+                        disabled={isUpdating}
+                      >
+                        {isUpdating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />} 
+                        Re-enviar Invitación
                       </Button>
                     </div>
                   </div>
