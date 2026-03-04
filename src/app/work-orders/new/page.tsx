@@ -37,22 +37,27 @@ export default function NewWorkOrderPage() {
   const [durationDays, setDurationDays] = useState(1);
   const [estimatedEndDate, setEstimatedEndDate] = useState("");
 
+  // Logic to update estimated end date when scheduled date or duration changes
+  // We use a separate state and check for equality to prevent infinite loops
   useEffect(() => {
     if (scheduledDate && durationDays) {
       try {
         const start = parseISO(scheduledDate);
         const end = addDays(start, Number(durationDays));
         const formattedDate = format(end, 'yyyy-MM-dd');
-        if (estimatedEndDate !== formattedDate) {
-          setEstimatedEndDate(formattedDate);
-        }
+        
+        setEstimatedEndDate((prev) => {
+          if (prev !== formattedDate) return formattedDate;
+          return prev;
+        });
       } catch (e) {
-        if (estimatedEndDate !== "") {
-          setEstimatedEndDate("");
-        }
+        setEstimatedEndDate((prev) => prev !== "" ? "" : prev);
       }
     }
-  }, [scheduledDate, durationDays, estimatedEndDate]);
+  }, [scheduledDate, durationDays]);
+
+  const [checklist, setChecklist] = useState<{task: string}[]>([]);
+  const [newTask, setNewTask] = useState("");
 
   const handleAddTask = () => {
     if (!newTask.trim()) return;
@@ -124,7 +129,7 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  // Fetching data
+  // Fetching data with memoized queries
   const assetsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "assets");
@@ -143,7 +148,6 @@ export default function NewWorkOrderPage() {
     );
   }, [db, profile?.companyId]);
 
-  // Query active work orders to check staff availability
   const activeWorkOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return query(
@@ -157,7 +161,6 @@ export default function NewWorkOrderPage() {
   const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
   const { data: activeWorkOrders } = useCollection<WorkOrder>(activeWorkOrdersQuery);
 
-  // Map staff IDs to their current OT ID if they are busy
   const staffBusyMap = useMemo(() => {
     const busy: Record<string, string> = {};
     activeWorkOrders?.forEach(ot => {
@@ -167,10 +170,6 @@ export default function NewWorkOrderPage() {
     });
     return busy;
   }, [activeWorkOrders]);
-
-  // Checklist State
-  const [checklist, setChecklist] = useState<{task: string}[]>([]);
-  const [newTask, setNewTask] = useState("");
 
   if (isUserLoading) {
     return (
@@ -206,7 +205,7 @@ export default function NewWorkOrderPage() {
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={isClientsLoading ? "Cargando clientes..." : "Seleccione un cliente..."} />
+                    <SelectValue placeholder={isClientsLoading ? "Cargando..." : "Seleccione un cliente..."} />
                   </SelectTrigger>
                   <SelectContent>
                     {isClientsLoading ? (
@@ -226,7 +225,7 @@ export default function NewWorkOrderPage() {
                 <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
                   <SelectTrigger>
-                    <SelectValue placeholder={isAssetsLoading ? "Cargando activos..." : "Seleccione equipo (Opcional)..."} />
+                    <SelectValue placeholder={isAssetsLoading ? "Cargando..." : "Seleccione equipo (Opcional)..."} />
                   </SelectTrigger>
                   <SelectContent>
                     {isAssetsLoading ? (
