@@ -135,7 +135,7 @@ export default function AdminCompaniesPage() {
 
       toast({
         title: "Empresa Registrada",
-        description: `Código de acceso: ${companyId}. Entréguelo al cliente.`,
+        description: `Entorno creado exitosamente. ID: ${companyId}`,
       });
       
       setIsCreateOpen(false);
@@ -204,33 +204,51 @@ export default function AdminCompaniesPage() {
 
     setIsSendingInvite(true);
     try {
-      // Escribir en la colección 'mail' para activar el Trigger Email Extension
+      // Registrar en la colección 'mail' para activar Trigger Email
       const mailCol = collection(db, "mail");
       await addDoc(mailCol, {
         to: inviteEmail,
         message: {
-          subject: `Bienvenido a PCGMANTENIMIENTO ERP - Acceso Maestro ${detailsCompany.name}`,
+          subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
           html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; color: #1f2937;">
-              <h2 style="color: #1e3a8a; font-size: 24px; margin-bottom: 16px;">¡Bienvenido a PCGMANTENIMIENTO ERP!</h2>
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; color: #1f2937; background-color: #ffffff;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -1px;">PCGMANTENIMIENTO ERP</h1>
+                <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Solución de Gestión Industrial Avanzada</p>
+              </div>
+              
+              <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">Bienvenido a su Entorno Operativo</h2>
+              
               <p>Estimados,</p>
-              <p>Su entorno de gestión industrial para <strong>${detailsCompany.name}</strong> ha sido configurado y se encuentra listo para operar.</p>
-              <p>Para comenzar, cada miembro del equipo debe registrarse en nuestra plataforma oficial:</p>
-              <div style="margin: 24px 0;">
-                <a href="https://www.pcgmantenimiento.com" style="background-color: #1e3a8a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-                  Ir a www.pcgmantenimiento.com
+              <p>Su ecosistema de gestión para <strong>${detailsCompany.name}</strong> ha sido activado y está listo para la operación de campo y administrativa.</p>
+              
+              <p>Para comenzar, cada miembro del equipo debe registrarse en el portal oficial:</p>
+              
+              <div style="margin: 32px 0; text-align: center;">
+                <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                  Completar Registro de Usuario
                 </a>
+                <p style="color: #64748b; font-size: 12px; margin-top: 12px;">Acceso vía: www.pcgmantenimiento.com</p>
               </div>
-              <p>Durante el registro, se le solicitará el siguiente <strong>Código de Acceso Maestro</strong>:</p>
-              <div style="background-color: #f3f4f6; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 28px; font-family: monospace; font-weight: bold; color: #1e3a8a; letter-spacing: 4px;">
-                ${detailsCompany.id}
+              
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+                <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px; text-align: center;">Código de Vinculación Corporativa</p>
+                <div style="background-color: #ffffff; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px;">
+                  ${detailsCompany.id}
+                </div>
+                <p style="color: #b45309; font-size: 12px; font-weight: bold; margin-top: 12px; text-align: center;">
+                  * Este código vincula su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
+                </p>
               </div>
-              <p style="color: #b45309; font-size: 13px; font-weight: bold; margin-top: 16px;">
-                * Importante: Este código es solo para vincular su cuenta a la organización. Su contraseña personal la define usted en el paso siguiente.
-              </p>
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-              <p style="font-size: 12px; color: #6b7280; font-style: italic;">
-                Este es un mensaje automático del sistema de control maestro de PCG OPERACIONES. Por favor no responda a este correo.
+              
+              <div style="font-size: 13px; color: #64748b; line-height: 1.6;">
+                <p><strong>Nota de Seguridad:</strong> Este código permite el acceso a la infraestructura de datos de su empresa. Favor distribuirlo únicamente a personal autorizado.</p>
+              </div>
+              
+              <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
+              
+              <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
+                Este es un mensaje automático de la plataforma central de PCG OPERACIONES. Por favor no responda a esta casilla.
               </p>
             </div>
           `,
@@ -238,16 +256,16 @@ export default function AdminCompaniesPage() {
       });
 
       toast({
-        title: "Invitación Procesada",
-        description: `El correo de bienvenida se ha enviado a ${inviteEmail}.`,
+        title: "Correo en camino",
+        description: `Invitación enviada exitosamente a ${inviteEmail}.`,
       });
       setIsSendingInvite(false);
       setIsInviteOpen(false);
       setInviteEmail("");
     } catch (error: any) {
       toast({
-        title: "Error de Envío",
-        description: error.message || "No se pudo registrar la solicitud de correo.",
+        title: "Falla de envío",
+        description: error.message || "Error al procesar la solicitud de correo.",
         variant: "destructive",
       });
       setIsSendingInvite(false);
