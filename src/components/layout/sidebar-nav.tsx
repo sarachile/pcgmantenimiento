@@ -14,7 +14,8 @@ import {
   BarChart3,
   Globe,
   HardHat,
-  Package
+  Package,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
   { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
   { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
+  { title: "Reportes", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor'] },
   { title: "Mi Empresa", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor'] },
   { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
@@ -52,7 +54,7 @@ const adminItems: NavItem[] = [
   { title: "Control Plataforma", href: "/admin", icon: Globe, roles: ['superadmin'] },
   { title: "Empresas", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
   { title: "Usuarios Globales", href: "/admin/users", icon: Users, roles: ['superadmin'] },
-  { title: "Estadísticas", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
+  { title: "Estadísticas Globales", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
 ];
 
 export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
