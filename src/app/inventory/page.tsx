@@ -45,7 +45,6 @@ export default function InventoryPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAdding, setIsAdding] = useState(false);
   const [open, setOpen] = useState(false);
 
   // Form states
@@ -72,7 +71,7 @@ export default function InventoryPage() {
     p.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateItem = async (e: React.FormEvent) => {
+  const handleCreateItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!profile?.companyId || !db) return;
 
@@ -85,35 +84,27 @@ export default function InventoryPage() {
       return;
     }
 
-    setIsAdding(true);
-    try {
-      const colRef = collection(db, "companies", profile.companyId, "spareParts");
-      await addDocumentNonBlocking(colRef, {
-        companyId: profile.companyId,
-        name: newItem.name,
-        sku: newItem.sku,
-        stockActual: Number(newItem.stockActual),
-        stockMinimo: Number(newItem.stockMinimo) || 0,
-        unitPrice: Number(newItem.unitPrice) || 0,
-        createdAt: serverTimestamp(),
-      });
+    const colRef = collection(db, "companies", profile.companyId, "spareParts");
+    
+    // Use non-blocking call as per guidelines
+    addDocumentNonBlocking(colRef, {
+      companyId: profile.companyId,
+      name: newItem.name,
+      sku: newItem.sku,
+      stockActual: Number(newItem.stockActual),
+      stockMinimo: Number(newItem.stockMinimo) || 0,
+      unitPrice: Number(newItem.unitPrice) || 0,
+      createdAt: serverTimestamp(),
+    });
 
-      toast({
-        title: "Ítem registrado",
-        description: `${newItem.name} ha sido añadido al catálogo.`,
-      });
-      
-      setNewItem({ name: "", sku: "", stockActual: "", stockMinimo: "", unitPrice: "" });
-      setOpen(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo registrar el ítem.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAdding(false);
-    }
+    // Proceed immediately for a responsive UI
+    toast({
+      title: "Ítem registrado",
+      description: `${newItem.name} ha sido añadido al catálogo.`,
+    });
+    
+    setNewItem({ name: "", sku: "", stockActual: "", stockMinimo: "", unitPrice: "" });
+    setOpen(false);
   };
 
   if (isAuthLoading) {
@@ -207,9 +198,9 @@ export default function InventoryPage() {
                     onChange={(e) => setNewItem({...newItem, unitPrice: e.target.value})}
                   />
                 </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={isAdding}>
-                    {isAdding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                <DialogFooter className="pt-4">
+                  <Button type="submit">
+                    <Plus className="h-4 w-4 mr-2" />
                     Guardar en Catálogo
                   </Button>
                 </DialogFooter>
