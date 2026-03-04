@@ -22,13 +22,15 @@ import {
   MoreVertical,
   Loader2,
   UserCheck,
-  UserMinus
+  UserMinus,
+  ArrowLeft
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, updateDoc } from "firebase/firestore";
 import { MOCK_USERS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 export default function TeamPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -43,12 +45,11 @@ export default function TeamPage() {
 
   const usersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
-    return collection(db, "users"); // En un ERP real filtraríamos por companyId en la query
+    return collection(db, "users");
   }, [db, profile?.companyId]);
 
   const { data: realUsers, isLoading: isUsersLoading } = useCollection(usersQuery);
 
-  // Filtrar usuarios de la empresa actual (simulación si no hay index global)
   const companyUsers = (realUsers || MOCK_USERS).filter(u => u.companyId === profile?.companyId);
   const isDemo = !realUsers || realUsers.length === 0;
 
@@ -93,9 +94,16 @@ export default function TeamPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Mi Equipo</h2>
-          <p className="text-muted-foreground">Gestione los técnicos, supervisores y revisores de su empresa.</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Mi Equipo</h2>
+            <p className="text-muted-foreground">Gestione los técnicos, supervisores y revisores de su empresa.</p>
+          </div>
         </div>
         <Button>
           <UserPlus className="mr-2 h-4 w-4" /> Invitar Miembro

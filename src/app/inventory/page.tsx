@@ -21,12 +21,14 @@ import {
   AlertCircle,
   TrendingDown,
   MoreVertical,
-  Loader2
+  Loader2,
+  ArrowLeft
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { MOCK_SPARE_PARTS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function InventoryPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -59,9 +61,16 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Inventario de Repuestos</h2>
-          <p className="text-muted-foreground">Gestión de insumos y materiales para mantenimiento.</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Inventario</h2>
+            <p className="text-muted-foreground">Gestión de insumos y materiales para mantenimiento.</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline">

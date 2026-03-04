@@ -22,7 +22,7 @@ import {
   History,
   MoreVertical,
   Loader2,
-  AlertTriangle
+  ArrowLeft
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
@@ -77,9 +77,16 @@ export default function AssetsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Activos y Equipos</h2>
-          <p className="text-muted-foreground">Catálogo maestro de maquinaria sujeta a mantenimiento.</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
+            <Link href="/dashboard">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">Activos y Equipos</h2>
+            <p className="text-muted-foreground">Catálogo maestro de maquinaria sujeta a mantenimiento.</p>
+          </div>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" /> Nuevo Activo
