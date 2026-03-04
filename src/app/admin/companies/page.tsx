@@ -63,10 +63,9 @@ import {
   useCollection, 
   useMemoFirebase, 
   updateDocumentNonBlocking,
-  setDocumentNonBlocking,
-  addDocumentNonBlocking
+  setDocumentNonBlocking
 } from "@/firebase";
-import { collection, doc, serverTimestamp, query, orderBy, limit, updateDoc } from "firebase/firestore";
+import { collection, doc, serverTimestamp, query, orderBy, limit, updateDoc, addDoc } from "firebase/firestore";
 import { Company, User } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -125,7 +124,7 @@ export default function AdminCompaniesPage() {
 
   const mailLogQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
-    return query(collection(db, "mail"), limit(15));
+    return query(collection(db, "mail"), orderBy("createdAt", "desc"), limit(10));
   }, [db, isSuperAdmin]);
   const { data: mailLogs } = useCollection(mailLogQuery);
 
@@ -245,8 +244,8 @@ export default function AdminCompaniesPage() {
     `;
 
     try {
-      // 1. Crear el registro en Firestore para el monitor
-      const docRef = await addDocumentNonBlocking(mailCol, {
+      // 1. Crear el registro inicial en Firestore
+      const docRef = await addDoc(mailCol, {
         to: inviteEmail,
         createdAt: serverTimestamp(),
         message: {
@@ -256,24 +255,26 @@ export default function AdminCompaniesPage() {
         delivery: { state: 'PROCESANDO' }
       });
 
-      // 2. Disparar el envío real vía Server Action
+      // 2. Cerrar el modal inmediatamente para mejorar UX
+      setIsInviteOpen(false);
+      setInviteEmail("");
+
+      // 3. Ejecutar el envío real vía Server Action
       const result = await sendSystemEmail({
         to: inviteEmail,
         subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
         html: htmlContent
       });
 
-      // 3. Actualizar el registro con el resultado real
-      if (docRef && docRef.id) {
-        const logRef = doc(db, "mail", docRef.id);
-        await updateDoc(logRef, {
-          delivery: {
-            state: result.success ? 'SUCCESS' : 'ERROR',
-            error: result.error || null,
-            sentAt: serverTimestamp()
-          }
-        });
-      }
+      // 4. Actualizar el registro en Firestore con el resultado real
+      const logRef = doc(db, "mail", docRef.id);
+      await updateDoc(logRef, {
+        delivery: {
+          state: result.success ? 'SUCCESS' : 'ERROR',
+          error: result.error || null,
+          sentAt: serverTimestamp()
+        }
+      });
 
       toast({
         title: result.success ? "Invitación Enviada" : "Error en envío",
@@ -281,8 +282,6 @@ export default function AdminCompaniesPage() {
         variant: result.success ? "default" : "destructive"
       });
       
-      setIsInviteOpen(false);
-      setInviteEmail("");
     } catch (error: any) {
       toast({ title: "Error crítico", description: error.message, variant: "destructive" });
     } finally {
@@ -500,11 +499,7 @@ export default function AdminCompaniesPage() {
             <CardContent className="pt-4 px-0">
               <div className="space-y-1">
                 {mailLogs && mailLogs.length > 0 ? (
-                  [...mailLogs].sort((a, b) => {
-                    const timeA = a.createdAt?.seconds || 0;
-                    const timeB = b.createdAt?.seconds || 0;
-                    return timeB - timeA;
-                  }).map((log: any) => (
+                  mailLogs.map((log: any) => (
                     <div key={log.id} className="px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-0">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[10px] font-bold text-white/60 truncate max-w-[120px]">{log.to}</span>

@@ -48,6 +48,18 @@ service cloud.firestore {
     }
 
     // =========================
+    // 📧 MAIL (LOGS DE SERVER ACTIONS)
+    // =========================
+
+    match /mail/{mailId} {
+      // El SuperAdmin debe poder leer para el monitor
+      allow read: if isSuperAdmin();
+      // Permitir creación y actualización para registrar el éxito/error del Server Action
+      allow create, update: if isSignedIn() && (isSuperAdmin() || getUserData().role == 'companyAdmin');
+      allow delete: if false;
+    }
+
+    // =========================
     // 👤 USERS
     // =========================
 
@@ -127,18 +139,6 @@ service cloud.firestore {
           allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
         }
       }
-    }
-
-    // =========================
-    // 📧 MAIL (BYPASS DE EXTENSIÓN)
-    // =========================
-
-    match /mail/{mailId} {
-      // El SuperAdmin puede leer para el monitor
-      allow read: if isSuperAdmin();
-      // Permitir creación y actualización para el flujo de Server Actions
-      allow create, update: if isSignedIn() && (isSuperAdmin() || getUserData().role == 'companyAdmin');
-      allow delete: if false;
     }
 
     // =========================
