@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useRef } from "react";
@@ -29,7 +30,8 @@ import {
   Plus,
   Camera,
   Image as ImageIcon,
-  Trash2
+  ListChecks,
+  ShieldCheck
 } from "lucide-react";
 import {
   Dialog,
@@ -49,6 +51,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +59,7 @@ import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFireba
 import { doc, collection, addDoc, serverTimestamp, increment, arrayUnion } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
+import { ChecklistItem } from "@/lib/types";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -157,6 +161,37 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const toggleChecklistItem = (taskId: string) => {
+    if (isMock || !ot || !otRef || !profile) return;
+
+    const updatedChecklist = ot.checklist?.map((item: ChecklistItem) => {
+      if (item.id === taskId) {
+        const newCompleted = !item.completed;
+        
+        // Log the completion/uncompletion in logbook
+        const logRef = collection(db, "companies", profile.companyId, "workOrders", ot.id, "digitalLogbookEntries");
+        addDoc(logRef, {
+          workOrderId: ot.id,
+          companyId: profile.companyId,
+          timestamp: serverTimestamp(),
+          eventType: 'action_taken',
+          eventDetails: `${newCompleted ? 'Completó' : 'Desmarcó'} tarea: ${item.task}`,
+          actor: profile.id,
+        });
+
+        return { ...item, completed: newCompleted, completedAt: newCompleted ? new Date().toISOString() : null };
+      }
+      return item;
+    });
+
+    updateDocumentNonBlocking(otRef, {
+      checklist: updatedChecklist,
+      updatedAt: serverTimestamp()
+    });
+
+    toast({ title: "Checklist actualizado", description: "El progreso se ha guardado." });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -263,6 +298,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const canReview = (isReviewer || isSupervisor || isCompanyAdmin) && ot.status === 'en revision';
   const canEditParts = (isTechnician || isSupervisor || isCompanyAdmin) && !['aprobada', 'rechazada'].includes(ot.status);
   const canUploadEvidence = (isTechnician || isSupervisor || isCompanyAdmin) && !['aprobada', 'rechazada'].includes(ot.status);
+  const canInteractChecklist = (isTechnician || isSupervisor || isCompanyAdmin) && !['aprobada', 'rechazada'].includes(ot.status);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
@@ -325,6 +361,68 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <Label className="text-xs uppercase text-muted-foreground">Descripción del Trabajo</Label>
                 <p className="mt-1 text-sm leading-relaxed">{ot.description}</p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Checklist Section */}
+          <Card className="border-none shadow-sm bg-primary/5">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <ListChecks className="h-5 w-5 text-primary" /> 
+                Protocolo de Verificación
+              </CardTitle>
+              <CardDescription>Pasos obligatorios definidos para esta mantención.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {ot.checklist && ot.checklist.length > 0 ? (
+                <div className="space-y-4">
+                  {ot.checklist.map((item: ChecklistItem) => (
+                    <div key={item.id} className="flex items-start gap-3 p-3 bg-card rounded-lg border shadow-sm transition-colors hover:bg-accent/5">
+                      <Checkbox 
+                        id={item.id} 
+                        checked={item.completed} 
+                        onCheckedChange={() => toggleChecklistItem(item.id)}
+                        disabled={!canInteractChecklist}
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <Label 
+                          htmlFor={item.id} 
+                          className={cn(
+                            "text-sm font-medium cursor-pointer",
+                            item.completed && "line-through text-muted-foreground"
+                          )}
+                        >
+                          {item.task}
+                        </Label>
+                        {item.completed && item.completedAt && (
+                          <p className="text-[10px] text-emerald-600 font-bold mt-1 uppercase flex items-center gap-1">
+                            <ShieldCheck className="h-3 w-3" /> Verificado {formatDate(item.completedAt)}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="pt-2">
+                    <div className="flex justify-between items-center text-xs text-muted-foreground px-1">
+                      <span>Progreso del protocolo</span>
+                      <span>
+                        {ot.checklist.filter((i: ChecklistItem) => i.completed).length} / {ot.checklist.length}
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-muted rounded-full mt-1 overflow-hidden">
+                      <div 
+                        className="bg-primary h-full transition-all duration-500" 
+                        style={{ width: `${(ot.checklist.filter((i: ChecklistItem) => i.completed).length / ot.checklist.length) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground italic text-sm bg-background/50 border-2 border-dashed rounded-xl">
+                  No se definió un protocolo específico para esta orden.
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -73,6 +73,13 @@ export interface PartUsage {
   usedAt: string | any;
 }
 
+export interface ChecklistItem {
+  id: string;
+  task: string;
+  completed: boolean;
+  completedAt?: string | any;
+}
+
 export interface WorkOrder {
   id: string;
   companyId: string;
@@ -85,6 +92,7 @@ export interface WorkOrder {
   createdByUserId: string;
   reviewerId?: string;
   reviewerRequired: boolean;
+  checklist?: ChecklistItem[];
   createdAt: string | any;
   updatedAt: string | any;
   executedAt?: string | any;

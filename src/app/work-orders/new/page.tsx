@@ -9,12 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, AlertCircle, Building2 } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, AlertCircle, ListChecks, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { MOCK_USERS, MOCK_CLIENTS } from "@/lib/mock-data";
+import { ChecklistItem } from "@/lib/types";
 
 export default function NewWorkOrderPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -27,6 +29,20 @@ export default function NewWorkOrderPage() {
   const [reviewerRequired, setReviewerRequired] = useState(false);
   const [assignedTo, setAssignedTo] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Checklist State
+  const [checklist, setChecklist] = useState<{task: string}[]>([]);
+  const [newTask, setNewTask] = useState("");
+
+  const handleAddTask = () => {
+    if (!newTask.trim()) return;
+    setChecklist([...checklist, { task: newTask.trim() }]);
+    setNewTask("");
+  };
+
+  const removeTask = (index: number) => {
+    setChecklist(checklist.filter((_, i) => i !== index));
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +77,11 @@ export default function NewWorkOrderPage() {
         assignedToUserId: assignedTo || null,
         createdByUserId: profile.id,
         reviewerRequired,
+        checklist: checklist.map((item, idx) => ({
+          id: `task-${idx}-${Date.now()}`,
+          task: item.task,
+          completed: false,
+        })),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -69,14 +90,14 @@ export default function NewWorkOrderPage() {
 
       toast({
         title: "Orden Creada Exitosamente",
-        description: `Se ha generado la OT con ID temporal: ${docRef.id.substring(0, 8)}...`,
+        description: `Se ha generado la OT y se registró el protocolo de trabajo.`,
       });
 
       router.push(`/work-orders/${docRef.id}`);
     } catch (error: any) {
       toast({
         title: "Error al guardar",
-        description: "No se pudo guardar la orden en la base de datos. Verifique su conexión.",
+        description: "No se pudo guardar la orden en la base de datos.",
         variant: "destructive",
       });
     } finally {
@@ -96,7 +117,7 @@ export default function NewWorkOrderPage() {
   const clients = MOCK_CLIENTS.filter(c => c.companyId === profile?.companyId);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 px-4 py-8">
+    <div className="max-w-3xl mx-auto space-y-6 px-4 py-8">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/work-orders">
@@ -105,7 +126,7 @@ export default function NewWorkOrderPage() {
         </Button>
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground italic">Registro en el libro digital de obra.</p>
+          <p className="text-sm text-muted-foreground italic">Registro en el libro digital de obra con protocolo.</p>
         </div>
       </div>
 
@@ -116,45 +137,30 @@ export default function NewWorkOrderPage() {
             Detalles de la Mantención
           </CardTitle>
           <CardDescription>
-            La información será registrada de forma inmutable para auditorías futuras.
+            Defina el alcance y el protocolo de pasos a seguir por el técnico.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleCreate}>
           <CardContent className="space-y-6 pt-6">
-            <div className="space-y-2">
-              <Label htmlFor="client" className="font-bold">Cliente Seleccionado *</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger id="client" className="bg-background">
-                  <SelectValue placeholder="Seleccione un cliente..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.length > 0 ? (
-                    clients.map(client => (
-                      <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="none" disabled>No hay clientes registrados</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="description" className="font-bold">Descripción del Trabajo *</Label>
-                <span className="text-[10px] text-muted-foreground uppercase">Obligatorio</span>
-              </div>
-              <Textarea 
-                id="description" 
-                placeholder="Describa la tarea preventiva o falla..." 
-                required
-                className="min-h-[120px] resize-none"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="client" className="font-bold">Cliente Seleccionado *</Label>
+                <Select value={clientId} onValueChange={setClientId}>
+                  <SelectTrigger id="client" className="bg-background">
+                    <SelectValue placeholder="Seleccione un cliente..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.length > 0 ? (
+                      clients.map(client => (
+                        <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>No hay clientes registrados</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="technician" className="font-bold">Técnico Asignado</Label>
                 <Select value={assignedTo} onValueChange={setAssignedTo}>
@@ -172,24 +178,63 @@ export default function NewWorkOrderPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="flex items-center justify-between p-4 border-2 rounded-xl bg-accent/5 border-dashed border-accent/20">
-                <div className="space-y-0.5">
-                  <Label className="font-bold">Requiere Reviewer</Label>
-                  <p className="text-xs text-muted-foreground">Obliga validación externa.</p>
-                </div>
-                <Switch 
-                  checked={reviewerRequired}
-                  onCheckedChange={setReviewerRequired}
-                />
-              </div>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 p-3 rounded-lg flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-800 leading-relaxed">
-                Se generará una entrada automática en el <strong>Libro Digital</strong> vinculada al cliente seleccionado.
-              </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="description" className="font-bold">Descripción del Trabajo *</Label>
+              </div>
+              <Textarea 
+                id="description" 
+                placeholder="Describa la tarea preventiva o falla..." 
+                required
+                className="min-h-[100px] resize-none"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-primary" />
+                <Label className="font-bold">Protocolo / Checklist Dinámico</Label>
+              </div>
+              
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Ej: Verificar nivel de aceite..." 
+                  value={newTask} 
+                  onChange={(e) => setNewTask(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTask())}
+                />
+                <Button type="button" onClick={handleAddTask} variant="outline">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {checklist.length > 0 && (
+                <div className="space-y-2 border rounded-lg p-4 bg-muted/30">
+                  {checklist.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-card p-2 rounded border shadow-sm">
+                      <span className="text-sm font-medium">{idx + 1}. {item.task}</span>
+                      <Button variant="ghost" size="icon" onClick={() => removeTask(idx)}>
+                        <Trash2 className="h-4 w-4 text-rose-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between p-4 border-2 rounded-xl bg-accent/5 border-dashed border-accent/20">
+              <div className="space-y-0.5">
+                <Label className="font-bold">Requiere Revisión Administrativa</Label>
+                <p className="text-xs text-muted-foreground">Obliga a un supervisor a aprobar la OT una vez ejecutada.</p>
+              </div>
+              <Switch 
+                checked={reviewerRequired}
+                onCheckedChange={setReviewerRequired}
+              />
             </div>
           </CardContent>
           <CardFooter className="flex justify-between border-t p-6 bg-muted/20">
@@ -197,7 +242,7 @@ export default function NewWorkOrderPage() {
               <Link href="/work-orders">Cancelar</Link>
             </Button>
             <Button type="submit" disabled={isSubmitting || !description.trim() || !clientId} className="min-w-[160px]">
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Crear Orden de Trabajo"}
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar OT"}
             </Button>
           </CardFooter>
         </form>

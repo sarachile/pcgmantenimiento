@@ -61,6 +61,19 @@
         "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "aprobada", "rechazada"] },
         "assignedToUserId": { "type": "string" },
         "reviewerRequired": { "type": "boolean" },
+        "checklist": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "task": { "type": "string" },
+              "completed": { "type": "boolean" },
+              "completedAt": { "type": "string", "format": "date-time" }
+            },
+            "required": ["id", "task", "completed"]
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "executedAt": { "type": "string", "format": "date-time" }
       },
