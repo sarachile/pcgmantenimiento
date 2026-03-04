@@ -82,7 +82,7 @@ function EvaluationForm({
     { key: 'documentation', label: 'Claridad Reportes', desc: 'Calidad de la evidencia y documentación.' }
   ];
 
-  const canSubmit = Object.values(ratings).every(r => r > 0) && comment.trim().length > 5;
+  const canSubmit = Object.values(ratings).every(r => r > 0);
 
   return (
     <div className="space-y-6">
@@ -114,7 +114,7 @@ function EvaluationForm({
       <div className="space-y-2">
         <Label className="text-xs font-bold uppercase text-muted-foreground">Comentarios y Observaciones</Label>
         <Textarea 
-          placeholder="Describa su experiencia..." 
+          placeholder="Opcional: Describa su experiencia..." 
           className="min-h-[100px] text-sm"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
@@ -358,6 +358,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <p><strong>Fecha:</strong> ${formatDateLabel(ot?.executedAt || new Date())}</p>
             <p><strong>Técnicos:</strong> ${techNames}</p>
           </div>
+          <p><strong>Alcance de los trabajos:</strong></p>
+          <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; font-style: italic; margin-bottom: 24px;">
+            ${ot?.description}
+          </div>
           <p>Para finalizar, favor revisar y firmar en el siguiente link:</p>
           <div style="text-align: center; margin: 32px 0;">
             <a href="${approvalLink}" style="background-color: #1e3a8a; color: #ffffff; padding: 18px 36px; text-decoration: none; border-radius: 12px; font-weight: 800; display: inline-block;">
@@ -465,6 +469,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!ot) return <div className="p-8 text-center">Orden no encontrada.</div>;
 
+  const canEditPhotos = ot.status !== 'aprobada' && ot.status !== 'pendiente cliente';
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
@@ -552,8 +558,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Evidencia Fotográfica</CardTitle>
-              {(ot.status === 'creada' || ot.status === 'en revision' || ot.status === 'rechazada') && (
+              <CardTitle className="flex items-center gap-2"><Camera className="h-5 w-5 text-primary" /> Evidencia Fotográfica</CardTitle>
+              {canEditPhotos && (
                 <>
                   <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleUploadPhoto} />
                   <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
@@ -568,11 +574,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   {ot.evidenceUrls.map((url, i) => (
                     <div key={i} className="group relative aspect-square rounded-xl overflow-hidden border bg-muted">
                       <FirebaseImage url={url} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleRemovePhoto(url)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      {canEditPhotos && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button size="icon" variant="destructive" className="h-8 w-8" onClick={() => handleRemovePhoto(url)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
