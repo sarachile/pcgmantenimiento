@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,8 +15,8 @@ interface FirebaseImageProps {
 }
 
 /**
- * Componente definitivo para carga de imágenes de Firebase.
- * Resuelve la ruta y obtiene un token fresco siempre (Option A).
+ * Componente para carga de imágenes de Firebase.
+ * Usa la URL directa si está disponible, o resuelve el path si es necesario.
  */
 export function FirebaseImage({ path, url, alt = "Imagen", className }: FirebaseImageProps) {
   const storage = useStorage();
@@ -24,33 +25,26 @@ export function FirebaseImage({ path, url, alt = "Imagen", className }: Firebase
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (!storage) return;
+    // Si ya tenemos una URL completa que funciona, la usamos directamente
+    if (url && url.startsWith('http')) {
+      setResolvedUrl(url);
+      setLoading(false);
+      return;
+    }
+
+    if (!storage || !path) {
+      if (!url) setError(true);
+      setLoading(false);
+      return;
+    }
 
     const resolveImage = async () => {
       setLoading(true);
       setError(false);
       try {
-        let finalPath = path;
-
-        // Si recibimos una URL completa de Firebase, extraemos la ruta interna
-        if (!finalPath && url && url.includes('firebasestorage.googleapis.com')) {
-          const decodedUrl = decodeURIComponent(url);
-          const pathStart = decodedUrl.indexOf('/o/') + 3;
-          const pathEnd = decodedUrl.indexOf('?', pathStart);
-          finalPath = pathEnd === -1 
-            ? decodedUrl.substring(pathStart) 
-            : decodedUrl.substring(pathStart, pathEnd);
-        }
-
-        if (finalPath) {
-          const fileRef = ref(storage, finalPath);
-          const downloadUrl = await getDownloadURL(fileRef);
-          setResolvedUrl(downloadUrl);
-        } else if (url) {
-          setResolvedUrl(url);
-        } else {
-          setError(true);
-        }
+        const fileRef = ref(storage, path);
+        const downloadUrl = await getDownloadURL(fileRef);
+        setResolvedUrl(downloadUrl);
       } catch (e) {
         console.error("Error resolviendo imagen:", e);
         setError(true);

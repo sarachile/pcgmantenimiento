@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -5,8 +6,6 @@ import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, Staf
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users } from "lucide-react";
-import { ref as storageRef, getDownloadURL } from "firebase/storage";
-import { useStorage } from "@/firebase";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -20,50 +19,15 @@ interface WorkOrderReportProps {
 
 /**
  * Componente de reporte para exportación PDF.
- * Resuelve las firmas dinámicamente antes de renderizar para evitar errores de tokens expirados.
+ * Usa las URLs directamente para máxima estabilidad y evita el shadowing de 'ref'.
  */
 export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportProps>(
   ({ company, workOrder, client, asset, logbook, assignedStaff, partUsages }, forwardedRef) => {
     const [isMounted, setIsMounted] = useState(false);
-    const storage = useStorage();
-    const [techSigUrl, setTechSigUrl] = useState<string | null>(null);
-    const [clientSigUrl, setClientSigUrl] = useState<string | null>(null);
 
     useEffect(() => {
       setIsMounted(true);
     }, []);
-
-    // Resolver URLs de firmas frescas al montar el reporte
-    useEffect(() => {
-      const resolveSignatures = async () => {
-        if (!storage) return;
-        
-        if (workOrder.technicianSignatureUrl) {
-          try {
-            const downloadUrl = await getDownloadURL(fromUrl(workOrder.technicianSignatureUrl));
-            setTechSigUrl(downloadUrl);
-          } catch (e) { console.error("Error cargando firma técnica", e); }
-        }
-        
-        if (workOrder.clientSignatureUrl) {
-          try {
-            const downloadUrl = await getDownloadURL(fromUrl(workOrder.clientSignatureUrl));
-            setClientSigUrl(downloadUrl);
-          } catch (e) { console.error("Error cargando firma cliente", e); }
-        }
-      };
-
-      if (isMounted) resolveSignatures();
-    }, [isMounted, workOrder.technicianSignatureUrl, workOrder.clientSignatureUrl, storage]);
-
-    // Helper para extraer referencia de una URL
-    const fromUrl = (url: string) => {
-      const decodedUrl = decodeURIComponent(url);
-      const pathStart = decodedUrl.indexOf('/o/') + 3;
-      const pathEnd = decodedUrl.indexOf('?', pathStart);
-      const extractedPath = pathEnd === -1 ? decodedUrl.substring(pathStart) : decodedUrl.substring(pathStart, pathEnd);
-      return storageRef(storage!, extractedPath);
-    };
 
     const formatDate = (date: any) => {
       if (!isMounted || !date) return "...";
@@ -87,7 +51,12 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
           <div className="flex gap-4 items-center">
             {company?.logoUrl ? (
               <div className="relative h-20 w-20 border rounded-lg overflow-hidden bg-white">
-                <img src={company.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" crossOrigin="anonymous" />
+                <img 
+                  src={company.logoUrl} 
+                  alt="Logo" 
+                  className="w-full h-full object-contain p-2" 
+                  crossOrigin="anonymous" 
+                />
               </div>
             ) : (
               <div className="bg-slate-900 p-4 rounded-xl">
@@ -188,8 +157,15 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
         <div className="mt-auto pt-12">
           <div className="grid grid-cols-2 gap-12">
             <div className="text-center">
-              <div className="h-24 relative border-b border-slate-300 mb-2 flex items-center justify-center">
-                {techSigUrl && <img src={techSigUrl} alt="Firma Técnico" className="max-h-full object-contain" crossOrigin="anonymous" />}
+              <div className="h-24 relative border-b border-slate-300 mb-2 flex items-center justify-center overflow-hidden">
+                {workOrder.technicianSignatureUrl && (
+                  <img 
+                    src={workOrder.technicianSignatureUrl} 
+                    alt="Firma Técnico" 
+                    className="max-h-full object-contain" 
+                    crossOrigin="anonymous" 
+                  />
+                )}
               </div>
               <p className="text-[10px] font-black text-slate-400 uppercase">Firma Personal Responsable</p>
               <p className="text-[9px] font-bold text-slate-600">
@@ -197,8 +173,15 @@ export const WorkOrderReport = React.forwardRef<HTMLDivElement, WorkOrderReportP
               </p>
             </div>
             <div className="text-center">
-              <div className="h-24 relative border-b border-slate-300 mb-2 flex items-center justify-center">
-                {clientSigUrl && <img src={clientSigUrl} alt="Firma Cliente" className="max-h-full object-contain" crossOrigin="anonymous" />}
+              <div className="h-24 relative border-b border-slate-300 mb-2 flex items-center justify-center overflow-hidden">
+                {workOrder.clientSignatureUrl && (
+                  <img 
+                    src={workOrder.clientSignatureUrl} 
+                    alt="Firma Cliente" 
+                    className="max-h-full object-contain" 
+                    crossOrigin="anonymous" 
+                  />
+                )}
               </div>
               <p className="text-[10px] font-black text-slate-400 uppercase">Firma Cliente (Recepción)</p>
               <p className="text-xs font-bold">{client?.contactName || "Recepción Conforme"}</p>

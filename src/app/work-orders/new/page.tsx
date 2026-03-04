@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -34,12 +35,10 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
-  // Hidratación segura de fecha
   useEffect(() => {
     setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
   }, []);
 
-  // Cálculo estable de fecha de término
   const estimatedEndDateStr = useMemo(() => {
     if (!scheduledDate || !durationDays) return "";
     try {
@@ -61,13 +60,13 @@ export default function NewWorkOrderPage() {
     setChecklist(prev => prev.filter((_, i) => i !== index));
   };
 
-  const toggleStaffSelection = useCallback((staffId: string) => {
+  const toggleStaffSelection = (staffId: string) => {
     setAssignedToStaffIds(prev => 
       prev.includes(staffId) 
         ? prev.filter(id => id !== staffId) 
         : [...prev, staffId]
     );
-  }, []);
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +106,6 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  // Consultas Firestore estables
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "clients");
@@ -126,15 +124,6 @@ export default function NewWorkOrderPage() {
   const { data: realClients } = useCollection<Client>(clientsQuery);
   const { data: realAssets } = useCollection<Asset>(assetsQuery);
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
-
-  // Opciones memoizadas para evitar re-renders de Radix Select
-  const clientOptions = useMemo(() => (
-    realClients?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>) || []
-  ), [realClients]);
-
-  const assetOptions = useMemo(() => (
-    realAssets?.map(a => <SelectItem key={a.id} value={a.id}>{a.name} ({a.code})</SelectItem>) || []
-  ), [realAssets]);
 
   if (isUserLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
@@ -159,14 +148,18 @@ export default function NewWorkOrderPage() {
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Cliente *</Label>
                 <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger><SelectValue placeholder="Seleccione un cliente" /></SelectTrigger>
-                  <SelectContent>{clientOptions}</SelectContent>
+                  <SelectContent>
+                    {realClients?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="font-bold text-xs uppercase text-muted-foreground">Activo / Equipo</Label>
                 <Select value={assetId} onValueChange={setAssetId}>
                   <SelectTrigger><SelectValue placeholder="Opcional: Seleccione equipo" /></SelectTrigger>
-                  <SelectContent>{assetOptions}</SelectContent>
+                  <SelectContent>
+                    {realAssets?.map(a => <SelectItem key={a.id} value={a.id}>{a.name} ({a.code})</SelectItem>)}
+                  </SelectContent>
                 </Select>
               </div>
             </div>
@@ -192,23 +185,23 @@ export default function NewWorkOrderPage() {
               <Label className="font-bold text-xs uppercase text-muted-foreground flex items-center gap-2"><Users className="h-3 w-3" /> Equipo Operativo Asignado</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
                 {staffMembers?.map(staff => (
-                  <label 
+                  <div 
                     key={staff.id} 
                     className={cn(
                       "flex items-center space-x-3 border p-3 rounded-xl transition-all cursor-pointer select-none",
                       assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 shadow-sm" : "bg-white hover:bg-muted/50"
                     )}
+                    onClick={() => toggleStaffSelection(staff.id)}
                   >
                     <Checkbox 
-                      id={`staff-${staff.id}`}
                       checked={assignedToStaffIds.includes(staff.id)} 
-                      onCheckedChange={() => toggleStaffSelection(staff.id)}
+                      onCheckedChange={() => {}} // El clic lo maneja el div padre para evitar doble evento
                     />
                     <div className="flex flex-col gap-0.5">
                       <p className="font-bold text-xs">{staff.name}</p>
                       <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
