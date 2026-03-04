@@ -13,6 +13,7 @@
         "address": { "type": "string" },
         "isActive": { "type": "boolean" },
         "currentPlan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "past_due", "canceled"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -35,144 +36,49 @@
       },
       "required": ["id", "email", "role", "isActive", "createdAt"]
     },
-    "WorkOrder": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "WorkOrder",
-      "type": "object",
-      "description": "Orden de Trabajo para mantenimiento industrial.",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "assetId": { "type": "string", "description": "Referencia al activo vinculado." },
-        "description": { "type": "string" },
-        "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "aprobada", "rechazada"] },
-        "assignedToUserId": { "type": "string" },
-        "reviewerId": { "type": "string" },
-        "reviewerRequired": { "type": "boolean" },
-        "createdByUserId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "executedAt": { "type": "string", "format": "date-time" },
-        "reviewedAt": { "type": "string", "format": "date-time" },
-        "approvedByUserId": { "type": "string" },
-        "evidenceUrls": { "type": "array", "items": { "type": "string" } },
-        "rejectedReason": { "type": "string" }
-      },
-      "required": ["id", "companyId", "description", "status", "reviewerRequired", "createdAt"]
-    },
-    "Asset": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Asset",
-      "type": "object",
-      "description": "Activo industrial o equipo a mantener.",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "name": { "type": "string" },
-        "code": { "type": "string", "description": "Código interno o SKU del equipo." },
-        "location": { "type": "string" },
-        "status": { "type": "string", "enum": ["activo", "inactivo", "en mantenimiento"] },
-        "lastMaintenanceAt": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "companyId", "name", "code", "status", "createdAt"]
-    },
-    "SparePart": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SparePart",
-      "type": "object",
-      "description": "Repuesto o insumo en inventario.",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "name": { "type": "string" },
-        "code": { "type": "string" },
-        "currentStock": { "type": "number" },
-        "minStock": { "type": "number" },
-        "unit": { "type": "string", "description": "Unidad de medida (unidades, metros, litros, etc.)" }
-      },
-      "required": ["id", "companyId", "name", "currentStock", "minStock"]
-    },
-    "PartUsage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PartUsage",
-      "type": "object",
-      "description": "Registro de uso de repuesto en una OT.",
-      "properties": {
-        "id": { "type": "string" },
-        "workOrderId": { "type": "string" },
-        "partId": { "type": "string" },
-        "quantity": { "type": "number" },
-        "usedAt": { "type": "string", "format": "date-time" },
-        "actorUserId": { "type": "string" }
-      },
-      "required": ["id", "workOrderId", "partId", "quantity", "usedAt", "actorUserId"]
-    },
-    "DigitalLogbookEntry": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DigitalLogbookEntry",
-      "type": "object",
-      "description": "Entrada inmutable en el libro digital de obra.",
-      "properties": {
-        "id": { "type": "string" },
-        "workOrderId": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "eventType": { "type": "string", "enum": ["status_change", "action_taken", "comment", "system_alert"] },
-        "eventDetails": { "type": "string" },
-        "actorUserId": { "type": "string" }
-      },
-      "required": ["id", "workOrderId", "timestamp", "eventType", "eventDetails", "actorUserId"]
-    },
-    "Review": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Review",
-      "type": "object",
-      "description": "Revisión formal de una OT.",
-      "properties": {
-        "id": { "type": "string" },
-        "workOrderId": { "type": "string" },
-        "reviewerId": { "type": "string" },
-        "status": { "type": "string", "enum": ["approved", "rejected"] },
-        "comments": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "workOrderId", "reviewerId", "status", "createdAt"]
-    },
     "Subscription": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Subscription",
+      "description": "Historial de planes y estados de suscripción por empresa.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "companyId": { "type": "string" },
         "plan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
         "status": { "type": "string", "enum": ["active", "past_due", "canceled"] },
-        "startDate": { "type": "string", "format": "date-time" }
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "billingCycle": { "type": "string", "enum": ["monthly", "yearly"] }
       },
-      "required": ["id", "companyId", "plan", "status", "startDate"]
+      "required": ["id", "plan", "status", "startDate"]
     },
-    "Invoice": {
+    "UsageStats": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Invoice",
+      "title": "UsageStats",
+      "description": "Contadores de uso para control de límites de plan.",
       "type": "object",
-      "description": "Documento Tributario Electrónico (DTE) emitido vía SimpleAPI.",
+      "properties": {
+        "activeUsersCount": { "type": "number" },
+        "workOrdersCreatedMonth": { "type": "number" },
+        "invoicesIssuedMonth": { "type": "number" },
+        "lastResetDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["activeUsersCount", "workOrdersCreatedMonth", "invoicesIssuedMonth"]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "description": "Registro de pagos de suscripción.",
+      "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "workOrderId": { "type": "string" },
-        "issuerUserId": { "type": "string" },
-        "status": { "type": "string", "enum": ["pendiente", "enviado", "error", "aceptado_sii"] },
-        "dteType": { "type": "string", "enum": ["factura", "boleta", "guia"] },
-        "folio": { "type": "number" },
         "amount": { "type": "number" },
-        "simpleApiId": { "type": "string" },
-        "errorDetails": { "type": "string" },
-        "pdfUrl": { "type": "string" },
-        "xmlUrl": { "type": "string" },
+        "currency": { "type": "string", "default": "CLP" },
+        "status": { "type": "string", "enum": ["paid", "pending", "failed"] },
+        "paymentMethod": { "type": "string" },
+        "transactionId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "companyId", "workOrderId", "issuerUserId", "status", "dteType", "createdAt"]
+      "required": ["id", "amount", "status", "createdAt"]
     }
   },
   "auth": {
@@ -183,41 +89,21 @@
       "schema": { "$ref": "#/backend/entities/Company" },
       "description": "Documentos de empresa."
     },
+    "/companies/{companyId}/subscriptions/{subId}": {
+      "schema": { "$ref": "#/backend/entities/Subscription" },
+      "description": "Historial de suscripciones."
+    },
+    "/companies/{companyId}/stats/usage": {
+      "schema": { "$ref": "#/backend/entities/UsageStats" },
+      "description": "Contadores de uso de la empresa."
+    },
+    "/companies/{companyId}/payments/{paymentId}": {
+      "schema": { "$ref": "#/backend/entities/Payment" },
+      "description": "Historial de pagos."
+    },
     "/users/{userId}": {
       "schema": { "$ref": "#/backend/entities/User" },
       "description": "Perfiles de usuario globales."
-    },
-    "/companies/{companyId}/users/{userId}": {
-      "schema": { "$ref": "#/backend/entities/User" },
-      "description": "Copia de usuario para reglas de seguridad."
-    },
-    "/companies/{companyId}/assets/{assetId}": {
-      "schema": { "$ref": "#/backend/entities/Asset" },
-      "description": "Catálogo de equipos por empresa."
-    },
-    "/companies/{companyId}/spareParts/{partId}": {
-      "schema": { "$ref": "#/backend/entities/SparePart" },
-      "description": "Inventario de repuestos."
-    },
-    "/companies/{companyId}/workOrders/{workOrderId}": {
-      "schema": { "$ref": "#/backend/entities/WorkOrder" },
-      "description": "Órdenes de trabajo."
-    },
-    "/companies/{companyId}/workOrders/{workOrderId}/partUsages/{usageId}": {
-      "schema": { "$ref": "#/backend/entities/PartUsage" },
-      "description": "Repuestos consumidos en la OT."
-    },
-    "/companies/{companyId}/workOrders/{workOrderId}/digitalLogbookEntries/{entryId}": {
-      "schema": { "$ref": "#/backend/entities/DigitalLogbookEntry" },
-      "description": "Libro digital (Inmutable)."
-    },
-    "/companies/{companyId}/workOrders/{workOrderId}/reviews/{reviewId}": {
-      "schema": { "$ref": "#/backend/entities/Review" },
-      "description": "Revisiones de la OT."
-    },
-    "/companies/{companyId}/workOrders/{workOrderId}/invoices/{invoiceId}": {
-      "schema": { "$ref": "#/backend/entities/Invoice" },
-      "description": "Facturas y documentos tributarios asociados a la OT."
     }
   }
 }

@@ -9,12 +9,17 @@ export type DTEStatus = 'pendiente' | 'enviado' | 'error' | 'aceptado_sii';
 
 export type DTEType = 'factura' | 'boleta' | 'guia';
 
+export type PlanType = 'free' | 'pro' | 'enterprise';
+
+export type SubscriptionStatus = 'active' | 'past_due' | 'canceled';
+
 export interface Company {
   id: string;
   name: string;
   rut: string;
   address: string;
-  currentPlan: 'free' | 'pro' | 'enterprise';
+  currentPlan: PlanType;
+  subscriptionStatus: SubscriptionStatus;
   isActive: boolean;
   createdAt: string;
   updatedAt?: string;
@@ -27,6 +32,32 @@ export interface User {
   role: Role;
   companyId: string;
   isActive: boolean;
+  createdAt: string;
+}
+
+export interface Subscription {
+  id: string;
+  plan: PlanType;
+  status: SubscriptionStatus;
+  startDate: string;
+  endDate?: string;
+  billingCycle: 'monthly' | 'yearly';
+}
+
+export interface UsageStats {
+  activeUsersCount: number;
+  workOrdersCreatedMonth: number;
+  invoicesIssuedMonth: number;
+  lastResetDate: string;
+}
+
+export interface Payment {
+  id: string;
+  amount: number;
+  currency: string;
+  status: 'paid' | 'pending' | 'failed';
+  paymentMethod: string;
+  transactionId?: string;
   createdAt: string;
 }
 
@@ -50,15 +81,6 @@ export interface SparePart {
   currentStock: number;
   minStock: number;
   unit: string;
-}
-
-export interface PartUsage {
-  id: string;
-  workOrderId: string;
-  partId: string;
-  quantity: number;
-  usedAt: string;
-  actorUserId: string;
 }
 
 export interface WorkOrder {
@@ -87,15 +109,6 @@ export interface DigitalLogbookEntry {
   eventType: 'status_change' | 'action_taken' | 'comment' | 'system_alert';
   eventDetails: string;
   actorUserId: string;
-}
-
-export interface Review {
-  id: string;
-  workOrderId: string;
-  reviewerId: string;
-  status: 'approved' | 'rejected';
-  comments: string;
-  createdAt: string;
 }
 
 export interface Invoice {

@@ -31,11 +31,37 @@ service cloud.firestore {
       return isSignedIn() && (companyUser.role in roles || isSuperAdmin());
     }
 
+    // --- FUNCIONES DE LÍMITES ---
+    
+    function getStats(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)/stats/usage).data;
+    }
+
+    function getPlan(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)).data.currentPlan;
+    }
+
+    function canAddUser(companyId) {
+      let plan = getPlan(companyId);
+      let stats = getStats(companyId);
+      return plan == 'enterprise' || 
+             (plan == 'pro' && stats.activeUsersCount < 50) ||
+             (plan == 'free' && stats.activeUsersCount < 5);
+    }
+
+    function canAddWorkOrder(companyId) {
+      let plan = getPlan(companyId);
+      let stats = getStats(companyId);
+      return plan == 'enterprise' || 
+             (plan == 'pro' && stats.workOrdersCreatedMonth < 500) ||
+             (plan == 'free' && stats.workOrdersCreatedMonth < 20);
+    }
+
     // --- REGLAS ---
 
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-      allow create: if isSignedIn();
+      allow create: if isSignedIn() && canAddUser(request.resource.data.companyId);
       allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
     }
 
@@ -48,6 +74,21 @@ service cloud.firestore {
       allow get: if isCompanyMember(companyId);
       allow list: if isSuperAdmin();
       allow create, update: if isSuperAdmin();
+
+      match /stats/usage {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isSuperAdmin(); // Los contadores se actualizan vía Cloud Functions o lógica controlada
+      }
+
+      match /subscriptions/{subId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isSuperAdmin();
+      }
+
+      match /payments/{paymentId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isSuperAdmin();
+      }
 
       match /assets/{assetId} {
         allow read: if isCompanyMember(companyId);
@@ -74,7 +115,7 @@ service cloud.firestore {
           (hasRole(companyId, ['reviewer']) && resource.data.reviewerId == request.auth.uid)
         );
 
-        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']) && canAddWorkOrder(companyId);
 
         allow update: if isCompanyMember(companyId) && (
           hasRole(companyId, ['companyAdmin', 'supervisor']) ||
@@ -111,14 +152,9 @@ service cloud.firestore {
           allow read: if isCompanyMember(companyId);
           allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']) && 
                         get(/databases/$(database)/documents/companies/$(companyId)/workOrders/$(workOrderId)).data.status == 'aprobada';
-          allow update: if isSuperAdmin(); // Solo el sistema o superadmin actualiza folios/estados SII
+          allow update: if isSuperAdmin();
           allow delete: if false;
         }
-      }
-      
-      match /subscriptions/{subId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if isSuperAdmin();
       }
     }
   }
