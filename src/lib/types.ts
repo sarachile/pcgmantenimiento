@@ -1,7 +1,7 @@
 
 export type Role = 'companyAdmin' | 'supervisor' | 'tecnico' | 'reviewer' | 'superadmin';
 
-export type OTStatus = 'creada' | 'asignada' | 'ejecutada' | 'en revision' | 'aprobada' | 'rechazada';
+export type OTStatus = 'creada' | 'asignada' | 'ejecutada' | 'en revision' | 'pendiente cliente' | 'aprobada' | 'rechazada';
 
 export type AssetStatus = 'activo' | 'inactivo' | 'en mantenimiento';
 
@@ -125,7 +125,7 @@ export interface WorkOrder {
   assetId?: string;
   description: string;
   status: OTStatus;
-  assignedToStaffIds?: string[]; // Ahora soporta múltiples IDs de StaffMember
+  assignedToStaffIds?: string[];
   createdByUserId: string;
   reviewerRequired: boolean;
   scheduledDate?: string | any;

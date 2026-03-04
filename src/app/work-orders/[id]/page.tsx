@@ -25,7 +25,8 @@ import {
   Send,
   Users,
   QrCode,
-  ExternalLink
+  ExternalLink,
+  Mail
 } from "lucide-react";
 import {
   Dialog,
@@ -51,6 +52,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { sendSystemEmail } from "@/actions/email";
 
 function EvaluationForm({ 
   onSave, 
@@ -215,9 +217,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setCurrentUrl(window.location.href);
+      const baseUrl = window.location.origin;
+      setCurrentUrl(`${baseUrl}/portal/approve/${otId}`);
     }
-  }, []);
+  }, [otId]);
 
   const otRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -279,7 +282,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const getBase64Image = async (url: string) => {
     if (!url) return undefined;
     try {
-      // Usar cache-busting para evitar bloqueos de caché que podrían ignorar encabezados CORS
       const response = await fetch(url + (url.includes('?') ? '&' : '?') + 'cb=' + Date.now(), {
         mode: 'cors',
         credentials: 'omit'
@@ -310,8 +312,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       ]);
       
       setResolvedSignatures({ tech: techBase64, client: clientBase64 });
-      
-      // Pequeña espera para que el DOM se actualice con las imágenes Base64
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       const canvas = await html2canvas(reportRef.current, { 
@@ -337,8 +337,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
-  const handleSaveEvaluation = async (ratings: any, comment: string) => {
-    if (!db || !profile || !ot) return;
+  const handleInternalApproval = async (ratings: any, comment: string) => {
+    if (!db || !profile || !ot || !otRef) return;
     setIsUpdating(true);
     try {
       const evalCol = collection(db, "companies", profile.companyId, "evaluations");
@@ -353,13 +353,40 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         createdAt: serverTimestamp()
       };
       const evalDoc = await addDoc(evalCol, newEval);
-      updateDocumentNonBlocking(otRef!, { 
+      
+      const nextStatus = ot.reviewerRequired ? 'pendiente cliente' : 'aprobada';
+      
+      updateDocumentNonBlocking(otRef, { 
         evaluationId: evalDoc.id, 
-        status: 'aprobada', 
+        status: nextStatus, 
         reviewedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Evaluación enviada", description: "El trabajo ha sido aprobado y evaluado." });
+
+      // Si requiere cliente, enviar email
+      if (ot.reviewerRequired && client?.contactEmail) {
+        const approvalLink = currentUrl;
+        await sendSystemEmail({
+          to: client.contactEmail,
+          subject: `Solicitud de Aprobación OT ${ot.id} - ${company?.name}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #1e3a8a;">Aprobación de Servicio Técnico</h2>
+              <p>Estimados,</p>
+              <p>La Orden de Trabajo <strong>${ot.id}</strong> ha sido completada y validada internamente por nuestro equipo de supervisión.</p>
+              <p>Solicitamos su revisión final y firma de conformidad a través de nuestro portal seguro:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${approvalLink}" style="background-color: #1e3a8a; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Acceder al Portal de Aprobación</a>
+              </div>
+              <p style="font-size: 12px; color: #666;">Este es un mensaje automático de ${company?.name}.</p>
+            </div>
+          `
+        });
+        toast({ title: "Validación Solicitada", description: "Se ha enviado el link de aprobación al cliente." });
+      } else {
+        toast({ title: "OT Aprobada", description: "La orden ha sido finalizada correctamente." });
+      }
+      
       setIsEvalOpen(false);
     } catch (e: any) {
       toast({ title: "Error al evaluar", description: e.message, variant: "destructive" });
@@ -371,11 +398,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl m-10">Orden no encontrada.</div>;
 
-  const showQrCode = ot.reviewerRequired && ot.technicianSignatureUrl && !ot.clientSignatureUrl;
+  const showQrCode = ot.status === 'pendiente cliente';
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10 px-4">
-      {/* Elemento oculto para generación de PDF */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport 
           forwardedRef={reportRef} 
@@ -399,7 +425,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <h2 className="text-2xl font-black">{ot.id}</h2>
             <Badge className={cn(
               "font-black uppercase text-[10px] tracking-widest",
-              ot.status === 'aprobada' ? 'bg-emerald-500 text-white' : 'bg-amber-100 text-amber-700'
+              ot.status === 'aprobada' ? 'bg-emerald-500 text-white' : 
+              ot.status === 'pendiente cliente' ? 'bg-indigo-500 text-white' : 'bg-amber-100 text-amber-700'
             )}>{ot.status}</Badge>
           </div>
           <div className="text-muted-foreground text-[11px] font-bold flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 uppercase tracking-wider">
@@ -417,17 +444,17 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             Descargar Informe PDF
           </Button>
           
-          {(isReviewer || isSupervisor || isCompanyAdmin) && ot.status === 'en revision' && (
+          {(isSupervisor || isCompanyAdmin) && ot.status === 'en revision' && (
             <Dialog open={isEvalOpen} onOpenChange={setIsEvalOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-amber-600 hover:bg-amber-700 h-11 px-6 font-bold gap-2"><Star className="h-4 w-4" /> Aprobar y Evaluar</Button>
+                <Button className="bg-amber-600 hover:bg-amber-700 h-11 px-6 font-bold gap-2"><ShieldCheck className="h-4 w-4" /> Aprobación Interna</Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-amber-600" /> Evaluación de Servicio</DialogTitle>
-                  <DialogDescription>Su opinión técnica es fundamental para nuestra mejora continua.</DialogDescription>
+                  <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-amber-600" /> Validación de Supervisión</DialogTitle>
+                  <DialogDescription>Evalúe el trabajo del técnico antes de cerrar o enviar al cliente.</DialogDescription>
                 </DialogHeader>
-                <EvaluationForm isSaving={isUpdating} onSave={handleSaveEvaluation} />
+                <EvaluationForm isSaving={isUpdating} onSave={handleInternalApproval} />
               </DialogContent>
             </Dialog>
           )}
@@ -436,29 +463,27 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {showQrCode && (isTechnician || isSupervisor || isCompanyAdmin) && (
-            <Card className="border-2 border-primary border-dashed bg-primary/5">
+          {showQrCode && (
+            <Card className="border-2 border-indigo-500 border-dashed bg-indigo-50/30">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row items-center gap-6">
-                  <div className="bg-white p-4 rounded-xl shadow-md border-2 border-primary/20 shrink-0">
-                    <img 
-                      src={qrUrl} 
-                      alt="QR Validación"
-                      className="w-32 h-32"
-                    />
+                  <div className="bg-white p-4 rounded-xl shadow-md border-2 border-indigo-200 shrink-0">
+                    <img src={qrUrl} alt="QR Validación" className="w-32 h-32" />
                   </div>
                   <div className="space-y-3 text-center md:text-left">
                     <div className="flex items-center gap-2 justify-center md:justify-start">
-                      <QrCode className="h-5 w-5 text-primary" />
-                      <h3 className="text-lg font-black text-primary uppercase">Validación por el Cliente</h3>
+                      <QrCode className="h-5 w-5 text-indigo-600" />
+                      <h3 className="text-lg font-black text-indigo-900 uppercase">Esperando Validación Externa</h3>
                     </div>
                     <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                      Escanee este código desde el móvil del revisor para que pueda <strong>firmar la recepción conforme</strong> y evaluar el trabajo directamente.
+                      La OT está pendiente de la firma del cliente. {client?.contactEmail ? `Se envió un link a ${client.contactEmail}.` : "No hay correo de contacto definido."}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline" className="bg-white text-primary border-primary/20 h-6 uppercase font-bold text-[9px]">Flujo QR Activo</Badge>
-                      <Button variant="link" className="h-6 p-0 text-xs font-bold gap-1" asChild>
-                        <a href={currentUrl} target="_blank"><ExternalLink className="h-3 w-3" /> Abrir enlace directo</a>
+                      <Button variant="outline" size="sm" className="h-8 gap-2" asChild>
+                        <a href={currentUrl} target="_blank"><ExternalLink className="h-3 w-3" /> Ver Portal Cliente</a>
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-8 gap-2 text-indigo-600 font-bold">
+                        <Mail className="h-3 w-3" /> Re-enviar Invitación
                       </Button>
                     </div>
                   </div>
@@ -501,7 +526,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                         const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: !i.completed, completedAt: !i.completed ? new Date().toISOString() : null } : i);
                         updateDocumentNonBlocking(otRef!, { checklist: newChecklist, updatedAt: serverTimestamp() });
                       }} 
-                      disabled={ot.status === 'aprobada' || isReviewer}
+                      disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'}
                       className="h-5 w-5"
                     />
                     <span className={cn("text-sm font-medium", item.completed && "line-through text-muted-foreground font-normal")}>{item.task}</span>
@@ -524,7 +549,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <FirebaseImage url={ot.technicianSignatureUrl} className="max-h-full" />
                   </div>
                 ) : (
-                  <Button variant="outline" className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col gap-2" onClick={() => setSignatureType('technician')} disabled={isReviewer}>
+                  <Button variant="outline" className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col gap-2" onClick={() => setSignatureType('technician')} disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'}>
                     <SignatureIcon className="h-6 w-6 text-slate-300" />
                     <span className="text-xs font-bold text-slate-400">Capturar Firma Personal</span>
                   </Button>
@@ -536,17 +561,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <div className="border-2 rounded-2xl p-4 h-40 flex items-center justify-center bg-slate-50 shadow-inner">
                     <FirebaseImage url={ot.clientSignatureUrl} className="max-h-full" />
                   </div>
-                ) : ot.reviewerRequired ? (
-                  <div className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-amber-50/30 gap-1 p-2">
-                    <QrCode className="h-5 w-5 text-amber-400" />
-                    <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest text-center">Recepción vía QR Activada</span>
-                    <p className="text-[8px] text-slate-400 leading-tight">El cliente debe firmar desde su móvil escaneando el código superior.</p>
-                  </div>
                 ) : (
-                  <Button variant="outline" className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col gap-2" onClick={() => setSignatureType('client')}>
+                  <div className="w-full h-24 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center bg-slate-50/50 gap-1 p-2">
                     <SignatureIcon className="h-6 w-6 text-slate-300" />
-                    <span className="text-xs font-bold text-slate-400">Capturar Firma Cliente</span>
-                  </Button>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Pendiente Firma Externa</span>
+                  </div>
                 )}
               </div>
             </CardContent>

@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -51,42 +52,47 @@ service cloud.firestore {
     }
 
     match /companies/{companyId} {
-      allow get: if isCompanyMember(companyId);
+      allow get: if isCompanyMember(companyId) || request.auth == null; // Portal público necesita leer datos básicos de empresa
       allow list: if isPlatformAdmin();
       allow create: if isPlatformAdmin();
       allow update: if isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin'));
       allow delete: if isPlatformAdmin();
-    }
 
-    match /companies/{companyId}/staff/{staffId} {
-      allow read, write: if isCompanyMember(companyId);
-    }
-
-    match /companies/{companyId}/clients/{clientId} {
-      allow read, write: if isCompanyMember(companyId);
-    }
-
-    match /companies/{companyId}/assets/{assetId} {
-      allow read, write: if isCompanyMember(companyId);
-    }
-
-    match /companies/{companyId}/spareParts/{partId} {
-      allow read, write: if isCompanyMember(companyId);
-    }
-
-    match /companies/{companyId}/workOrders/{workOrderId} {
-      allow read, write: if isCompanyMember(companyId);
-      
-      match /digitalLogbookEntries/{entryId} {
+      match /staff/{staffId} {
         allow read, write: if isCompanyMember(companyId);
       }
-      match /partUsages/{usageId} {
+
+      match /clients/{clientId} {
         allow read, write: if isCompanyMember(companyId);
       }
-    }
 
-    match /companies/{companyId}/evaluations/{evalId} {
-      allow read, write: if isCompanyMember(companyId);
+      match /assets/{assetId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
+
+      match /spareParts/{partId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
+
+      match /evaluations/{evalId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if true; // Permitir que clientes externos envíen su evaluación
+      }
+
+      match /workOrders/{workOrderId} {
+        // Permitir lectura pública para el portal de aprobación si el ID es correcto
+        allow get: if isCompanyMember(companyId) || true; 
+        allow list: if isCompanyMember(companyId);
+        allow create: if isCompanyMember(companyId);
+        allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
+        
+        match /digitalLogbookEntries/{entryId} {
+          allow read, write: if isCompanyMember(companyId);
+        }
+        match /partUsages/{usageId} {
+          allow read, write: if isCompanyMember(companyId);
+        }
+      }
     }
 
     match /mail/{mailId} {
