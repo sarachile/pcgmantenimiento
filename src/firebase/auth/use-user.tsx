@@ -1,20 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useFirebase } from '@/firebase/provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { User } from '@/lib/types';
 
 /**
- * Hook de usuario optimizado para evitar re-renders infinitos.
+ * Hook de usuario blindado contra re-renders infinitos.
+ * Utiliza memoización estricta para asegurar estabilidad en las dependencias de otros hooks.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
   const [profile, setProfile] = useState<User | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   
-  // Ref para evitar bucles de actualización
-  const lastProfileIdRef = useRef<string | null>(null);
+  const lastUidRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -24,14 +24,13 @@ export function useUser() {
         if (isMounted) {
           setProfile(null);
           setIsProfileLoading(false);
-          lastProfileIdRef.current = null;
+          lastUidRef.current = null;
         }
         return;
       }
 
-      // Si ya tenemos el perfil cargado para este UID, no hacemos nada
-      if (lastProfileIdRef.current === authUser.uid) {
-        setIsProfileLoading(false);
+      // Evitar fetch si el UID no ha cambiado
+      if (lastUidRef.current === authUser.uid) {
         return;
       }
 
@@ -44,7 +43,7 @@ export function useUser() {
         if (userSnap.exists()) {
           fetchedProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
-          // Fallback para administradores de plataforma
+          // Fallback para plataforma admins
           const adminRef = doc(firestore, 'platform_admins', authUser.uid);
           const adminSnap = await getDoc(adminRef);
           
@@ -61,10 +60,10 @@ export function useUser() {
 
         if (isMounted) {
           setProfile(fetchedProfile);
-          lastProfileIdRef.current = authUser.uid;
+          lastUidRef.current = authUser.uid;
         }
       } catch (error) {
-        console.error("Error loading user profile:", error);
+        console.error("Error loading profile:", error);
       } finally {
         if (isMounted) setIsProfileLoading(false);
       }
@@ -77,7 +76,8 @@ export function useUser() {
   const isLoading = isAuthLoading || isProfileLoading;
   const isAuthenticated = !!authUser && !!profile;
 
-  return {
+  // Memoización del valor de retorno para evitar loops en componentes hijos
+  return useMemo(() => ({
     user: authUser,
     profile,
     isLoading,
@@ -87,5 +87,5 @@ export function useUser() {
     isTechnician: profile?.role === 'tecnico',
     isSupervisor: profile?.role === 'supervisor',
     isReviewer: profile?.role === 'reviewer',
-  };
+  }), [authUser, profile, isLoading, isAuthenticated]);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
@@ -29,14 +29,12 @@ export default function NewWorkOrderPage() {
   const [assetId, setAssetId] = useState("");
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [scheduledDate, setScheduledDate] = useState("");
+  
+  // Inicialización perezosa de fecha para evitar useEffect y loops
+  const [scheduledDate, setScheduledDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [durationDays, setDurationDays] = useState(1);
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
-
-  useEffect(() => {
-    setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
-  }, []);
 
   const estimatedEndDateStr = useMemo(() => {
     if (!scheduledDate || !durationDays) return "";
@@ -47,31 +45,45 @@ export default function NewWorkOrderPage() {
     } catch (e) { return ""; }
   }, [scheduledDate, durationDays]);
 
-  const toggleStaffSelection = (staffId: string) => {
-    setAssignedToStaffIds(prev => 
-      prev.includes(staffId) 
-        ? prev.filter(id => id !== staffId) 
-        : [...prev, staffId]
-    );
-  };
+  // Consultas estables usando el ID primitivo como dependencia
+  const companyId = profile?.companyId;
+
+  const clientsQuery = useMemoFirebase(() => 
+    db && companyId ? collection(db, "companies", companyId, "clients") : null, 
+    [db, companyId]
+  );
+  
+  const assetsQuery = useMemoFirebase(() => 
+    db && companyId ? collection(db, "companies", companyId, "assets") : null, 
+    [db, companyId]
+  );
+  
+  const staffQuery = useMemoFirebase(() => 
+    db && companyId ? query(collection(db, "companies", companyId, "staff"), where("active", "==", true)) : null, 
+    [db, companyId]
+  );
+
+  const { data: clients } = useCollection<Client>(clientsQuery);
+  const { data: assets } = useCollection<Asset>(assetsQuery);
+  const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !clientId || !profile?.companyId) {
+    if (!description.trim() || !clientId || !companyId) {
       toast({ title: "Datos incompletos", description: "Descripción y Cliente son obligatorios.", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const colRef = collection(db, "companies", profile.companyId, "workOrders");
+      const colRef = collection(db, "companies", companyId, "workOrders");
       const newOT = {
-        companyId: profile.companyId,
+        companyId,
         clientId,
         assetId: assetId || null,
         description: description.trim(),
         status: "creada",
-        assignedToStaffIds: assignedToStaffIds,
+        assignedToStaffIds,
         createdByUserId: profile.id,
         reviewerRequired: false,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
@@ -96,20 +108,9 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  // Consultas estables usando useMemoFirebase
-  const clientsQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "clients") : null, [db, profile?.companyId]);
-  const assetsQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "assets") : null, [db, profile?.companyId]);
-  const staffQuery = useMemoFirebase(() => db && profile?.companyId ? query(collection(db, "companies", profile.companyId, "staff"), where("active", "==", true)) : null, [db, profile?.companyId]);
-
-  const { data: realClients } = useCollection<Client>(clientsQuery);
-  const { data: realAssets } = useCollection<Asset>(assetsQuery);
-  const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
-
-  // Memoizar las opciones para evitar re-renders del Select
-  const clientOptions = useMemo(() => realClients || [], [realClients]);
-  const assetOptions = useMemo(() => realAssets || [], [realAssets]);
-
-  if (isUserLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isUserLoading) {
+    return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 px-4 py-8">
@@ -130,19 +131,29 @@ export default function NewWorkOrderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Selección de Cliente *</Label>
-                <Select value={clientId} onValueChange={setClientId}>
-                  <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="Busque un cliente..." /></SelectTrigger>
+                <Select value={clientId || ""} onValueChange={setClientId}>
+                  <SelectTrigger className="h-12 rounded-xl border-2">
+                    <SelectValue placeholder="Busque un cliente..." />
+                  </SelectTrigger>
                   <SelectContent>
-                    {clientOptions.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}
+                    {(clients || []).map(c => (
+                      <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Maquinaria / Activo</Label>
-                <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="Seleccione equipo (Opcional)" /></SelectTrigger>
+                <Select value={assetId || ""} onValueChange={setAssetId}>
+                  <SelectTrigger className="h-12 rounded-xl border-2">
+                    <SelectValue placeholder="Seleccione equipo (Opcional)" />
+                  </SelectTrigger>
                   <SelectContent>
-                    {assetOptions.map(a => <SelectItem key={a.id} value={a.id} className="font-bold">{a.name} <span className="text-[10px] opacity-50 ml-2">[{a.code}]</span></SelectItem>)}
+                    {(assets || []).map(a => (
+                      <SelectItem key={a.id} value={a.id} className="font-bold">
+                        {a.name} <span className="text-[10px] opacity-50 ml-2">[{a.code}]</span>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -169,20 +180,27 @@ export default function NewWorkOrderPage() {
               <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em] flex items-center gap-2"><Users className="h-4 w-4" /> Personal Técnico Asignado</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {staffMembers?.map(staff => (
-                  <div 
+                  <label 
                     key={staff.id} 
                     className={cn(
-                      "flex items-center space-x-4 border-2 p-4 rounded-2xl transition-all cursor-pointer group",
+                      "flex items-center space-x-4 border-2 p-4 rounded-2xl transition-all cursor-pointer",
                       assignedToStaffIds.includes(staff.id) ? "border-primary bg-primary/5 ring-4 ring-primary/5" : "bg-white hover:border-slate-300"
                     )}
-                    onClick={() => toggleStaffSelection(staff.id)}
                   >
-                    <Checkbox checked={assignedToStaffIds.includes(staff.id)} onCheckedChange={() => {}} className="h-5 w-5" />
+                    <Checkbox 
+                      checked={assignedToStaffIds.includes(staff.id)} 
+                      onCheckedChange={() => {
+                        setAssignedToStaffIds(prev => 
+                          prev.includes(staff.id) ? prev.filter(id => id !== staff.id) : [...prev, staff.id]
+                        );
+                      }} 
+                      className="h-5 w-5" 
+                    />
                     <div className="flex flex-col">
                       <p className="font-black text-sm text-slate-900">{staff.name}</p>
                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{staff.role}</p>
                     </div>
-                  </div>
+                  </label>
                 ))}
                 {(!staffMembers || staffMembers.length === 0) && (
                   <p className="text-xs text-slate-400 italic p-4 border-2 border-dashed rounded-2xl">No hay miembros del equipo registrados.</p>
@@ -192,11 +210,19 @@ export default function NewWorkOrderPage() {
 
             <div className="space-y-2">
               <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Alcance de los Trabajos *</Label>
-              <Textarea placeholder="Describa el servicio técnico a realizar..." className="min-h-[120px] rounded-2xl border-2 p-4 text-sm" value={description} onChange={(e) => setDescription(e.target.value)} />
+              <Textarea 
+                placeholder="Describa el servicio técnico a realizar..." 
+                className="min-h-[120px] rounded-2xl border-2 p-4 text-sm" 
+                value={description} 
+                onChange={(e) => setDescription(e.target.value)} 
+              />
             </div>
 
             <div className="space-y-4 pt-6 border-t-2 border-slate-100">
-              <div className="flex items-center gap-2 mb-2"><ListChecks className="h-5 w-5 text-primary" /><Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Checklist de Ejecución</Label></div>
+              <div className="flex items-center gap-2 mb-2">
+                <ListChecks className="h-5 w-5 text-primary" />
+                <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Checklist de Ejecución</Label>
+              </div>
               <div className="flex gap-3">
                 <Input 
                   placeholder="Añadir ítem de control..." 
@@ -232,7 +258,14 @@ export default function NewWorkOrderPage() {
                   {checklist.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between bg-white p-3 rounded-xl border shadow-sm group">
                       <span className="text-sm font-bold text-slate-700">{idx + 1}. {item.task}</span>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))}><Trash2 className="h-4 w-4" /></Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity" 
+                        onClick={() => setChecklist(prev => prev.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -240,8 +273,15 @@ export default function NewWorkOrderPage() {
             </div>
           </CardContent>
           <CardFooter className="flex justify-between border-t py-8 px-8 bg-slate-50 mt-10">
-            <Button variant="ghost" type="button" asChild disabled={isSubmitting} className="font-bold"><Link href="/work-orders">Descartar</Link></Button>
-            <Button type="submit" size="lg" disabled={isSubmitting || !description.trim() || !clientId} className="h-14 px-10 rounded-2xl font-black text-base shadow-xl shadow-primary/20">
+            <Button variant="ghost" type="button" asChild disabled={isSubmitting} className="font-bold">
+              <Link href="/work-orders">Descartar</Link>
+            </Button>
+            <Button 
+              type="submit" 
+              size="lg" 
+              disabled={isSubmitting || !description.trim() || !clientId} 
+              className="h-14 px-10 rounded-2xl font-black text-base shadow-xl shadow-primary/20"
+            >
               {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Generar Orden de Trabajo"}
             </Button>
           </CardFooter>
