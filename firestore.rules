@@ -1,129 +1,180 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // =========================
-    // 🔧 HELPERS
-    // =========================
+    /**
+     * PCGMANTENIMIENTO SECURITY RULES
+     * 
+     * Core Philosophy: 
+     * This ruleset implements a strict multi-tenant SaaS model. Access is primarily 
+     * determined by a user's association with a specific Company and their assigned 
+     * role within that company. Data isolation is enforced at the path level.
+     * 
+     * Data Structure: 
+     * All application data is nested under `/companies/{companyId}`. A separate 
+     * `/platform_admins` collection identifies global super-users.
+     * 
+     * Key Security Decisions:
+     * 1. Multi-Tenancy: Users can only access data where the `companyId` in the path 
+     *    matches their own registered company ID.
+     * 2. DBAC (Database Access Control): Roles are fetched directly from the 
+     *    `/companies/{companyId}/users/{userId}` document to make authorization decisions.
+     * 3. Prototyping Flexibility: Rules enforce strict authorization (WHO can access) 
+     *    but remain flexible on the data schema (WHAT is stored) to support rapid development.
+     * 4. Relational Integrity: On creation, documents must include a `companyId` 
+     *    field matching their path to ensure query consistency.
+     * 5. Immutability: Critical fields and approved logbooks are protected from 
+     *    modification after creation.
+     */
 
+    // --- Helper Functions ---
+
+    /** Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function userDocRef() {
-      return /databases/$(database)/documents/users/$(request.auth.uid);
+    /** Checks if the user is a global platform administrator. */
+    function isPlatformAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
     }
 
-    function userExists() {
-      return exists(userDocRef());
-    }
-
-    function getUserData() {
-      return userExists() ? get(userDocRef()).data : null;
-    }
-
-    function isSuperAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == 'control@pcgoperacion.com' ||
-        exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
-        (userExists() && getUserData().role == 'superadmin')
-      );
-    }
-
+    /** Checks if the user belongs to the specified company. */
     function isCompanyMember(companyId) {
-      return isSignedIn() &&
-        (
-          isSuperAdmin() || 
-          (userExists() && getUserData().companyId == companyId)
-        );
+      return isSignedIn() && exists(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid));
     }
 
-    function hasRole(companyId, roles) {
-      return isSignedIn() &&
-        (
-          isSuperAdmin() ||
-          (userExists() && getUserData().companyId == companyId && getUserData().role in roles)
-        );
+    /** Fetches the user document within a specific company. */
+    function getUserData(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data;
     }
 
-    // =========================
-    // 📧 MAIL (SERVER ACTIONS)
-    // =========================
-
-    match /mail/{mailId} {
-      allow read: if isSuperAdmin();
-      allow create, update: if isSignedIn();
+    /** Checks if the user has a specific role within their company. */
+    function hasRole(companyId, role) {
+      return isCompanyMember(companyId) && getUserData(companyId).role == role;
     }
 
-    // =========================
-    // 👤 USERS (ACCESO SISTEMA)
-    // =========================
-
-    match /users/{userId} {
-      allow get: if isSignedIn() || true; // Permitir GET para validación durante signup
-      allow list: if true; 
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSuperAdmin();
+    /** Verifies the user ID in the document matches the authenticated user. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    match /superAdmins/{userId} {
-      allow read, write: if isSuperAdmin();
+    /** Combines ownership check with existence check for updates/deletes. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
     }
 
-    // =========================
-    // 🏢 COMPANIES
-    // =========================
+    // --- Collection Rules ---
 
+    /**
+     * @description Rules for platform-wide super administrators.
+     * @path /platform_admins/{userId}
+     * @allow (get) Signed-in platform admin accessing their own admin flag.
+     * @deny (list) Listing platform admins is restricted to prevent enumeration.
+     * @principle Restricts administrative status verification to the individual user.
+     */
+    match /platform_admins/{userId} {
+      allow get: if isOwner(userId) || isPlatformAdmin();
+      allow list: if isPlatformAdmin();
+      allow create, update, delete: if false; // Managed via Admin SDK/Console
+    }
+
+    /**
+     * @description Top-level Company tenant documents.
+     * @path /companies/{companyId}
+     * @allow (get) Any member of the company can read the company profile.
+     * @deny (create) Only platform admins can create new company tenants.
+     * @principle Enforces tenant isolation and administrative control over company lifecycle.
+     */
     match /companies/{companyId} {
-      allow get: if true; 
-      allow list: if isSuperAdmin();
-      allow create, update, delete: if isSuperAdmin();
+      allow get: if isCompanyMember(companyId) || isPlatformAdmin();
+      allow list: if isPlatformAdmin();
+      allow create: if isPlatformAdmin();
+      allow update: if isPlatformAdmin() || (isCompanyMember(companyId) && hasRole(companyId, 'companyAdmin'));
+      allow delete: if isPlatformAdmin();
+    }
 
-      // ---------- STAFF (PERSONAL OPERATIVO) ----------
-      match /staff/{staffId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-      }
+    /**
+     * @description User profiles within a company.
+     * @path /companies/{companyId}/users/{userId}
+     * @allow (create) Users can register themselves into a company.
+     * @deny (update) Users cannot change their own roles (must be companyAdmin).
+     * @principle Implements self-creation with role protection and company-level access control.
+     */
+    match /companies/{companyId}/users/{userId} {
+      allow get: if isCompanyMember(companyId) || isPlatformAdmin();
+      allow list: if isCompanyMember(companyId) || isPlatformAdmin();
+      allow create: if isOwner(userId);
+      allow update: if (isExistingOwner(userId) && request.resource.data.role == resource.data.role) || (isCompanyMember(companyId) && hasRole(companyId, 'companyAdmin')) || isPlatformAdmin();
+      allow delete: if (isCompanyMember(companyId) && hasRole(companyId, 'companyAdmin')) || isPlatformAdmin();
+    }
 
-      // ---------- CLIENTS ----------
-      match /clients/{clientId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor']);
-      }
+    /**
+     * @description Maintenance Work Orders.
+     * @path /companies/{companyId}/workOrders/{workOrderId}
+     * @allow (create) Any company member can create a work order if they link it to the correct company.
+     * @deny (delete) Deletion is restricted to company admins.
+     * @principle Ensures data consistency between the path and the document's company ownership.
+     */
+    match /companies/{companyId}/workOrders/{workOrderId} {
+      allow get, list: if isCompanyMember(companyId) || isPlatformAdmin();
+      allow create: if (isCompanyMember(companyId) && request.resource.data.companyId == companyId) || isPlatformAdmin();
+      allow update: if (resource != null && isCompanyMember(companyId)) || isPlatformAdmin();
+      allow delete: if (resource != null && hasRole(companyId, 'companyAdmin')) || isPlatformAdmin();
+    }
 
-      // ---------- ASSETS ----------
-      match /assets/{assetId} {
-        allow read: if isCompanyMember(companyId);
-        allow write: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
-      }
+    /**
+     * @description Digital Log Books for Work Orders.
+     * @path /companies/{companyId}/workOrders/{workOrderId}/digitalLogBooks/{digitalLogBookId}
+     * @allow (update) Allowed only if the logbook is not yet approved.
+     * @deny (update) Denied if the existing document is already marked as 'isApproved'.
+     * @principle Enforces business logic of immutability for audited maintenance records.
+     */
+    match /companies/{companyId}/workOrders/{workOrderId}/digitalLogBooks/{digitalLogBookId} {
+      allow get, list: if isCompanyMember(companyId) || isPlatformAdmin();
+      allow create: if (isCompanyMember(companyId) && request.resource.data.companyId == companyId) || isPlatformAdmin();
+      allow update: if (resource != null && resource.data.isApproved == false && isCompanyMember(companyId)) || isPlatformAdmin();
+      allow delete: if (resource != null && hasRole(companyId, 'companyAdmin')) || isPlatformAdmin();
 
-      // ---------- WORK ORDERS ----------
-      match /workOrders/{workOrderId} {
-        allow list, get: if isCompanyMember(companyId);
-        allow create, update: if hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']);
-        allow delete: if hasRole(companyId, ['companyAdmin']);
-
-        match /partUsages/{usageId} { allow read, write: if isCompanyMember(companyId); }
-        match /digitalLogbookEntries/{entryId} { allow read, write: if isCompanyMember(companyId); }
-      }
-
-      // ---------- SPARE PARTS ----------
-      match /spareParts/{partId} {
-        allow read, write: if isCompanyMember(companyId);
-      }
-
-      // ---------- EVALUATIONS ----------
-      match /evaluations/{evalId} {
-        allow read: if isCompanyMember(companyId);
-        allow create: if isCompanyMember(companyId);
-        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+      /**
+       * @description Individual entries within a logbook.
+       * @path /companies/{companyId}/workOrders/{workOrderId}/digitalLogBooks/{digitalLogBookId}/entries/{entryId}
+       * @allow (create) Any company member can add an entry if the parent is not approved.
+       * @deny (update) Log entries are generally immutable once written.
+       * @principle Maintains an auditable trail by preventing entry modification.
+       */
+      match /entries/{entryId} {
+        allow get, list: if isCompanyMember(companyId) || isPlatformAdmin();
+        allow create: if isCompanyMember(companyId) && get(/databases/$(database)/documents/companies/$(companyId)/workOrders/$(workOrderId)/digitalLogBooks/$(digitalLogBookId)).data.isApproved == false;
+        allow update, delete: if isPlatformAdmin(); 
       }
     }
 
-    match /{document=**} {
-      allow read, write: if false;
+    /**
+     * @description Work Order Reviews and Approvals.
+     * @path /companies/{companyId}/reviews/{reviewId}
+     * @allow (create) Only users with 'reviewer', 'supervisor', or 'companyAdmin' roles can submit reviews.
+     * @deny (create) Technicians are prevented from reviewing their own or others' work.
+     * @principle Restricts the review process to authorized personnel only.
+     */
+    match /companies/{companyId}/reviews/{reviewId} {
+      allow get, list: if isCompanyMember(companyId) || isPlatformAdmin();
+      allow create: if (isCompanyMember(companyId) && (hasRole(companyId, 'reviewer') || hasRole(companyId, 'supervisor') || hasRole(companyId, 'companyAdmin')) && request.resource.data.companyId == companyId) || isPlatformAdmin();
+      allow update: if (resource != null && (hasRole(companyId, 'reviewer') || hasRole(companyId, 'supervisor') || hasRole(companyId, 'companyAdmin'))) || isPlatformAdmin();
+      allow delete: if (resource != null && hasRole(companyId, 'companyAdmin')) || isPlatformAdmin();
+    }
+
+    /**
+     * @description Subscription details for companies.
+     * @path /companies/{companyId}/subscriptions/{subscriptionId}
+     * @allow (get) Company admins can view their own subscription status.
+     * @deny (write) Subscription modification is strictly reserved for platform admins.
+     * @principle Protects revenue-generating subscription data from tenant tampering.
+     */
+    match /companies/{companyId}/subscriptions/{subscriptionId} {
+      allow get: if (isCompanyMember(companyId) && hasRole(companyId, 'companyAdmin')) || isPlatformAdmin();
+      allow list: if (isCompanyMember(companyId) && hasRole(companyId, 'companyAdmin')) || isPlatformAdmin();
+      allow create, update, delete: if isPlatformAdmin();
     }
   }
 }

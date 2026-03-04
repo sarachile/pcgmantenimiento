@@ -1,51 +1,595 @@
-
 {
   "entities": {
     "Company": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Company",
       "type": "object",
-      "description": "Empresa cliente (tenant).",
+      "description": "Represents a single tenant or enterprise within the multi-company SaaS platform, with completely isolated data.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "rut": { "type": "string" },
-        "address": { "type": "string" },
-        "logoUrl": { "type": "string" },
-        "isActive": { "type": "boolean" },
-        "currentPlan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
-        "subscriptionStatus": { "type": "string", "enum": ["active", "past_due", "canceled"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Company entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The common name of the company."
+        },
+        "legalName": {
+          "type": "string",
+          "description": "The full legal name of the company, often used for official documents or invoicing."
+        },
+        "rut": {
+          "type": "string",
+          "description": "Chilean tax identification number (Rol Único Tributario) for the company."
+        },
+        "address": {
+          "type": "string",
+          "description": "The primary physical address of the company."
+        },
+        "contactEmail": {
+          "type": "string",
+          "description": "General contact email for the company.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "General contact phone number for the company."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates whether the company account is currently active and can access the platform."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the company record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the company record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "legalName",
+        "rut",
+        "contactEmail",
+        "isActive",
+        "createdAt"
+      ]
     },
-    "StaffMember": {
-      "title": "StaffMember",
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
       "type": "object",
-      "description": "Personal operativo que interviene en las tareas.",
+      "description": "Represents a user account within a specific company, with assigned roles and permissions.",
       "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "name": { "type": "string" },
-        "role": { "type": "string", "description": "Técnico, Especialista, Subcontrato, etc." },
-        "identification": { "type": "string" },
-        "phone": { "type": "string" },
-        "active": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company this user belongs to. (Relationship: Company 1:N User)"
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for login and unique across the entire platform.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The user's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The user's last name."
+        },
+        "role": {
+          "type": "string",
+          "description": "The assigned role of the user within their company, determining their permissions.",
+          "format": "enum"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates whether the user account is currently active."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "email",
+        "firstName",
+        "lastName",
+        "role",
+        "isActive",
+        "createdAt"
+      ]
     },
     "WorkOrder": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "WorkOrder",
       "type": "object",
-      "description": "Orden de trabajo de mantenimiento.",
+      "description": "Represents a maintenance work order, tracking its lifecycle from creation to approval.",
       "properties": {
-        "id": { "type": "string" },
-        "assignedToStaffId": { "type": "string", "description": "Referencia al personal operativo." }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkOrder entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company that owns this work order. (Relationship: Company 1:N WorkOrder)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A concise title or summary of the work order."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the maintenance work required."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status of the work order in its lifecycle (creada, asignada, ejecutada, enRevision, aprobada, rechazada).",
+          "format": "enum"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the work order was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the work order was last updated.",
+          "format": "date-time"
+        },
+        "createdByUserId": {
+          "type": "string",
+          "description": "Reference to the User who initially created this work order. (Relationship: User 1:N WorkOrder)"
+        },
+        "assignedTechnicianId": {
+          "type": "string",
+          "description": "Reference to the User (technician role) assigned to perform the work. (Relationship: User 1:N WorkOrder)"
+        },
+        "scheduledDateTime": {
+          "type": "string",
+          "description": "Planned date and time for the work order execution.",
+          "format": "date-time"
+        },
+        "completedDateTime": {
+          "type": "string",
+          "description": "Actual date and time when the work order was marked as completed.",
+          "format": "date-time"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "The deadline for completing the work order.",
+          "format": "date-time"
+        },
+        "digitalLogBookId": {
+          "type": "string",
+          "description": "Reference to the associated DigitalLogBook for this work order. (Relationship: WorkOrder 1:1 DigitalLogBook)"
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "title",
+        "description",
+        "status",
+        "createdAt",
+        "createdByUserId",
+        "digitalLogBookId"
+      ]
+    },
+    "DigitalLogBook": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DigitalLogBook",
+      "type": "object",
+      "description": "An auditable, immutable record of all significant events and modifications related to a specific Work Order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DigitalLogBook entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company that owns the associated work order. (Relationship: Company 1:N DigitalLogBook)"
+        },
+        "workOrderId": {
+          "type": "string",
+          "description": "Reference to the WorkOrder this digital logbook belongs to. (Relationship: WorkOrder 1:1 DigitalLogBook)"
+        },
+        "entries": {
+          "type": "array",
+          "description": "An ordered list of events recorded in the logbook.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isApproved": {
+          "type": "boolean",
+          "description": "Indicates if the digital logbook has been officially approved, making it immutable."
+        },
+        "approvedByUserId": {
+          "type": "string",
+          "description": "Reference to the User (reviewer role) who approved this logbook. (Relationship: User 1:N DigitalLogBook)",
+          "format": "string"
+        },
+        "approvedAt": {
+          "type": "string",
+          "description": "Timestamp when the logbook was approved.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the digital logbook was initially created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the digital logbook was last updated (before approval).",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "workOrderId",
+        "entries",
+        "isApproved",
+        "createdAt"
+      ]
+    },
+    "DigitalLogBookEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DigitalLogBookEntry",
+      "type": "object",
+      "description": "Represents an individual event or action recorded within a Digital Log Book. This would typically be stored as an array of objects within the DigitalLogBook entity, but for strict adherence to 'Do NOT nest entities' and 'use ONLY identifier references', we model it as a separate entity referenced by 'entries' in DigitalLogBook, implying 'entries' stores IDs of these. If 'entries' should be inlined, the schema for `entries` property in `DigitalLogBook` would be adjusted to an array of objects.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DigitalLogBookEntry entity."
+        },
+        "digitalLogBookId": {
+          "type": "string",
+          "description": "Reference to the DigitalLogBook this entry belongs to. (Relationship: DigitalLogBook 1:N DigitalLogBookEntry)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The exact date and time the event occurred.",
+          "format": "date-time"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who performed the action recorded in this entry. (Relationship: User 1:N DigitalLogBookEntry)"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "The type of event or action recorded (e.g., 'OT_CREATED', 'OT_ASSIGNED', 'LOG_ENTRY_ADDED', 'OT_APPROVED').",
+          "format": "enum"
+        },
+        "details": {
+          "type": "string",
+          "description": "A descriptive text providing context or additional information about the event."
+        }
+      },
+      "required": [
+        "id",
+        "digitalLogBookId",
+        "timestamp",
+        "userId",
+        "eventType",
+        "details"
+      ]
+    },
+    "Review": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Review",
+      "type": "object",
+      "description": "Represents the formal review and approval/rejection process for a Work Order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Review entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company that owns the associated work order. (Relationship: Company 1:N Review)"
+        },
+        "workOrderId": {
+          "type": "string",
+          "description": "Reference to the WorkOrder being reviewed. (Relationship: WorkOrder 1:N Review)"
+        },
+        "reviewerId": {
+          "type": "string",
+          "description": "Reference to the User (reviewer role) who performed this review. (Relationship: User 1:N Review)"
+        },
+        "reviewDateTime": {
+          "type": "string",
+          "description": "The date and time when the review was submitted.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The outcome of the review: 'aprobada' (approved) or 'rechazada' (rejected).",
+          "format": "enum"
+        },
+        "comments": {
+          "type": "string",
+          "description": "Any comments or feedback provided by the reviewer."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the review record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the review record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "workOrderId",
+        "reviewerId",
+        "reviewDateTime",
+        "status",
+        "createdAt"
+      ]
+    },
+    "Subscription": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription",
+      "type": "object",
+      "description": "Manages a company's subscription details to the PCGMANTENIMIENTO platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Subscription entity."
+        },
+        "companyId": {
+          "type": "string",
+          "description": "Reference to the Company that holds this subscription. (Relationship: Company 1:N Subscription)"
+        },
+        "planName": {
+          "type": "string",
+          "description": "The name of the subscription plan (e.g., Basic, Standard, Premium).",
+          "format": "enum"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The date when the subscription became active.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The date when the subscription is scheduled to expire.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the subscription (e.g., active, inactive, canceled, trial).",
+          "format": "enum"
+        },
+        "price": {
+          "type": "number",
+          "description": "The monetary value of the subscription plan."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency code for the subscription price (e.g., CLP)."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the subscription record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the subscription record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "companyId",
+        "planName",
+        "startDate",
+        "status",
+        "price",
+        "currency",
+        "createdAt"
+      ]
     }
   },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
   "firestore": {
-    "/companies/{companyId}/staff/{staffId}": {
-      "schema": { "$ref": "#/backend/entities/StaffMember" },
-      "description": "Personal operativo de la empresa."
-    }
+    "structure": [
+      {
+        "path": "/companies/{companyId}",
+        "definition": {
+          "entityName": "Company",
+          "schema": {
+            "$ref": "#/backend/entities/Company"
+          },
+          "description": "Top-level collection for each company tenant. All data for a company is logically scoped under its companyId. Includes self-referencing id for consistent data model.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the Company."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/platform_admins/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Global collection for platform super-administrators. Authorization for platform-wide access is based on the existence of the user's UID as a document ID in this collection. These documents are sparse, only containing the UID as the document ID.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the platform administrator."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Contains user profiles and their assigned roles specific to a company. Includes denormalized 'companyId' and 'role' for efficient authorization and tenant isolation. The document ID must match the Firebase Authentication UID.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the Company this user belongs to."
+            },
+            {
+              "name": "userId",
+              "description": "Unique identifier for the User, matching their Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/workOrders/{workOrderId}",
+        "definition": {
+          "entityName": "WorkOrder",
+          "schema": {
+            "$ref": "#/backend/entities/WorkOrder"
+          },
+          "description": "Stores individual work orders for a specific company. Includes denormalized 'companyId', 'createdByUserId', 'assignedTechnicianId', and 'status' for authorization, ownership, and efficient querying.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the Company that owns this work order."
+            },
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the Work Order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/workOrders/{workOrderId}/digitalLogBooks/{digitalLogBookId}",
+        "definition": {
+          "entityName": "DigitalLogBook",
+          "schema": {
+            "$ref": "#/backend/entities/DigitalLogBook"
+          },
+          "description": "Stores the unique digital logbook (1:1 relationship) for a specific work order within a company. Includes denormalized 'companyId', 'workOrderId', and 'isApproved' status for authorization and immutability rules.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the Company that owns the associated work order."
+            },
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the Work Order this logbook belongs to."
+            },
+            {
+              "name": "digitalLogBookId",
+              "description": "Unique identifier for the Digital Log Book."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/workOrders/{workOrderId}/digitalLogBooks/{digitalLogBookId}/entries/{entryId}",
+        "definition": {
+          "entityName": "DigitalLogBookEntry",
+          "schema": {
+            "$ref": "#/backend/entities/DigitalLogBookEntry"
+          },
+          "description": "Stores individual auditable entries for a specific digital logbook. Includes denormalized 'digitalLogBookId' and 'userId' for auditability and authorization. The 'companyId' and 'workOrderId' are implicitly derived from the parent path.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the Company that owns the associated work order."
+            },
+            {
+              "name": "workOrderId",
+              "description": "Unique identifier for the Work Order this logbook entry's logbook belongs to."
+            },
+            {
+              "name": "digitalLogBookId",
+              "description": "Unique identifier for the Digital Log Book this entry belongs to."
+            },
+            {
+              "name": "entryId",
+              "description": "Unique identifier for the Digital Log Book Entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/reviews/{reviewId}",
+        "definition": {
+          "entityName": "Review",
+          "schema": {
+            "$ref": "#/backend/entities/Review"
+          },
+          "description": "Stores formal reviews and approval/rejection decisions for work orders within a company. Includes denormalized 'companyId', 'workOrderId', 'reviewerId', and 'status' for authorization and tracking.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the Company that owns the associated work order being reviewed."
+            },
+            {
+              "name": "reviewId",
+              "description": "Unique identifier for the Review."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/companies/{companyId}/subscriptions/{subscriptionId}",
+        "definition": {
+          "entityName": "Subscription",
+          "schema": {
+            "$ref": "#/backend/entities/Subscription"
+          },
+          "description": "Manages subscription details for each company. Includes denormalized 'companyId' and 'status' for authorization and subscription management.",
+          "params": [
+            {
+              "name": "companyId",
+              "description": "Unique identifier for the Company that holds this subscription."
+            },
+            {
+              "name": "subscriptionId",
+              "description": "Unique identifier for the Subscription."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure for PCGMANTENIMIENTO prioritizes multi-tenancy, strong security, and efficient querying, adhering strictly to the core design principles. Each company's data is completely isolated, residing under a top-level `/companies/{companyId}` collection. This structural segregation is paramount for security and scalability in a SaaS environment.\n\n**Authorization Independence:** This is achieved by systematically denormalizing the `companyId` into every relevant document (e.g., `User`, `WorkOrder`, `DigitalLogBook`, `Review`, `Subscription`). For instance, a `WorkOrder` document directly contains its `companyId`, `createdByUserId`, and `assignedTechnicianId`. This eliminates the need for expensive and insecure `get()` calls in security rules to check parent documents for authorization context. When a user tries to access a document, rules can directly check `request.auth.uid` against document fields like `createdByUserId` or `assignedTechnicianId`, or verify `request.auth.token.companyId` (assuming a custom claim for the authenticated user's company, or by doing an initial lookup against `/companies/{companyId}/users/{uid}` to establish `companyId` and `role` for the session) against the document's `companyId` field.\n\n**Support for QAPs (Queries as Permissions):** The hierarchical structure, combined with denormalized `companyId` and explicit status fields, directly supports QAPs. For example:\n*   To list all work orders for a specific company, a query like `/companies/{companyId}/workOrders` can be performed, and security rules will ensure `request.auth.token.companyId` matches the `{companyId}` wildcard, allowing efficient, secure `list` operations.\n*   To list work orders assigned to a specific technician within a company, queries can filter by `assignedTechnicianId` and `status` (`/companies/{companyId}/workOrders?assignedTechnicianId=X&status=Y`), where rules ensure the `companyId` matches the authenticated user's company, and potentially their role (`tecnico` can only see their own assigned work orders, `supervisor` can see all within their company).\n*   The `status` field on `WorkOrder` documents enables simple `where('status', '==', 'enRevision')` queries, which are secure because the `companyId` ensures tenancy isolation. Similarly, `DigitalLogBook.isApproved` explicitly models state for immutability.\n\n**DBAC (Database Access Control):** User roles (`companyAdmin`, `supervisor`, `tecnico`, `reviewer`) are stored directly on the `/companies/{companyId}/users/{userId}` documents. A separate top-level collection, `/platform_admins/{userId}`, is used for platform-level superadmins, allowing a simple existence check (`exists(/platform_admins/$(request.auth.uid))`) for global administrative privileges. This avoids custom claims for roles, simplifying user management and rule logic.\n\nThis design ensures that security rules are concise, easily debuggable, and performant, as they primarily rely on path segments, direct document fields, and the authenticated user's UID/companyId, without complex cross-document lookups."
   }
 }
