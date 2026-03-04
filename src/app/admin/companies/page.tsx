@@ -145,7 +145,6 @@ export default function AdminCompaniesPage() {
 
     setDocumentNonBlocking(companyRef, companyData, { merge: true });
     
-    // Optimistic UI response
     toast({
       title: "Solicitud Enviada",
       description: `Creando entorno para ${formData.name}.`,
@@ -253,7 +252,7 @@ export default function AdminCompaniesPage() {
 
     addDocumentNonBlocking(mailCol, mailData).catch(async (error) => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: mailCol.path,
+        path: "mail", // Simplificamos la ruta para depuración precisa en reglas
         operation: 'create',
         requestResourceData: mailData
       }));
