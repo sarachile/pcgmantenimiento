@@ -60,93 +60,6 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
 
-function InternalApprovalForm({ 
-  onSave, 
-  isSaving,
-  isReApproval = false
-}: { 
-  onSave: (ratings: any, comment: string) => void, 
-  isSaving: boolean,
-  isReApproval?: boolean
-}) {
-  const [ratings, setRatings] = useState({
-    quality: 0,
-    timing: 0,
-    safety: 0,
-    documentation: 0
-  });
-  const [comment, setComment] = useState("");
-
-  const criteria = [
-    { key: 'quality', label: 'Calidad Ejecución', desc: 'Cumplimiento de especificaciones técnicas.' },
-    { key: 'timing', label: 'Cumplimiento Plazos', desc: 'Respeto a las fechas comprometidas.' },
-    { key: 'safety', label: 'Seguridad y Entorno', desc: 'Orden y limpieza durante el trabajo.' },
-    { key: 'documentation', label: 'Claridad Reportes', desc: 'Calidad de la evidencia y documentación.' }
-  ];
-
-  const canSubmit = isReApproval ? true : Object.values(ratings).every(r => r > 0);
-
-  return (
-    <div className="space-y-6">
-      {!isReApproval && (
-        <div className="grid gap-4">
-          <p className="text-xs font-bold text-primary uppercase tracking-widest border-b pb-2">Evaluación Técnica Interna</p>
-          {criteria.map((c) => (
-            <div key={c.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-muted/20 rounded-lg">
-              <div className="space-y-0.5">
-                <p className="text-sm font-bold">{c.label}</p>
-                <p className="text-[10px] text-muted-foreground">{c.desc}</p>
-              </div>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => setRatings({ ...ratings, [c.key]: star })}
-                    className={cn(
-                      "p-1 transition-transform hover:scale-110",
-                      (ratings as any)[c.key] >= star ? "text-amber-500" : "text-slate-300"
-                    )}
-                  >
-                    <Star className={cn("h-5 w-5", (ratings as any)[c.key] >= star && "fill-amber-500")} />
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {isReApproval && (
-        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
-          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-          <div className="space-y-1">
-            <p className="text-sm font-bold text-amber-900">Preparar Nueva Solicitud</p>
-            <p className="text-[11px] text-amber-700 leading-tight">Esta acción notificará nuevamente al cliente que las observaciones del rechazo han sido subsanadas.</p>
-          </div>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        <Label className="text-xs font-bold uppercase text-muted-foreground">Observaciones de Supervisión</Label>
-        <Textarea 
-          placeholder={isReApproval ? "Indique qué correcciones se realizaron..." : "Comentarios adicionales sobre el desempeño técnico..."} 
-          className="min-h-[100px] text-sm"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-        />
-      </div>
-      <Button 
-        className="w-full h-12 text-sm font-bold gap-2" 
-        disabled={!canSubmit || isSaving}
-        onClick={() => onSave(isReApproval ? {quality: 5, timing: 5, safety: 5, documentation: 5} : ratings, comment)}
-      >
-        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> {isReApproval ? "Solicitar Nueva Aprobación al Cliente" : "Validar y Enviar al Cliente"}</>}
-      </Button>
-    </div>
-  );
-}
-
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
@@ -235,7 +148,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold; width: 140px;">ORDEN DE TRABAJO:</td><td style="padding: 6px 0; font-weight: 900; color: #1e3a8a;">${ot.id}</td></tr>
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">EQUIPO / ACTIVO:</td><td style="padding: 6px 0; font-weight: bold;">${asset?.name || 'S/I'} [${asset?.code || '-'}]</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">FECHA EJECUCIÓN:</td><td style="padding: 6px 0;">${formatDateLabel(ot.executedAt)}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">FECHA EJECUCIÓN:</td><td style="padding: 6px 0;">${formatDateLabel(ot.executedAt || new Date())}</td></tr>
               </table>
             </div>
 
@@ -278,48 +191,56 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { toast({ title: "Error al generar PDF", variant: "destructive" }); } finally { setIsGeneratingPdf(false); }
   };
 
-  const handleInternalApproval = async (ratings: any, comment: string) => {
-    if (!db || !profile || !ot || !otRef) return;
-    setIsUpdating(true);
-    try {
-      const evalDoc = await addDoc(collection(db, "companies", companyId, "evaluations"), {
-        workOrderId: ot.id, clientId: ot.clientId, companyId: companyId, reviewerId: profile.id, reviewerName: profile.name, ratings, comment, createdAt: serverTimestamp()
-      });
-      const nextStatus = ot.reviewerRequired ? 'pendiente cliente' : 'aprobada';
-      updateDocumentNonBlocking(otRef, { evaluationId: evalDoc.id, status: nextStatus, reviewedAt: serverTimestamp(), updatedAt: serverTimestamp(), rejectedReason: null });
-      
-      if (ot.reviewerRequired && client?.contactEmail) {
-        await handleResendEmail();
-      }
-      setIsSealDialogOpen(false);
-      toast({ title: "Aprobación Interna Completada" });
-    } catch (e: any) { toast({ title: "Error crítico", description: e.message, variant: "destructive" }); } finally { setIsUpdating(false); }
-  };
-
   const handleTechnicianDigitalSeal = async () => {
-    if (!otRef || !profile) return;
+    if (!otRef || !profile || !ot) return;
     setIsUpdating(true);
     try {
       const techCode = `TECH-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+      
+      const nextStatus = ot.reviewerRequired ? 'pendiente cliente' : 'aprobada';
+      
       const data: any = { 
         technicianApprovalName: profile.name,
         technicianApprovalDate: serverTimestamp(),
         technicianApprovalCode: techCode,
-        updatedAt: serverTimestamp()
+        status: nextStatus,
+        executedAt: ot.executedAt || serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        rejectedReason: null 
       };
       
-      if (ot?.status === 'creada' || ot?.status === 'rechazada') { 
-        data.status = 'en revision'; 
-        data.executedAt = serverTimestamp(); 
-      }
-      
       updateDocumentNonBlocking(otRef, data);
+      
+      // Si pasa a pendiente cliente, enviar el correo automáticamente
+      if (nextStatus === 'pendiente cliente' && client?.contactEmail) {
+        // Ejecutamos el envío de correo de forma asíncrona para no bloquear
+        handleResendEmail();
+      }
+
       setIsSealDialogOpen(false);
-      toast({ title: "Sello Técnico Generado" });
+      toast({ title: "Sello Emitido y Estado Actualizado" });
     } catch (e: any) { 
       toast({ title: "Error al generar sello", variant: "destructive" }); 
     } finally { 
       setIsUpdating(false); 
+    }
+  };
+
+  const handleRequestClientApproval = async () => {
+    if (!otRef) return;
+    setIsUpdating(true);
+    try {
+      updateDocumentNonBlocking(otRef, { 
+        status: 'pendiente cliente', 
+        updatedAt: serverTimestamp(),
+        rejectedReason: null 
+      });
+      await handleResendEmail();
+      toast({ title: "Solicitud enviada al cliente" });
+    } catch (e: any) {
+      toast({ title: "Error al procesar", variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -366,21 +287,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11">
             {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Exportar PDF
           </Button>
-          {(isSupervisor || isCompanyAdmin) && (ot.status === 'en revision' || ot.status === 'rechazada') && (
-            <Dialog open={isSealDialogOpen} onOpenChange={setIsSealDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className={cn("rounded-xl h-11 px-6 font-bold shadow-lg text-white", ot.status === 'rechazada' ? "bg-rose-600" : "bg-amber-600")}>
-                  {ot.status === 'rechazada' ? "Reiniciar Validación" : "Aprobación Interna"}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-black italic">{ot.status === 'rechazada' ? "Reiniciar Ciclo" : "Revisión Técnica"}</DialogTitle>
-                  <DialogDescription>Valide el trabajo técnico realizado antes de enviarlo al cliente final.</DialogDescription>
-                </DialogHeader>
-                <InternalApprovalForm isSaving={isUpdating} onSave={handleInternalApproval} isReApproval={ot.status === 'rechazada'} />
-              </DialogContent>
-            </Dialog>
+          {(isSupervisor || isCompanyAdmin) && ot.status === 'rechazada' && (
+            <Button onClick={handleRequestClientApproval} disabled={isUpdating} className="rounded-xl h-11 px-6 font-bold shadow-lg bg-rose-600 text-white">
+              {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : "Reiniciar Ciclo Cliente"}
+            </Button>
           )}
         </div>
       </div>
@@ -514,11 +424,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <DialogContent className="sm:max-w-[400px] rounded-[2.5rem]">
                       <DialogHeader>
                         <DialogTitle className="text-2xl font-black italic">Validación Técnica Digital</DialogTitle>
-                        <DialogDescription>¿Confirma la ejecución conforme de los trabajos? Se generará un sello digital con su nombre y fecha.</DialogDescription>
+                        <DialogDescription>
+                          ¿Confirma la ejecución conforme de los trabajos? 
+                          Al confirmar, la OT cambiará de estado automáticamente y se notificará al cliente.
+                        </DialogDescription>
                       </DialogHeader>
                       <div className="pt-4 flex flex-col gap-3">
                         <Button className="h-12 rounded-xl font-bold" onClick={handleTechnicianDigitalSeal} disabled={isUpdating}>
-                          {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : "Confirmar y Sellar Digitalmente"}
+                          {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : "Confirmar y Notificar al Cliente"}
                         </Button>
                         <Button variant="ghost" onClick={() => setIsSealDialogOpen(false)} disabled={isUpdating}>Cancelar</Button>
                       </div>
