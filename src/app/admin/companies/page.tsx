@@ -228,6 +228,7 @@ export default function AdminCompaniesPage() {
           <a href="https://www.pcgmantenimiento.com/auth/signup" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
             Completar Registro de Usuario
           </a>
+          <p style="color: #64748b; font-size: 12px; margin-top: 12px;">Acceso vía: www.pcgmantenimiento.com</p>
         </div>
         
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
@@ -235,16 +236,24 @@ export default function AdminCompaniesPage() {
           <div style="background-color: #ffffff; border: 2px dashed #1e3a8a; padding: 16px; text-align: center; border-radius: 8px; font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px;">
             ${detailsCompany.id}
           </div>
+          <p style="color: #b45309; font-size: 12px; font-weight: bold; margin-top: 12px; text-align: center;">
+            * Este código vincula su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
+          </p>
         </div>
         
+        <div style="font-size: 13px; color: #64748b; line-height: 1.6;">
+          <p><strong>Nota de Seguridad:</strong> Este código permite el acceso a la infraestructura de datos de su empresa. Favor distribuirlo únicamente a personal autorizado.</p>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
+        
         <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
-          Este es un mensaje automático de la plataforma central de PCG OPERACIONES.
+          Este es un mensaje automático de la plataforma central de PCG OPERACIONES. Por favor no responda a esta casilla.
         </p>
       </div>
     `;
 
     try {
-      // 1. Crear el registro inicial en Firestore
       const docRef = await addDoc(mailCol, {
         to: inviteEmail,
         createdAt: serverTimestamp(),
@@ -255,18 +264,15 @@ export default function AdminCompaniesPage() {
         delivery: { state: 'PROCESANDO' }
       });
 
-      // 2. Cerrar el modal inmediatamente para mejorar UX
       setIsInviteOpen(false);
       setInviteEmail("");
 
-      // 3. Ejecutar el envío real vía Server Action
       const result = await sendSystemEmail({
         to: inviteEmail,
         subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
         html: htmlContent
       });
 
-      // 4. Actualizar el registro en Firestore con el resultado real
       const logRef = doc(db, "mail", docRef.id);
       await updateDoc(logRef, {
         delivery: {
@@ -542,12 +548,12 @@ export default function AdminCompaniesPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  El sistema ahora utiliza un <strong>Server Action</strong> directo para evitar errores de permisos de Firebase Extensions.
+                  El sistema utiliza <strong>www.pcgmantenimiento.com</strong> como dominio oficial para todas las comunicaciones y registros.
                 </p>
                 <div className="space-y-2">
                   <div className="flex items-start gap-2 bg-white p-2 rounded border text-[10px]">
                     <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0 mt-0.5" />
-                    <span>Los correos se envían instantáneamente vía Gmail SMTP.</span>
+                    <span>Los correos se envían vía SMTP directo para máxima confiabilidad.</span>
                   </div>
                 </div>
               </div>

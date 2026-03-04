@@ -50,7 +50,6 @@ export default function CompanyProfilePage() {
   }, [company]);
 
   const handleUpdateCompany = async (e: React.FormEvent) => {
-    e.preventDefault();
     if (!companyRef) return;
 
     setIsSaving(true);
@@ -195,7 +194,7 @@ export default function CompanyProfilePage() {
         </Card>
 
         <Card className="md:col-span-2 border-none shadow-sm">
-          <form onSubmit={handleUpdateCompany}>
+          <form onSubmit={(e) => { e.preventDefault(); handleUpdateCompany(); }}>
             <CardHeader>
               <CardTitle className="text-lg">Datos Corporativos</CardTitle>
               <CardDescription>Información legal y operativa de la organización.</CardDescription>
@@ -225,7 +224,7 @@ export default function CompanyProfilePage() {
                   <Label>Plan Actual</Label>
                   <div className="h-10 px-3 flex items-center rounded-md border bg-muted/30">
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                      {company?.subscriptionPlan?.toUpperCase() || "S/I"}
+                      {company?.currentPlan?.toUpperCase() || "S/I"}
                     </Badge>
                   </div>
                 </div>

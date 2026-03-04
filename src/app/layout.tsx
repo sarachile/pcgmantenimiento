@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
-  title: "PCGMANTENIMIENTO - ERP SaaS de Mantención",
-  description: "Plataforma multitenant para gestión de mantenciones industriales en Chile.",
+  title: "PCGMANTENIMIENTO - Gestión Industrial Avanzada",
+  description: "Plataforma oficial de gestión de mantenimiento industrial y ERP operativo. Acceso en www.pcgmantenimiento.com",
 };
 
 export default function RootLayout({
