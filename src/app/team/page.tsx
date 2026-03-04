@@ -23,14 +23,16 @@ import {
   Loader2,
   UserCheck,
   UserMinus,
-  ArrowLeft
+  ArrowLeft,
+  Lock
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc, updateDoc, query, where } from "firebase/firestore";
 import { MOCK_USERS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { Company } from "@/lib/types";
 
 export default function TeamPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -43,9 +45,15 @@ export default function TeamPage() {
     setMounted(true);
   }, []);
 
+  const companyRef = useMemoFirebase(() => {
+    if (!db || !profile?.companyId) return null;
+    return doc(db, "companies", profile.companyId);
+  }, [db, profile?.companyId]);
+
+  const { data: company } = useDoc<Company>(companyRef);
+
   const usersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
-    // Filtrar por companyId para cumplir con las reglas de seguridad
     return query(collection(db, "users"), where("companyId", "==", profile.companyId));
   }, [db, profile?.companyId]);
 
@@ -56,6 +64,17 @@ export default function TeamPage() {
     : MOCK_USERS.filter(u => u.companyId === profile?.companyId);
     
   const isDemo = !realUsers || realUsers.length === 0;
+
+  // Lógica de límites
+  const planLimits = {
+    free: 1,
+    pro: 3,
+    enterprise: 5
+  };
+  
+  const currentPlan = company?.currentPlan || 'free';
+  const maxUsers = planLimits[currentPlan as keyof typeof planLimits] || 1;
+  const isAtLimit = companyUsers.length >= maxUsers;
 
   const filtered = companyUsers.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -87,6 +106,21 @@ export default function TeamPage() {
     }
   };
 
+  const handleInvite = () => {
+    if (isAtLimit) {
+      toast({
+        title: "Límite de Usuarios",
+        description: `Has alcanzado el máximo de ${maxUsers} usuarios para tu plan ${currentPlan.toUpperCase()}.`,
+        variant: "destructive"
+      });
+      return;
+    }
+    toast({
+      title: "Función de Invitación",
+      description: "Próximamente: Envío de correos electrónicos para unirse al equipo.",
+    });
+  };
+
   if (isAuthLoading) {
     return (
       <div className="flex h-[400px] items-center justify-center">
@@ -109,15 +143,22 @@ export default function TeamPage() {
             <p className="text-muted-foreground">Gestione los técnicos, supervisores y revisores de su empresa.</p>
           </div>
         </div>
-        <Button>
-          <UserPlus className="mr-2 h-4 w-4" /> Invitar Miembro
-        </Button>
+        <div className="flex items-center gap-3">
+          {isAtLimit && (
+            <Badge variant="outline" className="text-amber-600 bg-amber-50 border-amber-200 gap-1 px-3 py-1">
+              <Lock className="h-3 w-3" /> Máximo de Usuarios alcanzado
+            </Badge>
+          )}
+          <Button onClick={handleInvite} disabled={isAtLimit}>
+            <UserPlus className="mr-2 h-4 w-4" /> Invitar Miembro
+          </Button>
+        </div>
       </div>
 
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+          <div className="flex items-center justify-between">
+            <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Buscar por nombre o email..." 
@@ -126,7 +167,10 @@ export default function TeamPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200">MODO DEMO</Badge>}
+            <div className="text-right">
+              <p className="text-xs font-bold text-muted-foreground uppercase">Usuarios Activos</p>
+              <p className="text-sm font-black">{companyUsers.length} / {maxUsers}</p>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

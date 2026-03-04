@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Table, 
   TableBody, 
@@ -35,15 +36,16 @@ import {
   ArrowLeft,
   Edit,
   Trash2,
-  Building2
+  Building2,
+  Lock
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { MOCK_CLIENTS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { Client } from "@/lib/types";
+import { Client, Company } from "@/lib/types";
 
 export default function ClientsPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -62,6 +64,13 @@ export default function ClientsPage() {
     contactEmail: ""
   });
 
+  const companyRef = useMemoFirebase(() => {
+    if (!db || !profile?.companyId) return null;
+    return doc(db, "companies", profile.companyId);
+  }, [db, profile?.companyId]);
+
+  const { data: company } = useDoc<Company>(companyRef);
+
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "clients");
@@ -72,6 +81,17 @@ export default function ClientsPage() {
   const clients = realClients && realClients.length > 0 ? realClients : MOCK_CLIENTS.filter(c => c.companyId === profile?.companyId);
   const isDemo = !realClients || realClients.length === 0;
 
+  // Lógica de límites
+  const planLimits = {
+    free: 1,
+    pro: 5,
+    enterprise: 15
+  };
+  
+  const currentPlan = company?.currentPlan || 'free';
+  const maxClients = planLimits[currentPlan as keyof typeof planLimits] || 1;
+  const isAtLimit = clients.length >= maxClients && !editingClient;
+
   const filtered = clients.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.rut.toLowerCase().includes(searchTerm.toLowerCase())
@@ -80,6 +100,16 @@ export default function ClientsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !profile?.companyId) return;
+
+    if (isAtLimit) {
+      toast({
+        title: "Límite alcanzado",
+        description: `Tu plan ${currentPlan.toUpperCase()} permite hasta ${maxClients} clientes. Mejora tu plan para añadir más.`,
+        variant: "destructive"
+      });
+      setIsCreateOpen(false);
+      return;
+    }
 
     if (isDemo && !editingClient) {
       toast({
@@ -160,94 +190,108 @@ export default function ClientsPage() {
           </div>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={(open) => {
-          setIsCreateOpen(open);
-          if (!open) {
-            setEditingClient(null);
-            setFormData({ name: "", rut: "", address: "", contactName: "", contactEmail: "" });
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Cliente
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>{editingClient ? "Editar Cliente" : "Registrar Nuevo Cliente"}</DialogTitle>
-              <DialogDescription>Complete los datos legales y de contacto del cliente.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2 sm:col-span-1">
-                  <Label htmlFor="rut">RUT del Cliente *</Label>
-                  <Input 
-                    id="rut" 
-                    placeholder="76.000.000-0" 
-                    value={formData.rut}
-                    onChange={(e) => setFormData({...formData, rut: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2 col-span-2 sm:col-span-1">
-                  <Label htmlFor="name">Razón Social *</Label>
-                  <Input 
-                    id="name" 
-                    placeholder="Nombre de la empresa" 
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Dirección Principal *</Label>
-                <Input 
-                  id="address" 
-                  placeholder="Calle, Número, Ciudad" 
-                  value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="border-t pt-4">
-                <p className="text-sm font-bold text-muted-foreground mb-4">Contacto Responsable</p>
+        <div className="flex items-center gap-2">
+          {isAtLimit && (
+            <Badge variant="outline" className="text-amber-600 bg-amber-50 border-amber-200 gap-1 px-3 py-1">
+              <Lock className="h-3 w-3" /> Límite del Plan alcanzado
+            </Badge>
+          )}
+          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+            if (open && isAtLimit) {
+              toast({
+                title: "Actualización Requerida",
+                description: `Has alcanzado el máximo de ${maxClients} clientes para el plan ${currentPlan.toUpperCase()}.`,
+              });
+              return;
+            }
+            setIsCreateOpen(open);
+            if (!open) {
+              setEditingClient(null);
+              setFormData({ name: "", rut: "", address: "", contactName: "", contactEmail: "" });
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button disabled={isAtLimit}>
+                <Plus className="mr-2 h-4 w-4" /> Nuevo Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>{editingClient ? "Editar Cliente" : "Registrar Nuevo Cliente"}</DialogTitle>
+                <DialogDescription>Complete los datos legales y de contacto del cliente.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="contactName">Nombre</Label>
+                  <div className="space-y-2 col-span-2 sm:col-span-1">
+                    <Label htmlFor="rut">RUT del Cliente *</Label>
                     <Input 
-                      id="contactName" 
-                      placeholder="Juan Soto" 
-                      value={formData.contactName}
-                      onChange={(e) => setFormData({...formData, contactName: e.target.value})}
+                      id="rut" 
+                      placeholder="76.000.000-0" 
+                      value={formData.rut}
+                      onChange={(e) => setFormData({...formData, rut: e.target.value})}
+                      required
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="contactEmail">Email</Label>
+                  <div className="space-y-2 col-span-2 sm:col-span-1">
+                    <Label htmlFor="name">Razón Social *</Label>
                     <Input 
-                      id="contactEmail" 
-                      type="email"
-                      placeholder="juan@cliente.cl" 
-                      value={formData.contactEmail}
-                      onChange={(e) => setFormData({...formData, contactEmail: e.target.value})}
+                      id="name" 
+                      placeholder="Nombre de la empresa" 
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      required
                     />
                   </div>
                 </div>
-              </div>
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full">
-                  {editingClient ? "Guardar Cambios" : "Registrar Cliente"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Dirección Principal *</Label>
+                  <Input 
+                    id="address" 
+                    placeholder="Calle, Número, Ciudad" 
+                    value={formData.address}
+                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="border-t pt-4">
+                  <p className="text-sm font-bold text-muted-foreground mb-4">Contacto Responsable</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactName">Nombre</Label>
+                      <Input 
+                        id="contactName" 
+                        placeholder="Juan Soto" 
+                        value={formData.contactName}
+                        onChange={(e) => setFormData({...formData, contactName: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contactEmail">Email</Label>
+                      <Input 
+                        id="contactEmail" 
+                        type="email"
+                        placeholder="juan@cliente.cl" 
+                        value={formData.contactEmail}
+                        onChange={(e) => setFormData({...formData, contactEmail: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter className="pt-4">
+                  <Button type="submit" className="w-full">
+                    {editingClient ? "Guardar Cambios" : "Registrar Cliente"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card className="border-none shadow-sm">
         <CardHeader className="pb-3">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+          <div className="flex items-center justify-between">
+            <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Buscar por nombre o RUT..." 
@@ -256,7 +300,10 @@ export default function ClientsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            {isDemo && <Badge variant="outline" className="text-amber-600 border-amber-200">DEMO</Badge>}
+            <div className="text-right">
+              <p className="text-xs font-bold text-muted-foreground uppercase">Capacidad Clientes</p>
+              <p className="text-sm font-black">{clients.length} / {maxClients}</p>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

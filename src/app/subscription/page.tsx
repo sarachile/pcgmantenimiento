@@ -47,7 +47,7 @@ export default function SubscriptionPage() {
       price: "0 UF",
       description: "Prueba las capacidades del sistema sin costo.",
       features: [
-        "1 Empresa cliente",
+        "Hasta 1 Empresa cliente",
         "1 Usuario administrador",
         "Reportes básicos",
         "Acceso a Calendario"
@@ -106,7 +106,7 @@ export default function SubscriptionPage() {
         rut: rut.trim(),
         requestedPlan: selectedPlan.id,
         subscriptionStatus: 'active',
-        currentPlan: selectedPlan.id, // En una app real, esto sería gestionado por un webhook de pagos
+        currentPlan: selectedPlan.id,
         updatedAt: serverTimestamp()
       });
 
