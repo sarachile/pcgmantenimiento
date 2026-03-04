@@ -3,30 +3,37 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- HELPER FUNCTIONS ---
-    function isSignedIn() { return request.auth != null; }
+    // --- FUNCIONES HELPER ---
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isSuperAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
+    }
     
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-
-    function isSuperAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
+    
+    function getCompanyUser(companyId) {
+      return get(/databases/$(database)/documents/companies/$(companyId)/users/$(request.auth.uid)).data;
     }
 
     function isCompanyMember(companyId) {
-      let userData = getUserData();
-      return isSignedIn() && (userData.companyId == companyId || isSuperAdmin());
+      let globalUser = getUserData();
+      return isSignedIn() && (globalUser.companyId == companyId || isSuperAdmin());
     }
 
-    function hasRole(roles) {
-      let userData = getUserData();
-      return isSignedIn() && (userData.role in roles || isSuperAdmin());
+    function hasRole(companyId, roles) {
+      let companyUser = getCompanyUser(companyId);
+      return isSignedIn() && (companyUser.role in roles || isSuperAdmin());
     }
 
-    // --- RULES ---
+    // --- REGLAS ---
 
-    // Global user profiles for lookup
+    // Perfiles globales (necesarios para el hook useUser y validaciones)
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       allow create: if isSignedIn();
@@ -45,34 +52,52 @@ service cloud.firestore {
 
       match /users/{userId} {
         allow read: if isCompanyMember(companyId);
-        allow write: if isSuperAdmin() || (hasRole(['companyAdmin']) && request.auth.uid == userId);
+        allow write: if isSuperAdmin() || (hasRole(companyId, ['companyAdmin']) && request.auth.uid != userId);
       }
 
       match /workOrders/{workOrderId} {
-        allow get, list: if isCompanyMember(companyId);
+        allow list: if isCompanyMember(companyId);
         
-        // Logical rule for Reviewer
-        allow create: if isCompanyMember(companyId) && hasRole(['companyAdmin', 'supervisor', 'tecnico']);
-        
-        allow update: if isCompanyMember(companyId) && (
-          // Supervisors and Admins can update anything
-          hasRole(['companyAdmin', 'supervisor']) ||
-          // Technicians can update OTs assigned to them or if they created them
-          (hasRole(['tecnico']) && (resource.data.assignedTo == request.auth.uid || resource.data.createdBy == request.auth.uid)) ||
-          // Reviewers can only update if they are the reviewer (usually via subcollection review)
-          hasRole(['reviewer'])
+        allow get: if isCompanyMember(companyId) && (
+          hasRole(companyId, ['companyAdmin', 'supervisor', 'tecnico']) ||
+          (hasRole(companyId, ['reviewer']) && resource.data.reviewerId == request.auth.uid)
         );
 
+        allow create: if hasRole(companyId, ['companyAdmin', 'supervisor']);
+
+        allow update: if isCompanyMember(companyId) && (
+          // Admins y Supervisores pueden hacer todo (incluyendo saltarse al reviewer)
+          hasRole(companyId, ['companyAdmin', 'supervisor']) ||
+          
+          // Técnicos solo pueden actualizar si están asignados y no es para aprobar
+          (hasRole(companyId, ['tecnico']) && 
+           resource.data.assignedToUserId == request.auth.uid && 
+           request.resource.data.status != 'aprobada') ||
+          
+          // Reviewers solo pueden actualizar si están asignados
+          (hasRole(companyId, ['reviewer']) && 
+           resource.data.reviewerId == request.auth.uid)
+        );
+
+        // Libro Digital Inmutable
         match /digitalLogbookEntries/{entryId} {
           allow read: if isCompanyMember(companyId);
-          allow create: if isCompanyMember(companyId);
-          allow update, delete: if false; // IMMUTABILITY
+          allow create: if isCompanyMember(companyId) && 
+                         request.resource.data.actorUserId == request.auth.uid;
+          allow update, delete: if false; // INMUTABILIDAD
         }
 
+        // Revisiones Formales
         match /reviews/{reviewId} {
           allow read: if isCompanyMember(companyId);
-          allow create, update: if isCompanyMember(companyId) && hasRole(['reviewer', 'supervisor', 'companyAdmin']);
+          allow create, update: if isCompanyMember(companyId) && 
+                                 (hasRole(companyId, ['reviewer', 'supervisor', 'companyAdmin']));
         }
+      }
+      
+      match /subscriptions/{subId} {
+        allow read: if isCompanyMember(companyId);
+        allow write: if isSuperAdmin();
       }
     }
   }

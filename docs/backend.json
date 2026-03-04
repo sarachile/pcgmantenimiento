@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Company": {
@@ -154,6 +155,10 @@
         "assignedToUserId": {
           "type": "string",
           "description": "Reference to the User (tecnico or supervisor) currently assigned to this work order. (Relationship: User 1:N WorkOrder)"
+        },
+        "reviewerId": {
+          "type": "string",
+          "description": "Optional reference to a User with 'reviewer' role assigned to verify this OT. (Relationship: User 1:N WorkOrder)"
         },
         "scheduledDateTime": {
           "type": "string",
@@ -391,7 +396,7 @@
           "schema": {
             "$ref": "#/backend/entities/Company"
           },
-          "description": "Root collection for all company (tenant) specific data. Each document represents a single company. This collection serves as the top-level data isolation boundary for multi-tenancy.",
+          "description": "Root collection for all company (tenant) specific data.",
           "params": [
             {
               "name": "companyId",
@@ -407,11 +412,27 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Global collection for users with the 'superadmin' role. These users have platform-wide access and are not tied to a specific company. This uses the 'Existence over Content' pattern for global roles.",
+          "description": "Global collection for users with the 'superadmin' role.",
           "params": [
             {
               "name": "userId",
-              "description": "Unique identifier for the superadmin User (Firebase Auth UID)."
+              "description": "Unique identifier for the superadmin User."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Global user profiles for multi-tenant lookup and role validation.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "Unique identifier for the User."
             }
           ]
         }
@@ -423,7 +444,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Subcollection for users belonging to a specific company. Each document represents a user with their assigned role within that company. Includes denormalized 'companyId' for authorization independence.",
+          "description": "Subcollection for users belonging to a specific company.",
           "params": [
             {
               "name": "companyId",
@@ -431,27 +452,7 @@
             },
             {
               "name": "userId",
-              "description": "Unique identifier for the User (Firebase Auth UID)."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/companies/{companyId}/subscriptions/{subscriptionId}",
-        "definition": {
-          "entityName": "Subscription",
-          "schema": {
-            "$ref": "#/backend/entities/Subscription"
-          },
-          "description": "Subcollection to store subscription details for each company. Denormalizes 'companyId' for authorization independence and simplified security rules.",
-          "params": [
-            {
-              "name": "companyId",
-              "description": "Unique identifier for the parent Company."
-            },
-            {
-              "name": "subscriptionId",
-              "description": "Unique identifier for the Subscription."
+              "description": "Unique identifier for the User."
             }
           ]
         }
@@ -463,7 +464,7 @@
           "schema": {
             "$ref": "#/backend/entities/WorkOrder"
           },
-          "description": "Subcollection for work orders belonging to a specific company. Denormalizes 'companyId' for authorization independence. The 'reviewerRequired' field explicitly supports the optional reviewer workflow within the document.",
+          "description": "Work orders with reviewer isolation.",
           "params": [
             {
               "name": "companyId",
@@ -475,56 +476,7 @@
             }
           ]
         }
-      },
-      {
-        "path": "/companies/{companyId}/workOrders/{workOrderId}/digitalLogbookEntries/{entryId}",
-        "definition": {
-          "entityName": "DigitalLogbookEntry",
-          "schema": {
-            "$ref": "#/backend/entities/DigitalLogbookEntry"
-          },
-          "description": "Subcollection for immutable audit log entries related to a specific work order. Denormalizes 'companyId' and 'workOrderId' for authorization independence and simplified QAPs. The 'isImmutable' flag ensures audit trail integrity, enforced by rules.",
-          "params": [
-            {
-              "name": "companyId",
-              "description": "Unique identifier for the parent Company."
-            },
-            {
-              "name": "workOrderId",
-              "description": "Unique identifier for the parent Work Order."
-            },
-            {
-              "name": "entryId",
-              "description": "Unique identifier for the Digital Logbook Entry."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/companies/{companyId}/workOrders/{workOrderId}/reviews/{reviewId}",
-        "definition": {
-          "entityName": "Review",
-          "schema": {
-            "$ref": "#/backend/entities/Review"
-          },
-          "description": "Subcollection for formal reviews of a work order, typically by a 'reviewer'. Denormalizes 'companyId' and 'workOrderId' for authorization independence. Allows for tracking of individual reviews, even if only one is expected or if the review process is skipped.",
-          "params": [
-            {
-              "name": "companyId",
-              "description": "Unique identifier for the parent Company."
-            },
-            {
-              "name": "workOrderId",
-              "description": "Unique identifier for the parent Work Order."
-            },
-            {
-              "name": "reviewId",
-              "description": "Unique identifier for the Review."
-            }
-          ]
-        }
       }
-    ],
-    "reasoning": "The recommended Firestore structure for PCGMANTENIMIENTO is designed with a strong emphasis on multi-tenancy, granular role-based access control (RBAC), and adherence to the core design principles of authorization independence, structural segregation, and predictable data.  \n\n**Multi-Tenancy and Authorization Independence (CRITICAL):**\nThe cornerstone of this design is the `/companies/{companyId}` root collection. All company-specific data – `users`, `workOrders`, `subscriptions`, and their respective subcollections (`digitalLogbookEntries`, `reviews`) – are nested directly under their parent `/companies/{companyId}` path. This establishes a strict data isolation boundary for each tenant. Critically, to achieve **Authorization Independence**, every document in these subcollections (e.g., `users`, `workOrders`, `subscriptions`, `digitalLogbookEntries`, `reviews`) will explicitly include a `companyId` field, denormalizing the parent's identifier. For `digitalLogbookEntries` and `reviews`, the `workOrderId` will also be denormalized. This eliminates the need for `get()` calls in Firestore security rules to check parent document attributes, which is essential for atomic operations (transactions/batches) and robust rule evaluation. Rules can directly check `request.auth.uid`'s associated `companyId` (from their user document) against the `companyId` field in the document they are trying to access, making permission checks efficient and clear.\n\n**QAPs (Rules are not Filters) and Structural Segregation:**\nEach collection (e.g., `users`, `workOrders`, `digitalLogbookEntries`) is designed to have a **homogeneous security posture**. For instance, all documents within `/companies/{companyId}/workOrders` share the same fundamental security requirements: they belong to `companyId` and are accessible based on roles within that company. There is no mixing of public/private or draft/published items in the same collection (e.g., no 'public work orders' mixed with 'private work orders'). This structural segregation greatly simplifies security rules.  \n\nFor `list` operations (queries), the structure inherently supports QAPs. Because `companyId` is denormalized in every relevant document, a query like `db.collection('companies').doc(myCompanyId).collection('workOrders').where('status', '==', 'aprobada')` can be secured by a rule that simply checks if `request.auth.uid` belongs to `myCompanyId` and has the necessary role. The `companyId` in the path and denormalized in the document ensures the query is naturally scoped, and rules don't need to filter results after the fact.  \n\n**User & Role Management (DBAC):**\nUsers are split into two logical groups based on their role: platform `superadmins` and company-specific users. `superadmins` reside in a root collection `/superAdmins/{userId}`, employing the **Existence over Content** pattern for global roles. Company-specific users are in `/companies/{companyId}/users/{userId}`, where their `role` (`companyAdmin`, `supervisor`, `tecnico`, `reviewer`) and `companyId` are explicitly stored. This makes user authentication and role-based authorization in security rules straightforward and highly auditable, relying solely on `request.auth.uid` and database-stored roles.\n\n**Work Order Flow & Digital Logbook:**\nThe `WorkOrder` entity includes a `status` field (Finite State Machine: `creada` → `asignada` → `ejecutada` → `enRevision` → `aprobada`/`rechazada`) and a `reviewerRequired` boolean flag to manage the optional reviewer workflow. The `DigitalLogbookEntry` subcollection ensures an immutable, auditable record of all work order events. Its `isImmutable` field, enforced by security rules, guarantees the integrity of the audit trail once a work order is approved.\n\n**Scalability and Security Justification:**\n*   **Scalability:** The `/companies/{companyId}` root collection inherently shards data by tenant, preventing read/write hot spots across companies. Denormalization reduces cross-document reads, improving performance. The design avoids overly deep or complex hierarchies, which are often performance bottlenecks.\n*   **Security:** Path-based authorization (`/companies/{companyId}/...`) combined with denormalized `companyId` fields provides a highly secure multi-tenant environment. Role information stored directly in user documents (or the `superAdmins` collection) enables fine-grained RBAC with simple security rules. The `isImmutable` flag for logbook entries offers strong data integrity. The explicit `reviewerRequired` field in `WorkOrder` allows flexible workflow configuration directly within the data model, without compromising security rules.\n\nThis architecture provides a robust, efficient, and easily auditable foundation for the PCGMANTENIMIENTO ERP SaaS platform."
+    ]
   }
 }
