@@ -14,7 +14,8 @@ import {
   BarChart3,
   Globe,
   HardHat,
-  Package
+  Package,
+  CalendarDays
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -42,11 +43,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { title: "Calendario", href: "/calendar", icon: CalendarDays },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
   { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
   { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
   { title: "Reportes", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor'] },
-  { title: "Mi Empresa", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
+  { title: "Mi Empresa", href: "/company", icon: Building2 },
   { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
