@@ -61,7 +61,7 @@ service cloud.firestore {
     // =========================
 
     match /users/{userId} {
-      allow get: if isSignedIn();
+      allow get: if isSignedIn() || true; // Permitir GET para validación durante signup
       allow list: if true; 
       allow create: if isSignedIn();
       allow update: if isSignedIn();
@@ -112,6 +112,13 @@ service cloud.firestore {
       // ---------- SPARE PARTS ----------
       match /spareParts/{partId} {
         allow read, write: if isCompanyMember(companyId);
+      }
+
+      // ---------- EVALUATIONS ----------
+      match /evaluations/{evalId} {
+        allow read: if isCompanyMember(companyId);
+        allow create: if isCompanyMember(companyId);
+        allow update: if hasRole(companyId, ['companyAdmin', 'supervisor']);
       }
     }
 

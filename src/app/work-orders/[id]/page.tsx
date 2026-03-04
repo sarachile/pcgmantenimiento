@@ -28,7 +28,10 @@ import {
   Eraser,
   Check,
   Package,
-  Plus
+  Plus,
+  Star,
+  ShieldCheck,
+  Send
 } from "lucide-react";
 import {
   Dialog,
@@ -61,16 +64,86 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { doc, collection, addDoc, serverTimestamp, arrayUnion, query, orderBy, increment } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
-import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company, PartUsage, SparePart, Client, User, Asset, StaffMember } from "@/lib/types";
+import { ChecklistItem, WorkOrder, DigitalLogbookEntry, Company, PartUsage, SparePart, Client, User, Asset, StaffMember, ServiceEvaluation } from "@/lib/types";
 import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 import { format, parseISO } from "date-fns";
 import { WorkOrderReport } from "@/components/WorkOrderReport";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+
+function EvaluationForm({ 
+  onSave, 
+  isSaving 
+}: { 
+  onSave: (ratings: any, comment: string) => void, 
+  isSaving: boolean 
+}) {
+  const [ratings, setRatings] = useState({
+    quality: 0,
+    timing: 0,
+    safety: 0,
+    documentation: 0
+  });
+  const [comment, setComment] = useState("");
+
+  const criteria = [
+    { key: 'quality', label: 'Calidad Ejecución', desc: 'Cumplimiento de especificaciones técnicas.' },
+    { key: 'timing', label: 'Cumplimiento Plazos', desc: 'Respeto a las fechas comprometidas.' },
+    { key: 'safety', label: 'Seguridad y Entorno', desc: 'Orden y limpieza durante el trabajo.' },
+    { key: 'documentation', label: 'Claridad Reportes', desc: 'Calidad de la evidencia y documentación.' }
+  ];
+
+  const canSubmit = Object.values(ratings).every(r => r > 0) && comment.trim().length > 5;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4">
+        {criteria.map((c) => (
+          <div key={c.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-muted/20 rounded-lg">
+            <div className="space-y-0.5">
+              <p className="text-sm font-bold">{c.label}</p>
+              <p className="text-[10px] text-muted-foreground">{c.desc}</p>
+            </div>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRatings({ ...ratings, [c.key]: star })}
+                  className={cn(
+                    "p-1 transition-transform hover:scale-110",
+                    (ratings as any)[c.key] >= star ? "text-amber-500" : "text-slate-300"
+                  )}
+                >
+                  <Star className={cn("h-5 w-5", (ratings as any)[c.key] >= star && "fill-amber-500")} />
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-2">
+        <Label className="text-xs font-bold uppercase text-muted-foreground">Comentarios y Observaciones Fundadas</Label>
+        <Textarea 
+          placeholder="Describa su experiencia detalladamente..." 
+          className="min-h-[100px] text-sm"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+        />
+      </div>
+      <Button 
+        className="w-full h-12 text-sm font-bold gap-2" 
+        disabled={!canSubmit || isSaving}
+        onClick={() => onSave(ratings, comment)}
+      >
+        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Enviar Evaluación Oficial</>}
+      </Button>
+    </div>
+  );
+}
 
 function SignaturePad({ onSave, onCancel, isSaving }: { onSave: (blob: Blob) => void, onCancel: () => void, isSaving: boolean, title: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -116,7 +189,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile } = useUser();
+  const { profile, isReviewer } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   const reportRef = useRef<HTMLDivElement>(null);
@@ -127,6 +200,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [signatureType, setSignatureType] = useState<'client' | 'technician' | null>(null);
+  const [isEvalOpen, setIsEvalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -185,6 +259,32 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     finally { setIsGeneratingPdf(false); }
   };
 
+  const handleSaveEvaluation = async (ratings: any, comment: string) => {
+    if (!db || !profile || !ot) return;
+    setIsUpdating(true);
+    try {
+      const evalCol = collection(db, "companies", profile.companyId, "evaluations");
+      const newEval = {
+        workOrderId: ot.id,
+        clientId: ot.clientId,
+        companyId: profile.companyId,
+        reviewerId: profile.id,
+        reviewerName: profile.name,
+        ratings,
+        comment,
+        createdAt: serverTimestamp()
+      };
+      const evalDoc = await addDoc(evalCol, newEval);
+      updateDocumentNonBlocking(otRef!, { evaluationId: evalDoc.id, status: 'aprobada', reviewedAt: serverTimestamp() });
+      toast({ title: "Evaluación enviada", description: "Muchas gracias por su retroalimentación." });
+      setIsEvalOpen(false);
+    } catch (e: any) {
+      toast({ title: "Error al evaluar", variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!ot) return <div className="p-8 text-center">Orden no encontrada.</div>;
 
@@ -208,7 +308,23 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf}>{isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Reporte PDF</Button>
-          {ot.status !== 'aprobada' && (
+          
+          {isReviewer && ot.status === 'en revision' && client?.evaluationEnabled && (
+            <Dialog open={isEvalOpen} onOpenChange={setIsEvalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-amber-600 gap-2"><Star className="h-4 w-4" /> Aprobar y Evaluar</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-amber-600" /> Evaluación de Servicio</DialogTitle>
+                  <DialogDescription>Su opinión es fundamental para mejorar nuestra calidad técnica. Por favor, califique los siguientes criterios.</DialogDescription>
+                </DialogHeader>
+                <EvaluationForm isSaving={isUpdating} onSave={handleSaveEvaluation} />
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {!isReviewer && ot.status !== 'aprobada' && (
             <Button className="bg-emerald-600" onClick={() => updateDocumentNonBlocking(otRef!, { status: 'aprobada', reviewedAt: serverTimestamp() })}>Aprobar Trabajo</Button>
           )}
         </div>
@@ -235,7 +351,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <Checkbox checked={item.completed} onCheckedChange={() => {
                     const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: !i.completed, completedAt: !i.completed ? new Date().toISOString() : null } : i);
                     updateDocumentNonBlocking(otRef!, { checklist: newChecklist, updatedAt: serverTimestamp() });
-                  }} disabled={ot.status === 'aprobada'} />
+                  }} disabled={ot.status === 'aprobada' || isReviewer} />
                   <span className={cn("text-sm", item.completed && "line-through text-muted-foreground")}>{item.task}</span>
                 </div>
               ))}
@@ -247,7 +363,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <CardContent className="grid grid-cols-2 gap-6">
               <div className="space-y-2 text-center">
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">Personal Responsable</p>
-                {ot.technicianSignatureUrl ? <div className="border rounded-lg p-2 aspect-video relative"><img src={ot.technicianSignatureUrl} className="w-full h-full object-contain" /></div> : <Button variant="outline" className="w-full" onClick={() => setSignatureType('technician')}>Firmar</Button>}
+                {ot.technicianSignatureUrl ? <div className="border rounded-lg p-2 aspect-video relative"><img src={ot.technicianSignatureUrl} className="w-full h-full object-contain" /></div> : <Button variant="outline" className="w-full" onClick={() => setSignatureType('technician')} disabled={isReviewer}>Firmar</Button>}
               </div>
               <div className="space-y-2 text-center">
                 <p className="text-[10px] font-bold uppercase text-muted-foreground">Recepción Cliente</p>

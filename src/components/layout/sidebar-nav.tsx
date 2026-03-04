@@ -16,7 +16,8 @@ import {
   HardHat,
   Package,
   CalendarDays,
-  Settings
+  Settings,
+  MessageCircleHeart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -54,6 +55,7 @@ const navItems: NavItem[] = [
   { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
   { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
   { title: "Reportes", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Feedback Clientes", href: "/feedback", icon: MessageCircleHeart, roles: ['companyAdmin', 'supervisor'] },
   { title: "Mi Empresa", href: "/company", icon: Building2 },
   { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },

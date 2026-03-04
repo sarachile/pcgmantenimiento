@@ -33,6 +33,7 @@ export interface Client {
   address: string;
   contactName?: string;
   contactEmail?: string;
+  evaluationEnabled: boolean;
   createdAt: string;
 }
 
@@ -96,6 +97,27 @@ export interface ChecklistItem {
   completedAt?: string | any;
 }
 
+export interface EvaluationRatings {
+  quality: number;
+  timing: number;
+  safety: number;
+  documentation: number;
+}
+
+export interface ServiceEvaluation {
+  id: string;
+  workOrderId: string;
+  clientId: string;
+  companyId: string;
+  reviewerId: string;
+  reviewerName: string;
+  ratings: EvaluationRatings;
+  comment: string;
+  adminResponse?: string;
+  adminResponseAt?: string | any;
+  createdAt: string | any;
+}
+
 export interface WorkOrder {
   id: string;
   companyId: string;
@@ -120,6 +142,7 @@ export interface WorkOrder {
   rejectedReason?: string;
   evidenceUrls?: string[];
   aiSummary?: string;
+  evaluationId?: string;
 }
 
 export interface DigitalLogbookEntry {
