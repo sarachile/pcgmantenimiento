@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
@@ -13,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, HardHat, UserPlus, Users, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
-import { Client, Asset, StaffMember } from "@/lib/types";
+import { Client, Asset, StaffMember, WorkOrder } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export default function NewWorkOrderPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -97,7 +98,7 @@ export default function NewWorkOrderPage() {
         assetId: assetId || null,
         description: description.trim(),
         status: "creada",
-        assignedToStaffIds: assignedToStaffIds, // Arreglo de IDs
+        assignedToStaffIds: assignedToStaffIds,
         createdByUserId: profile.id,
         reviewerRequired: false,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
@@ -122,7 +123,7 @@ export default function NewWorkOrderPage() {
     }
   };
 
-  // Fetch real data
+  // Fetching data
   const assetsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "assets");
@@ -141,9 +142,30 @@ export default function NewWorkOrderPage() {
     );
   }, [db, profile?.companyId]);
 
+  // Query active work orders to check staff availability
+  const activeWorkOrdersQuery = useMemoFirebase(() => {
+    if (!db || !profile?.companyId) return null;
+    return query(
+      collection(db, "companies", profile.companyId, "workOrders"),
+      where("status", "in", ["creada", "asignada", "ejecutada", "en revision"])
+    );
+  }, [db, profile?.companyId]);
+
   const { data: realAssets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
   const { data: realClients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
   const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
+  const { data: activeWorkOrders } = useCollection<WorkOrder>(activeWorkOrdersQuery);
+
+  // Map staff IDs to their current OT ID if they are busy
+  const staffBusyMap = useMemo(() => {
+    const busy: Record<string, string> = {};
+    activeWorkOrders?.forEach(ot => {
+      ot.assignedToStaffIds?.forEach(staffId => {
+        busy[staffId] = ot.id;
+      });
+    });
+    return busy;
+  }, [activeWorkOrders]);
 
   if (isUserLoading) {
     return (
@@ -218,7 +240,12 @@ export default function NewWorkOrderPage() {
                   <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
                     <CalendarIcon className="h-3 w-3" /> Inicio Ejecución
                   </Label>
-                  <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+                  <input 
+                    type="date" 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    value={scheduledDate} 
+                    onChange={(e) => setScheduledDate(e.target.value)} 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-xs font-bold uppercase text-muted-foreground">
@@ -236,33 +263,60 @@ export default function NewWorkOrderPage() {
             </Card>
 
             <div className="space-y-4">
-              <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider flex items-center gap-2">
-                <Users className="h-3 w-3" /> Personal Operativo Asignado (Múltiple)
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label className="font-bold text-xs uppercase text-muted-foreground tracking-wider flex items-center gap-2">
+                  <Users className="h-3 w-3" /> Personal Operativo Asignado
+                </Label>
+                <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                  <AlertTriangle className="h-2.5 w-2.5 text-amber-500" /> Personal ocupado está bloqueado
+                </p>
+              </div>
               
-              <div className="border rounded-lg bg-white p-4 space-y-3 max-h-[250px] overflow-y-auto">
+              <div className="border rounded-lg bg-white p-4 space-y-3 max-h-[300px] overflow-y-auto">
                 {isStaffLoading ? (
                   <div className="flex items-center justify-center p-4">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   </div>
                 ) : staffMembers && staffMembers.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {staffMembers.map(staff => (
-                      <div key={staff.id} className="flex items-center space-x-2 border p-2 rounded-md hover:bg-muted/30 transition-colors">
-                        <Checkbox 
-                          id={`staff-${staff.id}`} 
-                          checked={assignedToStaffIds.includes(staff.id)}
-                          onCheckedChange={() => toggleStaffSelection(staff.id)}
-                        />
-                        <label 
-                          htmlFor={`staff-${staff.id}`}
-                          className="text-xs font-medium leading-none cursor-pointer flex-1"
+                    {staffMembers.map(staff => {
+                      const busyOTId = staffBusyMap[staff.id];
+                      return (
+                        <div 
+                          key={staff.id} 
+                          className={cn(
+                            "flex items-center space-x-2 border p-2 rounded-md transition-colors",
+                            busyOTId ? "bg-amber-50/50 border-amber-100 opacity-80" : "hover:bg-muted/30"
+                          )}
                         >
-                          <p className="font-bold">{staff.name}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase">{staff.role}</p>
-                        </label>
-                      </div>
-                    ))}
+                          <Checkbox 
+                            id={`staff-${staff.id}`} 
+                            checked={assignedToStaffIds.includes(staff.id)}
+                            onCheckedChange={() => !busyOTId && toggleStaffSelection(staff.id)}
+                            disabled={!!busyOTId}
+                          />
+                          <label 
+                            htmlFor={`staff-${staff.id}`}
+                            className={cn(
+                              "text-xs font-medium leading-none flex-1",
+                              busyOTId ? "cursor-not-allowed" : "cursor-pointer"
+                            )}
+                          >
+                            <div className="flex flex-col gap-0.5">
+                              <p className="font-bold flex items-center justify-between gap-2">
+                                {staff.name}
+                                {busyOTId && (
+                                  <Badge variant="outline" className="text-[8px] h-4 bg-white text-amber-700 border-amber-200">
+                                    OCUPADO: {busyOTId}
+                                  </Badge>
+                                )}
+                              </p>
+                              <p className="text-[9px] text-muted-foreground uppercase">{staff.role}</p>
+                            </div>
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-4 space-y-2">
@@ -279,7 +333,7 @@ export default function NewWorkOrderPage() {
                   assignedToStaffIds.map(id => {
                     const name = staffMembers?.find(s => s.id === id)?.name || "Cargando...";
                     return (
-                      <Badge key={id} variant="secondary" className="gap-1 pl-2 pr-1 h-6">
+                      <Badge key={id} variant="secondary" className="gap-1 pl-2 pr-1 h-6 bg-primary/10 text-primary border-primary/20">
                         {name}
                         <button 
                           type="button" 
