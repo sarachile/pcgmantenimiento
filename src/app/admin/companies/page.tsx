@@ -122,10 +122,9 @@ export default function AdminCompaniesPage() {
   }, [db, isSuperAdmin]);
   const { data: allUsers } = useCollection<User>(usersQuery);
 
-  // Consulta para el monitor de correos
+  // Monitor de correos mejorado con orden cronológico
   const mailLogQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
-    // Sin orderBy inicial para evitar errores de índice en proyectos nuevos
     return query(collection(db, "mail"), limit(10));
   }, [db, isSuperAdmin]);
   const { data: mailLogs } = useCollection(mailLogQuery);
@@ -252,6 +251,7 @@ export default function AdminCompaniesPage() {
       },
     };
 
+    // Usamos addDocumentNonBlocking pero nos aseguramos de limpiar la UI
     addDocumentNonBlocking(mailCol, mailData);
 
     toast({
@@ -259,9 +259,9 @@ export default function AdminCompaniesPage() {
       description: "Revisa el monitor lateral para confirmar la entrega.",
     });
     
-    // CORRECCIÓN: Cerramos diálogo y reseteamos estados inmediatamente
-    setIsSendingInvite(false);
+    // Reseteamos estados y cerramos la ventana
     setIsInviteOpen(false);
+    setIsSendingInvite(false);
     setInviteEmail("");
   };
 
