@@ -10,7 +10,7 @@ service cloud.firestore {
     }
     
     function isSuperAdmin() {
-      // Prioridad absoluta al email del dueño del SaaS para bypass de emergencia
+      // Prioridad absoluta al email del dueño del SaaS
       return isSignedIn() && (
         request.auth.token.email == 'control@pcgoperacion.com' ||
         exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
@@ -25,7 +25,6 @@ service cloud.firestore {
     function isCompanyMember(companyId) {
       if (!isSignedIn()) return false;
       if (request.auth.token.email == 'control@pcgoperacion.com') return true;
-      if (isSuperAdmin()) return true;
       
       let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(userPath) && get(userPath).data.companyId == companyId;
@@ -34,10 +33,9 @@ service cloud.firestore {
     // --- REGLAS DE COLECCIONES ---
 
     // Colección para la extensión Trigger Email
-    // Permitimos crear si es SuperAdmin identificado por email o rol
+    // REGLA SIMPLIFICADA: Si el email es el del controlador, se permite TODO en mail.
     match /mail/{mailId} {
-      allow create: if isSignedIn() && (request.auth.token.email == 'control@pcgoperacion.com' || isSuperAdmin());
-      allow read, update, delete: if isSignedIn() && (request.auth.token.email == 'control@pcgoperacion.com' || isSuperAdmin());
+      allow create, read, write: if isSignedIn() && (request.auth.token.email == 'control@pcgoperacion.com' || isSuperAdmin());
     }
 
     match /superAdmins/{userId} {
