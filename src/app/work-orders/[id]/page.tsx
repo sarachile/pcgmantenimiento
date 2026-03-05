@@ -430,10 +430,42 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <p className="text-sm text-slate-600 leading-relaxed font-medium">Solo el cliente con este PIN podrá autorizar. El código ha sido incluido en la notificación oficial.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" className="rounded-xl bg-white gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={() => handleResendEmail()} disabled={isResendingEmail}>
-                    {isResendingEmail ? <Loader2 className="animate-spin h-4 w-4" /> : <Mail className="h-4 w-4" />} 
-                    Re-enviar PIN y Enlace
-                  </Button>
+                  {!client?.contactEmail ? (
+                    <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="rounded-xl bg-indigo-600 text-white font-bold h-12 px-6 gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
+                          <Mail className="h-4 w-4" /> Configurar Correo y Enviar PIN
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
+                        <DialogHeader>
+                          <DialogTitle className="text-2xl font-black italic">Configurar Envío</DialogTitle>
+                          <DialogDescription>Para proceder con la validación externa, se requiere un correo de contacto para el revisor.</DialogDescription>
+                        </DialogHeader>
+                        <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label className="font-bold text-xs uppercase text-slate-500">Email del Revisor</Label>
+                            <Input 
+                              type="email" 
+                              required
+                              placeholder="ejemplo@cliente.cl"
+                              className="h-12 rounded-xl"
+                              value={tempClientEmail}
+                              onChange={(e) => setTempClientEmail(e.target.value)}
+                            />
+                          </div>
+                          <DialogFooter>
+                            <Button type="submit" className="w-full h-12 rounded-xl" disabled={isUpdating}>Activar Validación</Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <Button variant="outline" className="rounded-xl bg-white gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={() => handleResendEmail()} disabled={isResendingEmail}>
+                      {isResendingEmail ? <Loader2 className="animate-spin h-4 w-4" /> : <Mail className="h-4 w-4" />} 
+                      Re-enviar PIN y Enlace
+                    </Button>
+                  )}
                   <Button variant="ghost" className="rounded-xl h-10 text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-indigo-600" onClick={() => {
                     navigator.clipboard.writeText(currentUrl);
                     toast({ title: "Link Copiado" });

@@ -3,8 +3,8 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, addDoc, serverTimestamp, query, where } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { collection, addDoc, serverTimestamp, query, where, doc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin, Mail, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -39,6 +39,7 @@ export default function NewWorkOrderPage() {
   const [surfaceAreaM2, setSurfaceAreaM2] = useState("");
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
+  const [externalEmail, setExternalEmail] = useState("");
 
   const companyId = profile?.companyId || "";
 
@@ -74,12 +75,25 @@ export default function NewWorkOrderPage() {
     } catch (e) { return ""; }
   }, [scheduledDate, durationDays]);
 
+  const isEmailMissing = useMemo(() => {
+    return reviewerRequired && !selectedClient?.contactEmail && !externalEmail.trim();
+  }, [reviewerRequired, selectedClient, externalEmail]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !clientId || !companyId || !profile) return;
+    if (!description.trim() || !clientId || !companyId || !profile || isEmailMissing) return;
 
     setIsSubmitting(true);
     try {
+      // Si se ingresó un nuevo correo, actualizar el cliente
+      if (externalEmail.trim() && selectedClient) {
+        const clientRef = doc(db, "companies", companyId, "clients", selectedClient.id);
+        updateDocumentNonBlocking(clientRef, {
+          contactEmail: externalEmail.trim(),
+          updatedAt: serverTimestamp()
+        });
+      }
+
       const pin = Math.floor(100000 + Math.random() * 900000).toString();
 
       const colRef = collection(db, "companies", companyId, "workOrders");
@@ -218,7 +232,7 @@ export default function NewWorkOrderPage() {
               </div>
             </div>
 
-            <div className="space-y-4 p-1 rounded-3xl bg-gradient-to-r from-amber-500/20 via-blue-500/20 to-emerald-500/20 animate-pulse">
+            <div className="space-y-4">
               <div className="bg-white rounded-[1.4rem] p-6 border-2 border-slate-100 shadow-sm space-y-6">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="bg-primary/10 p-1.5 rounded-lg">
@@ -250,6 +264,27 @@ export default function NewWorkOrderPage() {
                     <Switch checked={evaluationRequired} onCheckedChange={setEvaluationRequired} />
                   </div>
                 </div>
+
+                {reviewerRequired && !selectedClient?.contactEmail && (
+                  <div className="mt-4 p-5 bg-rose-50 border-2 border-rose-200 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-2 text-rose-700 font-black text-[10px] uppercase tracking-widest">
+                      <AlertTriangle className="h-4 w-4" /> Correo del Revisor Requerido
+                    </div>
+                    <p className="text-xs text-rose-600 font-medium leading-relaxed">
+                      El cliente seleccionado no tiene un correo de contacto registrado. Para habilitar la validación externa, ingrese el correo donde se enviará el PIN de seguridad:
+                    </p>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-400" />
+                      <Input 
+                        placeholder="revisor@cliente.cl"
+                        type="email"
+                        value={externalEmail}
+                        onChange={(e) => setExternalEmail(e.target.value)}
+                        className="pl-10 h-12 border-rose-200 focus:border-rose-500 bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -345,7 +380,7 @@ export default function NewWorkOrderPage() {
             <Button 
               type="submit" 
               size="lg" 
-              disabled={isSubmitting || !description.trim() || !clientId} 
+              disabled={isSubmitting || !description.trim() || !clientId || isEmailMissing} 
               className="h-14 px-10 rounded-2xl font-black text-base shadow-xl shadow-primary/20"
             >
               {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Generar Orden de Trabajo"}
