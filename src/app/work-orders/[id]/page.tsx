@@ -45,7 +45,10 @@ import {
   Hash,
   Package,
   Search,
-  ShoppingCart
+  ShoppingCart,
+  Zap,
+  Sparkles,
+  FileText
 } from "lucide-react";
 import {
   Dialog,
@@ -75,6 +78,7 @@ import jsPDF from "jspdf";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
+import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -92,6 +96,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGeneratingCert, setIsGeneratingCert] = useState(false);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [isSealDialogOpen, setIsSealDialogOpen] = useState(false);
   const [isRequestCertDialogOpen, setIsRequestCertDialogOpen] = useState(false);
@@ -251,6 +256,45 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       pdf.save(`CERTIFICADO_EXPERIENCIA_PCG_${ot.id}.pdf`);
       toast({ title: "Certificado generado correctamente" });
     } catch (e) { toast({ title: "Error al generar certificado", variant: "destructive" }); } finally { setIsGeneratingCert(false); }
+  };
+
+  const handleGenerateAISummary = async () => {
+    if (!ot || !logbook || !otRef) return;
+    setIsGeneratingSummary(true);
+    toast({ title: "Generando Resumen IA", description: "Analizando bitácora técnica..." });
+    
+    try {
+      const summaryInput = {
+        workOrder: {
+          id: ot.id,
+          description: ot.description,
+          status: ot.status as any,
+          createdAt: ot.createdAt?.toDate ? ot.createdAt.toDate().toISOString() : ot.createdAt,
+          companyId: ot.companyId
+        },
+        digitalLogbookEntries: logbook.map(e => ({
+          id: e.id,
+          timestamp: e.timestamp?.toDate ? e.timestamp.toDate().toISOString() : e.timestamp,
+          eventType: e.eventType,
+          eventDetails: e.eventDetails,
+          actor: e.actor,
+          workOrderId: ot.id
+        }))
+      };
+
+      const result = await generateWorkOrderSummary(summaryInput);
+      
+      updateDocumentNonBlocking(otRef, {
+        aiSummary: result.summary,
+        updatedAt: serverTimestamp()
+      });
+
+      toast({ title: "Resumen IA Generado", description: "El informe ha sido actualizado." });
+    } catch (error: any) {
+      toast({ title: "Error de IA", description: "No se pudo generar el resumen inteligente.", variant: "destructive" });
+    } finally {
+      setIsGeneratingSummary(false);
+    }
   };
 
   const handleRequestCertification = async (e: React.FormEvent) => {
@@ -522,6 +566,43 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
+          {/* Tarjeta de Resumen IA (Genkit) */}
+          <Card className="rounded-[2rem] border-none shadow-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+              <Zap className="h-32 w-32" />
+            </div>
+            <CardHeader className="p-8 pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-black italic tracking-tighter flex items-center gap-3">
+                    <Sparkles className="h-6 w-6 text-amber-400 animate-pulse" /> Resumen Ejecutivo IA
+                  </CardTitle>
+                  <CardDescription className="text-indigo-100 font-medium mt-1">Sintetiza la intervención técnica para el reporte final.</CardDescription>
+                </div>
+                <Button 
+                  onClick={handleGenerateAISummary} 
+                  disabled={isGeneratingSummary || !logbook?.length}
+                  className="bg-white text-indigo-700 hover:bg-indigo-50 font-black rounded-xl h-12 px-6 shadow-lg shadow-indigo-900/20"
+                >
+                  {isGeneratingSummary ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+                  {ot.aiSummary ? "Actualizar con IA" : "Generar con IA"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-8 pt-0">
+              {ot.aiSummary ? (
+                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 italic text-sm leading-relaxed text-indigo-50 font-medium">
+                  "{ot.aiSummary}"
+                </div>
+              ) : (
+                <div className="bg-white/5 rounded-2xl p-8 border-2 border-dashed border-white/10 text-center space-y-3">
+                  <FileText className="h-8 w-8 mx-auto opacity-20" />
+                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-200">Presiona el botón para procesar la bitácora</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {ot.status === 'pendiente cliente' && (
             <Card className="border-4 border-indigo-500 border-dashed bg-indigo-50/20 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-8 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 bg-indigo-600 text-white px-4 py-1 rounded-bl-xl font-black text-[10px] uppercase tracking-widest">Seguridad Activa</div>

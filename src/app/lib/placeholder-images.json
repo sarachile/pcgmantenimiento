@@ -10,7 +10,7 @@
     {
       "id": "dashboard-preview",
       "description": "Previsualización del Dashboard PCGMANTENIMIENTO",
-      "imageUrl": "/imagen1.png",
+      "imageUrl": "https://picsum.photos/seed/pcg-dash-preview/1200/800",
       "imageHint": "software dashboard"
     },
     {
