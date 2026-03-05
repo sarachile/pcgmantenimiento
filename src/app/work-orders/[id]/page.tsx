@@ -45,6 +45,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -52,6 +53,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -86,6 +88,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [isSealDialogOpen, setIsSealDialogOpen] = useState(false);
+  const [isRequestCertDialogOpen, setIsRequestCertDialogOpen] = useState(false);
+  const [tempClientEmail, setTempClientEmail] = useState("");
   const [currentUrl, setCurrentUrl] = useState("");
 
   useEffect(() => {
@@ -135,12 +139,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const qrUrl = useMemo(() => currentUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}` : "", [currentUrl]);
 
-  const handleResendEmail = async () => {
-    if (!ot || !client?.contactEmail || !companyId) return;
+  const handleResendEmail = async (overrideEmail?: string) => {
+    const targetEmail = overrideEmail || client?.contactEmail;
+    if (!ot || !targetEmail || !companyId) return;
+    
     setIsResendingEmail(true);
     try {
       const result = await sendSystemEmail({
-        to: client.contactEmail,
+        to: targetEmail,
         subject: `SOLICITUD DE APROBACIÓN TÉCNICA - OT ${ot.id}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 16px; padding: 40px; color: #1e293b; background-color: #ffffff;">
@@ -152,7 +158,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; font-weight: 800;">Solicitud de Aprobación de Servicio</h2>
             
             <p style="font-size: 15px; line-height: 1.6;">Estimados <strong>${client?.name}</strong>,</p>
-            <p style="font-size: 15px; line-height: 1.6;">Se ha completado la intervención técnica programada. A continuación, presentamos los detalles para su revisión y sello de aprobación digital:</p>
+            <p style="font-size: 15px; line-height: 1.6;">Se ha completado la intervención técnica programada. A continuación, presentamos los detalles para su revisión y sello de aprobación digital necesario para la emisión del certificado de experiencia:</p>
             
             <div style="background-color: #f8fafc; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e2e8f0;">
               <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
@@ -180,9 +186,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         `
       });
-      if (result.success) toast({ title: "Correo Enviado", description: `Se envió la invitación a ${client.contactEmail}` });
+      if (result.success) toast({ title: "Correo Enviado", description: `Se envió la invitación a ${targetEmail}` });
       else throw new Error(result.error);
-    } catch (e: any) { toast({ title: "Error en envío", description: e.message, variant: "destructive" }); } finally { setIsResendingEmail(false); }
+    } catch (e: any) { 
+      toast({ title: "Error en envío", description: e.message, variant: "destructive" }); 
+    } finally { 
+      setIsResendingEmail(false); 
+    }
   };
 
   const handleDownloadPdf = async () => {
@@ -217,6 +227,35 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { toast({ title: "Error al generar certificado", variant: "destructive" }); } finally { setIsGeneratingCert(false); }
   };
 
+  const handleRequestCertification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempClientEmail || !ot || !clientRef) return;
+
+    setIsUpdating(true);
+    try {
+      // Si el email es nuevo o diferente, actualizar la ficha del cliente
+      if (tempClientEmail !== client?.contactEmail) {
+        updateDocumentNonBlocking(clientRef, {
+          contactEmail: tempClientEmail,
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      // Enviar el correo de solicitud de aprobación
+      await handleResendEmail(tempClientEmail);
+      
+      setIsRequestCertDialogOpen(false);
+      toast({ 
+        title: "Solicitud de Validación Enviada", 
+        description: "Se ha notificado al revisor para que autorice el cierre de la orden." 
+      });
+    } catch (e: any) {
+      toast({ title: "Error al procesar", description: e.message, variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleTechnicianDigitalSeal = async () => {
     if (!otRef || !profile || !ot) return;
     setIsUpdating(true);
@@ -233,8 +272,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         rejectedReason: null 
       };
       updateDocumentNonBlocking(otRef, data);
-      if (nextStatus === 'pendiente cliente' && client?.contactEmail) {
-        handleResendEmail();
+      if (nextStatus === 'pendiente cliente' && (client?.contactEmail || tempClientEmail)) {
+        handleResendEmail(tempClientEmail || client?.contactEmail);
       }
       setIsSealDialogOpen(false);
       toast({ title: "Sello Emitido y Estado Actualizado" });
@@ -309,10 +348,58 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Informe Técnico
           </Button>
           
-          {ot.status === 'aprobada' && (
+          {ot.status === 'aprobada' ? (
             <Button variant="outline" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700 hover:bg-blue-50">
               {isGeneratingCert ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Award className="h-4 w-4 mr-2" />} Certificado Experiencia
             </Button>
+          ) : (
+            <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => setTempClientEmail(client?.contactEmail || "")}>
+                  <Award className="h-4 w-4 mr-2" /> Solicitar Certificación
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black italic">Acreditación de Experiencia</DialogTitle>
+                  <DialogDescription>
+                    Para emitir un Certificado de Experiencia legal, la contraparte debe validar digitalmente el servicio primero. 
+                    Se enviará una notificación formal al revisor para que firme la orden.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="client-email" className="font-bold text-xs uppercase text-slate-500">Email del Revisor / Cliente</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input 
+                        id="client-email"
+                        type="email" 
+                        required
+                        placeholder="ejemplo@cliente.cl"
+                        className="pl-10 h-12 rounded-xl"
+                        value={tempClientEmail}
+                        onChange={(e) => setTempClientEmail(e.target.value)}
+                      />
+                    </div>
+                    {!client?.contactEmail && (
+                      <p className="text-[10px] text-amber-600 font-medium italic">* No se encontró correo en la ficha inicial. Por favor ingréselo ahora.</p>
+                    )}
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed space-y-2">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Procedimiento Seguro</p>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">
+                      El cliente recibirá un link de acceso único y deberá ingresar el PIN de seguridad <span className="font-black text-primary">{ot.approvalPin}</span> para emitir su sello conforme.
+                    </p>
+                  </div>
+                  <DialogFooter className="pt-2">
+                    <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isUpdating}>
+                      {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />} Enviar Solicitud de Firma
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           )}
 
           {(isSupervisor || isCompanyAdmin) && ot.status === 'rechazada' && (
@@ -341,7 +428,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <p className="text-sm text-slate-600 leading-relaxed font-medium">Solo el cliente con este PIN podrá autorizar. El código ha sido incluido en la notificación oficial.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" className="rounded-xl bg-white gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={handleResendEmail} disabled={isResendingEmail}>
+                  <Button variant="outline" className="rounded-xl bg-white gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={() => handleResendEmail()} disabled={isResendingEmail}>
                     {isResendingEmail ? <Loader2 className="animate-spin h-4 w-4" /> : <Mail className="h-4 w-4" />} 
                     Re-enviar PIN y Enlace
                   </Button>
