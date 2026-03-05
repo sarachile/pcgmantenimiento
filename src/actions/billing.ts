@@ -3,12 +3,12 @@
 import { cleanRutForAPI, validateRut } from "@/lib/utils-rut";
 
 /**
- * @fileOverview Acción de servidor para la integración REAL con SimpleAPI (DTE Chile).
- * Soporta modo Sandbox (Certificación) y Producción.
+ * @fileOverview Integración segura con SimpleAPI para emisión de DTE Chile.
+ * SEGURIDAD: El Token de API se maneja exclusivamente en el lado del servidor.
  */
 
 const SIMPLE_API_URL = "https://api.simpleapi.cl/api/v1/dte/generar"; 
-const SIMPLE_API_KEY = process.env.SIMPLE_API_KEY || "";
+const SIMPLE_API_KEY = process.env.SIMPLE_API_KEY;
 
 interface EmissionResponse {
   success: boolean;
@@ -19,31 +19,26 @@ interface EmissionResponse {
   status?: 'aceptado_sii' | 'error' | 'rechazado';
 }
 
-/**
- * Procesa la emisión de un DTE hacia SimpleAPI.
- */
 export async function processElectronicEmission(docData: any, emisorData: any, isSandbox: boolean = true): Promise<EmissionResponse> {
-  console.log(`Iniciando emisión ${isSandbox ? 'TEST' : 'PROD'} para:`, docData.clientName);
-
+  // 1. Verificación de Seguridad: La API Key debe existir
   if (!SIMPLE_API_KEY) {
     return {
       success: false,
-      error: "Error de configuración: SIMPLE_API_KEY no definida en el servidor."
+      error: "Error de infraestructura: SIMPLE_API_KEY no configurada. Añada la clave en el panel de Secretos."
     };
   }
 
-  // VALIDACIÓN DE RUTS ANTES DE ENVIAR
+  // 2. Validación de Datos Legales (Pre-vuelo)
   if (!validateRut(emisorData.rut)) {
-    return { success: false, error: "El RUT de tu empresa (emisor) es inválido." };
+    return { success: false, error: "RUT de emisor inválido. Corrija su perfil en 'Mi Empresa'." };
   }
   if (!validateRut(docData.clientRut)) {
-    return { success: false, error: "El RUT del cliente (receptor) es inválido." };
+    return { success: false, error: "RUT de receptor inválido. Corrija la ficha del cliente." };
   }
 
   const rutEmisor = cleanRutForAPI(emisorData.rut);
   const rutReceptor = cleanRutForAPI(docData.clientRut);
 
-  // Mapeo de tipos internos a códigos SII oficiales
   const dteTypeMap: Record<string, number> = {
     'factura': 33,
     'boleta': 39,
@@ -54,15 +49,11 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
   const tipoDTE = dteTypeMap[docData.type] || 33;
 
   try {
-    /**
-     * ESTRUCTURA DE PAYLOAD PARA SIMPLEAPI:
-     * Se construye el objeto siguiendo el esquema requerido por SimpleAPI para Chile.
-     */
     const payload = {
       token: SIMPLE_API_KEY,
       reemplazar: true, 
       rutEmisor: rutEmisor,
-      ambiente: isSandbox ? 0 : 1, // 0 = Certificación (Test), 1 = Producción
+      ambiente: isSandbox ? 0 : 1, // 0 = Certificación, 1 = Producción
       dte: {
         Encabezado: {
           IdDoc: {
@@ -72,16 +63,16 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
           },
           Emisor: {
             RUTEmisor: rutEmisor,
-            RznSoc: emisorData.name || "Empresa sin nombre",
-            Giro: emisorData.giro || "Servicios de Mantenimiento",
-            DirOrigen: emisorData.address || "Dirección no especificada",
+            RznSoc: emisorData.name,
+            Giro: emisorData.giro || "Servicios Industriales",
+            DirOrigen: emisorData.address,
             CmnaOrigen: emisorData.comuna || "Santiago", 
           },
           Receptor: {
             RUTRecep: rutReceptor,
-            RznSocRecep: docData.clientName || "Cliente Genérico",
+            RznSocRecep: docData.clientName,
             GiroRecep: docData.clientGiro || "Giro Cliente", 
-            DirRecep: docData.clientAddress && docData.clientAddress !== "S/I" ? docData.clientAddress : "Dirección Cliente",
+            DirRecep: docData.clientAddress || "Dirección Cliente",
             CmnaRecep: docData.clientComuna || "Santiago"
           },
           Totales: {
@@ -93,8 +84,8 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
         },
         Detalle: docData.items.map((it: any, index: number) => ({
           NroLinDet: index + 1,
-          NmbItem: it.description || "Servicio",
-          QtyItem: it.quantity || 1,
+          NmbItem: it.description,
+          QtyItem: it.quantity,
           PrcItem: Math.round(it.unitPrice),
           MntItem: Math.round(it.total)
         }))
@@ -103,30 +94,19 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
 
     const response = await fetch(SIMPLE_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
     if (response.status === 401) {
       return {
         success: false,
-        error: `Autenticación fallida (401). Verifique su API Key para el ambiente ${isSandbox ? 'Certificación' : 'Producción'}.`,
+        error: "Fallo de autenticación con SimpleAPI. Revise si su Token es para Producción o Certificación.",
         status: 'error'
       };
     }
 
-    const responseText = await response.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (e) {
-      return {
-        success: false,
-        error: `Error del servidor de facturación (HTTP ${response.status}).`
-      };
-    }
+    const result = await response.json();
 
     if (response.ok && result.status === "OK") {
       return {
@@ -139,16 +119,15 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
     } else {
       return {
         success: false,
-        error: result.message || "El SII rechazó el documento. Verifique folios disponibles.",
+        error: result.message || "Rechazo del SII: Verifique si tiene folios disponibles.",
         status: 'error'
       };
     }
 
   } catch (error: any) {
-    console.error("Error crítico en comunicación con SimpleAPI:", error);
     return {
       success: false,
-      error: `Error de red: No se pudo contactar al servidor de facturación.`
+      error: "Error de red: No se pudo establecer contacto con el servidor de facturación."
     };
   }
 }

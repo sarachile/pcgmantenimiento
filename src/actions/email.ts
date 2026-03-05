@@ -3,8 +3,8 @@
 import nodemailer from 'nodemailer';
 
 /**
- * @fileOverview Acción de servidor para envío de correos directos vía SMTP.
- * SECURIZADO: Usa variables de entorno para las credenciales en producción.
+ * @fileOverview Acción de servidor para envío de correos vía SMTP.
+ * SEGURIDAD: Utiliza variables de entorno para proteger las credenciales en producción.
  */
 
 interface SendEmailInput {
@@ -14,14 +14,16 @@ interface SendEmailInput {
 }
 
 export async function sendSystemEmail(input: SendEmailInput) {
-  // CONFIGURACIÓN DE PRODUCCIÓN:
-  // Asegúrate de definir EMAIL_USER y EMAIL_PASS en tu panel de Secrets del hosting.
+  // Las credenciales se obtienen de las variables de entorno definidas en el servidor/hosting
   const SMTP_USER = process.env.EMAIL_USER || 'control@pcgoperacion.com';
-  const SMTP_PASS = process.env.EMAIL_PASS; // NO hardcodear contraseña aquí
+  const SMTP_PASS = process.env.EMAIL_PASS; 
 
   if (!SMTP_PASS) {
-    console.error("Error: EMAIL_PASS no definida en variables de entorno.");
-    return { success: false, error: "Servidor de correo no configurado (Falta PASS)." };
+    console.error("ERROR DE SEGURIDAD: La variable EMAIL_PASS no está definida en el servidor.");
+    return { 
+      success: false, 
+      error: "Error de configuración: El servidor de correo no está autenticado. Configure EMAIL_PASS en los Secretos del Hosting." 
+    };
   }
 
   const transporter = nodemailer.createTransport({
@@ -42,10 +44,13 @@ export async function sendSystemEmail(input: SendEmailInput) {
       html: input.html,
     });
 
-    console.log("Message sent: %s", info.messageId);
+    console.log("Notificación enviada con éxito: %s", info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error: any) {
-    console.error("Error sending email:", error);
-    return { success: false, error: "Error en el servidor SMTP. Verifique credenciales." };
+    console.error("Fallo en envío SMTP:", error);
+    return { 
+      success: false, 
+      error: "No se pudo conectar con el servidor de correo. Verifique que la contraseña de aplicación sea correcta." 
+    };
   }
 }
