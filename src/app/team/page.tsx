@@ -49,22 +49,32 @@ import {
   Contact,
   Trash2,
   Zap,
-  Users2
+  Users2,
+  FileUp,
+  Download,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp, query, where } from "firebase/firestore";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { StaffMember, Team } from "@/lib/types";
+import * as XLSX from "xlsx";
 
 export default function TeamPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isTeamOpen, setIsTeamOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [isProcessingBulk, setIsProcessingBulk] = useState(false);
+  
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
 
@@ -173,6 +183,72 @@ export default function TeamPage() {
     toast({ title: "Equipo eliminado" });
   };
 
+  // LÓGICA DE CARGA MASIVA
+  const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !db || !profile?.companyId) return;
+
+    setIsProcessingBulk(true);
+    const reader = new FileReader();
+    
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+
+        const colRef = collection(db, "companies", profile.companyId, "staff");
+        let count = 0;
+
+        for (const row of data as any[]) {
+          const staffData = {
+            name: row.Nombre || row.nombre || "Sin Nombre",
+            role: row.Rol || row.rol || "Técnico",
+            identification: row.RUT || row.rut || row.Identificacion || "",
+            phone: row.Telefono || row.telefono || "",
+            email: row.Email || row.email || "",
+            companyId: profile.companyId,
+            active: true,
+            createdAt: serverTimestamp()
+          };
+          
+          await addDocumentNonBlocking(colRef, staffData);
+          count++;
+        }
+
+        toast({
+          title: "Proceso Completado",
+          description: `Se han importado ${count} técnicos exitosamente.`,
+        });
+        setIsBulkOpen(false);
+      } catch (error) {
+        toast({
+          title: "Error en importación",
+          description: "El formato del archivo no es válido.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsProcessingBulk(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    };
+
+    reader.readAsBinaryString(file);
+  };
+
+  const downloadTemplate = () => {
+    const template = [
+      { Nombre: "Juan Perez", Rol: "Técnico", RUT: "12.345.678-9", Telefono: "+56912345678", Email: "juan@empresa.cl" },
+      { Nombre: "Maria Soto", Rol: "Supervisor", RUT: "9.876.543-2", Telefono: "+56987654321", Email: "maria@empresa.cl" }
+    ];
+    const ws = XLSX.utils.json_to_sheet(template);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Personal");
+    XLSX.writeFile(wb, "Plantilla_Carga_Personal_PCG.xlsx");
+  };
+
   if (isAuthLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
@@ -198,7 +274,54 @@ export default function TeamPage() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="rounded-xl border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-black gap-2">
+                  <FileUp className="h-4 w-4" /> Carga Masiva (Excel)
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black italic">Importar desde Excel</DialogTitle>
+                  <DialogDescription>Cargue cientos de técnicos en segundos utilizando nuestra plantilla oficial.</DialogDescription>
+                </DialogHeader>
+                <div className="py-6 space-y-6">
+                  <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-4">
+                    <p className="text-sm font-bold text-slate-600">1. Descarga la plantilla base:</p>
+                    <Button variant="secondary" className="w-full rounded-xl gap-2 font-bold" onClick={downloadTemplate}>
+                      <Download className="h-4 w-4" /> Descargar Plantilla .xlsx
+                    </Button>
+                  </div>
+                  
+                  <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-4">
+                    <p className="text-sm font-bold text-slate-600">2. Sube el archivo completado:</p>
+                    <input 
+                      type="file" 
+                      accept=".xlsx, .xls, .csv" 
+                      className="hidden" 
+                      ref={fileInputRef}
+                      onChange={handleBulkUpload}
+                    />
+                    <Button 
+                      className="w-full h-16 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest gap-2" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessingBulk}
+                    >
+                      {isProcessingBulk ? <Loader2 className="animate-spin h-5 w-5" /> : <><FileUp className="h-5 w-5" /> Seleccionar Archivo</>}
+                    </Button>
+                  </div>
+
+                  <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-4 rounded-2xl border border-amber-100">
+                    <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
+                    <p className="text-[10px] font-bold leading-relaxed uppercase tracking-tighter">
+                      Asegúrese de no cambiar los encabezados de la plantilla para que el motor de mapeo funcione correctamente.
+                    </p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
                 <Button className="rounded-xl shadow-lg font-black gap-2">
