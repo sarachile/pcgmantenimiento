@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Upload, Loader2, Save, Trash2, ArrowLeft } from "lucide-react";
+import { Building2, Upload, Loader2, Save, Trash2, ArrowLeft, Briefcase, MapPin } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
@@ -29,7 +29,9 @@ export default function CompanyProfilePage() {
   const [formData, setFormData] = useState({
     name: "",
     rut: "",
-    address: ""
+    address: "",
+    giro: "",
+    comuna: ""
   });
 
   const companyRef = useMemoFirebase(() => {
@@ -44,7 +46,9 @@ export default function CompanyProfilePage() {
       setFormData({
         name: company.name || "",
         rut: company.rut || "",
-        address: company.address || ""
+        address: company.address || "",
+        giro: company.giro || "",
+        comuna: company.comuna || ""
       });
     }
   }, [company]);
@@ -133,19 +137,18 @@ export default function CompanyProfilePage() {
           <Link href="/dashboard"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Mi Empresa</h2>
-          <p className="text-muted-foreground">Personalice su espacio de trabajo y datos corporativos.</p>
+          <h2 className="text-3xl font-black tracking-tight italic">Mi Empresa</h2>
+          <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Configuración de Identidad y Facturación</p>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1 border-none shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Imagen de Marca</CardTitle>
-            <CardDescription>Este logotipo aparecerá en reportes y la barra lateral.</CardDescription>
+        <Card className="md:col-span-1 border-none shadow-sm rounded-3xl overflow-hidden">
+          <CardHeader className="bg-primary/5 border-b">
+            <CardTitle className="text-lg font-black uppercase tracking-tighter">Marca Corporativa</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-            <div className="relative h-40 w-40 rounded-xl border-2 border-dashed bg-muted/20 flex items-center justify-center overflow-hidden group">
+          <CardContent className="flex flex-col items-center gap-4 p-8">
+            <div className="relative h-40 w-40 rounded-[2rem] border-2 border-dashed bg-muted/20 flex items-center justify-center overflow-hidden group shadow-inner">
               {company?.logoUrl ? (
                 <>
                   <FirebaseImage 
@@ -162,7 +165,7 @@ export default function CompanyProfilePage() {
               ) : (
                 <div className="text-center p-4">
                   <Building2 className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase">Sin Logo</p>
+                  <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Sin Logo</p>
                 </div>
               )}
               {isUploading && (
@@ -181,38 +184,41 @@ export default function CompanyProfilePage() {
             />
             <Button 
               variant="outline" 
-              className="w-full" 
+              className="w-full rounded-xl h-11 font-bold" 
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
             >
               <Upload className="h-4 w-4 mr-2" />
-              {company?.logoUrl ? "Cambiar Logo" : "Subir Logotipo"}
+              {company?.logoUrl ? "Cambiar Marca" : "Subir Logotipo"}
             </Button>
-            <p className="text-[10px] text-center text-muted-foreground italic">Recomendado: PNG fondo transparente, 400x400px.</p>
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2 border-none shadow-sm">
+        <Card className="md:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden">
           <form onSubmit={(e) => { e.preventDefault(); handleUpdateCompany(); }}>
-            <CardHeader>
-              <CardTitle className="text-lg">Datos Corporativos</CardTitle>
-              <CardDescription>Información legal y operativa de la organización.</CardDescription>
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle className="text-lg font-black uppercase tracking-tighter">Datos Legales y DTE</CardTitle>
+              <CardDescription className="font-medium">Información requerida para la emisión de facturas ante el SII.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-8 space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="comp-name">Nombre Comercial / Razón Social</Label>
-                <Input 
-                  id="comp-name" 
-                  value={formData.name} 
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="comp-rut">RUT de la Empresa</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Razón Social *</Label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input 
-                    id="comp-rut" 
+                    className="pl-10 h-12 rounded-xl border-2 font-bold"
+                    value={formData.name} 
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">RUT Empresa *</Label>
+                  <Input 
+                    className="h-12 rounded-xl border-2 font-bold"
                     placeholder="76.000.000-0"
                     value={formData.rut} 
                     onChange={(e) => setFormData({...formData, rut: e.target.value})}
@@ -220,27 +226,52 @@ export default function CompanyProfilePage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Plan Actual</Label>
-                  <div className="h-10 px-3 flex items-center rounded-md border bg-muted/30">
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                      {company?.currentPlan?.toUpperCase() || "S/I"}
-                    </Badge>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Giro / Actividad *</Label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      className="pl-10 h-12 rounded-xl border-2 font-bold"
+                      placeholder="Ej: Mantenimiento Industrial"
+                      value={formData.giro} 
+                      onChange={(e) => setFormData({...formData, giro: e.target.value})}
+                      required
+                    />
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="comp-address">Dirección Casa Matriz</Label>
-                <Input 
-                  id="comp-address" 
-                  value={formData.address} 
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
-                />
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Dirección Comercial *</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      className="pl-10 h-12 rounded-xl border-2 font-bold"
+                      value={formData.address} 
+                      onChange={(e) => setFormData({...formData, address: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Comuna *</Label>
+                  <Input 
+                    className="h-12 rounded-xl border-2 font-bold"
+                    placeholder="Ej: Santiago"
+                    value={formData.comuna} 
+                    onChange={(e) => setFormData({...formData, comuna: e.target.value})}
+                    required
+                  />
+                </div>
               </div>
             </CardContent>
-            <CardFooter className="bg-muted/10 border-t pt-6 flex justify-end">
-              <Button type="submit" disabled={isSaving}>
+            <CardFooter className="bg-slate-50 border-t p-6 flex justify-between items-center">
+              <Badge variant="outline" className="bg-white border-primary/20 text-primary font-black px-3 py-1">
+                PLAN: {company?.currentPlan?.toUpperCase() || "S/I"}
+              </Badge>
+              <Button type="submit" disabled={isSaving} className="rounded-xl h-12 px-8 font-black shadow-lg">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Guardar Cambios
+                Guardar Configuración
               </Button>
             </CardFooter>
           </form>

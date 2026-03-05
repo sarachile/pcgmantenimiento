@@ -22,6 +22,8 @@ export interface Company {
   name: string;
   rut: string;
   address: string;
+  giro?: string;
+  comuna?: string;
   logoUrl?: string;
   currentPlan: PlanType;
   subscriptionStatus: SubscriptionStatus;
@@ -61,6 +63,8 @@ export interface Client {
   name: string;
   rut: string;
   address: string;
+  giro?: string;
+  comuna?: string;
   contactName?: string;
   contactEmail?: string;
   evaluationEnabled: boolean;
@@ -161,6 +165,9 @@ export interface BillingDocument {
   clientId: string;
   clientName: string;
   clientRut: string;
+  clientGiro?: string;
+  clientComuna?: string;
+  clientAddress?: string;
   workOrderId?: string;
   type: BillingDocumentType;
   folio?: number;
