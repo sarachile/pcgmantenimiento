@@ -35,7 +35,8 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { isBefore, isAfter, addDays, parseISO, startOfDay } from "date-fns";
+import { isBefore, isAfter, addDays, parseISO, startOfDay, format } from "date-fns";
+import { es } from "date-fns/locale";
 import { WorkOrder, Client, Company, StaffMember, Asset } from "@/lib/types";
 import { usePlanLimits } from "@/hooks/use-plan-limits";
 
