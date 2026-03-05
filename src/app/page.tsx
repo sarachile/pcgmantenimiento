@@ -21,7 +21,10 @@ import {
   Package,
   Clock,
   Menu,
-  X
+  X,
+  XCircle,
+  Smartphone as CameraIcon,
+  FileCheck as SignatureIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,21 +94,21 @@ export default function HomePage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Badge variant="outline" className="mb-6 py-1 px-4 border-primary/20 text-primary bg-primary/5 rounded-full font-bold uppercase tracking-widest animate-pulse">
-            SaaS de Mantenimiento Inteligente
+            Plataforma de Gestión Industrial
           </Badge>
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 mb-6 leading-[0.9]">
-            Ordena tu mantenimiento <br />
-            <span className="text-primary italic font-serif">en un solo lugar</span>
+            Controla toda tu operación <br />
+            <span className="text-primary italic font-serif">con trazabilidad y evidencia</span>
           </h1>
           <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-            La plataforma digital que reemplaza las planillas por control real. <br className="hidden md:block" />
-            Gestiona activos, órdenes de trabajo y técnicos con trazabilidad total.
+            La herramienta táctica que acredita tu experiencia técnica en terreno. <br className="hidden md:block" />
+            Certifica m², servicios realizados y conformidad de clientes con sellos digitales.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20 hover:scale-105 transition-transform">
               <Link href="/auth/signup">Empieza hoy mismo <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
-            <p className="text-sm font-bold text-slate-400">Implementación rápida en 5 minutos.</p>
+            <p className="text-sm font-bold text-slate-400">Digitalización de procesos industriales.</p>
           </div>
           
           {/* Dashboard Preview Mockup */}
@@ -216,8 +219,8 @@ export default function HomePage() {
           
           <div className="grid md:grid-cols-3 gap-12">
             {[
-              { icon: Camera, title: "Evidencia Fotográfica", desc: "Valida el trabajo realizado con fotos antes y después directamente en la OT." },
-              { icon: Signature, title: "Firma Digital en Terreno", desc: "Captura la conformidad del cliente y del técnico al instante." },
+              { icon: CameraIcon, title: "Evidencia Fotográfica", desc: "Valida el trabajo realizado con fotos antes y después directamente en la OT." },
+              { icon: SignatureIcon, title: "Firma Digital en Terreno", desc: "Captura la conformidad del cliente y del técnico al instante." },
               { icon: BarChart3, title: "Reportes en un Clic", desc: "Genera documentos PDF profesionales para auditorías o cobros sin esfuerzo." }
             ].map((benefit, i) => (
               <div key={i} className="space-y-4">
@@ -282,8 +285,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-// Icons placeholders for rendering
-function Camera(props: any) { return <Smartphone {...props} /> }
-function Signature(props: any) { return <FileCheck {...props} /> }
-function XCircle(props: any) { return <X {...props} /> }
