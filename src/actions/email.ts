@@ -22,7 +22,7 @@ export async function sendSystemEmail(input: SendEmailInput) {
     console.error("ERROR DE SEGURIDAD: La variable EMAIL_PASS no está definida en el servidor.");
     return { 
       success: false, 
-      error: "Error de configuración: El servidor de correo no está autenticado. Configure EMAIL_PASS en los Secretos del Hosting." 
+      error: "Error de configuración: El servidor de correo no está autenticado. Por favor, genere una 'Contraseña de Aplicación' en su cuenta de Google y configúrela como EMAIL_PASS en los Secretos del Hosting." 
     };
   }
 
@@ -48,9 +48,15 @@ export async function sendSystemEmail(input: SendEmailInput) {
     return { success: true, messageId: info.messageId };
   } catch (error: any) {
     console.error("Fallo en envío SMTP:", error);
+    
+    let userFriendlyError = "No se pudo conectar con el servidor de correo.";
+    if (error.code === 'EAUTH') {
+      userFriendlyError = "Error de autenticación: La Contraseña de Aplicación de Google es incorrecta o ha caducado.";
+    }
+
     return { 
       success: false, 
-      error: "No se pudo conectar con el servidor de correo. Verifique que la contraseña de aplicación sea correcta." 
+      error: userFriendlyError 
     };
   }
 }
