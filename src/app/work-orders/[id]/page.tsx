@@ -42,7 +42,10 @@ import {
   Ruler,
   MapPin,
   User,
-  Hash
+  Hash,
+  Package,
+  Search,
+  ShoppingCart
 } from "lucide-react";
 import {
   Dialog,
@@ -60,10 +63,10 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, collection, addDoc, serverTimestamp, query, orderBy, where, arrayUnion, arrayRemove } from "firebase/firestore";
+import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { doc, collection, addDoc, serverTimestamp, query, orderBy, where, arrayUnion, arrayRemove, increment } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, StaffMember } from "@/lib/types";
+import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, StaffMember, SparePart } from "@/lib/types";
 import { WorkOrderReport } from "@/components/WorkOrderReport";
 import { ExperienceCertificate } from "@/components/ExperienceCertificate";
 import { FirebaseImage } from "@/components/FirebaseImage";
@@ -77,7 +80,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile, isSupervisor, isCompanyAdmin } = useUser();
+  const { profile, isSupervisor, isCompanyAdmin, isTechnician } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   const reportRef = useRef<HTMLDivElement>(null);
@@ -92,6 +95,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [manualComment, setManualComment] = useState("");
   const [isSealDialogOpen, setIsSealDialogOpen] = useState(false);
   const [isRequestCertDialogOpen, setIsRequestCertDialogOpen] = useState(false);
+  const [isPartsDialogOpen, setIsPartsDialogOpen] = useState(false);
+  const [partsSearch, setPartsSearch] = useState("");
+  const [selectedPart, setSelectedPart] = useState<SparePart | null>(null);
+  const [partQuantity, setPartQuantity] = useState("1");
+  
   const [tempClientEmail, setTempClientEmail] = useState("");
   const [tempClientName, setTempClientName] = useState("");
   const [currentUrl, setCurrentUrl] = useState("");
@@ -132,6 +140,16 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const partUsagesQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "workOrders", otId, "partUsages") : null, [db, companyId, otId]);
   const { data: partUsages } = useCollection<PartUsage>(partUsagesQuery);
+
+  const inventoryQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "spareParts") : null, [db, companyId]);
+  const { data: inventory } = useCollection<SparePart>(inventoryQuery);
+
+  const filteredInventory = useMemo(() => {
+    return (inventory || []).filter(p => 
+      p.name.toLowerCase().includes(partsSearch.toLowerCase()) || 
+      p.sku.toLowerCase().includes(partsSearch.toLowerCase())
+    );
+  }, [inventory, partsSearch]);
 
   const formatDateLabel = (date: any) => {
     if (!date) return "...";
@@ -327,10 +345,76 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e: any) { toast({ title: "Error al subir foto", description: e.message, variant: "destructive" }); } finally { setIsUploading(false); }
   };
 
+  const handleAddPartUsage = async () => {
+    if (!db || !selectedPart || !ot || !companyId || !profile) return;
+    const qty = Number(partQuantity);
+    if (qty <= 0) return;
+
+    setIsUpdating(true);
+    try {
+      const usageCol = collection(db, "companies", companyId, "workOrders", ot.id, "partUsages");
+      await addDoc(usageCol, {
+        workOrderId: ot.id,
+        partId: selectedPart.id,
+        partName: selectedPart.name,
+        quantity: qty,
+        unitPrice: selectedPart.unitPrice,
+        usedAt: serverTimestamp(),
+        actorId: profile.id
+      });
+
+      // Descontar del inventario maestro
+      const partRef = doc(db, "companies", companyId, "spareParts", selectedPart.id);
+      updateDocumentNonBlocking(partRef, {
+        stockActual: increment(-qty)
+      });
+
+      // Bitácora
+      const logCol = collection(db, "companies", companyId, "workOrders", ot.id, "digitalLogbookEntries");
+      await addDoc(logCol, {
+        workOrderId: ot.id,
+        companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'action_taken',
+        eventDetails: `Consumo de material: ${qty} x ${selectedPart.name}`,
+        actor: profile.id
+      });
+
+      toast({ title: "Insumo registrado", description: "El stock ha sido descontado del inventario." });
+      setIsPartsDialogOpen(false);
+      setSelectedPart(null);
+      setPartQuantity("1");
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRemovePartUsage = async (usage: PartUsage) => {
+    if (!db || !ot || !companyId) return;
+    
+    try {
+      const usageRef = doc(db, "companies", companyId, "workOrders", ot.id, "partUsages", usage.id);
+      deleteDocumentNonBlocking(usageRef);
+
+      // Devolver al stock
+      const partRef = doc(db, "companies", companyId, "spareParts", usage.partId);
+      updateDocumentNonBlocking(partRef, {
+        stockActual: increment(usage.quantity)
+      });
+
+      toast({ title: "Registro eliminado", description: "El stock ha sido devuelto al inventario." });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    }
+  };
+
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl opacity-50">La orden solicitada no existe.</div>;
 
   const canEditPhotos = ot.status !== 'aprobada' && ot.status !== 'pendiente cliente';
+  const canEditMaterials = ot.status !== 'aprobada' && ot.status !== 'pendiente cliente';
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -578,6 +662,166 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   "{ot.description}"
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Gestión de Insumos y Repuestos */}
+          <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
+            <CardHeader className="flex flex-row items-center justify-between p-6 border-b bg-amber-50/30">
+              <div>
+                <CardTitle className="text-lg font-black flex items-center gap-2 uppercase tracking-tight text-amber-900">
+                  <Package className="h-5 w-5 text-amber-600" /> Insumos y Repuestos
+                </CardTitle>
+                <CardDescription className="text-amber-700/60 font-medium">Materiales utilizados en la intervención.</CardDescription>
+              </div>
+              {canEditMaterials && (
+                <Dialog open={isPartsDialogOpen} onOpenChange={setIsPartsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50 bg-white">
+                      <Plus className="h-4 w-4 mr-2" /> Añadir Material
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl font-black italic text-amber-900">Consumo de Materiales</DialogTitle>
+                      <DialogDescription>Seleccione un ítem del inventario para registrar su uso.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input 
+                          placeholder="Buscar por nombre o SKU..." 
+                          className="pl-10 h-12 rounded-xl"
+                          value={partsSearch}
+                          onChange={(e) => setPartsSearch(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
+                        {filteredInventory.length === 0 ? (
+                          <p className="text-center py-10 text-sm text-muted-foreground italic">No se encontraron ítems.</p>
+                        ) : (
+                          filteredInventory.map(part => (
+                            <button
+                              key={part.id}
+                              onClick={() => setSelectedPart(part)}
+                              className={cn(
+                                "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between",
+                                selectedPart?.id === part.id ? "border-amber-500 bg-amber-50" : "border-slate-100 hover:border-slate-200"
+                              )}
+                            >
+                              <div>
+                                <p className="font-bold text-slate-900">{part.name}</p>
+                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{part.sku}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase">Stock Actual</p>
+                                <p className={cn("text-xs font-bold", part.stockActual <= part.stockMinimo ? "text-rose-600" : "text-emerald-600")}>
+                                  {part.stockActual} Unid.
+                                </p>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+
+                      {selectedPart && (
+                        <div className="bg-amber-50 p-6 rounded-3xl border-2 border-amber-100 space-y-4 animate-in zoom-in-95">
+                          <div className="flex justify-between items-center">
+                            <Label className="font-black text-xs uppercase text-amber-900">Cantidad a utilizar</Label>
+                            <div className="flex items-center gap-3">
+                              <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-10 w-10 rounded-xl bg-white"
+                                onClick={() => setPartQuantity(q => Math.max(1, Number(q) - 1).toString())}
+                              >
+                                -
+                              </Button>
+                              <Input 
+                                type="number" 
+                                className="w-20 text-center h-10 rounded-xl font-bold bg-white"
+                                value={partQuantity}
+                                onChange={(e) => setPartQuantity(e.target.value)}
+                              />
+                              <Button 
+                                variant="outline" 
+                                size="icon" 
+                                className="h-10 w-10 rounded-xl bg-white"
+                                onClick={() => setPartQuantity(q => (Number(q) + 1).toString())}
+                              >
+                                +
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-amber-700 italic text-center font-medium">
+                            * Al confirmar, se descontarán {partQuantity} unidades del inventario maestro.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    <DialogFooter>
+                      <Button 
+                        className="w-full h-14 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest shadow-xl shadow-amber-900/20"
+                        disabled={!selectedPart || isUpdating}
+                        onClick={handleAddPartUsage}
+                      >
+                        {isUpdating ? <Loader2 className="animate-spin h-5 w-5" /> : "Confirmar Consumo"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-slate-100">
+                {partUsages && partUsages.length > 0 ? (
+                  partUsages.map((usage) => (
+                    <div key={usage.id} className="p-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-amber-100 p-2 rounded-xl text-amber-600">
+                          <Package className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{usage.partName}</p>
+                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                            Cantidad: <span className="text-amber-600">{usage.quantity}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="text-[10px] font-black text-slate-400 uppercase">Costo Unit.</p>
+                          <p className="text-xs font-bold text-slate-700">${usage.unitPrice.toLocaleString()}</p>
+                        </div>
+                        {canEditMaterials && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-9 w-9 rounded-xl text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleRemovePartUsage(usage)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-12 text-center space-y-2 opacity-40">
+                    <Package className="h-10 w-10 mx-auto text-slate-300" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sin materiales registrados</p>
+                  </div>
+                )}
+              </div>
+              {partUsages && partUsages.length > 0 && (
+                <div className="p-4 bg-amber-50/20 border-t flex justify-between items-center">
+                  <span className="text-[10px] font-black uppercase text-amber-700 tracking-widest">Costo Total Materiales</span>
+                  <span className="text-sm font-black text-amber-900">
+                    ${partUsages.reduce((acc, u) => acc + (u.quantity * u.unitPrice), 0).toLocaleString()}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
