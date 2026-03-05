@@ -35,7 +35,7 @@ export function MobileActionDock() {
           if (item.isMain) {
             return (
               <Link 
-                key={item.href} 
+                key={item.title} 
                 href={item.href}
                 className="relative -top-8 flex flex-col items-center group"
               >
@@ -56,7 +56,7 @@ export function MobileActionDock() {
 
           return (
             <Link 
-              key={item.href} 
+              key={item.title} 
               href={item.href}
               className={cn(
                 "flex flex-col items-center gap-1 transition-all duration-300 active:scale-95",
