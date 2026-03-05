@@ -3,19 +3,19 @@
   "placeholderImages": [
     {
       "id": "hero-industrial",
-      "description": "Professional industrial maintenance environment",
+      "description": "Entorno de mantenimiento industrial profesional",
       "imageUrl": "https://picsum.photos/seed/pcg-hero-99/1200/800",
       "imageHint": "industrial maintenance"
     },
     {
       "id": "dashboard-preview",
-      "description": "Clean software dashboard interface",
-      "imageUrl": "https://picsum.photos/seed/pcg-dash-88/1200/800",
+      "description": "Previsualización del Dashboard PCGMANTENIMIENTO",
+      "imageUrl": "/imagen1.png",
       "imageHint": "software dashboard"
     },
     {
       "id": "company-logo-placeholder",
-      "description": "Abstract corporate logo",
+      "description": "Logotipo corporativo abstracto",
       "imageUrl": "https://picsum.photos/seed/pcg-logo-77/200/200",
       "imageHint": "corporate logo"
     }
