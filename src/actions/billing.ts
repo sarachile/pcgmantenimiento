@@ -1,5 +1,6 @@
-
 'use server';
+
+import { cleanRutForAPI, validateRut } from "@/lib/utils-rut";
 
 /**
  * @fileOverview Acción de servidor para la integración REAL con SimpleAPI (DTE Chile).
@@ -19,14 +20,6 @@ interface EmissionResponse {
 }
 
 /**
- * Limpia el RUT de puntos para cumplir con el estándar de SimpleAPI.
- */
-function formatRutForAPI(rut: string): string {
-  if (!rut) return "";
-  return rut.replace(/\./g, '').trim();
-}
-
-/**
  * Procesa la emisión de un DTE hacia SimpleAPI.
  */
 export async function processElectronicEmission(docData: any, emisorData: any, isSandbox: boolean = true): Promise<EmissionResponse> {
@@ -35,17 +28,20 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
   if (!SIMPLE_API_KEY) {
     return {
       success: false,
-      error: "Error de configuración: SIMPLE_API_KEY no definida en el servidor .env"
+      error: "Error de configuración: SIMPLE_API_KEY no definida en el servidor."
     };
   }
 
-  const rutEmisorLimpios = formatRutForAPI(emisorData.rut);
-  if (!rutEmisorLimpios || rutEmisorLimpios === "RUTpordefinir") {
-    return {
-      success: false,
-      error: "El RUT de tu empresa no está configurado. Por favor ve a 'Mi Empresa' y complétalo."
-    };
+  // VALIDACIÓN DE RUTS ANTES DE ENVIAR
+  if (!validateRut(emisorData.rut)) {
+    return { success: false, error: "El RUT de tu empresa (emisor) es inválido." };
   }
+  if (!validateRut(docData.clientRut)) {
+    return { success: false, error: "El RUT del cliente (receptor) es inválido." };
+  }
+
+  const rutEmisor = cleanRutForAPI(emisorData.rut);
+  const rutReceptor = cleanRutForAPI(docData.clientRut);
 
   // Mapeo de tipos internos a códigos SII oficiales
   const dteTypeMap: Record<string, number> = {
@@ -58,9 +54,6 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
   const tipoDTE = dteTypeMap[docData.type] || 33;
 
   try {
-    const rutEmisor = formatRutForAPI(emisorData.rut);
-    const rutReceptor = formatRutForAPI(docData.clientRut);
-
     /**
      * ESTRUCTURA DE PAYLOAD PARA SIMPLEAPI:
      * Se construye el objeto siguiendo el esquema requerido por SimpleAPI para Chile.
@@ -116,11 +109,10 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
       body: JSON.stringify(payload)
     });
 
-    // Manejar errores de autenticación explícitos (401)
     if (response.status === 401) {
       return {
         success: false,
-        error: `Error de Autenticación (401): Tu SIMPLE_API_KEY es inválida o no corresponde al ambiente ${isSandbox ? 'Certificación' : 'Producción'}.`,
+        error: `Autenticación fallida (401). Verifique su API Key para el ambiente ${isSandbox ? 'Certificación' : 'Producción'}.`,
         status: 'error'
       };
     }
@@ -130,10 +122,9 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
     try {
       result = JSON.parse(responseText);
     } catch (e) {
-      console.error("SimpleAPI no devolvió un JSON válido:", responseText);
       return {
         success: false,
-        error: `Respuesta inesperada del servidor (HTTP ${response.status}). Revise su configuración de SimpleAPI.`
+        error: `Error del servidor de facturación (HTTP ${response.status}).`
       };
     }
 
@@ -146,10 +137,9 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
         xmlUrl: result.urlXml
       };
     } else {
-      console.error("SimpleAPI Error Response:", result);
       return {
         success: false,
-        error: result.message || "El SII rechazó el documento o los datos del emisor son incorrectos.",
+        error: result.message || "El SII rechazó el documento. Verifique folios disponibles.",
         status: 'error'
       };
     }
@@ -158,7 +148,7 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
     console.error("Error crítico en comunicación con SimpleAPI:", error);
     return {
       success: false,
-      error: `Error de red: ${error.message || "No se pudo contactar al servidor de facturación."}`
+      error: `Error de red: No se pudo contactar al servidor de facturación.`
     };
   }
 }

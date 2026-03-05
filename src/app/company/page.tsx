@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useUser, useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking, useStorage } from "@/firebase";
 import { doc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -10,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Upload, Loader2, Save, Trash2, ArrowLeft, Briefcase, MapPin } from "lucide-react";
+import { Building2, Upload, Loader2, Save, Trash2, ArrowLeft, Briefcase, MapPin, AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
 import { FirebaseImage } from "@/components/FirebaseImage";
+import { validateRut, formatRut } from "@/lib/utils-rut";
+import { cn } from "@/lib/utils";
 
 export default function CompanyProfilePage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -25,7 +26,6 @@ export default function CompanyProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Local state for form fields
   const [formData, setFormData] = useState({
     name: "",
     rut: "",
@@ -53,13 +53,28 @@ export default function CompanyProfilePage() {
     }
   }, [company]);
 
+  const isRutValid = useMemo(() => {
+    if (!formData.rut) return true; // No mostrar error si está vacío
+    return validateRut(formData.rut);
+  }, [formData.rut]);
+
   const handleUpdateCompany = async () => {
     if (!companyRef) return;
+
+    if (!validateRut(formData.rut)) {
+      toast({
+        title: "RUT Inválido",
+        description: "El RUT ingresado no es correcto. Por favor verifíquelo.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
       updateDocumentNonBlocking(companyRef, {
         ...formData,
+        rut: formatRut(formData.rut), // Asegurar formato estándar
         updatedAt: serverTimestamp()
       });
       toast({
@@ -157,7 +172,7 @@ export default function CompanyProfilePage() {
                     className="h-full w-full p-4"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Button size="icon" variant="ghost" className="text-white hover:text-rose-500" onClick={handleRemoveLogo}>
+                    <Button size="icon" variant="ghost" className="text-white hover:text-rose-50" onClick={handleRemoveLogo}>
                       <Trash2 className="h-5 w-5" />
                     </Button>
                   </div>
@@ -217,13 +232,31 @@ export default function CompanyProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">RUT Empresa *</Label>
-                  <Input 
-                    className="h-12 rounded-xl border-2 font-bold"
-                    placeholder="76.000.000-0"
-                    value={formData.rut} 
-                    onChange={(e) => setFormData({...formData, rut: e.target.value})}
-                    required
-                  />
+                  <div className="relative">
+                    <Input 
+                      className={cn(
+                        "h-12 rounded-xl border-2 font-bold transition-colors",
+                        !isRutValid && "border-rose-500 bg-rose-50 focus-visible:ring-rose-500",
+                        isRutValid && formData.rut && "border-emerald-500"
+                      )}
+                      placeholder="76.000.000-0"
+                      value={formData.rut} 
+                      onChange={(e) => setFormData({...formData, rut: e.target.value})}
+                      required
+                    />
+                    {!isRutValid && (
+                      <div className="flex items-center gap-1.5 mt-1.5 text-rose-600">
+                        <AlertCircle className="h-3 w-3" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">RUT Matemáticamente Incorrecto</span>
+                      </div>
+                    )}
+                    {isRutValid && formData.rut && (
+                      <div className="flex items-center gap-1.5 mt-1.5 text-emerald-600">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">RUT Válido</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Giro / Actividad *</Label>
@@ -269,7 +302,7 @@ export default function CompanyProfilePage() {
               <Badge variant="outline" className="bg-white border-primary/20 text-primary font-black px-3 py-1">
                 PLAN: {company?.currentPlan?.toUpperCase() || "S/I"}
               </Badge>
-              <Button type="submit" disabled={isSaving} className="rounded-xl h-12 px-8 font-black shadow-lg">
+              <Button type="submit" disabled={isSaving || !isRutValid} className="rounded-xl h-12 px-8 font-black shadow-lg">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Guardar Configuración
               </Button>

@@ -1,11 +1,10 @@
-
 'use server';
 
 import nodemailer from 'nodemailer';
 
 /**
  * @fileOverview Acción de servidor para envío de correos directos vía SMTP.
- * Evita depender de extensiones de Firebase que fallen en el despliegue de Cloud Functions.
+ * SECURIZADO: Usa variables de entorno para las credenciales en producción.
  */
 
 interface SendEmailInput {
@@ -15,20 +14,29 @@ interface SendEmailInput {
 }
 
 export async function sendSystemEmail(input: SendEmailInput) {
-  // Configuración SMTP directa usando tus credenciales de Gmail (App Password)
+  // CONFIGURACIÓN DE PRODUCCIÓN:
+  // Asegúrate de definir EMAIL_USER y EMAIL_PASS en tu panel de Secrets del hosting.
+  const SMTP_USER = process.env.EMAIL_USER || 'control@pcgoperacion.com';
+  const SMTP_PASS = process.env.EMAIL_PASS; // NO hardcodear contraseña aquí
+
+  if (!SMTP_PASS) {
+    console.error("Error: EMAIL_PASS no definida en variables de entorno.");
+    return { success: false, error: "Servidor de correo no configurado (Falta PASS)." };
+  }
+
   const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,
-    secure: true, // true for 465, false for other ports
+    secure: true,
     auth: {
-      user: 'control@pcgoperacion.com',
-      pass: 'cqyqwlmbblxlkbla', // Tu contraseña de aplicación
+      user: SMTP_USER,
+      pass: SMTP_PASS,
     },
   });
 
   try {
     const info = await transporter.sendMail({
-      from: '"PCGMANTENIMIENTO ERP" <control@pcgoperacion.com>',
+      from: `"PCGMANTENIMIENTO ERP" <${SMTP_USER}>`,
       to: input.to,
       subject: input.subject,
       html: input.html,
@@ -38,6 +46,6 @@ export async function sendSystemEmail(input: SendEmailInput) {
     return { success: true, messageId: info.messageId };
   } catch (error: any) {
     console.error("Error sending email:", error);
-    return { success: false, error: error.message || "Error desconocido en el servidor SMTP." };
+    return { success: false, error: "Error en el servidor SMTP. Verifique credenciales." };
   }
 }
