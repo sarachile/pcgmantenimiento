@@ -37,7 +37,8 @@ import {
   Lock,
   Globe,
   Copy,
-  Send
+  Send,
+  Smartphone
 } from "lucide-react";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -139,6 +140,7 @@ export default function ClientsPage() {
   };
 
   const handleEdit = (client: Client) => {
+    setEditingStaff(null);
     setEditingClient(client);
     setFormData({
       name: client.name,
@@ -149,6 +151,10 @@ export default function ClientsPage() {
     });
     setIsCreateOpen(true);
   };
+
+  function setEditingStaff(arg0: null) {
+    // Helper para limpiar estados de edición de otras entidades si fuera necesario
+  }
 
   const handleDelete = (client: Client) => {
     if (!db || !profile?.companyId) return;
@@ -188,15 +194,33 @@ export default function ClientsPage() {
               <h1 style="color: #1e3a8a; font-size: 24px; margin: 0; text-transform: uppercase;">${company?.name || 'PCGMANTENIMIENTO'}</h1>
               <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Portal de Gestión de Servicios</p>
             </div>
+            
             <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Acceso a Autogestión de Órdenes</h2>
             <p style="font-size: 15px; line-height: 1.6; color: #334155;">Estimados <strong>${client.name}</strong>,</p>
             <p style="font-size: 15px; line-height: 1.6; color: #334155;">Para agilizar la atención de sus requerimientos técnicos, hemos habilitado su portal exclusivo de autogestión. A través de este enlace, podrá solicitar servicios, reportar fallas y adjuntar descripciones sin necesidad de login adicional.</p>
+            
             <div style="text-align: center; margin: 40px 0;">
               <a href="${url}" style="background-color: #1e3a8a; color: #ffffff; padding: 18px 36px; text-decoration: none; border-radius: 12px; font-weight: 900; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);">
                 SOLICITAR SERVICIO TÉCNICO
               </a>
             </div>
-            <p style="font-size: 12px; color: #94a3b8; font-style: italic; text-align: center;">Este link es exclusivo para su organización. No lo comparta con terceros.</p>
+
+            <div style="background-color: #f8fafc; border-radius: 16px; padding: 24px; border: 1px dashed #cbd5e1; margin-top: 40px;">
+              <h3 style="font-size: 14px; color: #1e3a8a; margin-top: 0; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">¿Cómo tenernos siempre a mano?</h3>
+              <p style="font-size: 12px; color: #64748b; margin-bottom: 16px;">Siga estas instrucciones para guardar este portal como un ícono en su teléfono móvil:</p>
+              
+              <div style="margin-bottom: 16px;">
+                <p style="font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">En iPhone (Safari):</p>
+                <p style="font-size: 12px; color: #475569;">Abra el link, pulse el botón <strong>"Compartir"</strong> (cuadrado con flecha) y seleccione <strong>"Agregar a Inicio"</strong>.</p>
+              </div>
+              
+              <div>
+                <p style="font-size: 13px; font-weight: bold; color: #334155; margin-bottom: 4px;">En Android (Chrome):</p>
+                <p style="font-size: 12px; color: #475569;">Abra el link, pulse los <strong>3 puntos</strong> superiores y seleccione <strong>"Instalar aplicación"</strong> o <strong>"Agregar a pantalla principal"</strong>.</p>
+              </div>
+            </div>
+
+            <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center; margin-top: 30px;">Este link es exclusivo para su organización. No lo comparta con terceros.</p>
           </div>
         `
       });
