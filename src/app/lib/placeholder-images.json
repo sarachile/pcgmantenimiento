@@ -2,15 +2,21 @@
 {
   "placeholderImages": [
     {
-      "id": "hero-maintenance",
-      "description": "Professional maintenance team at work",
-      "imageUrl": "https://picsum.photos/seed/pcg1/1200/600",
-      "imageHint": "maintenance team"
+      "id": "hero-industrial",
+      "description": "Professional industrial maintenance environment",
+      "imageUrl": "https://picsum.photos/seed/pcg-hero/1200/800",
+      "imageHint": "industrial maintenance"
+    },
+    {
+      "id": "dashboard-preview",
+      "description": "Clean software dashboard interface",
+      "imageUrl": "https://picsum.photos/seed/pcg-dash/1200/800",
+      "imageHint": "software dashboard"
     },
     {
       "id": "company-logo-placeholder",
       "description": "Abstract corporate logo",
-      "imageUrl": "https://picsum.photos/seed/pcg2/200/200",
+      "imageUrl": "https://picsum.photos/seed/pcg-logo/200/200",
       "imageHint": "corporate logo"
     }
   ]

@@ -30,10 +30,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const heroImage = PlaceHolderImages.find(img => img.id === 'hero-industrial');
+  const dashImage = PlaceHolderImages.find(img => img.id === 'dashboard-preview');
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans">
@@ -113,16 +117,17 @@ export default function HomePage() {
           
           {/* Dashboard Preview Mockup */}
           <div className="mt-20 relative max-w-5xl mx-auto">
-            <div className="bg-slate-900 rounded-2xl p-2 shadow-2xl">
-              <div className="bg-white rounded-xl overflow-hidden border border-slate-800">
-                <Image 
-                  src="https://picsum.photos/seed/pcgdashboard/1200/800" 
-                  alt="Dashboard Preview" 
-                  width={1200} 
-                  height={800} 
-                  className="w-full h-auto opacity-90 hover:opacity-100 transition-opacity"
-                  data-ai-hint="dashboard interface"
-                />
+            <div className="bg-slate-900 rounded-2xl p-2 shadow-2xl overflow-hidden">
+              <div className="bg-white rounded-xl overflow-hidden border border-slate-800 relative aspect-video">
+                {dashImage && (
+                  <Image 
+                    src={dashImage.imageUrl} 
+                    alt={dashImage.description} 
+                    fill
+                    className="object-cover opacity-90 hover:opacity-100 transition-opacity"
+                    data-ai-hint={dashImage.imageHint}
+                  />
+                )}
               </div>
             </div>
             <div className="absolute -bottom-10 -right-10 hidden lg:block animate-bounce duration-[3000ms]">
@@ -177,6 +182,27 @@ export default function HomePage() {
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Pérdida de Datos</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Hero-like visual support section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="rounded-[3rem] overflow-hidden relative h-[400px] shadow-2xl">
+            {heroImage && (
+              <Image 
+                src={heroImage.imageUrl} 
+                alt={heroImage.description} 
+                fill
+                className="object-cover brightness-50"
+                data-ai-hint={heroImage.imageHint}
+              />
+            )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
+              <h2 className="text-3xl md:text-5xl font-black text-white italic tracking-tighter mb-4">Acredita tu experiencia en terreno</h2>
+              <p className="text-white/80 max-w-2xl text-lg font-medium">Cada trabajo terminado es un respaldo sólido para tus próximas licitaciones y contratos comerciales.</p>
             </div>
           </div>
         </div>
