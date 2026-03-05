@@ -23,7 +23,8 @@ import {
   ArrowLeft,
   Smartphone,
   Sparkles,
-  Signature
+  Signature,
+  Receipt
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
@@ -70,6 +71,7 @@ export default function SubscriptionPage() {
       features: [
         `Hasta ${PLAN_CONFIGS.business.maxTechnicians} Técnicos`,
         `Hasta ${PLAN_CONFIGS.business.maxClients} Clientes`,
+        "Facturación Electrónica DTE",
         "Firma Digital Advanced",
         "Modo Offline Inteligente",
         "Resúmenes IA (Genkit)"
@@ -85,6 +87,7 @@ export default function SubscriptionPage() {
       description: "Control total para empresas multi-sucursal.",
       features: [
         `Hasta ${PLAN_CONFIGS.enterprise.maxTechnicians} Técnicos`,
+        "DTE Ilimitado & Automatización",
         "Gestión de Sucursales",
         "API de integración",
         "Soporte Prioritario 24/7",
@@ -187,12 +190,12 @@ export default function SubscriptionPage() {
               <div className="mt-8 pt-6 border-t border-dashed space-y-3">
                 {plan.id === 'business' && (
                   <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-widest">
-                    <Signature className="h-3 w-3" /> Incluye Firma Digital
+                    <Receipt className="h-3 w-3" /> Incluye Emisión DTE
                   </div>
                 )}
                 {plan.id === 'enterprise' && (
                   <div className="flex items-center gap-2 text-[10px] font-black text-purple-600 uppercase tracking-widest">
-                    <Sparkles className="h-3 w-3" /> Incluye Reportes GenAI
+                    <Sparkles className="h-3 w-3" /> Reportes GenAI + Multi-sucursal
                   </div>
                 )}
               </div>
