@@ -106,7 +106,7 @@ export default function HomePage() {
           </h1>
           <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
             La herramienta táctica que acredita tu experiencia técnica en terreno. <br className="hidden md:block" />
-            Certifica m², servicios realizados y conformidad de clientes con sellos digitales.
+            Certifica magnitudes, servicios realizados y conformidad de clientes con sellos digitales.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20 hover:scale-105 transition-transform">
@@ -116,26 +116,43 @@ export default function HomePage() {
           </div>
           
           {/* Dashboard Preview Mockup */}
-          <div className="mt-20 relative max-w-5xl mx-auto">
-            <div className="bg-slate-900 rounded-2xl p-2 shadow-2xl overflow-hidden">
-              <div className="bg-white rounded-xl overflow-hidden border border-slate-800 relative aspect-video">
-                {dashImage && (
+          <div className="mt-20 relative max-w-5xl mx-auto px-4">
+            <div className="bg-slate-900 rounded-3xl p-3 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden">
+              <div className="bg-white rounded-2xl overflow-hidden border border-slate-800 relative aspect-video shadow-inner">
+                {dashImage ? (
                   <Image 
                     src={dashImage.imageUrl} 
                     alt={dashImage.description} 
                     fill
-                    className="object-cover opacity-90 hover:opacity-100 transition-opacity"
+                    priority
+                    className="object-cover opacity-100 transition-opacity duration-1000"
                     data-ai-hint={dashImage.imageHint}
                   />
+                ) : (
+                  <div className="w-full h-full bg-slate-50 flex items-center justify-center animate-pulse">
+                    <LayoutDashboard className="h-12 w-12 text-slate-200" />
+                  </div>
                 )}
               </div>
             </div>
-            <div className="absolute -bottom-10 -right-10 hidden lg:block animate-bounce duration-[3000ms]">
-              <div className="bg-white p-4 rounded-2xl shadow-2xl border border-emerald-100 flex items-center gap-4">
-                <div className="bg-emerald-500 p-2 rounded-full"><CheckCircle2 className="text-white h-6 w-6" /></div>
+            
+            {/* Overlay Floating Elements */}
+            <div className="absolute -bottom-10 -right-4 hidden lg:block animate-bounce duration-[4000ms]">
+              <div className="bg-white p-5 rounded-2xl shadow-2xl border border-emerald-100 flex items-center gap-4">
+                <div className="bg-emerald-500 p-2 rounded-full shadow-lg shadow-emerald-200"><CheckCircle2 className="text-white h-6 w-6" /></div>
                 <div className="text-left">
-                  <p className="text-xs font-black text-slate-400 uppercase">OT FINALIZADA</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">OT FINALIZADA</p>
                   <p className="font-bold text-slate-900 italic">"Validada con evidencia real"</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="absolute -top-10 -left-4 hidden lg:block animate-pulse duration-[5000ms]">
+              <div className="bg-white p-5 rounded-2xl shadow-2xl border border-blue-100 flex items-center gap-4">
+                <div className="bg-blue-600 p-2 rounded-full shadow-lg shadow-blue-200"><SignatureIcon className="text-white h-6 w-6" /></div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">FIRMA DIGITAL</p>
+                  <p className="font-bold text-slate-900 italic">"Sello técnico emitido"</p>
                 </div>
               </div>
             </div>
@@ -190,8 +207,8 @@ export default function HomePage() {
       {/* Hero-like visual support section */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-[3rem] overflow-hidden relative h-[400px] shadow-2xl">
-            {heroImage && (
+          <div className="rounded-[3rem] overflow-hidden relative h-[450px] shadow-2xl">
+            {heroImage ? (
               <Image 
                 src={heroImage.imageUrl} 
                 alt={heroImage.description} 
@@ -199,10 +216,15 @@ export default function HomePage() {
                 className="object-cover brightness-50"
                 data-ai-hint={heroImage.imageHint}
               />
+            ) : (
+              <div className="w-full h-full bg-slate-900" />
             )}
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-              <h2 className="text-3xl md:text-5xl font-black text-white italic tracking-tighter mb-4">Acredita tu experiencia en terreno</h2>
-              <p className="text-white/80 max-w-2xl text-lg font-medium">Cada trabajo terminado es un respaldo sólido para tus próximas licitaciones y contratos comerciales.</p>
+              <Badge className="bg-white/20 text-white mb-6 backdrop-blur-md border-white/30 px-4 py-1 uppercase tracking-[0.2em] font-black text-[10px]">Acreditación Oficial</Badge>
+              <h2 className="text-3xl md:text-6xl font-black text-white italic tracking-tighter mb-6 leading-none">Acredita tu experiencia técnica</h2>
+              <p className="text-white/80 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
+                Cada trabajo terminado es un respaldo sólido para tus próximas licitaciones y contratos comerciales. Transforma tus OTs en certificados de experiencia válidos.
+              </p>
             </div>
           </div>
         </div>
@@ -255,22 +277,6 @@ export default function HomePage() {
                 <p className="text-slate-400 text-sm leading-relaxed">{benefit.desc}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonial / Social Proof Simulation */}
-      <section className="py-24 border-b border-slate-100">
-        <div className="max-w-4xl mx-auto px-4 text-center space-y-8">
-          <p className="text-3xl font-black italic text-slate-800 leading-snug">
-            "Pasamos de tener un desorden total en carpetas a tener la trazabilidad de cada equipo en la palma de nuestra mano. La validación con fotos cambió nuestra relación con los clientes."
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-slate-200" />
-            <div className="text-left">
-              <p className="font-bold text-slate-900">Gerencia Técnica</p>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Servicios Industriales Chile</p>
-            </div>
           </div>
         </div>
       </section>
