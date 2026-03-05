@@ -11,7 +11,7 @@ import {
   addDocumentNonBlocking,
   updateDocumentNonBlocking
 } from "@/firebase";
-import { collection, serverTimestamp, query, where, doc } from "firebase/firestore";
+import { collection, serverTimestamp, query, where, doc, addDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -168,7 +168,7 @@ export default function NewBillingDocumentPage() {
         clientId,
         clientName: selectedClient?.name || "Desconocido",
         clientRut: selectedClient?.rut || "Desconocido",
-        workOrderId: workOrderId || null,
+        workOrderId: (workOrderId && workOrderId !== 'none') ? workOrderId : null,
         type,
         status: "pendiente",
         items,
@@ -290,22 +290,32 @@ export default function NewBillingDocumentPage() {
                     <Plus className="h-3 w-3 mr-1" /> Añadir Línea
                   </Button>
                 </div>
+
+                {/* Encabezado de Columnas */}
+                {items.length > 0 && (
+                  <div className="flex gap-3 px-1 mb-[-12px] opacity-60">
+                    <div className="flex-[4]"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Descripción del Producto o Servicio</Label></div>
+                    <div className="flex-[1] min-w-[80px] text-center"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Cant.</Label></div>
+                    <div className="flex-[2] min-w-[120px]"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Precio Unit. ($)</Label></div>
+                    <div className="w-11"></div>
+                  </div>
+                )}
                 
                 <div className="space-y-3">
                   {items.map((item, idx) => (
                     <div key={idx} className="flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
                       <div className="flex-[4] space-y-1">
                         <Input 
-                          placeholder="Descripción del producto o servicio" 
+                          placeholder="Ej: Mantención de Climatización Central" 
                           value={item.description}
                           onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                          className="h-11 rounded-xl border-2"
+                          className="h-11 rounded-xl border-2 focus:border-primary"
                         />
                       </div>
                       <div className="flex-[1] min-w-[80px]">
                         <Input 
                           type="number" 
-                          placeholder="Cant." 
+                          placeholder="0" 
                           value={item.quantity}
                           onChange={(e) => updateItem(idx, 'quantity', Number(e.target.value))}
                           className="h-11 rounded-xl border-2 text-center"
@@ -314,17 +324,23 @@ export default function NewBillingDocumentPage() {
                       <div className="flex-[2] min-w-[120px]">
                         <Input 
                           type="number" 
-                          placeholder="Precio Unit." 
+                          placeholder="Monto neto" 
                           value={item.unitPrice}
                           onChange={(e) => updateItem(idx, 'unitPrice', Number(e.target.value))}
                           className="h-11 rounded-xl border-2"
                         />
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(idx)} className="h-11 w-11 rounded-xl text-rose-500 shrink-0">
+                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(idx)} className="h-11 w-11 rounded-xl text-rose-500 hover:bg-rose-50 shrink-0">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
+                  
+                  {items.length === 0 && (
+                    <div className="py-10 text-center border-2 border-dashed rounded-2xl bg-slate-50/50">
+                      <p className="text-sm font-medium text-slate-400">Presione "Añadir Línea" para ingresar ítems a la factura.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
