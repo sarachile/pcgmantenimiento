@@ -1,9 +1,11 @@
+
 'use client';
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
+import { MobileActionDock } from "@/components/layout/mobile-action-dock";
 import { Separator } from "@/components/ui/separator";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
@@ -20,7 +22,6 @@ export default function DashboardLayout({
   const router = useRouter();
 
   useEffect(() => {
-    // Solo redirigir si el estado de carga ha terminado y no hay sesión activa
     if (!isLoading && !isAuthenticated) {
       router.push("/auth/login");
     }
@@ -33,7 +34,6 @@ export default function DashboardLayout({
 
   const { data: company } = useDoc<Company>(companyRef);
 
-  // Mientras carga el estado inicial, mostramos un loader para evitar parpadeos
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -42,7 +42,6 @@ export default function DashboardLayout({
     );
   }
 
-  // Si no está autenticado y no está cargando, la redirección se maneja en el useEffect
   if (!isAuthenticated) return null;
 
   return (
@@ -67,9 +66,10 @@ export default function DashboardLayout({
             </div>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-6 overflow-auto">
+        <div className="flex flex-1 flex-col gap-4 p-6 overflow-auto pb-32 md:pb-6">
           {children}
         </div>
+        <MobileActionDock />
       </SidebarInset>
     </SidebarProvider>
   );
