@@ -18,37 +18,26 @@ import {
   FileDown,
   ListChecks,
   MessageSquare,
-  Signature as SignatureIcon,
   Check,
-  Star,
   Send,
-  ExternalLink,
-  Mail,
   Building2,
   HardHat,
   Camera,
-  Image as ImageIcon,
   Trash2,
-  XCircle,
-  AlertTriangle,
   Plus,
   Fingerprint,
   ClipboardList,
   Calendar as CalendarIcon,
   Clock,
-  KeyRound,
-  ShieldAlert,
   Award,
-  Ruler,
   MapPin,
   User,
   Hash,
-  Package,
-  Search,
-  ShoppingCart,
   Zap,
   Sparkles,
-  FileText
+  FileText,
+  Copy,
+  ImageOff
 } from "lucide-react";
 import {
   Dialog,
@@ -64,9 +53,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { doc, collection, addDoc, serverTimestamp, query, orderBy, where, arrayUnion, arrayRemove, increment } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, StaffMember, SparePart } from "@/lib/types";
@@ -84,9 +74,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile, isSupervisor, isCompanyAdmin, isTechnician } = useUser();
+  const { profile, isSupervisor, isCompanyAdmin } = useUser();
   const db = useFirestore();
   const storage = useStorage();
+  const router = useRouter();
   const reportRef = useRef<HTMLDivElement>(null);
   const certRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,12 +89,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [manualComment, setManualComment] = useState("");
-  const [isSealDialogOpen, setIsSealDialogOpen] = useState(false);
   const [isRequestCertDialogOpen, setIsRequestCertDialogOpen] = useState(false);
-  const [isPartsDialogOpen, setIsPartsDialogOpen] = useState(false);
-  const [partsSearch, setPartsSearch] = useState("");
-  const [selectedPart, setSelectedPart] = useState<SparePart | null>(null);
-  const [partQuantity, setPartQuantity] = useState("1");
   
   const [tempClientEmail, setTempClientEmail] = useState("");
   const [tempClientName, setTempClientName] = useState("");
@@ -146,16 +132,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const partUsagesQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "workOrders", otId, "partUsages") : null, [db, companyId, otId]);
   const { data: partUsages } = useCollection<PartUsage>(partUsagesQuery);
 
-  const inventoryQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "spareParts") : null, [db, companyId]);
-  const { data: inventory } = useCollection<SparePart>(inventoryQuery);
-
-  const filteredInventory = useMemo(() => {
-    return (inventory || []).filter(p => 
-      p.name.toLowerCase().includes(partsSearch.toLowerCase()) || 
-      p.sku.toLowerCase().includes(partsSearch.toLowerCase())
-    );
-  }, [inventory, partsSearch]);
-
   const formatDateLabel = (date: any) => {
     if (!date) return "...";
     try {
@@ -191,42 +167,27 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold; width: 140px;">ORDEN DE TRABAJO:</td><td style="padding: 6px 0; font-weight: 900; color: #1e3a8a;">${ot.id}</td></tr>
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">EQUIPO / ACTIVO:</td><td style="padding: 6px 0; font-weight: bold;">${asset?.name || 'S/I'} [${asset?.code || '-'}]</td></tr>
-                <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">MAGNITUD:</td><td style="padding: 6px 0; font-weight: bold;">${ot.serviceQuantity || '0'} ${ot.serviceUnit || ''}</td></tr>
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">CÓDIGO DE ACCESO:</td><td style="padding: 6px 0;"><span style="background: #1e3a8a; color: #ffffff; padding: 4px 12px; border-radius: 6px; font-family: monospace; font-weight: 900; font-size: 18px; letter-spacing: 2px;">${ot.approvalPin || '------'}</span></td></tr>
               </table>
             </div>
 
-            <div style="margin-bottom: 32px;">
-              <p style="font-size: 13px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px;">Trabajos Realizados:</p>
-              <p style="font-size: 14px; color: #334155; font-style: italic; background: #fffbeb; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b;">"${ot.description}"</p>
-            </div>
-            
             <div style="text-align: center; margin: 40px 0;">
               <a href="${currentUrl}" style="background-color: #1e3a8a; color: #ffffff; padding: 18px 36px; text-decoration: none; border-radius: 12px; font-weight: 900; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);">
                 REVISAR Y APROBAR DIGITALMENTE
               </a>
-              <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">Para su seguridad, el sistema le solicitará el código de acceso indicado arriba.</p>
-            </div>
-
-            <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; text-align: center;">
-              <p style="font-size: 11px; color: #94a3b8;">Mensaje automático enviado vía <strong>PCGMANTENIMIENTO ERP</strong>.</p>
             </div>
           </div>
         `
       });
-      if (result.success) toast({ title: "Correo Enviado", description: `Se envió la invitación a ${targetEmail}` });
+      if (result.success) toast({ title: "Correo Enviado" });
       else throw new Error(result.error);
-    } catch (e: any) { 
-      toast({ title: "Error en envío", description: e.message, variant: "destructive" }); 
-    } finally { 
-      setIsResendingEmail(false); 
-    }
+    } catch (e: any) { toast({ title: "Error en envío", description: e.message, variant: "destructive" }); } finally { setIsResendingEmail(false); }
   };
 
   const handleDownloadPdf = async () => {
     if (!reportRef.current || !ot) return;
     setIsGeneratingPdf(true);
-    toast({ title: "Generando reporte técnico...", description: "Procesando certificados y evidencias." });
+    toast({ title: "Generando reporte técnico..." });
     try {
       await new Promise(r => setTimeout(r, 1000));
       const canv = await html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", imageTimeout: 30000 });
@@ -235,17 +196,16 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       const pw = pdf.internal.pageSize.getWidth();
       pdf.addImage(imgData, "PNG", 0, 0, pw, (canv.height * pw) / canv.width);
       pdf.save(`REPORTE_PCG_${ot.id}.pdf`);
-      toast({ title: "PDF Generado Exitosamente" });
+      toast({ title: "PDF Generado" });
     } catch (e) { toast({ title: "Error al generar PDF", variant: "destructive" }); } finally { setIsGeneratingPdf(false); }
   };
 
   const handleDownloadExperienceCert = async () => {
     if (!certRef.current || !ot || ot.status !== 'aprobada') {
-      toast({ title: "Acceso Denegado", description: "El certificado solo puede emitirse para órdenes aprobadas por el cliente.", variant: "destructive" });
+      toast({ title: "Acceso Denegado", description: "La OT debe estar aprobada.", variant: "destructive" });
       return;
     }
     setIsGeneratingCert(true);
-    toast({ title: "Generando certificado de experiencia...", description: "Acreditando magnitud y ejecución conforme." });
     try {
       await new Promise(r => setTimeout(r, 1000));
       const canv = await html2canvas(certRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", imageTimeout: 30000 });
@@ -254,15 +214,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       const pw = pdf.internal.pageSize.getWidth();
       pdf.addImage(imgData, "PNG", 0, 0, pw, (canv.height * pw) / canv.width);
       pdf.save(`CERTIFICADO_EXPERIENCIA_PCG_${ot.id}.pdf`);
-      toast({ title: "Certificado generado correctamente" });
+      toast({ title: "Certificado generado" });
     } catch (e) { toast({ title: "Error al generar certificado", variant: "destructive" }); } finally { setIsGeneratingCert(false); }
   };
 
   const handleGenerateAISummary = async () => {
     if (!ot || !logbook || !otRef) return;
     setIsGeneratingSummary(true);
-    toast({ title: "Generando Resumen IA", description: "Analizando bitácora técnica..." });
-    
     try {
       const summaryInput = {
         workOrder: {
@@ -281,98 +239,35 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           workOrderId: ot.id
         }))
       };
-
       const result = await generateWorkOrderSummary(summaryInput);
-      
-      updateDocumentNonBlocking(otRef, {
-        aiSummary: result.summary,
-        updatedAt: serverTimestamp()
-      });
-
-      toast({ title: "Resumen IA Generado", description: "El informe ha sido actualizado." });
-    } catch (error: any) {
-      toast({ title: "Error de IA", description: "No se pudo generar el resumen inteligente.", variant: "destructive" });
-    } finally {
-      setIsGeneratingSummary(false);
-    }
+      updateDocumentNonBlocking(otRef, { aiSummary: result.summary, updatedAt: serverTimestamp() });
+      toast({ title: "Resumen IA Generado" });
+    } catch (error: any) { toast({ title: "Error de IA", variant: "destructive" }); } finally { setIsGeneratingSummary(false); }
   };
 
   const handleRequestCertification = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!tempClientEmail || !tempClientName || !ot || !clientRef) return;
-
     setIsUpdating(true);
     try {
-      const updateData: any = {
-        updatedAt: serverTimestamp()
-      };
+      const updateData: any = { updatedAt: serverTimestamp() };
       if (tempClientEmail !== client?.contactEmail) updateData.contactEmail = tempClientEmail;
       if (tempClientName !== client?.contactName) updateData.contactName = tempClientName;
-
-      if (Object.keys(updateData).length > 1) {
-        updateDocumentNonBlocking(clientRef, updateData);
-      }
-
+      if (Object.keys(updateData).length > 1) updateDocumentNonBlocking(clientRef, updateData);
       await handleResendEmail(tempClientEmail);
       setIsRequestCertDialogOpen(false);
-      toast({ 
-        title: "Solicitud de Validación Enviada", 
-        description: "Se ha notificado al revisor para que autorice el cierre de la orden y la emisión del certificado." 
-      });
-    } catch (e: any) {
-      toast({ title: "Error al procesar", description: e.message, variant: "destructive" });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleTechnicianDigitalSeal = async () => {
-    if (!otRef || !profile || !ot) return;
-    setIsUpdating(true);
-    try {
-      const techCode = `TECH-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
-      const nextStatus = ot.reviewerRequired ? 'pendiente cliente' : 'aprobada';
-      const data: any = { 
-        technicianApprovalName: profile.name,
-        technicianApprovalDate: serverTimestamp(),
-        technicianApprovalCode: techCode,
-        status: nextStatus,
-        executedAt: ot.executedAt || serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        rejectedReason: null 
-      };
-      updateDocumentNonBlocking(otRef, data);
-      
-      const contactEmail = tempClientEmail || client?.contactEmail;
-      if (nextStatus === 'pendiente cliente' && contactEmail) {
-        handleResendEmail(contactEmail);
-      }
-      
-      setIsSealDialogOpen(false);
-      toast({ title: "Sello Emitido y Estado Actualizado" });
-    } catch (e: any) { 
-      toast({ title: "Error al generar sello", variant: "destructive" }); 
-    } finally { 
-      setIsUpdating(false); 
-    }
+      toast({ title: "Solicitud Enviada" });
+    } catch (e: any) { toast({ title: "Error al procesar", variant: "destructive" }); } finally { setIsUpdating(false); }
   };
 
   const handleRequestClientApproval = async () => {
     if (!otRef) return;
     setIsUpdating(true);
     try {
-      updateDocumentNonBlocking(otRef, { 
-        status: 'pendiente cliente', 
-        updatedAt: serverTimestamp(),
-        rejectedReason: null 
-      });
+      updateDocumentNonBlocking(otRef, { status: 'pendiente cliente', updatedAt: serverTimestamp(), rejectedReason: null });
       await handleResendEmail();
       toast({ title: "Solicitud enviada al cliente" });
-    } catch (e: any) {
-      toast({ title: "Error al procesar", variant: "destructive" });
-    } finally {
-      setIsUpdating(false);
-    }
+    } catch (e: any) { toast({ title: "Error al procesar", variant: "destructive" }); } finally { setIsUpdating(false); }
   };
 
   const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -385,77 +280,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       await uploadBytes(sRef, file);
       const url = await getDownloadURL(sRef);
       updateDocumentNonBlocking(otRef, { evidenceUrls: arrayUnion(url), updatedAt: serverTimestamp() });
-      toast({ title: "Evidencia fotográfica cargada" });
-    } catch (e: any) { toast({ title: "Error al subir foto", description: e.message, variant: "destructive" }); } finally { setIsUploading(false); }
-  };
-
-  const handleAddPartUsage = async () => {
-    if (!db || !selectedPart || !ot || !companyId || !profile) return;
-    const qty = Number(partQuantity);
-    if (qty <= 0) return;
-
-    setIsUpdating(true);
-    try {
-      const usageCol = collection(db, "companies", companyId, "workOrders", ot.id, "partUsages");
-      await addDoc(usageCol, {
-        workOrderId: ot.id,
-        partId: selectedPart.id,
-        partName: selectedPart.name,
-        quantity: qty,
-        unitPrice: selectedPart.unitPrice,
-        usedAt: serverTimestamp(),
-        actorId: profile.id
-      });
-
-      const partRef = doc(db, "companies", companyId, "spareParts", selectedPart.id);
-      updateDocumentNonBlocking(partRef, {
-        stockActual: increment(-qty)
-      });
-
-      const logCol = collection(db, "companies", companyId, "workOrders", ot.id, "digitalLogbookEntries");
-      await addDoc(logCol, {
-        workOrderId: ot.id,
-        companyId,
-        timestamp: serverTimestamp(),
-        eventType: 'action_taken',
-        eventDetails: `Consumo de material: ${qty} x ${selectedPart.name}`,
-        actor: profile.id
-      });
-
-      toast({ title: "Insumo registrado", description: "El stock ha sido descontado del inventario." });
-      setIsPartsDialogOpen(false);
-      setSelectedPart(null);
-      setPartQuantity("1");
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleRemovePartUsage = async (usage: PartUsage) => {
-    if (!db || !ot || !companyId) return;
-    
-    try {
-      const usageRef = doc(db, "companies", companyId, "workOrders", ot.id, "partUsages", usage.id);
-      deleteDocumentNonBlocking(usageRef);
-
-      const partRef = doc(db, "companies", companyId, "spareParts", usage.partId);
-      updateDocumentNonBlocking(partRef, {
-        stockActual: increment(usage.quantity)
-      });
-
-      toast({ title: "Registro eliminado", description: "El stock ha sido devuelto al inventario." });
-    } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
-    }
+      toast({ title: "Foto cargada" });
+    } catch (e: any) { toast({ title: "Error al subir foto", variant: "destructive" }); } finally { setIsUploading(false); }
   };
 
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl opacity-50">La orden solicitada no existe.</div>;
+  if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl opacity-50">Orden no encontrada.</div>;
 
   const canEditPhotos = ot.status !== 'aprobada' && ot.status !== 'pendiente cliente';
-  const canEditMaterials = ot.status !== 'aprobada' && ot.status !== 'pendiente cliente';
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -473,90 +305,53 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               "px-3 py-1 font-black uppercase text-[10px] tracking-widest",
               ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700", 
               ot.status === 'rechazada' && "bg-rose-100 text-rose-700", 
-              ot.status === 'pendiente cliente' && "bg-indigo-100 text-indigo-700", 
-              ot.status === 'en revision' && "bg-amber-100 text-amber-700"
+              ot.status === 'pendiente cliente' && "bg-indigo-100 text-indigo-700"
             )}>{ot.status.replace(' ', '_').toUpperCase()}</Badge>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11">
-            {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Informe Técnico
+          <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold">
+            <Link href={`/work-orders/new?duplicateFrom=${ot.id}`}><Copy className="h-4 w-4 mr-2" /> Duplicar OT</Link>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11">
+            {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Informe
           </Button>
           
           {ot.status === 'aprobada' && (
             ot.clientApprovalCode ? (
-              <Button variant="outline" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700 hover:bg-blue-50">
-                {isGeneratingCert ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Award className="h-4 w-4 mr-2" />} Descargar Certificado
+              <Button variant="outline" size="sm" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700">
+                <Award className="h-4 w-4 mr-2" /> Certificado
               </Button>
             ) : (
               <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => {
-                    setTempClientEmail(client?.contactEmail || "");
-                    setTempClientName(client?.contactName || "");
-                  }}>
-                    <Award className="h-4 w-4 mr-2" /> Solicitar Certificación
+                  <Button variant="outline" size="sm" className="rounded-xl h-11 border-amber-200 text-amber-700">
+                    <Award className="h-4 w-4 mr-2" /> Solicitar Firma
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
                   <DialogHeader>
-                    <DialogTitle className="text-2xl font-black italic">Acreditación de Experiencia</DialogTitle>
-                    <DialogDescription>
-                      Para emitir un Certificado de Experiencia válido, la OT debe estar cerrada y aprobada digitalmente por el cliente. 
-                      Se enviará una notificación formal al revisor para capturar su firma.
-                    </DialogDescription>
+                    <DialogTitle className="text-2xl font-black italic">Validación Digital</DialogTitle>
+                    <DialogDescription>Se enviará una invitación para capturar la firma del cliente.</DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <Label className="font-bold text-xs uppercase text-slate-500">Nombre del Revisor</Label>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <Input 
-                            required
-                            placeholder="Nombre completo"
-                            className="pl-10 h-12 rounded-xl"
-                            value={tempClientName}
-                            onChange={(e) => setTempClientName(e.target.value)}
-                          />
-                        </div>
+                        <Label className="text-xs font-bold uppercase">Nombre Revisor</Label>
+                        <Input required value={tempClientName} onChange={(e) => setTempClientName(e.target.value)} className="h-12 rounded-xl" />
                       </div>
                       <div className="space-y-2">
-                        <Label className="font-bold text-xs uppercase text-slate-500">Email del Revisor</Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <Input 
-                            type="email" 
-                            required
-                            placeholder="ejemplo@cliente.cl"
-                            className="pl-10 h-12 rounded-xl"
-                            value={tempClientEmail}
-                            onChange={(e) => setTempClientEmail(e.target.value)}
-                          />
-                        </div>
+                        <Label className="text-xs font-bold uppercase">Email Revisor</Label>
+                        <Input type="email" required value={tempClientEmail} onChange={(e) => setTempClientEmail(e.target.value)} className="h-12 rounded-xl" />
                       </div>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed space-y-2">
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Procedimiento Seguro</p>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">
-                        El cliente recibirá un link de validación único y deberá ingresar el PIN de seguridad <span className="font-black text-primary">{ot.approvalPin}</span> para firmar la orden.
-                      </p>
-                    </div>
-                    <DialogFooter className="pt-2">
-                      <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isUpdating || !tempClientName || !tempClientEmail}>
-                        {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />} Notificar al Cliente
-                      </Button>
+                    <DialogFooter>
+                      <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isUpdating}>Enviar Invitación</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
               </Dialog>
             )
-          )}
-
-          {(isSupervisor || isCompanyAdmin) && ot.status === 'rechazada' && (
-            <Button onClick={handleRequestClientApproval} disabled={isUpdating} className="rounded-xl h-11 px-6 font-bold shadow-lg bg-rose-600 text-white">
-              {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : "Reiniciar Ciclo Cliente"}
-            </Button>
           )}
         </div>
       </div>
@@ -564,165 +359,77 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
           <Card className="rounded-[2rem] border-none shadow-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-              <Zap className="h-32 w-32" />
-            </div>
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-32 w-32" /></div>
             <CardHeader className="p-8 pb-4">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-2xl font-black italic tracking-tighter flex items-center gap-3">
-                    <Sparkles className="h-6 w-6 text-amber-400 animate-pulse" /> Resumen Ejecutivo IA
+                    <Sparkles className="h-6 w-6 text-amber-400" /> Resumen Ejecutivo IA
                   </CardTitle>
-                  <CardDescription className="text-indigo-100 font-medium mt-1">Sintetiza la intervención técnica para el reporte final.</CardDescription>
                 </div>
-                <Button 
-                  onClick={handleGenerateAISummary} 
-                  disabled={isGeneratingSummary || !logbook?.length}
-                  className="bg-white text-indigo-700 hover:bg-indigo-50 font-black rounded-xl h-12 px-6 shadow-lg shadow-indigo-900/20"
-                >
-                  {isGeneratingSummary ? <Loader2 className="animate-spin h-5 w-5 mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
-                  {ot.aiSummary ? "Actualizar con IA" : "Generar con IA"}
+                <Button onClick={handleGenerateAISummary} disabled={isGeneratingSummary || !logbook?.length} className="bg-white text-indigo-700 hover:bg-indigo-50 font-black rounded-xl h-12">
+                  {isGeneratingSummary ? <Loader2 className="animate-spin h-5 w-5" /> : "Generar con IA"}
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="p-8 pt-0">
               {ot.aiSummary ? (
-                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 italic text-sm leading-relaxed text-indigo-50 font-medium">
-                  "{ot.aiSummary}"
-                </div>
+                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 border border-white/20 italic text-sm text-indigo-50">"{ot.aiSummary}"</div>
               ) : (
-                <div className="bg-white/5 rounded-2xl p-8 border-2 border-dashed border-white/10 text-center space-y-3">
-                  <FileText className="h-8 w-8 mx-auto opacity-20" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-200">Presiona el botón para procesar la bitácora</p>
-                </div>
+                <div className="bg-white/5 rounded-2xl p-8 border-2 border-dashed border-white/10 text-center text-xs font-bold uppercase tracking-widest text-indigo-200">Bitácora pendiente de procesar</div>
               )}
             </CardContent>
           </Card>
 
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-primary/5 p-6 border-b">
-              <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                <ClipboardList className="h-5 w-5 text-primary" /> Información de la Orden
-              </CardTitle>
-            </CardHeader>
+            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><ClipboardList className="h-5 w-5" /> Información de Orden</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cliente / Entidad</p>
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-bold text-slate-900">{client?.name || "Cargando..."}</p>
-                  </div>
-                  {client && (
-                    <div className="mt-1 pl-6 space-y-0.5">
-                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">RUT: {client.rut}</p>
-                      <p className="text-[9px] font-medium text-slate-400 uppercase flex items-center gap-1">
-                        <MapPin className="h-2 w-2" /> {client.address}
-                      </p>
-                    </div>
-                  )}
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Mandante</p>
+                  <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /><p className="text-sm font-bold text-slate-900">{client?.name || "Cargando..."}</p></div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Equipo / Activo</p>
-                  <div className="flex items-center gap-2">
-                    <HardHat className="h-4 w-4 text-slate-500" />
-                    <p className="text-sm font-bold text-slate-700">{asset?.name || "Sin activo específico"}</p>
-                  </div>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Activo</p>
+                  <div className="flex items-center gap-2"><HardHat className="h-4 w-4 text-slate-500" /><p className="text-sm font-bold text-slate-700">{asset?.name || "No especificado"}</p></div>
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Fecha de Inicio</p>
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="h-4 w-4 text-slate-500" />
-                    <p className="text-sm font-bold text-slate-700">{formatDateLabel(ot.scheduledDate)}</p>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Plazo de Ejecución</p>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-slate-500" />
-                    <p className="text-sm font-bold text-slate-700">
-                      {ot.durationDays || 1} días 
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Magnitud del Servicio</p>
-                  <div className="flex items-center gap-2">
-                    <Hash className="h-4 w-4 text-blue-500" />
-                    <p className="text-sm font-black text-blue-700">{ot.serviceQuantity || '0'} {ot.serviceUnit || ''}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-slate-100">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Detalle de los Trabajos</p>
-                <div className="bg-slate-50 p-4 rounded-2xl border text-sm text-slate-700 leading-relaxed italic">
-                  "{ot.description}"
-                </div>
-              </div>
+              <div className="bg-slate-50 p-4 rounded-2xl border text-sm text-slate-700 italic leading-relaxed">"{ot.description}"</div>
             </CardContent>
           </Card>
 
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolo de Inspección</CardTitle></CardHeader>
-            <CardContent className="p-6 space-y-3 bg-white">
+            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolos de Inspección</CardTitle></CardHeader>
+            <CardContent className="p-6 space-y-3">
               {ot.checklist && ot.checklist.length > 0 ? ot.checklist.map((item) => (
-                <div key={item.id} className="flex flex-col p-4 bg-white border-2 rounded-2xl hover:border-primary/20 transition-colors shadow-sm group gap-4">
+                <div key={item.id} className="flex flex-col p-4 bg-white border-2 rounded-2xl hover:border-primary/20 transition-colors gap-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <Checkbox 
-                        checked={item.completed} 
-                        onCheckedChange={() => {
-                          const isNowCompleted = !item.completed;
-                          const newChecklist = ot.checklist?.map(i => 
-                            i.id === item.id 
-                              ? { ...i, completed: isNowCompleted, completedAt: isNowCompleted ? new Date().toISOString() : null } 
-                              : i
-                          );
-                          updateDocumentNonBlocking(otRef!, { checklist: newChecklist });
-                        }} 
-                        disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'} 
-                        className="h-6 w-6 rounded-lg"
-                      />
+                      <Checkbox checked={item.completed} onCheckedChange={() => {
+                        const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: !item.completed, completedAt: !item.completed ? new Date().toISOString() : null } : i);
+                        updateDocumentNonBlocking(otRef!, { checklist: newChecklist });
+                      }} disabled={!canEditPhotos} className="h-6 w-6 rounded-lg" />
                       <div className="flex flex-col">
                         <span className={cn("text-sm font-bold", item.completed ? "text-slate-400" : "text-slate-700")}>{item.task}</span>
-                        {item.completed ? (
-                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">
-                            REALIZADO {item.completedAt && `- ${format(new Date(item.completedAt), "HH:mm 'hrs'", { locale: es })}`}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">PENDIENTE</span>
-                        )}
+                        {item.completed && <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">REALIZADO</span>}
                       </div>
                     </div>
                   </div>
-                  {item.evidenceUrl && (
-                    <div className="pl-10">
-                      <div className="w-32 aspect-video rounded-xl overflow-hidden border-2 border-slate-100 bg-slate-50 group-hover:border-primary/20 transition-all">
-                        <FirebaseImage url={item.evidenceUrl} className="w-full h-full object-cover" />
-                      </div>
-                    </div>
-                  )}
+                  {item.evidenceUrl && <div className="pl-10"><div className="w-32 aspect-video rounded-xl overflow-hidden border-2 border-slate-100 bg-slate-50"><FirebaseImage url={item.evidenceUrl} className="w-full h-full object-cover" /></div></div>}
                 </div>
-              )) : (
-                <p className="text-center py-6 text-xs font-bold text-slate-400 uppercase tracking-widest italic">No se definieron ítems de control.</p>
-              )}
+              )) : <p className="text-center py-6 text-xs text-slate-400 italic">Sin protocolos definidos.</p>}
             </CardContent>
           </Card>
 
           <Card className="rounded-3xl border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between p-6">
               <div>
-                <CardTitle className="text-lg font-black flex items-center gap-2 uppercase tracking-tight"><Camera className="h-5 w-5 text-primary" /> Evidencias Generales</CardTitle>
-                <CardDescription>Otras fotografías de la intervención.</CardDescription>
+                <CardTitle className="text-lg font-black flex items-center gap-2 uppercase tracking-tight"><Camera className="h-5 w-5 text-primary" /> Evidencias Adicionales</CardTitle>
               </div>
               {canEditPhotos && (
                 <>
                   <input type="file" className="hidden" ref={fileInputRef} onChange={handleUploadPhoto} accept="image/*" />
-                  <Button size="sm" variant="outline" className="rounded-xl border-primary/20 text-primary" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  <Button size="sm" variant="outline" className="rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
                     {isUploading ? <Loader2 className="animate-spin h-4 w-4" /> : <><Plus className="h-4 w-4 mr-2" /> Añadir Foto</>}
                   </Button>
                 </>
@@ -732,7 +439,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               {ot.evidenceUrls && ot.evidenceUrls.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {ot.evidenceUrls.map((u, i) => (
-                    <div key={i} className="group relative aspect-video rounded-2xl overflow-hidden border bg-slate-50 shadow-sm">
+                    <div key={i} className="group relative aspect-video rounded-2xl overflow-hidden border bg-slate-50">
                       <FirebaseImage url={u} className="w-full h-full object-cover" />
                       {canEditPhotos && (
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -744,33 +451,19 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-12 border-2 border-dashed rounded-3xl bg-slate-50 opacity-40">
-                  <ImageIcon className="h-10 w-10 mx-auto mb-2 text-slate-400" />
-                  <p className="text-xs font-bold uppercase tracking-widest">Sin evidencias generales</p>
-                </div>
-              )}
+              ) : <div className="text-center py-12 border-2 border-dashed rounded-3xl bg-slate-50 opacity-40"><ImageOff className="h-8 w-8 mx-auto mb-2 text-slate-400" /><p className="text-xs font-bold uppercase">Sin evidencias cargadas</p></div>}
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden flex flex-col h-[700px]">
-            <CardHeader className="bg-white/5 p-6 border-b border-white/10">
-              <CardTitle className="text-sm font-black uppercase tracking-[0.3em] flex items-center gap-3">
-                <History className="h-4 w-4 text-blue-400" /> Historial de Operación
-              </CardTitle>
-            </CardHeader>
+            <CardHeader className="bg-white/5 p-6 border-b border-white/10"><CardTitle className="text-sm font-black uppercase tracking-[0.3em] flex items-center gap-3"><History className="h-4 w-4 text-blue-400" /> Bitácora Técnica</CardTitle></CardHeader>
             <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
               <div className="p-6 bg-white/5 border-b border-white/10">
                 <div className="flex gap-2">
-                  <Textarea 
-                    placeholder="Nuevo comentario técnico..." 
-                    className="min-h-[80px] text-xs bg-white/10 border-white/20 text-white placeholder:text-white/30 rounded-xl" 
-                    value={manualComment} 
-                    onChange={e => setManualComment(e.target.value)} 
-                  />
-                  <Button size="icon" className="shrink-0 h-auto bg-blue-600 hover:bg-blue-500 rounded-xl text-white" onClick={() => {
+                  <Textarea placeholder="Nuevo evento..." className="min-h-[80px] text-xs bg-white/10 border-white/20 text-white" value={manualComment} onChange={e => setManualComment(e.target.value)} />
+                  <Button size="icon" className="shrink-0 h-auto bg-blue-600 hover:bg-blue-500 rounded-xl" onClick={() => {
                     if (!manualComment.trim() || !profile) return;
                     addDoc(collection(db!, "companies", companyId, "workOrders", ot.id, "digitalLogbookEntries"), {
                       workOrderId: ot.id, companyId: companyId, timestamp: serverTimestamp(), eventType: 'comment', eventDetails: manualComment, actor: profile.id
@@ -779,8 +472,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   }}><MessageSquare className="h-4 w-4" /></Button>
                 </div>
               </div>
-              
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {logbook && logbook.length > 0 ? logbook.map(e => (
                   <div key={e.id} className="relative pl-6 border-l-2 border-white/10 pb-2 last:pb-0">
                     <div className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
@@ -788,9 +480,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <p className="text-xs text-slate-300 leading-relaxed font-medium mb-1">{e.eventDetails}</p>
                     <p className="text-[9px] text-slate-500 italic font-bold">{formatDateLabel(e.timestamp)}</p>
                   </div>
-                )) : (
-                  <div className="h-full flex flex-col items-center justify-center opacity-20 italic text-xs py-20">Sin registros en bitácora</div>
-                )}
+                )) : <div className="h-full flex items-center justify-center opacity-20 italic text-xs py-20">Bitácora vacía</div>}
               </div>
             </CardContent>
           </Card>

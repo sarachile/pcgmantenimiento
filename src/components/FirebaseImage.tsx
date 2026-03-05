@@ -6,14 +6,14 @@ import { Loader2, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FirebaseImageProps {
-  url?: string;
+  url?: string | null;
   alt?: string;
   className?: string;
 }
 
 /**
- * Componente ultra-robusto para renderizar imágenes de Firebase Storage.
- * Previene errores de hidratación y maneja fallos de red de forma silenciosa.
+ * Componente robusto para renderizar imágenes de Firebase Storage.
+ * Maneja silenciosamente errores de carga y previene errores de hidratación.
  */
 export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
@@ -34,12 +34,11 @@ export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageP
     }
   }, [url]);
 
-  // Evitar problemas de hidratación
   if (!mounted) {
     return <div className={cn("bg-muted/10 animate-pulse rounded-xl", className)} />;
   }
 
-  // Si no hay URL o hubo un error, mostramos un placeholder neutro que no rompe el flujo
+  // Si no hay URL, el archivo fue borrado o hay error de permisos, mostramos placeholder neutro
   if (!url || error) {
     return (
       <div className={cn("flex flex-col items-center justify-center bg-muted/5 border border-dashed rounded-xl p-4 text-muted-foreground/20", className)}>
@@ -64,9 +63,11 @@ export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageP
           loading ? "opacity-0" : "opacity-100"
         )}
         onLoad={() => setLoading(false)}
-        onError={() => {
+        onError={(e) => {
           setLoading(false);
           setError(true);
+          // Prevenir log de error infinito en consola si la imagen de fallback también fallara
+          (e.target as HTMLImageElement).onerror = null;
         }}
       />
     </div>

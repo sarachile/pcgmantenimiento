@@ -42,7 +42,8 @@ import {
   Target,
   ShieldCheck,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Copy
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
@@ -287,6 +288,12 @@ export default function WorkOrdersPage() {
                                               <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
                                             </Link>
                                           </DropdownMenuItem>
+                                          <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
+                                            <Link href={`/work-orders/new?duplicateFrom=${ot.id}`} className="font-bold flex items-center gap-2 text-blue-600">
+                                              <Copy className="h-4 w-4" /> Duplicar OT (Plantilla)
+                                            </Link>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator className="bg-slate-50" />
                                           <DropdownMenuItem 
                                             className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
                                             onClick={() => handleDelete(ot.id)}

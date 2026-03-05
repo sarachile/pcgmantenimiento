@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { collection, addDoc, serverTimestamp, query, where, doc } from "firebase/firestore";
+import { useState, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, addDoc, serverTimestamp, query, where, doc, getDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +16,9 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin, Mail, AlertTriangle, User, Hash, Users2, Zap, Search } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, Plus, Users, Building2, Search, Zap, ShieldCheck, QrCode, Star, Hash } from "lucide-react";
 import Link from "next/link";
-import { addDays, format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Client, Asset, StaffMember, Team } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +26,7 @@ export default function NewWorkOrderPage() {
   const { profile, isLoading: isUserLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
 
   const [description, setDescription] = useState("");
@@ -48,28 +49,59 @@ export default function NewWorkOrderPage() {
   const [serviceQuantity, setServiceQuantity] = useState("");
   const [serviceUnit, setServiceUnit] = useState("Unidades");
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
-  const [newTask, setNewTask] = useState("");
 
   const companyId = profile?.companyId || "";
+  const duplicateFrom = searchParams.get('duplicateFrom');
 
   const clientsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "clients") : null, [db, companyId]);
   const assetsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "assets") : null, [db, companyId]);
   const staffQuery = useMemoFirebase(() => db && companyId ? query(collection(db, "companies", companyId, "staff"), where("active", "==", true)) : null, [db, companyId]);
   const teamsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "teams") : null, [db, companyId]);
 
-  const { data: clients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
-  const { data: assets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
+  const { data: clients } = useCollection<Client>(clientsQuery);
+  const { data: assets } = useCollection<Asset>(assetsQuery);
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
   const { data: teams } = useCollection<Team>(teamsQuery);
 
-  // Obtener roles únicos para el filtro
+  // Lógica de Duplicación: Cargar datos de la OT origen
+  useEffect(() => {
+    if (duplicateFrom && db && companyId) {
+      const fetchSource = async () => {
+        try {
+          const docRef = doc(db, "companies", companyId, "workOrders", duplicateFrom);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            setDescription(data.description || "");
+            setClientId(data.clientId || "");
+            setAssetId(data.assetId === 'none' ? "" : (data.assetId || ""));
+            setAssignedToStaffIds(data.assignedToStaffIds || []);
+            setAssignedTeamId(data.assignedTeamId || null);
+            setAssignmentMode(data.assignedTeamId ? 'team' : 'individual');
+            setReviewerRequired(data.reviewerRequired ?? true);
+            setEvaluationRequired(data.evaluationRequired ?? true);
+            setServiceQuantity(data.serviceQuantity?.toString() || "");
+            setServiceUnit(data.serviceUnit || "Unidades");
+            if (data.checklist) {
+              // Clonamos solo las tareas, sin estado de completado ni fotos
+              setChecklist(data.checklist.map((i: any) => ({ task: i.task })));
+            }
+            toast({ title: "Plantilla Cargada", description: "Se han copiado los datos de la orden anterior." });
+          }
+        } catch (e) {
+          console.error("Error duplicando OT:", e);
+        }
+      };
+      fetchSource();
+    }
+  }, [duplicateFrom, db, companyId, toast]);
+
   const uniqueRoles = useMemo(() => {
     if (!staffMembers) return [];
     const roles = Array.from(new Set(staffMembers.map(s => s.role)));
     return roles.sort();
   }, [staffMembers]);
 
-  // Filtrado dinámico de personal
   const filteredStaff = useMemo(() => {
     if (!staffMembers) return [];
     return staffMembers.filter(s => {
@@ -101,7 +133,7 @@ export default function NewWorkOrderPage() {
       const newOT = {
         companyId,
         clientId,
-        assetId: assetId || null,
+        assetId: assetId === 'none' ? null : (assetId || null),
         description: description.trim(),
         status: "creada",
         assignedToStaffIds,
@@ -114,7 +146,11 @@ export default function NewWorkOrderPage() {
         durationDays: Number(durationDays),
         serviceQuantity: serviceQuantity ? Number(serviceQuantity) : null,
         serviceUnit: serviceUnit || null,
-        checklist: checklist.map((item, idx) => ({ id: `task-${idx}-${Date.now()}`, task: item.task, completed: false })),
+        checklist: checklist.map((item, idx) => ({ 
+          id: `task-${idx}-${Date.now()}`, 
+          task: item.task, 
+          completed: false 
+        })),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -133,12 +169,21 @@ export default function NewWorkOrderPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 px-4 py-8 pb-20">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
-        <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">Nueva Orden de Trabajo</h2>
-          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Configuración de Operación Industrial</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
+          <div>
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">
+              {duplicateFrom ? "Duplicar Orden" : "Nueva Orden de Trabajo"}
+            </h2>
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">
+              {duplicateFrom ? "Editando copia de seguridad" : "Configuración de Operación Industrial"}
+            </p>
+          </div>
         </div>
+        {duplicateFrom && (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-black uppercase text-[10px]">Modo Plantilla</Badge>
+        )}
       </div>
 
       <form onSubmit={handleCreate} className="space-y-8">
@@ -184,6 +229,35 @@ export default function NewWorkOrderPage() {
                 onChange={(e) => setDescription(e.target.value)} 
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cantidad / Magnitud</Label>
+                <Input 
+                  type="number" 
+                  placeholder="Ej: 500" 
+                  className="h-12 rounded-xl border-2 font-bold"
+                  value={serviceQuantity}
+                  onChange={(e) => setServiceQuantity(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Unidad de Medida</Label>
+                <Select value={serviceUnit} onValueChange={setServiceUnit}>
+                  <SelectTrigger className="h-12 rounded-xl border-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Unidades">Unidades</SelectItem>
+                    <SelectItem value="Metros">Metros</SelectItem>
+                    <SelectItem value="Kg">Kilogramos</SelectItem>
+                    <SelectItem value="Lt">Litros</SelectItem>
+                    <SelectItem value="Hr">Horas</SelectItem>
+                    <SelectItem value="Gl">Galones</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -194,14 +268,13 @@ export default function NewWorkOrderPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8 space-y-6">
-            <Tabs defaultValue="individual" onValueChange={(v: any) => setAssignmentMode(v)} className="w-full">
+            <Tabs value={assignmentMode} onValueChange={(v: any) => setAssignmentMode(v)} className="w-full">
               <TabsList className="grid w-full grid-cols-2 h-14 bg-slate-100 rounded-2xl p-1 mb-6">
                 <TabsTrigger value="individual" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary">Asignación Directa</TabsTrigger>
                 <TabsTrigger value="team" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary">Carga de Cuadrilla</TabsTrigger>
               </TabsList>
 
               <TabsContent value="individual" className="space-y-6">
-                {/* Controles de Filtrado para Personal */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border-2 border-slate-100">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -234,31 +307,24 @@ export default function NewWorkOrderPage() {
                   </div>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {filteredStaff.length > 0 ? (
-                      filteredStaff.map(s => (
-                        <label key={s.id} className={cn(
-                          "flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all",
-                          assignedToStaffIds.includes(s.id) ? "border-primary bg-primary/5 shadow-inner" : "border-slate-100 hover:border-slate-200 bg-white"
-                        )}>
-                          <Checkbox 
-                            checked={assignedToStaffIds.includes(s.id)} 
-                            onCheckedChange={() => {
-                              setAssignedToStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]);
-                              setAssignedTeamId(null);
-                            }} 
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-black text-slate-900 truncate">{s.name}</p>
-                            <p className="text-[9px] font-black uppercase text-slate-400">{s.role}</p>
-                          </div>
-                        </label>
-                      ))
-                    ) : (
-                      <div className="col-span-2 py-10 text-center border-2 border-dashed rounded-2xl bg-white opacity-50">
-                        <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No hay técnicos que coincidan</p>
-                      </div>
-                    )}
+                    {filteredStaff.map(s => (
+                      <label key={s.id} className={cn(
+                        "flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                        assignedToStaffIds.includes(s.id) ? "border-primary bg-primary/5 shadow-inner" : "border-slate-100 hover:border-slate-200 bg-white"
+                      )}>
+                        <Checkbox 
+                          checked={assignedToStaffIds.includes(s.id)} 
+                          onCheckedChange={() => {
+                            setAssignedToStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]);
+                            setAssignedTeamId(null);
+                          }} 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-black text-slate-900 truncate">{s.name}</p>
+                          <p className="text-[9px] font-black uppercase text-slate-400">{s.role}</p>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </TabsContent>
@@ -334,7 +400,7 @@ export default function NewWorkOrderPage() {
           </CardContent>
           <CardFooter className="p-8 pt-0">
             <Button type="submit" disabled={isSubmitting || !clientId || !description.trim() || assignedToStaffIds.length === 0} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-lg uppercase tracking-widest shadow-xl shadow-primary/20 gap-3">
-              {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><Plus className="h-6 w-6" /> Generar Orden de Trabajo</>}
+              {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><Plus className="h-6 w-6" /> {duplicateFrom ? "Generar OT desde Copia" : "Generar Orden de Trabajo"}</>}
             </Button>
           </CardFooter>
         </Card>
