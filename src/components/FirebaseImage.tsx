@@ -12,12 +12,17 @@ interface FirebaseImageProps {
 }
 
 /**
- * Componente robusto para renderizar imágenes de Firebase Storage.
- * Maneja estados de error de forma defensiva y muestra placeholders.
+ * Componente ultra-robusto para renderizar imágenes de Firebase Storage.
+ * Previene errores de hidratación y maneja fallos de red de forma silenciosa.
  */
 export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (url) {
@@ -29,12 +34,16 @@ export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageP
     }
   }, [url]);
 
-  // Si no hay URL o hubo un error, mostramos un placeholder elegante en lugar de una imagen rota
+  // Evitar problemas de hidratación
+  if (!mounted) {
+    return <div className={cn("bg-muted/10 animate-pulse rounded-xl", className)} />;
+  }
+
+  // Si no hay URL o hubo un error, mostramos un placeholder neutro que no rompe el flujo
   if (!url || error) {
     return (
-      <div className={cn("flex flex-col items-center justify-center bg-muted/10 border border-dashed rounded-2xl min-h-[100px] p-4 text-muted-foreground/30", className)}>
-        <ImageOff className="h-6 w-6 mb-2" />
-        {error && <span className="text-[10px] font-black uppercase tracking-widest text-rose-400">Error de carga</span>}
+      <div className={cn("flex flex-col items-center justify-center bg-muted/5 border border-dashed rounded-xl p-4 text-muted-foreground/20", className)}>
+        <ImageOff className="h-5 w-5" />
       </div>
     );
   }
@@ -42,17 +51,16 @@ export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageP
   return (
     <div className={cn("relative flex items-center justify-center overflow-hidden bg-slate-50", className)}>
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 animate-pulse z-10">
-          <Loader2 className="h-5 w-5 animate-spin text-primary/30" />
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
+          <Loader2 className="h-4 w-4 animate-spin text-primary/20" />
         </div>
       )}
       
-      {/* Usamos img estándar para evitar interferencias de optimización de Next.js que causan logs de consola extra */}
       <img 
         src={url} 
         alt={alt} 
         className={cn(
-          "max-w-full max-h-full object-contain transition-opacity duration-500", 
+          "max-w-full max-h-full object-contain transition-opacity duration-300", 
           loading ? "opacity-0" : "opacity-100"
         )}
         onLoad={() => setLoading(false)}

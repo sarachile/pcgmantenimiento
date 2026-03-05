@@ -6,6 +6,7 @@ import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, Staf
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check } from "lucide-react";
+import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -51,19 +52,12 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
       {/* Header */}
       <div className="flex justify-between items-start border-b-4 border-slate-900 pb-8 mb-8">
         <div className="flex gap-6 items-center">
-          {company?.logoUrl ? (
-            <div className="relative h-24 w-24 border-2 border-slate-100 rounded-xl overflow-hidden bg-white">
-              <img 
-                src={company.logoUrl} 
-                alt="Logo Empresa" 
-                className="w-full h-full object-contain p-2" 
-              />
-            </div>
-          ) : (
-            <div className="bg-slate-900 p-5 rounded-2xl">
-              <ShieldCheck className="text-white h-12 w-12" />
-            </div>
-          )}
+          <div className="relative h-24 w-24 border-2 border-slate-100 rounded-xl overflow-hidden bg-white">
+            <FirebaseImage 
+              url={company?.logoUrl} 
+              className="w-full h-full"
+            />
+          </div>
           <div>
             <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">
               {company?.name || "PCGMANTENIMIENTO ERP"}
@@ -169,7 +163,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
           <div className="grid grid-cols-2 gap-4">
             {workOrder.evidenceUrls.map((url, i) => (
               <div key={i} className="aspect-video rounded-2xl overflow-hidden border-2 border-slate-100 bg-slate-50">
-                <img src={url} alt={`Evidencia ${i+1}`} className="w-full h-full object-cover" />
+                <FirebaseImage url={url} className="w-full h-full" />
               </div>
             ))}
           </div>
