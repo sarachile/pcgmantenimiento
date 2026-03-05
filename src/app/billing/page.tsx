@@ -25,7 +25,8 @@ import {
   Download,
   Filter,
   MoreVertical,
-  Calendar
+  Calendar,
+  ExternalLink
 } from "lucide-react";
 import { 
   DropdownMenu,
@@ -220,8 +221,21 @@ export default function BillingPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl border-none shadow-xl w-48">
                           <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">Documento</DropdownMenuLabel>
-                          <DropdownMenuItem className="font-bold gap-2"><Download className="h-4 w-4" /> Descargar PDF</DropdownMenuItem>
-                          <DropdownMenuItem className="font-bold gap-2"><FileText className="h-4 w-4" /> Ver XML (SII)</DropdownMenuItem>
+                          {doc.pdfUrl && (
+                            <DropdownMenuItem className="font-bold gap-2" asChild>
+                              <a href={doc.pdfUrl} target="_blank" rel="noopener noreferrer">
+                                <Download className="h-4 w-4" /> Descargar PDF
+                              </a>
+                            </DropdownMenuItem>
+                          )}
+                          {doc.xmlUrl && (
+                            <DropdownMenuItem className="font-bold gap-2" asChild>
+                              <a href={doc.xmlUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-4 w-4" /> Ver XML (SII)
+                              </a>
+                            </DropdownMenuItem>
+                          )}
+                          {!doc.pdfUrl && <DropdownMenuItem className="font-bold gap-2 italic text-slate-400">Sin archivo disponible</DropdownMenuItem>}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-rose-600 font-bold gap-2"><ArrowLeft className="h-4 w-4" /> Anular Documento</DropdownMenuItem>
                         </DropdownMenuContent>

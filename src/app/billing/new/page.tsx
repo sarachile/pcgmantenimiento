@@ -8,9 +8,10 @@ import {
   useFirestore, 
   useCollection, 
   useMemoFirebase, 
-  addDocumentNonBlocking 
+  addDocumentNonBlocking,
+  updateDocumentNonBlocking
 } from "@/firebase";
-import { collection, serverTimestamp, query, where } from "firebase/firestore";
+import { collection, serverTimestamp, query, where, doc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -33,12 +34,15 @@ import {
   CheckCircle2,
   Calculator,
   ShieldCheck,
-  Hash
+  Hash,
+  SendHorizontal,
+  FileText
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Client, WorkOrder, BillingItem, BillingDocumentType } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { processElectronicEmission } from "@/actions/billing";
 
 export default function NewBillingDocumentPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -51,6 +55,7 @@ export default function NewBillingDocumentPage() {
   const [type, setType] = useState<BillingDocumentType>("factura");
   const [items, setItems] = useState<BillingItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEmitting, setIsEmitting] = useState(false);
 
   // Consultas
   const clientsQuery = useMemoFirebase(() => 
@@ -80,7 +85,7 @@ export default function NewBillingDocumentPage() {
       const mainItem: BillingItem = {
         description: `Servicio técnico OT: ${selectedOrder.id} - ${selectedOrder.description}`,
         quantity: selectedOrder.serviceQuantity || 1,
-        unitPrice: 0, // El usuario debe definir el precio
+        unitPrice: 0, 
         total: 0
       };
       setItems([mainItem]);
@@ -112,7 +117,10 @@ export default function NewBillingDocumentPage() {
     setItems(newItems);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  /**
+   * Solo guarda el borrador en Firestore
+   */
+  const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId || items.length === 0 || !profile?.companyId) return;
 
@@ -137,12 +145,76 @@ export default function NewBillingDocumentPage() {
       const colRef = collection(db!, "companies", profile.companyId, "billingDocuments");
       await addDocumentNonBlocking(colRef, docData);
 
-      toast({ title: "Documento Generado", description: "El borrador ha sido guardado exitosamente." });
+      toast({ title: "Borrador Guardado", description: "El documento ha sido guardado exitosamente." });
       router.push("/billing");
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  /**
+   * Ejecuta la emisión real vía SimpleAPI
+   */
+  const handleEmitRealDTE = async () => {
+    if (!clientId || items.length === 0 || !profile?.companyId) return;
+
+    setIsEmitting(true);
+    try {
+      // 1. Guardar primero en Firestore para tener registro
+      const docData = {
+        companyId: profile.companyId,
+        clientId,
+        clientName: selectedClient?.name || "Desconocido",
+        clientRut: selectedClient?.rut || "Desconocido",
+        workOrderId: workOrderId || null,
+        type,
+        status: "pendiente",
+        items,
+        netAmount: totals.net,
+        taxAmount: totals.tax,
+        totalAmount: totals.total,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      const colRef = collection(db!, "companies", profile.companyId, "billingDocuments");
+      const savedDoc = await addDoc(colRef, docData);
+
+      // 2. Llamar al Server Action para emitir en el SII (vía SimpleAPI)
+      toast({ title: "Conectando con SimpleAPI...", description: "Emitiendo documento legal ante el SII." });
+      
+      const apiResult = await processElectronicEmission({
+        ...docData,
+        clientAddress: selectedClient?.address
+      });
+
+      if (apiResult.success) {
+        // 3. Actualizar el documento con Folio y Links reales
+        const docRef = doc(db!, "companies", profile.companyId, "billingDocuments", savedDoc.id);
+        updateDocumentNonBlocking(docRef, {
+          folio: apiResult.folio,
+          status: 'aceptado_sii',
+          pdfUrl: apiResult.pdfUrl,
+          xmlUrl: apiResult.xmlUrl,
+          updatedAt: serverTimestamp()
+        });
+
+        toast({ 
+          title: "DTE Emitido con Éxito", 
+          description: `Folio #${apiResult.folio} generado y aceptado por el SII.`,
+          variant: "default"
+        });
+        router.push("/billing");
+      } else {
+        throw new Error(apiResult.error);
+      }
+
+    } catch (e: any) {
+      toast({ title: "Falla en Emisión", description: e.message, variant: "destructive" });
+    } finally {
+      setIsEmitting(false);
     }
   };
 
@@ -287,18 +359,29 @@ export default function NewBillingDocumentPage() {
                 <div className="flex items-start gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-400 mt-0.5" />
                   <p className="text-[10px] text-slate-300 leading-relaxed italic">
-                    Este documento será procesado como DTE Electrónico válido ante el SII al confirmar la emisión.
+                    La emisión oficial consumirá un folio de su certificado digital y enviará los datos al SII.
                   </p>
                 </div>
               </div>
 
-              <Button 
-                onClick={handleSubmit}
-                disabled={isSubmitting || !clientId || items.length === 0}
-                className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-900/20 uppercase tracking-widest"
-              >
-                {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Guardar Borrador"}
-              </Button>
+              <div className="space-y-3">
+                <Button 
+                  onClick={handleEmitRealDTE}
+                  disabled={isSubmitting || isEmitting || !clientId || items.length === 0}
+                  className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-900/20 uppercase tracking-widest gap-2"
+                >
+                  {isEmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><SendHorizontal className="h-5 w-5" /> Emitir SII</>}
+                </Button>
+
+                <Button 
+                  variant="outline"
+                  onClick={handleSaveDraft}
+                  disabled={isSubmitting || isEmitting || !clientId || items.length === 0}
+                  className="w-full h-12 rounded-xl bg-transparent border-white/20 text-white hover:bg-white/10 font-bold uppercase text-[10px] tracking-widest"
+                >
+                  {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Guardar Borrador"}
+                </Button>
+              </div>
               
               <p className="text-[9px] text-center text-slate-500 font-black uppercase tracking-widest">
                 PCGMANTENIMIENTO ERP - Módulo Billing
