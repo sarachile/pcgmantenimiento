@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Table, 
   TableBody, 
@@ -21,6 +21,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { 
   Search, 
   Filter, 
   Plus, 
@@ -30,7 +36,8 @@ import {
   Loader2,
   AlertCircle,
   ArrowLeft,
-  Building2
+  Building2,
+  CalendarDays
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
@@ -39,6 +46,8 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { WorkOrder, Client } from "@/lib/types";
+import { format, parseISO, startOfMonth } from "date-fns";
+import { es } from "date-fns/locale";
 
 export default function WorkOrdersPage() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -77,14 +86,39 @@ export default function WorkOrdersPage() {
 
   const workOrders = realWorkOrders || [];
 
-  const filteredOTs = workOrders.filter(ot => {
-    const client = clients?.find(c => c.id === ot.clientId);
-    return (
-      ot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ot.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
+  const filteredOTs = useMemo(() => {
+    return workOrders.filter(ot => {
+      const client = clients?.find(c => c.id === ot.clientId);
+      return (
+        ot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ot.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }).sort((a, b) => {
+      // Ordenar por fecha de creación descendente
+      const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt) : new Date(0));
+      const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : (typeof b.createdAt === 'string' ? parseISO(b.createdAt) : new Date(0));
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [workOrders, searchTerm, clients]);
+
+  // Agrupar por mes
+  const groupedOTs = useMemo(() => {
+    const groups: Record<string, { label: string, orders: WorkOrder[] }> = {};
+    
+    filteredOTs.forEach(ot => {
+      const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
+      const monthKey = format(date, "yyyy-MM");
+      const monthLabel = format(date, "MMMM yyyy", { locale: es });
+      
+      if (!groups[monthKey]) {
+        groups[monthKey] = { label: monthLabel, orders: [] };
+      }
+      groups[monthKey].orders.push(ot);
+    });
+    
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [filteredOTs]);
 
   const formatTableDate = (date: any) => {
     if (!mounted || !date) return '...';
@@ -115,7 +149,7 @@ export default function WorkOrdersPage() {
           </Button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight text-slate-900">Órdenes de Trabajo</h2>
-            <p className="text-muted-foreground text-sm">Administre y supervise todas las órdenes de trabajo de su empresa.</p>
+            <p className="text-muted-foreground text-sm">Administre y supervise todas las órdenes de trabajo por periodos.</p>
           </div>
         </div>
         <Button asChild className="rounded-xl shadow-lg">
@@ -158,104 +192,127 @@ export default function WorkOrdersPage() {
               </Button>
             </div>
           ) : (
-            <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest pl-6">ID / Fecha</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Cliente / Entidad</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Descripción</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Evidencia</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Estado</TableHead>
-                  <TableHead className="text-right font-black uppercase text-[10px] tracking-widest pr-6">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOTs.map((ot) => {
-                  const client = clients?.find(c => c.id === ot.clientId);
-                  return (
-                    <TableRow key={ot.id} className="hover:bg-muted/10 transition-colors group">
-                      <TableCell className="pl-6">
-                        <div className="flex flex-col">
-                          <span className="font-black text-primary text-sm tracking-tight">{ot.id}</span>
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase">{formatTableDate(ot.createdAt)}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="bg-primary/5 p-2 rounded-lg shrink-0">
-                            <Building2 className="h-4 w-4 text-primary" />
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-slate-900 text-sm truncate">{client?.name || 'Cargando...'}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono">{client?.rut || '-'}</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[200px]">
-                        <p className="text-xs font-medium text-slate-600 truncate">{ot.description}</p>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1.5">
-                          {ot.technicianSignatureUrl || ot.technicianApprovalCode ? (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase py-0 px-1.5 h-5">Tech</Badge>
-                          ) : null}
-                          {ot.clientSignatureUrl || ot.clientApprovalCode ? (
-                            <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100 text-[8px] font-black uppercase py-0 px-1.5 h-5">Client</Badge>
-                          ) : null}
-                          {!ot.technicianApprovalCode && !ot.clientApprovalCode && (
-                            <span className="text-[10px] text-muted-foreground italic">Sin sellos</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn(
-                          "text-[9px] font-black uppercase tracking-tighter",
-                          ot.status === 'creada' && "bg-blue-100 text-blue-700 hover:bg-blue-100",
-                          ot.status === 'asignada' && "bg-indigo-100 text-indigo-700 hover:bg-indigo-100",
-                          ot.status === 'ejecutada' && "bg-purple-100 text-purple-700 hover:bg-purple-100",
-                          ot.status === 'en revision' && "bg-amber-100 text-amber-700 hover:bg-amber-100",
-                          ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
-                          ot.status === 'rechazada' && "bg-rose-100 text-rose-700 hover:bg-rose-100"
-                        )}>
-                          {ot.status.replace(' ', '_')}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" asChild title="Ver Detalle" className="rounded-xl h-9 w-9">
-                            <Link href={`/work-orders/${ot.id}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none">
-                              <DropdownMenuLabel className="text-xs font-black uppercase text-slate-400">Acciones de Orden</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem asChild className="rounded-lg">
-                                <Link href={`/work-orders/${ot.id}`} className="font-bold">
-                                  <Eye className="mr-2 h-4 w-4" /> Ver Detalles
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                className="text-rose-600 font-bold rounded-lg" 
-                                onClick={() => handleDelete(ot.id)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <Accordion type="multiple" defaultValue={[groupedOTs[0]?.[0]]} className="w-full">
+              {groupedOTs.map(([monthKey, group]) => (
+                <AccordionItem key={monthKey} value={monthKey} className="border-b last:border-0 px-6">
+                  <AccordionTrigger className="hover:no-underline py-4 group">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 p-2 rounded-lg group-data-[state=open]:bg-primary group-data-[state=open]:text-white transition-colors">
+                        <CalendarDays className="h-4 w-4" />
+                      </div>
+                      <span className="text-sm font-black uppercase tracking-widest text-slate-700 group-data-[state=open]:text-slate-900 transition-colors">
+                        {group.label}
+                      </span>
+                      <Badge variant="secondary" className="text-[10px] font-bold rounded-md">
+                        {group.orders.length} Órdenes
+                      </Badge>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-6">
+                    <div className="border rounded-2xl overflow-hidden bg-white shadow-sm">
+                      <Table>
+                        <TableHeader className="bg-muted/30">
+                          <TableRow>
+                            <TableHead className="font-black uppercase text-[10px] tracking-widest pl-6">ID / Fecha</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Cliente / Entidad</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Descripción</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Evidencia</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Estado</TableHead>
+                            <TableHead className="text-right font-black uppercase text-[10px] tracking-widest pr-6">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {group.orders.map((ot) => {
+                            const client = clients?.find(c => c.id === ot.clientId);
+                            return (
+                              <TableRow key={ot.id} className="hover:bg-muted/10 transition-colors group">
+                                <TableCell className="pl-6">
+                                  <div className="flex flex-col">
+                                    <span className="font-black text-primary text-sm tracking-tight">{ot.id}</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{formatTableDate(ot.createdAt)}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-3">
+                                    <div className="bg-primary/5 p-2 rounded-lg shrink-0">
+                                      <Building2 className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="font-bold text-slate-900 text-sm truncate">{client?.name || 'Cargando...'}</span>
+                                      <span className="text-[10px] text-muted-foreground font-mono">{client?.rut || '-'}</span>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="max-w-[200px]">
+                                  <p className="text-xs font-medium text-slate-600 truncate">{ot.description}</p>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1.5">
+                                    {ot.technicianSignatureUrl || ot.technicianApprovalCode ? (
+                                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase py-0 px-1.5 h-5">Tech</Badge>
+                                    ) : null}
+                                    {ot.clientSignatureUrl || ot.clientApprovalCode ? (
+                                      <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100 text-[8px] font-black uppercase py-0 px-1.5 h-5">Client</Badge>
+                                    ) : null}
+                                    {!ot.technicianApprovalCode && !ot.clientApprovalCode && (
+                                      <span className="text-[10px] text-muted-foreground italic">Sin sellos</span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={cn(
+                                    "text-[9px] font-black uppercase tracking-tighter",
+                                    ot.status === 'creada' && "bg-blue-100 text-blue-700 hover:bg-blue-100",
+                                    ot.status === 'asignada' && "bg-indigo-100 text-indigo-700 hover:bg-indigo-100",
+                                    ot.status === 'ejecutada' && "bg-purple-100 text-purple-700 hover:bg-purple-100",
+                                    ot.status === 'en revision' && "bg-amber-100 text-amber-700 hover:bg-amber-100",
+                                    ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
+                                    ot.status === 'rechazada' && "bg-rose-100 text-rose-700 hover:bg-rose-100"
+                                  )}>
+                                    {ot.status.replace(' ', '_')}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right pr-6">
+                                  <div className="flex justify-end gap-2">
+                                    <Button variant="ghost" size="icon" asChild title="Ver Detalle" className="rounded-xl h-9 w-9">
+                                      <Link href={`/work-orders/${ot.id}`}>
+                                        <Eye className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none">
+                                        <DropdownMenuLabel className="text-xs font-black uppercase text-slate-400">Acciones de Orden</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem asChild className="rounded-lg">
+                                          <Link href={`/work-orders/${ot.id}`} className="font-bold">
+                                            <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                                          </Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem 
+                                          className="text-rose-600 font-bold rounded-lg" 
+                                          onClick={() => handleDelete(ot.id)}
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
           )}
         </CardContent>
       </Card>
