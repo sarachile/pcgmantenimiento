@@ -11,7 +11,7 @@ import {
   addDocumentNonBlocking,
   updateDocumentNonBlocking
 } from "@/firebase";
-import { collection, serverTimestamp, query, where, doc, addDoc } from "firebase/firestore";
+import { collection, serverTimestamp, query, where, doc, addDoc, getDocs } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,8 @@ import {
   ShieldCheck,
   Hash,
   SendHorizontal,
-  FileText
+  FileText,
+  Package
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -56,6 +57,7 @@ export default function NewBillingDocumentPage() {
   const [items, setItems] = useState<BillingItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEmitting, setIsEmitting] = useState(false);
+  const [isFetchingParts, setIsFetchingParts] = useState(false);
 
   // Consultas
   const clientsQuery = useMemoFirebase(() => 
@@ -78,19 +80,52 @@ export default function NewBillingDocumentPage() {
   const selectedClient = useMemo(() => clients?.find(c => c.id === clientId), [clients, clientId]);
   const selectedOrder = useMemo(() => approvedOrders?.find(o => o.id === workOrderId), [approvedOrders, workOrderId]);
 
-  // Al seleccionar una OT, autocompletar ítems
+  // Al seleccionar una OT, autocompletar ítems incluyendo materiales
   useEffect(() => {
-    if (selectedOrder) {
+    if (selectedOrder && db && profile?.companyId) {
       setClientId(selectedOrder.clientId);
-      const mainItem: BillingItem = {
-        description: `Servicio técnico OT: ${selectedOrder.id} - ${selectedOrder.description}`,
-        quantity: selectedOrder.serviceQuantity || 1,
-        unitPrice: 0, 
-        total: 0
+      
+      const fetchOrderParts = async () => {
+        setIsFetchingParts(true);
+        try {
+          const partsCol = collection(db, "companies", profile.companyId, "workOrders", selectedOrder.id, "partUsages");
+          const partsSnap = await getDocs(partsCol);
+          
+          const materials: BillingItem[] = partsSnap.docs.map(d => {
+            const data = d.data();
+            return {
+              description: `Repuesto: ${data.partName}`,
+              quantity: data.quantity,
+              unitPrice: data.unitPrice,
+              total: data.quantity * data.unitPrice
+            };
+          });
+
+          const mainService: BillingItem = {
+            description: `Servicio técnico OT: ${selectedOrder.id} - ${selectedOrder.description}`,
+            quantity: selectedOrder.serviceQuantity || 1,
+            unitPrice: 0, // El usuario debe definir el precio de mano de obra
+            total: 0
+          };
+
+          setItems([mainService, ...materials]);
+          
+          if (materials.length > 0) {
+            toast({
+              title: "Materiales Importados",
+              description: `Se han añadido ${materials.length} repuestos desde la OT ${selectedOrder.id}.`,
+            });
+          }
+        } catch (e) {
+          console.error("Error fetching parts for billing:", e);
+        } finally {
+          setIsFetchingParts(false);
+        }
       };
-      setItems([mainItem]);
+
+      fetchOrderParts();
     }
-  }, [selectedOrder]);
+  }, [selectedOrder, db, profile?.companyId, toast]);
 
   const totals = useMemo(() => {
     const net = items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
@@ -256,8 +291,11 @@ export default function NewBillingDocumentPage() {
                 <div className="space-y-2">
                   <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Vincular OT Aprobada (Opcional)</Label>
                   <Select value={workOrderId} onValueChange={setWorkOrderId}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 border-blue-100 bg-blue-50/30">
-                      <SelectValue placeholder="Seleccione OT..." />
+                    <SelectTrigger className={cn(
+                      "h-12 rounded-xl border-2 border-blue-100 bg-blue-50/30",
+                      isFetchingParts && "opacity-50 pointer-events-none"
+                    )}>
+                      <SelectValue placeholder={isFetchingParts ? "Importando materiales..." : "Seleccione OT..."} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Sin OT vinculada</SelectItem>
@@ -266,6 +304,7 @@ export default function NewBillingDocumentPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {isFetchingParts && <p className="text-[10px] text-blue-600 font-bold animate-pulse">Sincronizando repuestos usados...</p>}
                 </div>
               </div>
 
@@ -305,12 +344,18 @@ export default function NewBillingDocumentPage() {
                   {items.map((item, idx) => (
                     <div key={idx} className="flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
                       <div className="flex-[4] space-y-1">
-                        <Input 
-                          placeholder="Ej: Mantención de Climatización Central" 
-                          value={item.description}
-                          onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                          className="h-11 rounded-xl border-2 focus:border-primary"
-                        />
+                        <div className="relative">
+                          {item.description.startsWith("Repuesto:") && <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-amber-500" />}
+                          <Input 
+                            placeholder="Ej: Mantención de Climatización Central" 
+                            value={item.description}
+                            onChange={(e) => updateItem(idx, 'description', e.target.value)}
+                            className={cn(
+                              "h-11 rounded-xl border-2 focus:border-primary",
+                              item.description.startsWith("Repuesto:") && "pl-9 bg-amber-50/20"
+                            )}
+                          />
+                        </div>
                       </div>
                       <div className="flex-[1] min-w-[80px]">
                         <Input 
