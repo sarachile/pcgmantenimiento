@@ -37,27 +37,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- Support Tickets Rules ---
-
-    match /supportTickets/{ticketId} {
-      allow create: if isSignedIn();
-      allow list: if isPlatformAdmin();
-      allow get: if isPlatformAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow update: if isPlatformAdmin();
-      
-      match /messages/{messageId} {
-        allow read: if isSignedIn();
-        allow create: if isSignedIn();
-      }
-    }
-
     // --- Collection Rules ---
-
-    match /platform_admins/{userId} {
-      allow get: if isOwner(userId) || isPlatformAdmin();
-      allow list: if isPlatformAdmin();
-      allow create, update, delete: if false; 
-    }
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isPlatformAdmin();
@@ -75,6 +55,10 @@ service cloud.firestore {
       allow delete: if isPlatformAdmin();
 
       match /staff/{staffId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
+
+      match /teams/{teamId} {
         allow read, write: if isCompanyMember(companyId);
       }
 
@@ -109,15 +93,6 @@ service cloud.firestore {
         allow create: if isCompanyMember(companyId);
         allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
         allow delete: if isCompanyMember(companyId);
-        
-        match /digitalLogbookEntries/{entryId} {
-          allow read: if true;
-          allow write: if isCompanyMember(companyId) || (get(/databases/$(database)/documents/companies/$(companyId)/workOrders/$(workOrderId)).data.status == 'pendiente cliente');
-        }
-        match /partUsages/{usageId} {
-          allow read: if true;
-          allow write: if isCompanyMember(companyId);
-        }
       }
     }
 

@@ -13,10 +13,6 @@ export type PlanType = 'free' | 'pro' | 'enterprise';
 
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled';
 
-export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed';
-export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type TicketCategory = 'technical' | 'billing' | 'feature' | 'other';
-
 export interface Company {
   id: string;
   name: string;
@@ -31,30 +27,6 @@ export interface Company {
   createdAt: string | any;
   updatedAt?: string | any;
   requestedPlan?: string;
-}
-
-export interface SupportTicket {
-  id: string;
-  userId: string;
-  companyId: string;
-  userName: string;
-  companyName: string;
-  subject: string;
-  description: string;
-  status: TicketStatus;
-  priority: TicketPriority;
-  category: TicketCategory;
-  createdAt: string | any;
-  updatedAt: string | any;
-}
-
-export interface TicketMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderRole: 'user' | 'admin';
-  text: string;
-  timestamp: string | any;
 }
 
 export interface Client {
@@ -90,6 +62,15 @@ export interface StaffMember {
   phone?: string;
   email?: string;
   active: boolean;
+  createdAt: string | any;
+}
+
+export interface Team {
+  id: string;
+  companyId: string;
+  name: string;
+  memberIds: string[];
+  leaderId?: string;
   createdAt: string | any;
 }
 
@@ -131,57 +112,6 @@ export interface ChecklistItem {
   completedAt?: string | any;
 }
 
-export interface EvaluationRatings {
-  quality: number;
-  timing: number;
-  safety: number;
-  documentation: number;
-}
-
-export interface ServiceEvaluation {
-  id: string;
-  workOrderId: string;
-  clientId: string;
-  companyId: string;
-  reviewerId: string;
-  reviewerName: string;
-  ratings: EvaluationRatings;
-  comment: string;
-  adminResponse?: string;
-  adminResponseAt?: string | any;
-  createdAt: string | any;
-}
-
-export interface BillingItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  total: number;
-}
-
-export interface BillingDocument {
-  id: string;
-  companyId: string;
-  clientId: string;
-  clientName: string;
-  clientRut: string;
-  clientGiro?: string;
-  clientComuna?: string;
-  clientAddress?: string;
-  workOrderId?: string;
-  type: BillingDocumentType;
-  folio?: number;
-  status: DTEStatus;
-  items: BillingItem[];
-  netAmount: number;
-  taxAmount: number;
-  totalAmount: number;
-  pdfUrl?: string;
-  xmlUrl?: string;
-  createdAt: string | any;
-  updatedAt: string | any;
-}
-
 export interface WorkOrder {
   id: string;
   companyId: string;
@@ -190,6 +120,7 @@ export interface WorkOrder {
   description: string;
   status: OTStatus;
   assignedToStaffIds?: string[];
+  assignedTeamId?: string;
   createdByUserId: string;
   reviewerRequired: boolean;
   evaluationRequired: boolean;
@@ -200,8 +131,6 @@ export interface WorkOrder {
   serviceQuantity?: number;
   serviceUnit?: string;
   checklist?: ChecklistItem[];
-  clientSignatureUrl?: string;
-  technicianSignatureUrl?: string;
   clientApprovalName?: string;
   clientApprovalDate?: string | any;
   clientApprovalCode?: string;
@@ -211,9 +140,6 @@ export interface WorkOrder {
   createdAt: string | any;
   updatedAt: string | any;
   executedAt?: string | any;
-  reviewedAt?: string | any;
-  approvedByUserId?: string;
-  rejectedReason?: string;
   evidenceUrls?: string[];
   aiSummary?: string;
   evaluationId?: string;

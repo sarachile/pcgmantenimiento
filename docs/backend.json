@@ -37,21 +37,19 @@
       },
       "required": ["id", "companyId", "email", "role", "active"]
     },
-    "BillingDocument": {
-      "title": "BillingDocument",
+    "Team": {
+      "title": "Team",
       "type": "object",
+      "description": "A squad or brigade of staff members for bulk assignment.",
       "properties": {
         "id": { "type": "string" },
         "companyId": { "type": "string" },
-        "clientId": { "type": "string" },
-        "workOrderId": { "type": "string" },
-        "type": { "type": "string", "enum": ["factura", "boleta", "guia_despacho"] },
-        "status": { "type": "string", "enum": ["pendiente", "emitido", "anulado"] },
-        "totalAmount": { "type": "number" },
-        "folio": { "type": "number" },
+        "name": { "type": "string" },
+        "memberIds": { "type": "array", "items": { "type": "string" } },
+        "leaderId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "companyId", "clientId", "type", "status", "totalAmount"]
+      "required": ["id", "companyId", "name", "memberIds"]
     },
     "WorkOrder": {
       "title": "WorkOrder",
@@ -64,14 +62,13 @@
         "description": { "type": "string" },
         "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "pendiente cliente", "aprobada", "rechazada"] },
         "assignedToStaffIds": { "type": "array", "items": { "type": "string" } },
+        "assignedTeamId": { "type": "string" },
         "createdByUserId": { "type": "string" },
         "reviewerRequired": { "type": "boolean" },
         "evaluationRequired": { "type": "boolean" },
         "approvalPin": { "type": "string" },
         "scheduledDate": { "type": "string", "format": "date-time" },
         "durationDays": { "type": "number" },
-        "clientApprovalCode": { "type": "string" },
-        "technicianApprovalCode": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "companyId", "clientId", "status", "createdAt"]
@@ -84,7 +81,7 @@
     "structure": [
       { "path": "/users/{userId}", "definition": { "entityName": "User", "description": "Global user profiles." } },
       { "path": "/companies/{companyId}", "definition": { "entityName": "Company", "description": "Tenant documents." } },
-      { "path": "/companies/{companyId}/billingDocuments/{docId}", "definition": { "entityName": "BillingDocument", "description": "Invoices and receipts." } },
+      { "path": "/companies/{companyId}/teams/{teamId}", "definition": { "entityName": "Team", "description": "Operational squads." } },
       { "path": "/companies/{companyId}/workOrders/{workOrderId}", "definition": { "entityName": "WorkOrder", "description": "Maintenance orders." } }
     ]
   }
