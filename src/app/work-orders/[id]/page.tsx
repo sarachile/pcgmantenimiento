@@ -40,7 +40,8 @@ import {
   ShieldAlert,
   Award,
   Ruler,
-  MapPin
+  MapPin,
+  User
 } from "lucide-react";
 import {
   Dialog,
@@ -91,6 +92,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isSealDialogOpen, setIsSealDialogOpen] = useState(false);
   const [isRequestCertDialogOpen, setIsRequestCertDialogOpen] = useState(false);
   const [tempClientEmail, setTempClientEmail] = useState("");
+  const [tempClientName, setTempClientName] = useState("");
   const [currentUrl, setCurrentUrl] = useState("");
 
   useEffect(() => {
@@ -233,16 +235,21 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const handleRequestCertification = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tempClientEmail || !ot || !clientRef) return;
+    if (!tempClientEmail || !tempClientName || !ot || !clientRef) return;
 
     setIsUpdating(true);
     try {
-      if (tempClientEmail !== client?.contactEmail) {
-        updateDocumentNonBlocking(clientRef, {
-          contactEmail: tempClientEmail,
-          updatedAt: serverTimestamp()
-        });
+      // Actualizar datos del cliente si cambiaron o no existían
+      const updateData: any = {
+        updatedAt: serverTimestamp()
+      };
+      if (tempClientEmail !== client?.contactEmail) updateData.contactEmail = tempClientEmail;
+      if (tempClientName !== client?.contactName) updateData.contactName = tempClientName;
+
+      if (Object.keys(updateData).length > 1) {
+        updateDocumentNonBlocking(clientRef, updateData);
       }
+
       await handleResendEmail(tempClientEmail);
       setIsRequestCertDialogOpen(false);
       toast({ 
@@ -272,9 +279,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         rejectedReason: null 
       };
       updateDocumentNonBlocking(otRef, data);
-      if (nextStatus === 'pendiente cliente' && (client?.contactEmail || tempClientEmail)) {
-        handleResendEmail(tempClientEmail || client?.contactEmail);
+      
+      // Si pasa a pendiente cliente y tenemos los datos, enviar el correo
+      const contactEmail = tempClientEmail || client?.contactEmail;
+      if (nextStatus === 'pendiente cliente' && contactEmail) {
+        handleResendEmail(contactEmail);
       }
+      
       setIsSealDialogOpen(false);
       toast({ title: "Sello Emitido y Estado Actualizado" });
     } catch (e: any) { 
@@ -356,7 +367,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             ) : (
               <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => setTempClientEmail(client?.contactEmail || "")}>
+                  <Button variant="outline" className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => {
+                    setTempClientEmail(client?.contactEmail || "");
+                    setTempClientName(client?.contactName || "");
+                  }}>
                     <Award className="h-4 w-4 mr-2" /> Solicitar Certificación
                   </Button>
                 </DialogTrigger>
@@ -369,23 +383,34 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="client-email" className="font-bold text-xs uppercase text-slate-500">Email del Revisor / Cliente</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input 
-                          id="client-email"
-                          type="email" 
-                          required
-                          placeholder="ejemplo@cliente.cl"
-                          className="pl-10 h-12 rounded-xl"
-                          value={tempClientEmail}
-                          onChange={(e) => setTempClientEmail(e.target.value)}
-                        />
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="font-bold text-xs uppercase text-slate-500">Nombre del Revisor</Label>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input 
+                            required
+                            placeholder="Nombre completo"
+                            className="pl-10 h-12 rounded-xl"
+                            value={tempClientName}
+                            onChange={(e) => setTempClientName(e.target.value)}
+                          />
+                        </div>
                       </div>
-                      {!client?.contactEmail && (
-                        <p className="text-[10px] text-amber-600 font-medium italic">* No se encontró correo registrado. Favor ingréselo para enviar la solicitud.</p>
-                      )}
+                      <div className="space-y-2">
+                        <Label className="font-bold text-xs uppercase text-slate-500">Email del Revisor</Label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input 
+                            type="email" 
+                            required
+                            placeholder="ejemplo@cliente.cl"
+                            className="pl-10 h-12 rounded-xl"
+                            value={tempClientEmail}
+                            onChange={(e) => setTempClientEmail(e.target.value)}
+                          />
+                        </div>
+                      </div>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed space-y-2">
                       <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Procedimiento Seguro</p>
@@ -394,7 +419,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       </p>
                     </div>
                     <DialogFooter className="pt-2">
-                      <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isUpdating}>
+                      <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isUpdating || !tempClientName || !tempClientEmail}>
                         {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />} Notificar al Cliente
                       </Button>
                     </DialogFooter>
@@ -430,32 +455,47 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <p className="text-sm text-slate-600 leading-relaxed font-medium">Solo el cliente con este PIN podrá autorizar. El código ha sido incluido en la notificación oficial.</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  {!client?.contactEmail ? (
+                  {!client?.contactEmail || !client?.contactName ? (
                     <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button className="rounded-xl bg-indigo-600 text-white font-bold h-12 px-6 gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
-                          <Mail className="h-4 w-4" /> Configurar Correo y Enviar PIN
+                        <Button className="rounded-xl bg-indigo-600 text-white font-bold h-12 px-6 gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200" onClick={() => {
+                          setTempClientEmail(client?.contactEmail || "");
+                          setTempClientName(client?.contactName || "");
+                        }}>
+                          <Mail className="h-4 w-4" /> Configurar Contacto y Enviar PIN
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
                         <DialogHeader>
                           <DialogTitle className="text-2xl font-black italic">Configurar Envío</DialogTitle>
-                          <DialogDescription>Para proceder con la validación externa, se requiere un correo de contacto para el revisor.</DialogDescription>
+                          <DialogDescription>Para proceder con la validación externa, se requiere el nombre y correo del revisor responsable.</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label className="font-bold text-xs uppercase text-slate-500">Email del Revisor</Label>
-                            <Input 
-                              type="email" 
-                              required
-                              placeholder="ejemplo@cliente.cl"
-                              className="h-12 rounded-xl"
-                              value={tempClientEmail}
-                              onChange={(e) => setTempClientEmail(e.target.value)}
-                            />
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label className="font-bold text-xs uppercase text-slate-500">Nombre del Revisor</Label>
+                              <Input 
+                                required
+                                placeholder="Nombre completo"
+                                className="h-12 rounded-xl"
+                                value={tempClientName}
+                                onChange={(e) => setTempClientName(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="font-bold text-xs uppercase text-slate-500">Email del Revisor</Label>
+                              <Input 
+                                type="email" 
+                                required
+                                placeholder="ejemplo@cliente.cl"
+                                className="h-12 rounded-xl"
+                                value={tempClientEmail}
+                                onChange={(e) => setTempClientEmail(e.target.value)}
+                              />
+                            </div>
                           </div>
                           <DialogFooter>
-                            <Button type="submit" className="w-full h-12 rounded-xl" disabled={isUpdating}>Activar Validación</Button>
+                            <Button type="submit" className="w-full h-12 rounded-xl" disabled={isUpdating || !tempClientName || !tempClientEmail}>Activar Validación</Button>
                           </DialogFooter>
                         </form>
                       </DialogContent>

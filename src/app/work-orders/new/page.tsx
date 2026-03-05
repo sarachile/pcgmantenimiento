@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin, Mail, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin, Mail, AlertTriangle, User } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -40,6 +40,7 @@ export default function NewWorkOrderPage() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
   const [externalEmail, setExternalEmail] = useState("");
+  const [externalName, setExternalName] = useState("");
 
   const companyId = profile?.companyId || "";
 
@@ -75,23 +76,29 @@ export default function NewWorkOrderPage() {
     } catch (e) { return ""; }
   }, [scheduledDate, durationDays]);
 
-  const isEmailMissing = useMemo(() => {
-    return reviewerRequired && !selectedClient?.contactEmail && !externalEmail.trim();
-  }, [reviewerRequired, selectedClient, externalEmail]);
+  const isDataMissing = useMemo(() => {
+    if (!reviewerRequired) return false;
+    const hasEmail = selectedClient?.contactEmail || externalEmail.trim();
+    const hasName = selectedClient?.contactName || externalName.trim();
+    return !hasEmail || !hasName;
+  }, [reviewerRequired, selectedClient, externalEmail, externalName]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !clientId || !companyId || !profile || isEmailMissing) return;
+    if (!description.trim() || !clientId || !companyId || !profile || isDataMissing) return;
 
     setIsSubmitting(true);
     try {
-      // Si se ingresó un nuevo correo, actualizar el cliente
-      if (externalEmail.trim() && selectedClient) {
+      // Si se ingresaron nuevos datos, actualizar el cliente
+      if (selectedClient && (externalEmail.trim() || externalName.trim())) {
         const clientRef = doc(db, "companies", companyId, "clients", selectedClient.id);
-        updateDocumentNonBlocking(clientRef, {
-          contactEmail: externalEmail.trim(),
+        const updateData: any = {
           updatedAt: serverTimestamp()
-        });
+        };
+        if (externalEmail.trim()) updateData.contactEmail = externalEmail.trim();
+        if (externalName.trim()) updateData.contactName = externalName.trim();
+        
+        updateDocumentNonBlocking(clientRef, updateData);
       }
 
       const pin = Math.floor(100000 + Math.random() * 900000).toString();
@@ -265,23 +272,34 @@ export default function NewWorkOrderPage() {
                   </div>
                 </div>
 
-                {reviewerRequired && !selectedClient?.contactEmail && (
-                  <div className="mt-4 p-5 bg-rose-50 border-2 border-rose-200 rounded-2xl space-y-3 animate-in fade-in slide-in-from-top-2">
+                {reviewerRequired && (!selectedClient?.contactEmail || !selectedClient?.contactName) && (
+                  <div className="mt-4 p-5 bg-rose-50 border-2 border-rose-200 rounded-2xl space-y-4 animate-in fade-in slide-in-from-top-2">
                     <div className="flex items-center gap-2 text-rose-700 font-black text-[10px] uppercase tracking-widest">
-                      <AlertTriangle className="h-4 w-4" /> Correo del Revisor Requerido
+                      <AlertTriangle className="h-4 w-4" /> Datos del Revisor Requeridos
                     </div>
                     <p className="text-xs text-rose-600 font-medium leading-relaxed">
-                      El cliente seleccionado no tiene un correo de contacto registrado. Para habilitar la validación externa, ingrese el correo donde se enviará el PIN de seguridad:
+                      Para habilitar la validación externa, se requiere el nombre y correo del responsable que firmará el documento:
                     </p>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-400" />
-                      <Input 
-                        placeholder="revisor@cliente.cl"
-                        type="email"
-                        value={externalEmail}
-                        onChange={(e) => setExternalEmail(e.target.value)}
-                        className="pl-10 h-12 border-rose-200 focus:border-rose-500 bg-white"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-400" />
+                        <Input 
+                          placeholder="Nombre del Revisor"
+                          value={externalName}
+                          onChange={(e) => setExternalName(e.target.value)}
+                          className="pl-10 h-12 border-rose-200 focus:border-rose-500 bg-white"
+                        />
+                      </div>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-rose-400" />
+                        <Input 
+                          placeholder="Email del Revisor"
+                          type="email"
+                          value={externalEmail}
+                          onChange={(e) => setExternalEmail(e.target.value)}
+                          className="pl-10 h-12 border-rose-200 focus:border-rose-500 bg-white"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -380,7 +398,7 @@ export default function NewWorkOrderPage() {
             <Button 
               type="submit" 
               size="lg" 
-              disabled={isSubmitting || !description.trim() || !clientId || isEmailMissing} 
+              disabled={isSubmitting || !description.trim() || !clientId || isDataMissing} 
               className="h-14 px-10 rounded-2xl font-black text-base shadow-xl shadow-primary/20"
             >
               {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Generar Orden de Trabajo"}
