@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -60,6 +60,10 @@ export default function NewWorkOrderPage() {
   const { data: clients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
   const { data: assets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
   const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
+
+  const selectedClient = useMemo(() => {
+    return clients?.find(c => c.id === clientId);
+  }, [clients, clientId]);
 
   const estimatedEndDateStr = useMemo(() => {
     if (!scheduledDate || !durationDays) return "";
@@ -153,6 +157,23 @@ export default function NewWorkOrderPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                
+                {selectedClient && (
+                  <div className="mt-2 p-4 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-3 w-3 text-slate-400" />
+                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">RUT:</span>
+                      <span className="text-xs font-bold text-slate-900">{selectedClient.rut}</span>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-3 w-3 text-slate-400 mt-0.5" />
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest block leading-none">Dirección:</span>
+                        <span className="text-xs font-medium text-slate-600 block leading-tight">{selectedClient.address}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Maquinaria / Activo</Label>

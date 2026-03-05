@@ -39,7 +39,8 @@ import {
   KeyRound,
   ShieldAlert,
   Award,
-  Ruler
+  Ruler,
+  MapPin
 } from "lucide-react";
 import {
   Dialog,
@@ -456,6 +457,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <Building2 className="h-4 w-4 text-primary" />
                     <p className="text-sm font-bold text-slate-900">{client?.name || "Cargando..."}</p>
                   </div>
+                  {client && (
+                    <div className="mt-1 pl-6 space-y-0.5">
+                      <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">RUT: {client.rut}</p>
+                      <p className="text-[9px] font-medium text-slate-400 uppercase flex items-center gap-1">
+                        <MapPin className="h-2 w-2" /> {client.address}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Equipo / Activo</p>
