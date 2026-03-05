@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { MobileActionDock } from "@/components/layout/mobile-action-dock";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +11,23 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Company } from "@/lib/types";
 import { Loader2 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+function SidebarAutoCollapse() {
+  const { setOpen } = useSidebar();
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (isMobile) {
+      const timer = setTimeout(() => {
+        setOpen(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isMobile, setOpen]);
+
+  return null;
+}
 
 export default function DashboardLayout({
   children,
@@ -46,6 +63,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
+      <SidebarAutoCollapse />
       <SidebarNav userRole={profile?.role || 'tecnico'} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 px-6 border-b border-border/50 sticky top-0 bg-background/80 backdrop-blur-md z-10">

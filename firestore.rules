@@ -33,6 +33,11 @@ service cloud.firestore {
       return isSignedIn() && (isPlatformAdmin() || (userData != null && userData.role == role));
     }
 
+    function isAtLeastSupervisor(companyId) {
+      let userData = getUserData();
+      return isCompanyMember(companyId) && (userData.role == 'supervisor' || userData.role == 'companyAdmin');
+    }
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
@@ -70,7 +75,7 @@ service cloud.firestore {
       match /clients/{clientId} {
         allow get: if true;
         allow list: if isCompanyMember(companyId);
-        allow write: if isCompanyMember(companyId);
+        allow write: if isAtLeastSupervisor(companyId);
       }
 
       match /assets/{assetId} {
@@ -84,12 +89,14 @@ service cloud.firestore {
       }
 
       match /evaluations/{evalId} {
-        allow read: if isCompanyMember(companyId);
+        // Solo supervisores y admins ven feedback
+        allow read: if isAtLeastSupervisor(companyId);
         allow create: if true; 
       }
 
       match /billingDocuments/{docId} {
-        allow read, write: if isCompanyMember(companyId);
+        // Solo supervisores y admins ven facturación
+        allow read, write: if isAtLeastSupervisor(companyId);
       }
 
       match /workOrders/{workOrderId} {
@@ -97,7 +104,7 @@ service cloud.firestore {
         allow list: if isCompanyMember(companyId);
         allow create: if isCompanyMember(companyId);
         allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
-        allow delete: if isCompanyMember(companyId);
+        allow delete: if isAtLeastSupervisor(companyId);
 
         // Subcolecciones críticas
         match /digitalLogbookEntries/{entryId} {
@@ -111,10 +118,10 @@ service cloud.firestore {
     }
 
     match /supportTickets/{ticketId} {
-      allow get: if isSignedIn() && (isPlatformAdmin() || resource.data.companyId == getUserData().companyId);
+      allow get: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isAtLeastSupervisor(resource.data.companyId));
       allow list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (isPlatformAdmin() || resource.data.companyId == getUserData().companyId);
+      allow update: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isAtLeastSupervisor(resource.data.companyId));
 
       match /messages/{messageId} {
         allow read, write: if isSignedIn();

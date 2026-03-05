@@ -36,7 +36,7 @@ import { isBefore, isAfter, addDays, parseISO, startOfDay } from "date-fns";
 import { WorkOrder, Client, Company, StaffMember, Asset } from "@/lib/types";
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
 
@@ -47,29 +47,35 @@ export default function DashboardPage() {
   const workOrdersQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "workOrders") : null, [db, companyId]);
   const clientsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "clients") : null, [db, companyId]);
   const staffQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "staff") : null, [db, companyId]);
-  const assetsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "assets") : null, [db, companyId]);
   const companyRef = useMemoFirebase(() => db && companyId ? doc(db, "companies", companyId) : null, [db, companyId]);
 
   const { data: workOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
   const { data: clients } = useCollection<Client>(clientsQuery);
   const { data: staff } = useCollection<StaffMember>(staffQuery);
-  const { data: assets } = useCollection<Asset>(assetsQuery);
   const { data: company } = useDoc<Company>(companyRef);
 
-  const realWorkOrders = workOrders || [];
+  // Filtrar OTs si es técnico: solo las que tiene asignadas
+  const realWorkOrders = useMemo(() => {
+    if (!workOrders) return [];
+    if (isTechnician && profile?.id) {
+      return workOrders.filter(ot => ot.assignedToStaffIds?.includes(profile.id));
+    }
+    return workOrders;
+  }, [workOrders, isTechnician, profile?.id]);
+
   const today = startOfDay(new Date());
   
   const onboardingSteps = useMemo(() => {
-    if (!company) return [];
+    if (!company || isTechnician) return [];
     return [
       { id: 'profile', label: 'Datos Legales Empresa', desc: 'Configura tu RUT y dirección comercial', completed: !!company.rut && company.rut !== "RUT por definir", href: '/company' },
       { id: 'team', label: 'Cargar Equipo Técnico', desc: 'Registra a tus técnicos o brigadas', completed: (staff?.length || 0) > 0, href: '/team' },
       { id: 'clients', label: 'Primeros Clientes', desc: 'Añade empresas mandantes', completed: (clients?.length || 0) > 0, href: '/clients' },
       { id: 'ots', label: 'Crear Primera OT', desc: 'Inicia el flujo operacional', completed: realWorkOrders.length > 0, href: '/work-orders/new' }
     ];
-  }, [company, staff, clients, realWorkOrders]);
+  }, [company, staff, clients, realWorkOrders, isTechnician]);
 
-  const allStepsCompleted = onboardingSteps.every(s => s.completed);
+  const allStepsCompleted = onboardingSteps.length === 0 || onboardingSteps.every(s => s.completed);
 
   const overdueOrders = useMemo(() => {
     return realWorkOrders.filter(ot => {
@@ -101,18 +107,22 @@ export default function DashboardPage() {
     <div className="space-y-8 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic">Central de Comando</h2>
+          <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic">
+            {isTechnician ? "Mi Hoja de Ruta" : "Central de Comando"}
+          </h2>
           <p className="text-muted-foreground font-medium flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" /> Bienvenido, {profile?.name}. Tienes {realWorkOrders.filter(ot => ot.status !== 'aprobada').length} tareas activas.
           </p>
         </div>
-        <Button asChild className="h-12 px-6 rounded-xl shadow-xl shadow-primary/20 font-black gap-2 hover:scale-105 transition-transform">
-          <Link href="/work-orders/new"><Plus className="h-5 w-5" /> Nueva Orden de Trabajo</Link>
-        </Button>
+        {!isTechnician && (
+          <Button asChild className="h-12 px-6 rounded-xl shadow-xl shadow-primary/20 font-black gap-2 hover:scale-105 transition-transform">
+            <Link href="/work-orders/new"><Plus className="h-5 w-5" /> Nueva Orden de Trabajo</Link>
+          </Button>
+        )}
       </div>
 
-      {/* SISTEMA DE ONBOARDING INTUITIVO */}
-      {!allStepsCompleted && (
+      {/* SISTEMA DE ONBOARDING INTUITIVO - SOLO ADMINS */}
+      {!isTechnician && !allStepsCompleted && (
         <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden animate-in slide-in-from-top-4 duration-700">
           <div className="grid md:grid-cols-3">
             <div className="p-8 md:p-12 space-y-6 bg-blue-600/10 border-r border-white/5">
@@ -166,7 +176,7 @@ export default function DashboardPage() {
               <div className="bg-white/20 p-3 rounded-2xl"><AlertTriangle className="h-6 w-6" /></div>
               <div>
                 <AlertTitle className="text-lg font-black uppercase tracking-tighter italic">Alerta de Plazos</AlertTitle>
-                <AlertDescription className="font-bold opacity-90">Atención: {overdueOrders.length} servicios han excedido su fecha estimada.</AlertDescription>
+                <AlertDescription className="font-bold opacity-90">Atención: {overdueOrders.length} {isTechnician ? 'de tus servicios han' : 'servicios han'} excedido su fecha estimada.</AlertDescription>
               </div>
             </div>
             <Button variant="outline" className="bg-white/10 border-white/20 hover:bg-white/20 text-white rounded-xl font-black uppercase text-[10px] tracking-widest h-10" asChild>
@@ -176,13 +186,13 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      {/* METRICAS TECNOLÓGICAS */}
+      {/* METRICAS TÉCNICAS SEGMENTADAS */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Órdenes", value: realWorkOrders.length, icon: ClipboardList, color: "bg-blue-600", desc: "Historial acumulado" },
+          { label: isTechnician ? "Mis Tareas" : "Total Órdenes", value: realWorkOrders.length, icon: ClipboardList, color: "bg-blue-600", desc: "Historial acumulado" },
           { label: "En Ejecución", value: realWorkOrders.filter(ot => ot.status !== 'aprobada' && ot.status !== 'creada').length, icon: Activity, color: "bg-indigo-600", desc: "Tareas de campo" },
           { label: "Finalizadas", value: realWorkOrders.filter(ot => ot.status === 'aprobada').length, icon: Trophy, color: "bg-emerald-600", desc: "Con sello digital" },
-          { label: "Alertas Activas", value: overdueOrders.length, icon: AlertTriangle, color: "bg-rose-600", desc: "Vencimientos" }
+          { label: "Vencidas", value: overdueOrders.length, icon: AlertTriangle, color: "bg-rose-600", desc: "Fuera de plazo" }
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm rounded-3xl overflow-hidden group hover:shadow-xl transition-all duration-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -62,7 +62,7 @@ const operationalItems: NavItem[] = [
 
 const inventoryItems: NavItem[] = [
   { title: "Activos e Equipos", href: "/assets", icon: HardHat },
-  { title: "Inventario / Insumos", href: "/inventory", icon: Package },
+  { title: "Inventario / Insumos", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
 ];
 
 const businessItems: NavItem[] = [
@@ -73,7 +73,7 @@ const businessItems: NavItem[] = [
 ];
 
 const settingsItems: NavItem[] = [
-  { title: "Mi Empresa", href: "/company", icon: Building2 },
+  { title: "Mi Empresa", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor'] },
   { title: "Equipo Técnico", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
@@ -108,6 +108,11 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
     router.push("/auth/login");
   };
 
+  const filteredOp = filterByRole(operationalItems);
+  const filteredInv = filterByRole(inventoryItems);
+  const filteredBus = filterByRole(businessItems);
+  const filteredSet = filterByRole(settingsItems);
+
   return (
     <Sidebar className="border-r border-border/50 bg-slate-950 text-slate-300">
       <SidebarHeader className="p-6">
@@ -141,68 +146,76 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
       <SidebarContent className="px-2">
         {!isSuperAdmin ? (
           <>
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Operación Diaria</SidebarGroupLabel>
-              <SidebarMenu>
-                {filterByRole(operationalItems).map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={pathname === item.href}
-                      className={cn(
-                        "rounded-xl px-4 h-11 transition-all",
-                        item.highlight && "bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 font-bold",
-                        !item.highlight && "hover:bg-white/5"
-                      )}
-                    >
-                      <Link href={item.href}>
-                        <item.icon className={cn("h-4 w-4", item.highlight && "text-blue-400")} />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
+            {filteredOp.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Operación Diaria</SidebarGroupLabel>
+                <SidebarMenu>
+                  {filteredOp.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton 
+                        asChild 
+                        isActive={pathname === item.href}
+                        className={cn(
+                          "rounded-xl px-4 h-11 transition-all",
+                          item.highlight && "bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 font-bold",
+                          !item.highlight && "hover:bg-white/5"
+                        )}
+                      >
+                        <Link href={item.href}>
+                          <item.icon className={cn("h-4 w-4", item.highlight && "text-blue-400")} />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroup>
+            )}
 
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Recursos & Activos</SidebarGroupLabel>
-              <SidebarMenu>
-                {filterByRole(inventoryItems).map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
-                      <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
+            {filteredInv.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Recursos & Activos</SidebarGroupLabel>
+                <SidebarMenu>
+                  {filteredInv.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
+                        <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroup>
+            )}
 
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Gestión Comercial</SidebarGroupLabel>
-              <SidebarMenu>
-                {filterByRole(businessItems).map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
-                      <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
+            {filteredBus.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Gestión Comercial</SidebarGroupLabel>
+                <SidebarMenu>
+                  {filteredBus.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
+                        <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroup>
+            )}
 
-            <SidebarGroup>
-              <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Sistema & Config</SidebarGroupLabel>
-              <SidebarMenu>
-                {filterByRole(settingsItems).map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
-                      <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
+            {filteredSet.length > 0 && (
+              <SidebarGroup>
+                <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Sistema & Config</SidebarGroupLabel>
+                <SidebarMenu>
+                  {filteredSet.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
+                        <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroup>
+            )}
           </>
         ) : (
           <SidebarGroup>

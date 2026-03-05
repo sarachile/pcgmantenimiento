@@ -43,7 +43,7 @@ import {
   ShieldCheck,
   Zap,
   ArrowRight
-} from "lucide-react";
+} from "lucide-center";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
@@ -55,7 +55,7 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
 export default function WorkOrdersPage() {
-  const { profile, isLoading: isUserLoading } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,7 +68,7 @@ export default function WorkOrdersPage() {
     return collection(db, "companies", profile.companyId, "workOrders");
   }, [db, profile?.companyId]);
 
-  const { data: realWorkOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
+  const { data: rawWorkOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -84,7 +84,13 @@ export default function WorkOrdersPage() {
     toast({ title: "Orden eliminada", description: "La orden de trabajo ha sido removida." });
   };
 
-  const workOrders = realWorkOrders || [];
+  const workOrders = useMemo(() => {
+    if (!rawWorkOrders) return [];
+    if (isTechnician && profile?.id) {
+      return rawWorkOrders.filter(ot => ot.assignedToStaffIds?.includes(profile.id));
+    }
+    return rawWorkOrders;
+  }, [rawWorkOrders, isTechnician, profile?.id]);
 
   const filteredOTs = useMemo(() => {
     return workOrders.filter(ot => {
@@ -121,34 +127,40 @@ export default function WorkOrdersPage() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="rounded-full h-12 w-12 hover:bg-slate-100 transition-colors"><Link href="/dashboard"><ArrowLeft className="h-5 w-5" /></Link></Button>
           <div>
-            <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic">Órdenes de Trabajo</h2>
-            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Gestión Operacional y Trazabilidad</p>
+            <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic">
+              {isTechnician ? "Mis Servicios Asignados" : "Órdenes de Trabajo"}
+            </h2>
+            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">
+              {isTechnician ? "Hoja de ruta y protocolos" : "Gestión Operacional y Trazabilidad"}
+            </p>
           </div>
         </div>
-        <Button asChild className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 font-black gap-2 hover:scale-105 transition-transform">
-          <Link href="/work-orders/new"><Plus className="h-5 w-5" /> Generar Nueva OT</Link>
-        </Button>
+        {!isTechnician && (
+          <Button asChild className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 font-black gap-2 hover:scale-105 transition-transform">
+            <Link href="/work-orders/new"><Plus className="h-5 w-5" /> Generar Nueva OT</Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="border-none shadow-sm rounded-3xl bg-blue-600 text-white overflow-hidden relative group">
           <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Target className="h-20 w-20" /></div>
           <CardContent className="p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Total Operativas</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">En Ejecución</p>
             <p className="text-4xl font-black tracking-tighter italic">{workOrders.filter(o => o.status !== 'aprobada').length}</p>
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm rounded-3xl bg-emerald-600 text-white overflow-hidden relative group">
           <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><ShieldCheck className="h-20 w-20" /></div>
           <CardContent className="p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Cerradas con Sello</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Finalizadas</p>
             <p className="text-4xl font-black tracking-tighter italic">{workOrders.filter(o => o.status === 'aprobada').length}</p>
           </CardContent>
         </Card>
         <Card className="border-none shadow-sm rounded-3xl bg-slate-900 text-white overflow-hidden relative group">
           <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-20 w-20 text-amber-400" /></div>
           <CardContent className="p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Eficiencia Mensual</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Meta de Cumplimiento</p>
             <p className="text-4xl font-black tracking-tighter italic">94%</p>
           </CardContent>
         </Card>
@@ -180,9 +192,13 @@ export default function WorkOrdersPage() {
               <div className="bg-slate-50 p-8 rounded-full w-fit mx-auto"><AlertCircle className="h-16 w-16 text-slate-200" /></div>
               <div>
                 <p className="text-xl font-black italic tracking-tighter uppercase">Sin resultados</p>
-                <p className="text-sm text-slate-400 font-medium">Ajusta tu búsqueda o crea una nueva orden para poblar el listado.</p>
+                <p className="text-sm text-slate-400 font-medium">
+                  {isTechnician ? "No tienes órdenes asignadas que coincidan con tu búsqueda." : "Ajusta tu búsqueda o crea una nueva orden para poblar el listado."}
+                </p>
               </div>
-              <Button asChild className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full"><Link href="/work-orders/new">Generar Primera OT</Link></Button>
+              {!isTechnician && (
+                <Button asChild className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full"><Link href="/work-orders/new">Generar Primera OT</Link></Button>
+              )}
             </div>
           ) : (
             <Accordion type="multiple" defaultValue={[groupedOTs[0]?.[0]]} className="w-full">
@@ -258,26 +274,28 @@ export default function WorkOrdersPage() {
                                     <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10 hover:bg-primary hover:text-white transition-all shadow-sm">
                                       <Link href={`/work-orders/${ot.id}`}><ArrowRight className="h-4 w-4" /></Link>
                                     </Button>
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-4 w-4 text-slate-400" /></Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
-                                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Orden</DropdownMenuLabel>
-                                        <DropdownMenuSeparator className="bg-slate-50" />
-                                        <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
-                                          <Link href={`/work-orders/${ot.id}`} className="font-bold flex items-center gap-2">
-                                            <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
-                                          </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem 
-                                          className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
-                                          onClick={() => handleDelete(ot.id)}
-                                        >
-                                          <Trash2 className="h-4 w-4" /> Eliminar Registro
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {!isTechnician && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-4 w-4 text-slate-400" /></Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
+                                          <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Orden</DropdownMenuLabel>
+                                          <DropdownMenuSeparator className="bg-slate-50" />
+                                          <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
+                                            <Link href={`/work-orders/${ot.id}`} className="font-bold flex items-center gap-2">
+                                              <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
+                                            </Link>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem 
+                                            className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
+                                            onClick={() => handleDelete(ot.id)}
+                                          >
+                                            <Trash2 className="h-4 w-4" /> Eliminar Registro
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
                                   </div>
                                 </TableCell>
                               </TableRow>
