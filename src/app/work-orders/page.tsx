@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -22,9 +23,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { 
   Accordion,
-  AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  AccordionContent
 } from "@/components/ui/accordion";
 import { 
   Search, 
@@ -37,7 +38,11 @@ import {
   AlertCircle,
   ArrowLeft,
   Building2,
-  CalendarDays
+  CalendarDays,
+  Target,
+  ShieldCheck,
+  Zap,
+  ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
@@ -46,7 +51,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { WorkOrder, Client } from "@/lib/types";
-import { format, parseISO, startOfMonth } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
 export default function WorkOrdersPage() {
@@ -56,9 +61,7 @@ export default function WorkOrdersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -78,10 +81,7 @@ export default function WorkOrdersPage() {
     if (!profile?.companyId) return;
     const docRef = doc(db, "companies", profile.companyId, "workOrders", id);
     deleteDocumentNonBlocking(docRef);
-    toast({
-      title: "Orden eliminada",
-      description: "La orden de trabajo ha sido eliminada del sistema.",
-    });
+    toast({ title: "Orden eliminada", description: "La orden de trabajo ha sido removida." });
   };
 
   const workOrders = realWorkOrders || [];
@@ -95,209 +95,186 @@ export default function WorkOrdersPage() {
         client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }).sort((a, b) => {
-      // Ordenar por fecha de creación descendente
       const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt) : new Date(0));
       const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : (typeof b.createdAt === 'string' ? parseISO(b.createdAt) : new Date(0));
       return dateB.getTime() - dateA.getTime();
     });
   }, [workOrders, searchTerm, clients]);
 
-  // Agrupar por mes
   const groupedOTs = useMemo(() => {
     const groups: Record<string, { label: string, orders: WorkOrder[] }> = {};
-    
     filteredOTs.forEach(ot => {
       const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
       const monthKey = format(date, "yyyy-MM");
       const monthLabel = format(date, "MMMM yyyy", { locale: es });
-      
-      if (!groups[monthKey]) {
-        groups[monthKey] = { label: monthLabel, orders: [] };
-      }
+      if (!groups[monthKey]) groups[monthKey] = { label: monthLabel, orders: [] };
       groups[monthKey].orders.push(ot);
     });
-    
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filteredOTs]);
 
-  const formatTableDate = (date: any) => {
-    if (!mounted || !date) return '...';
-    try {
-      if (date.toDate) return date.toDate().toLocaleDateString();
-      return new Date(date).toLocaleDateString();
-    } catch (e) {
-      return 'N/A';
-    }
-  };
-
-  if (isUserLoading) {
-    return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (isUserLoading || !mounted) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild title="Volver al escritorio">
-            <Link href="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+          <Button variant="ghost" size="icon" asChild className="rounded-full h-12 w-12 hover:bg-slate-100 transition-colors"><Link href="/dashboard"><ArrowLeft className="h-5 w-5" /></Link></Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-slate-900">Órdenes de Trabajo</h2>
-            <p className="text-muted-foreground text-sm">Administre y supervise todas las órdenes de trabajo por periodos.</p>
+            <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic">Órdenes de Trabajo</h2>
+            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Gestión Operacional y Trazabilidad</p>
           </div>
         </div>
-        <Button asChild className="rounded-xl shadow-lg">
-          <Link href="/work-orders/new">
-            <Plus className="mr-2 h-4 w-4" /> Crear Nueva OT
-          </Link>
+        <Button asChild className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 font-black gap-2 hover:scale-105 transition-transform">
+          <Link href="/work-orders/new"><Plus className="h-5 w-5" /> Generar Nueva OT</Link>
         </Button>
       </div>
 
-      <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
-        <CardHeader className="pb-3 bg-white">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="border-none shadow-sm rounded-3xl bg-blue-600 text-white overflow-hidden relative group">
+          <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Target className="h-20 w-20" /></div>
+          <CardContent className="p-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Total Operativas</p>
+            <p className="text-4xl font-black tracking-tighter italic">{workOrders.filter(o => o.status !== 'aprobada').length}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm rounded-3xl bg-emerald-600 text-white overflow-hidden relative group">
+          <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><ShieldCheck className="h-20 w-20" /></div>
+          <CardContent className="p-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Cerradas con Sello</p>
+            <p className="text-4xl font-black tracking-tighter italic">{workOrders.filter(o => o.status === 'aprobada').length}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-none shadow-sm rounded-3xl bg-slate-900 text-white overflow-hidden relative group">
+          <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-20 w-20 text-amber-400" /></div>
+          <CardContent className="p-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Eficiencia Mensual</p>
+            <p className="text-4xl font-black tracking-tighter italic">94%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+        <CardHeader className="p-8 pb-4 border-b border-slate-50">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder="Buscar por ID, cliente o descripción..." 
-                className="pl-10 h-11 border-none bg-muted/20 rounded-xl"
+                placeholder="Buscar por ID, mandante o descripción técnica..." 
+                className="pl-12 h-14 border-none bg-slate-50 rounded-2xl text-base font-medium focus-visible:ring-primary shadow-inner"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" size="icon" className="rounded-xl h-11 w-11">
-              <Filter className="h-4 w-4" />
-            </Button>
+            <Button variant="outline" className="h-14 w-14 rounded-2xl border-slate-100 bg-slate-50"><Filter className="h-5 w-5" /></Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {isOrdersLoading ? (
-            <div className="py-20 text-center text-muted-foreground font-medium">
-              <Loader2 className="mx-auto h-8 w-8 animate-spin mb-4 text-primary" />
-              Sincronizando órdenes de trabajo...
+            <div className="py-32 text-center space-y-4">
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary/20" />
+              <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Sincronizando Órdenes de Trabajo</p>
             </div>
           ) : filteredOTs.length === 0 ? (
-            <div className="py-20 text-center border-2 border-dashed m-6 rounded-3xl bg-slate-50/50">
-              <AlertCircle className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-              <p className="text-lg font-bold text-slate-500">No se encontraron órdenes</p>
-              <p className="text-sm text-slate-400 mb-6">Comience creando una nueva orden de trabajo para verla aquí.</p>
-              <Button asChild className="rounded-xl font-bold">
-                <Link href="/work-orders/new">Generar Primera OT</Link>
-              </Button>
+            <div className="py-32 text-center max-w-sm mx-auto space-y-6">
+              <div className="bg-slate-50 p-8 rounded-full w-fit mx-auto"><AlertCircle className="h-16 w-16 text-slate-200" /></div>
+              <div>
+                <p className="text-xl font-black italic tracking-tighter uppercase">Sin resultados</p>
+                <p className="text-sm text-slate-400 font-medium">Ajusta tu búsqueda o crea una nueva orden para poblar el listado.</p>
+              </div>
+              <Button asChild className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full"><Link href="/work-orders/new">Generar Primera OT</Link></Button>
             </div>
           ) : (
             <Accordion type="multiple" defaultValue={[groupedOTs[0]?.[0]]} className="w-full">
               {groupedOTs.map(([monthKey, group]) => (
-                <AccordionItem key={monthKey} value={monthKey} className="border-b last:border-0 px-6">
-                  <AccordionTrigger className="hover:no-underline py-4 group">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 p-2 rounded-lg group-data-[state=open]:bg-primary group-data-[state=open]:text-white transition-colors">
-                        <CalendarDays className="h-4 w-4" />
+                <AccordionItem key={monthKey} value={monthKey} className="border-b last:border-0">
+                  <AccordionTrigger className="hover:no-underline py-6 px-8 group bg-slate-50/30">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 group-data-[state=open]:bg-primary group-data-[state=open]:text-white transition-all">
+                        <CalendarDays className="h-5 w-5" />
                       </div>
-                      <span className="text-sm font-black uppercase tracking-widest text-slate-700 group-data-[state=open]:text-slate-900 transition-colors">
-                        {group.label}
-                      </span>
-                      <Badge variant="secondary" className="text-[10px] font-bold rounded-md">
-                        {group.orders.length} Órdenes
-                      </Badge>
+                      <div className="text-left">
+                        <span className="text-lg font-black uppercase tracking-tighter text-slate-900 italic leading-none block">{group.label}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.orders.length} Servicios procesados</span>
+                      </div>
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="pb-6">
-                    <div className="border rounded-2xl overflow-hidden bg-white shadow-sm">
+                  <AccordionContent className="p-0">
+                    <div className="overflow-x-auto">
                       <Table>
-                        <TableHeader className="bg-muted/30">
-                          <TableRow>
-                            <TableHead className="font-black uppercase text-[10px] tracking-widest pl-6">ID / Fecha</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Cliente / Entidad</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Descripción</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Evidencia</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-widest">Estado</TableHead>
-                            <TableHead className="text-right font-black uppercase text-[10px] tracking-widest pr-6">Acciones</TableHead>
+                        <TableHeader className="bg-slate-50/50">
+                          <TableRow className="border-none">
+                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] pl-8 h-12">ID / Operativo</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Mandante / Entidad</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Descripción Alcance</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-center">Evidencias</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Estado</TableHead>
+                            <TableHead className="text-right font-black uppercase text-[10px] tracking-[0.2em] pr-8">Acción</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {group.orders.map((ot) => {
                             const client = clients?.find(c => c.id === ot.clientId);
+                            const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
                             return (
-                              <TableRow key={ot.id} className="hover:bg-muted/10 transition-colors group">
-                                <TableCell className="pl-6">
+                              <TableRow key={ot.id} className="hover:bg-slate-50 transition-colors border-slate-100 group">
+                                <TableCell className="pl-8 py-6">
                                   <div className="flex flex-col">
-                                    <span className="font-black text-primary text-sm tracking-tight">{ot.id}</span>
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{formatTableDate(ot.createdAt)}</span>
+                                    <span className="font-black text-primary text-base tracking-tighter italic leading-none">{ot.id}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 mt-1">{format(date, "dd MMM, yyyy", { locale: es })}</span>
                                   </div>
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-3">
-                                    <div className="bg-primary/5 p-2 rounded-lg shrink-0">
-                                      <Building2 className="h-4 w-4 text-primary" />
-                                    </div>
+                                    <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-white transition-colors"><Building2 className="h-4 w-4 text-slate-500" /></div>
                                     <div className="flex flex-col min-w-0">
-                                      <span className="font-bold text-slate-900 text-sm truncate">{client?.name || 'Cargando...'}</span>
-                                      <span className="text-[10px] text-muted-foreground font-mono">{client?.rut || '-'}</span>
+                                      <span className="font-bold text-slate-900 text-sm truncate max-w-[180px]">{client?.name || '...' }</span>
+                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{client?.rut || '-'}</span>
                                     </div>
                                   </div>
                                 </TableCell>
-                                <TableCell className="max-w-[200px]">
-                                  <p className="text-xs font-medium text-slate-600 truncate">{ot.description}</p>
+                                <TableCell className="max-w-[250px]">
+                                  <p className="text-xs font-medium text-slate-600 line-clamp-2 italic leading-relaxed">"{ot.description}"</p>
                                 </TableCell>
-                                <TableCell>
-                                  <div className="flex gap-1.5">
-                                    {ot.technicianSignatureUrl || ot.technicianApprovalCode ? (
-                                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase py-0 px-1.5 h-5">Tech</Badge>
-                                    ) : null}
-                                    {ot.clientSignatureUrl || ot.clientApprovalCode ? (
-                                      <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100 text-[8px] font-black uppercase py-0 px-1.5 h-5">Client</Badge>
-                                    ) : null}
-                                    {!ot.technicianApprovalCode && !ot.clientApprovalCode && (
-                                      <span className="text-[10px] text-muted-foreground italic">Sin sellos</span>
-                                    )}
+                                <TableCell className="text-center">
+                                  <div className="flex justify-center gap-1">
+                                    {(ot.evidenceUrls?.length || 0) > 0 && <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] h-5">{ot.evidenceUrls?.length} FOTOS</Badge>}
+                                    {ot.clientApprovalCode && <Badge className="bg-emerald-100 text-emerald-700 text-[8px] h-5 font-black uppercase">FIRMADA</Badge>}
                                   </div>
                                 </TableCell>
                                 <TableCell>
                                   <Badge className={cn(
-                                    "text-[9px] font-black uppercase tracking-tighter",
-                                    ot.status === 'creada' && "bg-blue-100 text-blue-700 hover:bg-blue-100",
-                                    ot.status === 'asignada' && "bg-indigo-100 text-indigo-700 hover:bg-indigo-100",
-                                    ot.status === 'ejecutada' && "bg-purple-100 text-purple-700 hover:bg-purple-100",
-                                    ot.status === 'en revision' && "bg-amber-100 text-amber-700 hover:bg-amber-100",
-                                    ot.status === 'aprobada' && "bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
-                                    ot.status === 'rechazada' && "bg-rose-100 text-rose-700 hover:bg-rose-100"
+                                    "text-[9px] font-black uppercase tracking-widest px-3 h-6 rounded-full border-none",
+                                    ot.status === 'aprobada' ? "bg-emerald-500 text-white" : 
+                                    ot.status === 'pendiente cliente' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/20" :
+                                    ot.status === 'en revision' ? "bg-amber-500 text-white" :
+                                    "bg-slate-200 text-slate-600"
                                   )}>
                                     {ot.status.replace(' ', '_')}
                                   </Badge>
                                 </TableCell>
-                                <TableCell className="text-right pr-6">
+                                <TableCell className="text-right pr-8">
                                   <div className="flex justify-end gap-2">
-                                    <Button variant="ghost" size="icon" asChild title="Ver Detalle" className="rounded-xl h-9 w-9">
-                                      <Link href={`/work-orders/${ot.id}`}>
-                                        <Eye className="h-4 w-4" />
-                                      </Link>
+                                    <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10 hover:bg-primary hover:text-white transition-all shadow-sm">
+                                      <Link href={`/work-orders/${ot.id}`}><ArrowRight className="h-4 w-4" /></Link>
                                     </Button>
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
-                                          <MoreVertical className="h-4 w-4" />
-                                        </Button>
+                                        <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-4 w-4 text-slate-400" /></Button>
                                       </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none">
-                                        <DropdownMenuLabel className="text-xs font-black uppercase text-slate-400">Acciones de Orden</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem asChild className="rounded-lg">
-                                          <Link href={`/work-orders/${ot.id}`} className="font-bold">
-                                            <Eye className="mr-2 h-4 w-4" /> Ver Detalles
+                                      <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
+                                        <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Orden</DropdownMenuLabel>
+                                        <DropdownMenuSeparator className="bg-slate-50" />
+                                        <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
+                                          <Link href={`/work-orders/${ot.id}`} className="font-bold flex items-center gap-2">
+                                            <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
                                           </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem 
-                                          className="text-rose-600 font-bold rounded-lg" 
+                                          className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
                                           onClick={() => handleDelete(ot.id)}
                                         >
-                                          <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                          <Trash2 className="h-4 w-4" /> Eliminar Registro
                                         </DropdownMenuItem>
                                       </DropdownMenuContent>
                                     </DropdownMenu>

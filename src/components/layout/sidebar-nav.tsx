@@ -19,8 +19,10 @@ import {
   Settings,
   MessageCircleHeart,
   LifeBuoy,
-  FileText,
-  Receipt
+  Camera,
+  Receipt,
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -47,31 +49,41 @@ interface NavItem {
   href: string;
   icon: any;
   roles?: Role[];
+  badge?: string;
+  highlight?: boolean;
 }
 
-const navItems: NavItem[] = [
+const operationalItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", href: "/calendar", icon: CalendarDays },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
-  { title: "Facturación", href: "/billing", icon: Receipt, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Captura Terreno", href: "/field/capture", icon: Camera, highlight: true },
+];
+
+const inventoryItems: NavItem[] = [
+  { title: "Activos e Equipos", href: "/assets", icon: HardHat },
+  { title: "Inventario / Insumos", href: "/inventory", icon: Package },
+];
+
+const businessItems: NavItem[] = [
   { title: "Clientes", href: "/clients", icon: Users, roles: ['companyAdmin', 'supervisor'] },
-  { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
-  { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
-  { title: "Reportes", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor'] },
-  { title: "Feedback Clientes", href: "/feedback", icon: MessageCircleHeart, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Facturación DTE", href: "/billing", icon: Receipt, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Satisfacción (Feedback)", href: "/feedback", icon: MessageCircleHeart, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Reportes & BI", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor'] },
+];
+
+const settingsItems: NavItem[] = [
   { title: "Mi Empresa", href: "/company", icon: Building2 },
-  { title: "Equipo", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Equipo Técnico", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
 ];
 
 const adminItems: NavItem[] = [
   { title: "Control Maestro", href: "/admin", icon: Globe, roles: ['superadmin'] },
-  { title: "Soporte Técnico", href: "/support", icon: LifeBuoy, roles: ['superadmin'] },
-  { title: "Empresas Registradas", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
-  { title: "Usuarios Globales", href: "/admin/users", icon: Users, roles: ['superadmin'] },
-  { title: "Tickets Globales", href: "/admin/support", icon: LifeBuoy, roles: ['superadmin'] },
-  { title: "Estadísticas SaaS", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
+  { title: "Soporte Global", href: "/admin/support", icon: LifeBuoy, roles: ['superadmin'] },
+  { title: "Empresas SaaS", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
+  { title: "Estadísticas Infra", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
 ];
 
 export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
@@ -88,13 +100,8 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
 
   const { data: company } = useDoc<Company>(companyRef);
 
-  const filteredItems = isSuperAdmin ? [] : navItems.filter(item => 
-    !item.roles || item.roles.includes(userRole)
-  );
-
-  const filteredAdminItems = adminItems.filter(item => 
-    item.roles?.includes(userRole)
-  );
+  const filterByRole = (items: NavItem[]) => 
+    items.filter(item => !item.roles || item.roles.includes(userRole));
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -102,15 +109,15 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
   };
 
   return (
-    <Sidebar className="border-r border-border/50 bg-card">
+    <Sidebar className="border-r border-border/50 bg-slate-950 text-slate-300">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
           {isSuperAdmin ? (
-            <div className="bg-primary p-2 rounded-lg">
-              <ShieldCheck className="text-primary-foreground h-6 w-6" />
+            <div className="bg-primary p-2 rounded-xl shadow-lg shadow-primary/20">
+              <ShieldCheck className="text-white h-6 w-6" />
             </div>
           ) : company?.logoUrl ? (
-            <div className="h-10 w-10 relative overflow-hidden rounded-lg border bg-white flex items-center justify-center">
+            <div className="h-10 w-10 relative overflow-hidden rounded-xl border border-white/10 bg-white flex items-center justify-center shadow-inner">
               <FirebaseImage 
                 url={company.logoUrl} 
                 alt={company.name} 
@@ -118,54 +125,93 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
               />
             </div>
           ) : (
-            <div className="bg-primary p-2 rounded-lg">
-              <Settings className="text-primary-foreground h-6 w-6" />
+            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-900/40">
+              <Sparkles className="text-white h-6 w-6" />
             </div>
           )}
-          <span className="font-bold text-xl tracking-tight text-primary uppercase truncate max-w-[140px]">
-            {isSuperAdmin ? "CONTROL MAESTRO" : (company?.name || "PCGMANT")}
-          </span>
+          <div className="flex flex-col min-w-0">
+            <span className="font-black text-sm tracking-tighter text-white uppercase truncate">
+              {isSuperAdmin ? "CORE INFRA" : (company?.name || "PCGMANT")}
+            </span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">ERP Industrial</span>
+          </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
-        {!isSuperAdmin && filteredItems.length > 0 && (
-          <SidebarGroup>
-            <SidebarGroupLabel>Menu Principal</SidebarGroupLabel>
-            <SidebarMenu>
-              {filteredItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={pathname === item.href}
-                    tooltip={item.title}
-                  >
-                    <Link href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-        )}
+      
+      <SidebarContent className="px-2">
+        {!isSuperAdmin ? (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Operación Diaria</SidebarGroupLabel>
+              <SidebarMenu>
+                {filterByRole(operationalItems).map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton 
+                      asChild 
+                      isActive={pathname === item.href}
+                      className={cn(
+                        "rounded-xl px-4 h-11 transition-all",
+                        item.highlight && "bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 font-bold",
+                        !item.highlight && "hover:bg-white/5"
+                      )}
+                    >
+                      <Link href={item.href}>
+                        <item.icon className={cn("h-4 w-4", item.highlight && "text-blue-400")} />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
 
-        {filteredAdminItems.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Recursos & Activos</SidebarGroupLabel>
+              <SidebarMenu>
+                {filterByRole(inventoryItems).map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
+                      <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Gestión Comercial</SidebarGroupLabel>
+              <SidebarMenu>
+                {filterByRole(businessItems).map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
+                      <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Sistema & Config</SidebarGroupLabel>
+              <SidebarMenu>
+                {filterByRole(settingsItems).map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
+                      <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          </>
+        ) : (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-primary font-bold">Administración Global</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] mb-2">Administración Global</SidebarGroupLabel>
             <SidebarMenu>
-              {filteredAdminItems.map((item) => (
+              {filterByRole(adminItems).map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={pathname === item.href}
-                    tooltip={item.title}
-                    className="text-primary hover:bg-primary/5"
-                  >
-                    <Link href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </Link>
+                  <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-blue-600/10 text-blue-100">
+                    <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -173,12 +219,13 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
           </SidebarGroup>
         )}
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-border/50">
+
+      <SidebarFooter className="p-4 border-t border-white/5">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="text-muted-foreground hover:text-destructive" onClick={handleLogout}>
+            <SidebarMenuButton className="rounded-xl h-11 text-slate-500 hover:text-rose-400 hover:bg-rose-400/5" onClick={handleLogout}>
               <LogOut className="h-4 w-4" />
-              <span>Cerrar Sesión</span>
+              <span className="font-bold">Cerrar Sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
