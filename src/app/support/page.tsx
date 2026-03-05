@@ -44,7 +44,6 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
 import { sendSystemEmail } from "@/actions/email";
-import { redirect } from "next/navigation";
 
 export default function SupportPage() {
   const { profile, isSuperAdmin, isLoading: isAuthLoading } = useUser();
@@ -60,12 +59,6 @@ export default function SupportPage() {
     priority: "medium" as any
   });
 
-  useEffect(() => {
-    if (!isAuthLoading && !isSuperAdmin) {
-      redirect("/dashboard");
-    }
-  }, [isAuthLoading, isSuperAdmin]);
-
   const companyRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return doc(db, "companies", profile.companyId);
@@ -73,7 +66,17 @@ export default function SupportPage() {
   const { data: company } = useDoc<Company>(companyRef);
 
   const ticketsQuery = useMemoFirebase(() => {
-    if (!db || !profile?.id || !isSuperAdmin) return null;
+    if (!db || !profile?.id) return null;
+    
+    // Si es superadmin, cargamos sus tickets (aunque usualmente usa el panel admin)
+    // Si es usuario normal, filtramos obligatoriamente por su ID
+    if (isSuperAdmin) {
+      return query(
+        collection(db, "supportTickets"),
+        orderBy("createdAt", "desc")
+      );
+    }
+
     return query(
       collection(db, "supportTickets"),
       where("userId", "==", profile.id),

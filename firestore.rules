@@ -47,6 +47,11 @@ service cloud.firestore {
       allow delete: if isPlatformAdmin();
     }
 
+    match /platform_admins/{adminId} {
+      allow get: if isSignedIn();
+      allow list: if isPlatformAdmin();
+    }
+
     match /companies/{companyId} {
       allow get: if true;
       allow list: if isPlatformAdmin() || isSignedIn();
@@ -93,6 +98,26 @@ service cloud.firestore {
         allow create: if isCompanyMember(companyId);
         allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
         allow delete: if isCompanyMember(companyId);
+
+        // Subcolecciones críticas
+        match /digitalLogbookEntries/{entryId} {
+          allow read, write: if isCompanyMember(companyId);
+        }
+        
+        match /partUsages/{usageId} {
+          allow read, write: if isCompanyMember(companyId);
+        }
+      }
+    }
+
+    match /supportTickets/{ticketId} {
+      allow get: if isSignedIn() && (isPlatformAdmin() || resource.data.companyId == getUserData().companyId);
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (isPlatformAdmin() || resource.data.companyId == getUserData().companyId);
+
+      match /messages/{messageId} {
+        allow read, write: if isSignedIn();
       }
     }
 
