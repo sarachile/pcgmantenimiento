@@ -24,7 +24,9 @@ import {
   ArrowUpRight,
   Lightbulb,
   Check,
-  Globe
+  Globe,
+  Contact,
+  ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -35,9 +37,11 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { isBefore, isAfter, addDays, parseISO, startOfDay } from "date-fns";
 import { WorkOrder, Client, Company, StaffMember, Asset } from "@/lib/types";
+import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 export default function DashboardPage() {
   const { profile, isLoading: isUserLoading, isTechnician } = useUser();
+  const { staffCount, clientsCount, maxStaff, maxClients } = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
 
@@ -191,6 +195,40 @@ export default function DashboardPage() {
         </Card>
       )}
 
+      {/* ACCESOS DIRECTOS DE GESTIÓN PERMANENTES PARA ADMINS */}
+      {!isTechnician && allStepsCompleted && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Link href="/clients">
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-all group overflow-hidden bg-white">
+              <div className="flex items-center p-6 gap-4">
+                <div className="bg-primary/10 p-3 rounded-2xl group-hover:bg-primary group-hover:text-white transition-colors">
+                  <Building2 className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-black text-slate-900 uppercase tracking-tighter">Cartera de Clientes</h4>
+                  <p className="text-xs text-muted-foreground font-medium">{clientsCount} de {maxClients} cupos utilizados</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-slate-300" />
+              </div>
+            </Card>
+          </Link>
+          <Link href="/team">
+            <Card className="rounded-3xl border-none shadow-sm hover:shadow-md transition-all group overflow-hidden bg-white">
+              <div className="flex items-center p-6 gap-4">
+                <div className="bg-blue-100 p-3 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  <Users className="h-6 w-6" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-black text-slate-900 uppercase tracking-tighter">Equipo Técnico</h4>
+                  <p className="text-xs text-muted-foreground font-medium">{staffCount} de {maxStaff} técnicos activos</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-slate-300" />
+              </div>
+            </Card>
+          </Link>
+        </div>
+      )}
+
       {overdueOrders.length > 0 && (
         <Alert variant="destructive" className="border-none bg-rose-500 text-white rounded-[2rem] p-6 shadow-xl shadow-rose-900/20 animate-pulse">
           <div className="flex items-center justify-between w-full">
@@ -285,7 +323,7 @@ export default function DashboardPage() {
         <Card className="md:col-span-3 border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-slate-900 text-white">
           <CardHeader className="p-8 pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-2">
+              <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3">
                 <CalendarIcon className="h-5 w-5 text-blue-400" /> Próximos Hitos
               </CardTitle>
               <Badge className="bg-blue-600 text-white border-none font-bold text-[9px] tracking-widest uppercase">7 Días</Badge>
