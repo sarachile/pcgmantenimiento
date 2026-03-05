@@ -347,58 +347,60 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Informe Técnico
           </Button>
           
-          {ot.status === 'aprobada' && ot.clientApprovalCode ? (
-            <Button variant="outline" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700 hover:bg-blue-50">
-              {isGeneratingCert ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Award className="h-4 w-4 mr-2" />} Descargar Certificado
-            </Button>
-          ) : (
-            <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => setTempClientEmail(client?.contactEmail || "")}>
-                  <Award className="h-4 w-4 mr-2" /> Solicitar Certificación
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-black italic">Acreditación de Experiencia</DialogTitle>
-                  <DialogDescription>
-                    Para emitir un Certificado de Experiencia válido, la OT debe estar cerrada y aprobada digitalmente por el cliente. 
-                    Se enviará una notificación formal al revisor para capturar su firma.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="client-email" className="font-bold text-xs uppercase text-slate-500">Email del Revisor / Cliente</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input 
-                        id="client-email"
-                        type="email" 
-                        required
-                        placeholder="ejemplo@cliente.cl"
-                        className="pl-10 h-12 rounded-xl"
-                        value={tempClientEmail}
-                        onChange={(e) => setTempClientEmail(e.target.value)}
-                      />
+          {ot.status === 'aprobada' && (
+            ot.clientApprovalCode ? (
+              <Button variant="outline" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700 hover:bg-blue-50">
+                {isGeneratingCert ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Award className="h-4 w-4 mr-2" />} Descargar Certificado
+              </Button>
+            ) : (
+              <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50" onClick={() => setTempClientEmail(client?.contactEmail || "")}>
+                    <Award className="h-4 w-4 mr-2" /> Solicitar Certificación
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-black italic">Acreditación de Experiencia</DialogTitle>
+                    <DialogDescription>
+                      Para emitir un Certificado de Experiencia válido, la OT debe estar cerrada y aprobada digitalmente por el cliente. 
+                      Se enviará una notificación formal al revisor para capturar su firma.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="client-email" className="font-bold text-xs uppercase text-slate-500">Email del Revisor / Cliente</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input 
+                          id="client-email"
+                          type="email" 
+                          required
+                          placeholder="ejemplo@cliente.cl"
+                          className="pl-10 h-12 rounded-xl"
+                          value={tempClientEmail}
+                          onChange={(e) => setTempClientEmail(e.target.value)}
+                        />
+                      </div>
+                      {!client?.contactEmail && (
+                        <p className="text-[10px] text-amber-600 font-medium italic">* No se encontró correo registrado. Favor ingréselo para enviar la solicitud.</p>
+                      )}
                     </div>
-                    {!client?.contactEmail && (
-                      <p className="text-[10px] text-amber-600 font-medium italic">* No se encontró correo registrado. Favor ingréselo para enviar la solicitud.</p>
-                    )}
-                  </div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed space-y-2">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Procedimiento Seguro</p>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">
-                      El cliente recibirá un link de validación único y deberá ingresar el PIN de seguridad <span className="font-black text-primary">{ot.approvalPin}</span> para firmar la orden.
-                    </p>
-                  </div>
-                  <DialogFooter className="pt-2">
-                    <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isUpdating}>
-                      {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />} Notificar al Cliente
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+                    <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed space-y-2">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Procedimiento Seguro</p>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        El cliente recibirá un link de validación único y deberá ingresar el PIN de seguridad <span className="font-black text-primary">{ot.approvalPin}</span> para firmar la orden.
+                      </p>
+                    </div>
+                    <DialogFooter className="pt-2">
+                      <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isUpdating}>
+                        {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />} Notificar al Cliente
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )
           )}
 
           {(isSupervisor || isCompanyAdmin) && ot.status === 'rechazada' && (
