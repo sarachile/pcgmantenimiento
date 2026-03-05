@@ -6,6 +6,7 @@ import { Company, WorkOrder, Client, Asset } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { ShieldCheck, Award, Calendar, Ruler, CheckCircle2, Fingerprint } from "lucide-react";
+import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface ExperienceCertificateProps {
   company: Company | null;
@@ -46,7 +47,9 @@ export const ExperienceCertificate: React.FC<ExperienceCertificateProps> = ({
       {/* Header */}
       <div className="flex flex-col items-center text-center mb-16">
         {company?.logoUrl ? (
-          <img src={company.logoUrl} className="h-24 w-auto mb-6 object-contain" alt="Logo" />
+          <div className="h-24 w-auto mb-6">
+            <FirebaseImage url={company.logoUrl} className="h-full w-auto" />
+          </div>
         ) : (
           <div className="bg-slate-900 p-4 rounded-2xl mb-6">
             <ShieldCheck className="text-white h-12 w-12" />
@@ -116,7 +119,7 @@ export const ExperienceCertificate: React.FC<ExperienceCertificateProps> = ({
 
         <p className="text-sm leading-relaxed text-slate-500">
           Se deja constancia que los trabajos fueron realizados cumpliendo con los estándares de calidad y seguridad requeridos, 
-          contando con la aprobación digital conforme de la entidad mandante bajo el código de verificación 
+          contando con la aprobación digital conforme de la entidad mandante bajo el código de verificación única 
           <strong> {workOrder.clientApprovalCode || 'N/A'}</strong>.
         </p>
       </div>
@@ -128,15 +131,19 @@ export const ExperienceCertificate: React.FC<ExperienceCertificateProps> = ({
             <div className="bg-slate-900 p-2 rounded-lg"><Fingerprint className="text-white h-6 w-6" /></div>
             <div>
               <p className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Documento Validado Digitalmente</p>
-              <p className="text-[8px] font-mono text-slate-400">ID VERIFICACIÓN: {workOrder.id.toUpperCase()}</p>
+              <p className="text-[8px] font-mono text-slate-400">ID VERIFICACIÓN: {workOrder.clientApprovalCode || workOrder.id.toUpperCase()}</p>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400">Emitido en Santiago, a {today}.</p>
+          <p className="text-[10px] text-slate-400">Emitido en plataforma PCGMANTENIMIENTO, a {today}.</p>
         </div>
         
         <div className="text-right">
           <div className="mb-4">
-            {company?.logoUrl && <img src={company.logoUrl} className="h-12 w-auto ml-auto grayscale opacity-30" alt="Logo" />}
+            {company?.logoUrl && (
+              <div className="h-12 w-auto ml-auto grayscale opacity-30">
+                <FirebaseImage url={company.logoUrl} className="h-full w-auto" />
+              </div>
+            )}
           </div>
           <p className="text-xs font-black text-slate-900 uppercase">{company?.name}</p>
           <p className="text-[10px] font-bold text-slate-400 uppercase">Departamento de Operaciones</p>

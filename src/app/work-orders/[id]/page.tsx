@@ -212,9 +212,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   };
 
   const handleDownloadExperienceCert = async () => {
-    if (!certRef.current || !ot) return;
+    if (!certRef.current || !ot || ot.status !== 'aprobada') {
+      toast({ title: "Acceso Denegado", description: "El certificado solo puede emitirse para órdenes aprobadas por el cliente.", variant: "destructive" });
+      return;
+    }
     setIsGeneratingCert(true);
-    toast({ title: "Generando certificado de experiencia...", description: "Acreditando superficie y ejecución." });
+    toast({ title: "Generando certificado de experiencia...", description: "Acreditando superficie y ejecución conforme." });
     try {
       await new Promise(r => setTimeout(r, 1000));
       const canv = await html2canvas(certRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", imageTimeout: 30000 });
@@ -233,21 +236,17 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
     setIsUpdating(true);
     try {
-      // Si el email es nuevo o diferente, actualizar la ficha del cliente
       if (tempClientEmail !== client?.contactEmail) {
         updateDocumentNonBlocking(clientRef, {
           contactEmail: tempClientEmail,
           updatedAt: serverTimestamp()
         });
       }
-
-      // Enviar el correo de solicitud de aprobación
       await handleResendEmail(tempClientEmail);
-      
       setIsRequestCertDialogOpen(false);
       toast({ 
         title: "Solicitud de Validación Enviada", 
-        description: "Se ha notificado al revisor para que autorice el cierre de la orden." 
+        description: "Se ha notificado al revisor para que autorice el cierre de la orden y la emisión del certificado." 
       });
     } catch (e: any) {
       toast({ title: "Error al procesar", description: e.message, variant: "destructive" });
@@ -348,9 +347,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Informe Técnico
           </Button>
           
-          {ot.status === 'aprobada' ? (
+          {ot.status === 'aprobada' && ot.clientApprovalCode ? (
             <Button variant="outline" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700 hover:bg-blue-50">
-              {isGeneratingCert ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Award className="h-4 w-4 mr-2" />} Certificado Experiencia
+              {isGeneratingCert ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Award className="h-4 w-4 mr-2" />} Descargar Certificado
             </Button>
           ) : (
             <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
@@ -363,8 +362,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-black italic">Acreditación de Experiencia</DialogTitle>
                   <DialogDescription>
-                    Para emitir un Certificado de Experiencia legal, la contraparte debe validar digitalmente el servicio primero. 
-                    Se enviará una notificación formal al revisor para que firme la orden.
+                    Para emitir un Certificado de Experiencia válido, la OT debe estar cerrada y aprobada digitalmente por el cliente. 
+                    Se enviará una notificación formal al revisor para capturar su firma.
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
@@ -383,18 +382,18 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       />
                     </div>
                     {!client?.contactEmail && (
-                      <p className="text-[10px] text-amber-600 font-medium italic">* No se encontró correo en la ficha inicial. Por favor ingréselo ahora.</p>
+                      <p className="text-[10px] text-amber-600 font-medium italic">* No se encontró correo registrado. Favor ingréselo para enviar la solicitud.</p>
                     )}
                   </div>
                   <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed space-y-2">
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Procedimiento Seguro</p>
                     <p className="text-[11px] text-slate-600 leading-relaxed">
-                      El cliente recibirá un link de acceso único y deberá ingresar el PIN de seguridad <span className="font-black text-primary">{ot.approvalPin}</span> para emitir su sello conforme.
+                      El cliente recibirá un link de validación único y deberá ingresar el PIN de seguridad <span className="font-black text-primary">{ot.approvalPin}</span> para firmar la orden.
                     </p>
                   </div>
                   <DialogFooter className="pt-2">
                     <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={isUpdating}>
-                      {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />} Enviar Solicitud de Firma
+                      {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Send className="h-4 w-4 mr-2" />} Notificar al Cliente
                     </Button>
                   </DialogFooter>
                 </form>
