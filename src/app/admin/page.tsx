@@ -15,6 +15,7 @@ import { redirect } from "next/navigation";
 import { MOCK_COMPANIES, MOCK_WORK_ORDERS } from "@/lib/mock-data";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export default function SuperadminDashboardPage() {
   const { isSuperAdmin, isLoading } = useUser();
@@ -76,7 +77,7 @@ export default function SuperadminDashboardPage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold">{company.name}</p>
-                      <p className="text-xs text-muted-foreground">Plan: {company.subscriptionPlan.toUpperCase()}</p>
+                      <p className="text-xs text-muted-foreground">Plan: {company.currentPlan?.toUpperCase()}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -116,8 +117,4 @@ export default function SuperadminDashboardPage() {
       </div>
     </div>
   );
-}
-
-function cn(...inputs: any[]) {
-  return inputs.filter(Boolean).join(" ");
 }

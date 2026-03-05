@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -45,8 +44,12 @@ export default function DashboardPage() {
   const { staffCount, clientsCount, maxStaff, maxClients } = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
+  const [today, setToday] = useState<Date>(new Date());
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { 
+    setMounted(true); 
+    setToday(startOfDay(new Date()));
+  }, []);
 
   const companyId = profile?.companyId || "";
 
@@ -60,7 +63,6 @@ export default function DashboardPage() {
   const { data: staff } = useCollection<StaffMember>(staffQuery);
   const { data: company } = useDoc<Company>(companyRef);
 
-  // Filtrar OTs si es técnico: solo las que tiene asignadas
   const realWorkOrders = useMemo(() => {
     if (!workOrders) return [];
     if (isTechnician && profile?.id) {
@@ -69,8 +71,6 @@ export default function DashboardPage() {
     return workOrders;
   }, [workOrders, isTechnician, profile?.id]);
 
-  const today = startOfDay(new Date());
-  
   const onboardingSteps = useMemo(() => {
     if (!company || isTechnician) return [];
     return [
@@ -103,8 +103,8 @@ export default function DashboardPage() {
       const startDate = dateToUse?.toDate ? dateToUse.toDate() : (typeof dateToUse === 'string' ? parseISO(dateToUse) : null);
       return startDate && isAfter(startDate, today) && isBefore(startDate, nextWeek);
     }).sort((a, b) => {
-      const dateA = a.scheduledDate?.toDate ? a.scheduledDate.toDate() : parseISO(a.scheduledDate);
-      const dateB = b.scheduledDate?.toDate ? b.scheduledDate.toDate() : parseISO(b.scheduledDate);
+      const dateA = a.scheduledDate?.toDate ? a.scheduledDate.toDate() : (typeof a.scheduledDate === 'string' ? parseISO(a.scheduledDate) : new Date());
+      const dateB = b.scheduledDate?.toDate ? b.scheduledDate.toDate() : (typeof b.scheduledDate === 'string' ? parseISO(b.scheduledDate) : new Date());
       return dateA.getTime() - dateB.getTime();
     });
   }, [realWorkOrders, today]);
@@ -148,7 +148,6 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      {/* SISTEMA DE ONBOARDING INTUITIVO - SOLO ADMINS */}
       {!isTechnician && !allStepsCompleted && (
         <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden animate-in slide-in-from-top-4 duration-700">
           <div className="grid md:grid-cols-3">
@@ -196,7 +195,6 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* ACCESOS DIRECTOS DE GESTIÓN PERMANENTES PARA ADMINS */}
       {!isTechnician && allStepsCompleted && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link href="/clients">
@@ -247,7 +245,6 @@ export default function DashboardPage() {
         </Alert>
       )}
 
-      {/* METRICAS TÉCNICAS SEGMENTADAS */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[
           { label: isTechnician ? "Mis Tareas" : "Total Órdenes", value: realWorkOrders.length, icon: ClipboardList, color: "bg-blue-600", desc: "Historial acumulado" },
@@ -344,7 +341,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-black truncate">{ot.id}</p>
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">Comienza en {ot.durationDays || 1} días</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-2">Plazo: {ot.durationDays || 1} días</p>
                           <p className="text-[11px] text-slate-500 line-clamp-1 italic">"{ot.description}"</p>
                         </div>
                       </div>
