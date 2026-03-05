@@ -5,23 +5,27 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Company",
       "type": "object",
-      "description": "Represents a single tenant or enterprise within the multi-company SaaS platform, with completely isolated data.",
+      "description": "Tenant documents with plan-based limits.",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "legalName": { "type": "string" },
         "rut": { "type": "string" },
         "address": { "type": "string" },
-        "contactEmail": { "type": "string", "format": "email" },
-        "phone": { "type": "string" },
-        "isActive": { "type": "boolean" },
         "logoUrl": { "type": "string" },
-        "currentPlan": { "type": "string", "enum": ["free", "pro", "enterprise"] },
+        "currentPlan": { "type": "string", "enum": ["simple", "business", "enterprise"] },
         "subscriptionStatus": { "type": "string", "enum": ["active", "past_due", "canceled"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "isActive": { "type": "boolean" },
+        "metrics": {
+          "type": "object",
+          "properties": {
+            "usedStorageMb": { "type": "number" },
+            "monthlyOrdersCount": { "type": "number" },
+            "currentMonth": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "name", "isActive", "createdAt"]
+      "required": ["id", "name", "currentPlan", "isActive", "createdAt"]
     },
     "User": {
       "title": "User",
@@ -34,22 +38,7 @@
         "role": { "type": "string", "enum": ["companyAdmin", "supervisor", "tecnico", "reviewer", "superadmin"] },
         "active": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "companyId", "email", "role", "active"]
-    },
-    "Team": {
-      "title": "Team",
-      "type": "object",
-      "description": "A squad or brigade of staff members for bulk assignment.",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "name": { "type": "string" },
-        "memberIds": { "type": "array", "items": { "type": "string" } },
-        "leaderId": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "companyId", "name", "memberIds"]
+      }
     },
     "WorkOrder": {
       "title": "WorkOrder",
@@ -58,20 +47,23 @@
         "id": { "type": "string" },
         "companyId": { "type": "string" },
         "clientId": { "type": "string" },
-        "assetId": { "type": "string" },
+        "status": { "type": "string" },
         "description": { "type": "string" },
-        "status": { "type": "string", "enum": ["creada", "asignada", "ejecutada", "en revision", "pendiente cliente", "aprobada", "rechazada"] },
-        "assignedToStaffIds": { "type": "array", "items": { "type": "string" } },
-        "assignedTeamId": { "type": "string" },
-        "createdByUserId": { "type": "string" },
-        "reviewerRequired": { "type": "boolean" },
-        "evaluationRequired": { "type": "boolean" },
-        "approvalPin": { "type": "string" },
-        "scheduledDate": { "type": "string", "format": "date-time" },
-        "durationDays": { "type": "number" },
+        "checklist": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "task": { "type": "string" },
+              "completed": { "type": "boolean" },
+              "evidenceUrl": { "type": "string" }
+            }
+          }
+        },
+        "clientApprovalCode": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "companyId", "clientId", "status", "createdAt"]
+      }
     }
   },
   "auth": {
@@ -80,9 +72,8 @@
   "firestore": {
     "structure": [
       { "path": "/users/{userId}", "definition": { "entityName": "User", "description": "Global user profiles." } },
-      { "path": "/companies/{companyId}", "definition": { "entityName": "Company", "description": "Tenant documents." } },
-      { "path": "/companies/{companyId}/teams/{teamId}", "definition": { "entityName": "Team", "description": "Operational squads." } },
-      { "path": "/companies/{companyId}/workOrders/{workOrderId}", "definition": { "entityName": "WorkOrder", "description": "Maintenance orders." } }
+      { "path": "/companies/{companyId}", "definition": { "entityName": "Company", "description": "Main tenant config." } },
+      { "path": "/companies/{companyId}/workOrders/{workOrderId}", "definition": { "entityName": "WorkOrder", "description": "Operational orders." } }
     ]
   }
 }

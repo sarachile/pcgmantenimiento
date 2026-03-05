@@ -9,7 +9,7 @@ export type DTEStatus = 'pendiente' | 'emitido' | 'anulado' | 'error' | 'aceptad
 
 export type BillingDocumentType = 'factura' | 'boleta' | 'guia_despacho' | 'nota_credito';
 
-export type PlanType = 'free' | 'pro' | 'enterprise';
+export type PlanType = 'simple' | 'business' | 'enterprise';
 
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled';
 
@@ -27,6 +27,12 @@ export interface Company {
   createdAt: string | any;
   updatedAt?: string | any;
   requestedPlan?: string;
+  // Métricas de control para límites
+  metrics?: {
+    usedStorageMb: number;
+    monthlyOrdersCount: number;
+    currentMonth: string; // Formato YYYY-MM para resetear contadores
+  };
 }
 
 export interface Client {
