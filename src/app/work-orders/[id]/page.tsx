@@ -394,6 +394,18 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <div className="flex items-center gap-2"><HardHat className="h-4 w-4 text-slate-500" /><p className="text-sm font-bold text-slate-700">{asset?.name || "No especificado"}</p></div>
                 </div>
               </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Lugar del Servicio</p>
+                  <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-slate-400" /><p className="text-sm font-medium text-slate-700">{ot.serviceLocation || "No especificado"}</p></div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Solicitado Por</p>
+                  <div className="flex items-center gap-2"><User className="h-4 w-4 text-slate-400" /><p className="text-sm font-medium text-slate-700">{ot.requestedByName || "No especificado"}</p></div>
+                </div>
+              </div>
+
               <div className="bg-slate-50 p-4 rounded-2xl border text-sm text-slate-700 italic leading-relaxed">"{ot.description}"</div>
             </CardContent>
           </Card>

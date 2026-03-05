@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, Plus, Users, Building2, Search, Zap, ShieldCheck, QrCode, Star, Hash } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, Plus, Users, Building2, Search, Zap, ShieldCheck, QrCode, Star, Hash, MapPin, User } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Client, Asset, StaffMember, Team } from "@/lib/types";
@@ -32,6 +32,8 @@ export default function NewWorkOrderPage() {
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
   const [assetId, setAssetId] = useState("");
+  const [serviceLocation, setServiceLocation] = useState("");
+  const [requestedByName, setRequestedByName] = useState("");
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
   const [assignedTeamId, setAssignedTeamId] = useState<string | null>(null);
   const [assignmentMode, setAssignmentMode] = useState<'team' | 'individual'>('individual');
@@ -63,6 +65,18 @@ export default function NewWorkOrderPage() {
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
   const { data: teams } = useCollection<Team>(teamsQuery);
 
+  // Lógica de Auto-poblado por Cliente
+  useEffect(() => {
+    if (clientId && clients) {
+      const selected = clients.find(c => c.id === clientId);
+      if (selected) {
+        // Solo auto-poblamos si los campos están vacíos para no sobreescribir edición manual
+        if (!serviceLocation) setServiceLocation(selected.address);
+        if (!requestedByName) setRequestedByName(selected.contactName || "");
+      }
+    }
+  }, [clientId, clients, serviceLocation, requestedByName]);
+
   // Lógica de Duplicación: Cargar datos de la OT origen
   useEffect(() => {
     if (duplicateFrom && db && companyId) {
@@ -75,6 +89,8 @@ export default function NewWorkOrderPage() {
             setDescription(data.description || "");
             setClientId(data.clientId || "");
             setAssetId(data.assetId === 'none' ? "" : (data.assetId || ""));
+            setServiceLocation(data.serviceLocation || "");
+            setRequestedByName(data.requestedByName || "");
             setAssignedToStaffIds(data.assignedToStaffIds || []);
             setAssignedTeamId(data.assignedTeamId || null);
             setAssignmentMode(data.assignedTeamId ? 'team' : 'individual');
@@ -83,7 +99,6 @@ export default function NewWorkOrderPage() {
             setServiceQuantity(data.serviceQuantity?.toString() || "");
             setServiceUnit(data.serviceUnit || "Unidades");
             if (data.checklist) {
-              // Clonamos solo las tareas, sin estado de completado ni fotos
               setChecklist(data.checklist.map((i: any) => ({ task: i.task })));
             }
             toast({ title: "Plantilla Cargada", description: "Se han copiado los datos de la orden anterior." });
@@ -135,6 +150,8 @@ export default function NewWorkOrderPage() {
         clientId,
         assetId: assetId === 'none' ? null : (assetId || null),
         description: description.trim(),
+        serviceLocation: serviceLocation.trim(),
+        requestedByName: requestedByName.trim(),
         status: "creada",
         assignedToStaffIds,
         assignedTeamId: assignmentMode === 'team' ? assignedTeamId : null,
@@ -217,6 +234,31 @@ export default function NewWorkOrderPage() {
                     {assets?.map(a => <SelectItem key={a.id} value={a.id} className="font-bold">{a.name} [{a.code}]</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                  <MapPin className="h-3 w-3" /> Lugar del Servicio
+                </Label>
+                <Input 
+                  placeholder="Dirección de la intervención" 
+                  className="h-12 rounded-xl border-2 font-medium"
+                  value={serviceLocation}
+                  onChange={(e) => setServiceLocation(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                  <User className="h-3 w-3" /> Solicitado Por
+                </Label>
+                <Input 
+                  placeholder="Nombre de quien requiere el servicio" 
+                  className="h-12 rounded-xl border-2 font-medium"
+                  value={requestedByName}
+                  onChange={(e) => setRequestedByName(e.target.value)}
+                />
               </div>
             </div>
 

@@ -5,7 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar, User } from "lucide-react";
 import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface WorkOrderReportProps {
@@ -76,7 +76,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
       </div>
 
       {/* Client & Asset Info */}
-      <div className="grid grid-cols-2 gap-10 mb-10">
+      <div className="grid grid-cols-2 gap-10 mb-6">
         <div className="space-y-4">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2">ENTIDAD CLIENTE</h3>
           <div className="space-y-1">
@@ -97,6 +97,24 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
             </div>
             <p className="text-xs font-bold text-slate-500 tracking-wider uppercase">CÓDIGO: {asset?.code || "S/I"}</p>
             <p className="text-xs text-slate-400 italic">Ubicación: {asset?.location || "S/I"}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Lugar y Solicitante del Servicio */}
+      <div className="grid grid-cols-2 gap-10 mb-10 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+        <div className="space-y-1">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">LUGAR DE INTERVENCIÓN</p>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-primary" />
+            <p className="text-sm font-bold text-slate-800">{workOrder.serviceLocation || client?.address || "No especificado"}</p>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">SOLICITADO POR</p>
+          <div className="flex items-center gap-2">
+            <User className="h-4 w-4 text-slate-400" />
+            <p className="text-sm font-bold text-slate-800">{workOrder.requestedByName || "No especificado"}</p>
           </div>
         </div>
       </div>

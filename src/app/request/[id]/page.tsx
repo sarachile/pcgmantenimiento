@@ -25,7 +25,9 @@ import {
   Clock,
   ArrowRight,
   ShieldCheck,
-  Smartphone
+  Smartphone,
+  MapPin,
+  User
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { initializeFirebase } from "@/firebase";
@@ -51,6 +53,8 @@ export default function PublicRequestPage({ params }: { params: Promise<{ id: st
   const [emailInput, setEmailInput] = useState("");
   const [isVerified, setIsVerified] = useState(false);
   const [description, setDescription] = useState("");
+  const [serviceLocation, setServiceLocation] = useState("");
+  const [requestedByName, setRequestedByName] = useState("");
   const [urgency, setUrgency] = useState<'low' | 'medium' | 'high'>('medium');
 
   const { firestore } = useMemo(() => initializeFirebase(), []);
@@ -67,7 +71,10 @@ export default function PublicRequestPage({ params }: { params: Promise<{ id: st
           setCompany({ ...companyDoc.data() as Company, id: companyId });
           const clientDoc = await getDoc(doc(firestore, "companies", companyId, "clients", clientId));
           if (clientDoc.exists()) {
-            setClient({ ...clientDoc.data() as Client, id: clientId });
+            const clientData = { ...clientDoc.data() as Client, id: clientId };
+            setClient(clientData);
+            setServiceLocation(clientData.address || "");
+            setRequestedByName(clientData.contactName || "");
           }
         }
       } catch (e) {
@@ -100,6 +107,8 @@ export default function PublicRequestPage({ params }: { params: Promise<{ id: st
         companyId,
         clientId,
         description: description.trim(),
+        serviceLocation: serviceLocation.trim(),
+        requestedByName: requestedByName.trim(),
         status: "solicitada",
         source: "external",
         requestedByEmail: emailInput,
@@ -188,6 +197,32 @@ export default function PublicRequestPage({ params }: { params: Promise<{ id: st
             </CardHeader>
             <CardContent className="p-10 space-y-8">
               <form onSubmit={handleCreateRequest} className="space-y-8">
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 flex items-center gap-2">
+                      <MapPin className="h-3 w-3" /> Lugar del Servicio
+                    </Label>
+                    <Input 
+                      placeholder="Dirección de la falla" 
+                      className="h-12 rounded-xl border-2 font-medium bg-white"
+                      value={serviceLocation}
+                      onChange={(e) => setServiceLocation(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 flex items-center gap-2">
+                      <User className="h-3 w-3" /> Solicitante (Nombre)
+                    </Label>
+                    <Input 
+                      placeholder="Persona de contacto" 
+                      className="h-12 rounded-xl border-2 font-medium bg-white"
+                      value={requestedByName}
+                      onChange={(e) => setRequestedByName(e.target.value)}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Descripción del Problema / Servicio</Label>
                   <Textarea 

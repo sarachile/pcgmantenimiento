@@ -125,6 +125,8 @@ export interface WorkOrder {
   clientId: string;
   assetId?: string;
   description: string;
+  serviceLocation?: string;
+  requestedByName?: string;
   status: OTStatus;
   assignedToStaffIds?: string[];
   assignedTeamId?: string;
