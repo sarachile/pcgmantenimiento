@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin, Mail, AlertTriangle, User, Hash, Users2, Zap } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin, Mail, AlertTriangle, User, Hash, Users2, Zap, Search } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember, Team } from "@/lib/types";
@@ -35,6 +35,10 @@ export default function NewWorkOrderPage() {
   const [assignedTeamId, setAssignedTeamId] = useState<string | null>(null);
   const [assignmentMode, setAssignmentMode] = useState<'team' | 'individual'>('individual');
   
+  // Filtros para asignación directa
+  const [staffSearch, setStaffSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+
   const [reviewerRequired, setReviewerRequired] = useState(true);
   const [evaluationRequired, setEvaluationRequired] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,8 +49,6 @@ export default function NewWorkOrderPage() {
   const [serviceUnit, setServiceUnit] = useState("Unidades");
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
-  const [externalEmail, setExternalEmail] = useState("");
-  const [externalName, setExternalName] = useState("");
 
   const companyId = profile?.companyId || "";
 
@@ -60,7 +62,23 @@ export default function NewWorkOrderPage() {
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
   const { data: teams } = useCollection<Team>(teamsQuery);
 
-  const selectedClient = useMemo(() => clients?.find(c => c.id === clientId), [clients, clientId]);
+  // Obtener roles únicos para el filtro
+  const uniqueRoles = useMemo(() => {
+    if (!staffMembers) return [];
+    const roles = Array.from(new Set(staffMembers.map(s => s.role)));
+    return roles.sort();
+  }, [staffMembers]);
+
+  // Filtrado dinámico de personal
+  const filteredStaff = useMemo(() => {
+    if (!staffMembers) return [];
+    return staffMembers.filter(s => {
+      const matchesSearch = s.name.toLowerCase().includes(staffSearch.toLowerCase()) || 
+                           (s.identification?.toLowerCase().includes(staffSearch.toLowerCase()));
+      const matchesRole = roleFilter === "all" || s.role === roleFilter;
+      return matchesSearch && matchesRole;
+    });
+  }, [staffMembers, staffSearch, roleFilter]);
 
   const handleSelectTeam = (teamId: string) => {
     const team = teams?.find(t => t.id === teamId);
@@ -118,8 +136,8 @@ export default function NewWorkOrderPage() {
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div>
-          <h2 className="text-3xl font-black tracking-tight">Nueva Orden de Trabajo</h2>
-          <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest italic">Configuración de Operación Industrial</p>
+          <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">Nueva Orden de Trabajo</h2>
+          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Configuración de Operación Industrial</p>
         </div>
       </div>
 
@@ -182,24 +200,66 @@ export default function NewWorkOrderPage() {
                 <TabsTrigger value="team" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary">Carga de Cuadrilla</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="individual" className="space-y-4">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Seleccione técnicos manualmente ({assignedToStaffIds.length})</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2">
-                  {staffMembers?.map(s => (
-                    <label key={s.id} className={cn(
-                      "flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all",
-                      assignedToStaffIds.includes(s.id) ? "border-primary bg-primary/5 shadow-inner" : "border-slate-100 hover:border-slate-200 bg-slate-50/50"
-                    )}>
-                      <Checkbox checked={assignedToStaffIds.includes(s.id)} onCheckedChange={() => {
-                        setAssignedToStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]);
-                        setAssignedTeamId(null);
-                      }} />
-                      <div className="flex-1">
-                        <p className="text-xs font-black text-slate-900">{s.name}</p>
-                        <p className="text-[9px] font-black uppercase text-slate-400">{s.role}</p>
+              <TabsContent value="individual" className="space-y-6">
+                {/* Controles de Filtrado para Personal */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border-2 border-slate-100">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="Buscar por nombre..." 
+                      className="pl-9 h-10 rounded-xl border-none shadow-sm bg-white"
+                      value={staffSearch}
+                      onChange={(e) => setStaffSearch(e.target.value)}
+                    />
+                  </div>
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="h-10 rounded-xl border-none shadow-sm bg-white font-bold text-xs uppercase tracking-tighter">
+                      <SelectValue placeholder="Filtrar por Rol" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los Roles</SelectItem>
+                      {uniqueRoles.map(role => (
+                        <SelectItem key={role} value={role}>{role.toUpperCase()}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Personal Filtrado ({filteredStaff.length})</p>
+                    {assignedToStaffIds.length > 0 && (
+                      <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[9px] font-black">{assignedToStaffIds.length} SELECCIONADOS</Badge>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {filteredStaff.length > 0 ? (
+                      filteredStaff.map(s => (
+                        <label key={s.id} className={cn(
+                          "flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                          assignedToStaffIds.includes(s.id) ? "border-primary bg-primary/5 shadow-inner" : "border-slate-100 hover:border-slate-200 bg-white"
+                        )}>
+                          <Checkbox 
+                            checked={assignedToStaffIds.includes(s.id)} 
+                            onCheckedChange={() => {
+                              setAssignedToStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]);
+                              setAssignedTeamId(null);
+                            }} 
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black text-slate-900 truncate">{s.name}</p>
+                            <p className="text-[9px] font-black uppercase text-slate-400">{s.role}</p>
+                          </div>
+                        </label>
+                      ))
+                    ) : (
+                      <div className="col-span-2 py-10 text-center border-2 border-dashed rounded-2xl bg-white opacity-50">
+                        <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No hay técnicos que coincidan</p>
                       </div>
-                    </label>
-                  ))}
+                    )}
+                  </div>
                 </div>
               </TabsContent>
 
@@ -223,7 +283,7 @@ export default function NewWorkOrderPage() {
                     <div className="flex flex-wrap gap-2">
                       {teams?.find(t => t.id === assignedTeamId)?.memberIds.map(mid => {
                         const m = staffMembers?.find(s => s.id === mid);
-                        return <Badge key={mid} variant="outline" className="bg-white/10 text-white border-none font-bold text-[9px]">{m?.name}</Badge>;
+                        return <Badge key={mid} variant="outline" className="bg-white/10 text-white border-none font-bold text-[9px]">{m?.name || "Técnico"}</Badge>;
                       })}
                     </div>
                   </div>
@@ -235,7 +295,7 @@ export default function NewWorkOrderPage() {
 
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-slate-50">
           <CardHeader className="p-8 pb-4">
-            <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3">
+            <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3 text-slate-900">
               <ShieldCheck className="h-6 w-6 text-emerald-600" /> 3. Protocolos y Cierre
             </CardTitle>
           </CardHeader>
