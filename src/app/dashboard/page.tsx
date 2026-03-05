@@ -334,7 +334,8 @@ export default function DashboardPage() {
             <div className="space-y-4">
               {upcomingOrders.length > 0 ? (
                 upcomingOrders.slice(0, 4).map((ot) => {
-                  const date = ot.scheduledDate?.toDate ? ot.scheduledDate.toDate() : (typeof ot.scheduledDate === 'string' ? parseISO(ot.scheduledDate) : new Date());
+                  const dateToParse = ot.scheduledDate || ot.createdAt;
+                  const date = dateToParse?.toDate ? dateToParse.toDate() : (typeof dateToParse === 'string' ? parseISO(dateToParse) : new Date());
                   return (
                     <Link key={ot.id} href={`/work-orders/${ot.id}`} className="block">
                       <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-blue-500/50 transition-all group">
