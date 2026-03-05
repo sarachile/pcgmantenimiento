@@ -38,7 +38,6 @@ export default function NewWorkOrderPage() {
   const [assignedTeamId, setAssignedTeamId] = useState<string | null>(null);
   const [assignmentMode, setAssignmentMode] = useState<'team' | 'individual'>('individual');
   
-  // Filtros para asignación directa
   const [staffSearch, setStaffSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
@@ -46,11 +45,16 @@ export default function NewWorkOrderPage() {
   const [evaluationRequired, setEvaluationRequired] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [scheduledDate, setScheduledDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const [scheduledDate, setScheduledDate] = useState("");
   const [durationDays, setDurationDays] = useState(1);
   const [serviceQuantity, setServiceQuantity] = useState("");
   const [serviceUnit, setServiceUnit] = useState("Unidades");
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
+
+  // Hydration safety
+  useEffect(() => {
+    setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
+  }, []);
 
   const companyId = profile?.companyId || "";
   const duplicateFrom = searchParams.get('duplicateFrom');
@@ -65,19 +69,16 @@ export default function NewWorkOrderPage() {
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
   const { data: teams } = useCollection<Team>(teamsQuery);
 
-  // Lógica de Auto-poblado por Cliente
   useEffect(() => {
     if (clientId && clients) {
       const selected = clients.find(c => c.id === clientId);
       if (selected) {
-        // Solo auto-poblamos si los campos están vacíos para no sobreescribir edición manual
         if (!serviceLocation) setServiceLocation(selected.address);
         if (!requestedByName) setRequestedByName(selected.contactName || "");
       }
     }
   }, [clientId, clients, serviceLocation, requestedByName]);
 
-  // Lógica de Duplicación: Cargar datos de la OT origen
   useEffect(() => {
     if (duplicateFrom && db && companyId) {
       const fetchSource = async () => {

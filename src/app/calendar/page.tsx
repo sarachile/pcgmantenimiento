@@ -41,12 +41,16 @@ import { WorkOrder } from "@/lib/types";
 export default function CalendarPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  // Hydration protection
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    setCurrentMonth(new Date());
+    setSelectedDate(new Date());
   }, []);
 
   const workOrdersQuery = useMemoFirebase(() => {
@@ -74,8 +78,8 @@ export default function CalendarPage() {
 
   const getOrdersForDay = (day: Date) => {
     return workOrders.filter(ot => {
-      // Prioritize scheduledDate for calendar positioning
       const dateToUse = ot.scheduledDate || ot.createdAt;
+      if (!dateToUse) return false;
       const otDate = dateToUse?.toDate ? dateToUse.toDate() : parseISO(dateToUse);
       return isSameDay(day, otDate);
     });
