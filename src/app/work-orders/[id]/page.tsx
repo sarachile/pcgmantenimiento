@@ -37,7 +37,9 @@ import {
   Calendar as CalendarIcon,
   Clock,
   KeyRound,
-  ShieldAlert
+  ShieldAlert,
+  Award,
+  Ruler
 } from "lucide-react";
 import {
   Dialog,
@@ -58,6 +60,7 @@ import { doc, collection, addDoc, serverTimestamp, query, orderBy, where, arrayU
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, StaffMember } from "@/lib/types";
 import { WorkOrderReport } from "@/components/WorkOrderReport";
+import { ExperienceCertificate } from "@/components/ExperienceCertificate";
 import { FirebaseImage } from "@/components/FirebaseImage";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -73,11 +76,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const db = useFirestore();
   const storage = useStorage();
   const reportRef = useRef<HTMLDivElement>(null);
+  const certRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isUpdating, setIsUpdating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingCert, setIsGeneratingCert] = useState(false);
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [manualComment, setManualComment] = useState("");
   const [isSealDialogOpen, setIsSealDialogOpen] = useState(false);
@@ -196,14 +201,28 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { toast({ title: "Error al generar PDF", variant: "destructive" }); } finally { setIsGeneratingPdf(false); }
   };
 
+  const handleDownloadExperienceCert = async () => {
+    if (!certRef.current || !ot) return;
+    setIsGeneratingCert(true);
+    toast({ title: "Generando certificado de experiencia...", description: "Acreditando superficie y ejecución." });
+    try {
+      await new Promise(r => setTimeout(r, 1000));
+      const canv = await html2canvas(certRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", imageTimeout: 30000 });
+      const imgData = canv.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pw = pdf.internal.pageSize.getWidth();
+      pdf.addImage(imgData, "PNG", 0, 0, pw, (canv.height * pw) / canv.width);
+      pdf.save(`CERTIFICADO_EXPERIENCIA_PCG_${ot.id}.pdf`);
+      toast({ title: "Certificado generado correctamente" });
+    } catch (e) { toast({ title: "Error al generar certificado", variant: "destructive" }); } finally { setIsGeneratingCert(false); }
+  };
+
   const handleTechnicianDigitalSeal = async () => {
     if (!otRef || !profile || !ot) return;
     setIsUpdating(true);
     try {
       const techCode = `TECH-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
-      
       const nextStatus = ot.reviewerRequired ? 'pendiente cliente' : 'aprobada';
-      
       const data: any = { 
         technicianApprovalName: profile.name,
         technicianApprovalDate: serverTimestamp(),
@@ -213,13 +232,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         updatedAt: serverTimestamp(),
         rejectedReason: null 
       };
-      
       updateDocumentNonBlocking(otRef, data);
-      
       if (nextStatus === 'pendiente cliente' && client?.contactEmail) {
         handleResendEmail();
       }
-
       setIsSealDialogOpen(false);
       toast({ title: "Sello Emitido y Estado Actualizado" });
     } catch (e: any) { 
@@ -268,8 +284,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
+      {/* Hidden Templates for PDF generation */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport forwardedRef={reportRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} logbook={logbook || []} assignedStaff={assignedStaff || []} partUsages={partUsages || []} qrCodeUrl={qrUrl} />
+        <ExperienceCertificate forwardedRef={certRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} />
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-white p-6 rounded-[2rem] border shadow-sm sticky top-4 z-20 backdrop-blur-md bg-white/90">
@@ -286,10 +304,17 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             )}>{ot.status.replace(' ', '_').toUpperCase()}</Badge>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11">
-            {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Exportar PDF
+            {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} Informe Técnico
           </Button>
+          
+          {ot.status === 'aprobada' && (
+            <Button variant="outline" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700 hover:bg-blue-50">
+              {isGeneratingCert ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Award className="h-4 w-4 mr-2" />} Certificado Experiencia
+            </Button>
+          )}
+
           {(isSupervisor || isCompanyAdmin) && ot.status === 'rechazada' && (
             <Button onClick={handleRequestClientApproval} disabled={isUpdating} className="rounded-xl h-11 px-6 font-bold shadow-lg bg-rose-600 text-white">
               {isUpdating ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : "Reiniciar Ciclo Cliente"}
@@ -353,7 +378,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
                 <div className="space-y-1">
                   <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Fecha de Inicio</p>
                   <div className="flex items-center gap-2">
@@ -367,10 +392,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <Clock className="h-4 w-4 text-slate-500" />
                     <p className="text-sm font-bold text-slate-700">
                       {ot.durationDays || 1} días 
-                      <span className="text-[10px] font-medium text-slate-400 ml-1">
-                        (Hasta: {formatDateLabel(ot.estimatedEndDate)})
-                      </span>
                     </p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Superficie (m²)</p>
+                  <div className="flex items-center gap-2">
+                    <Ruler className="h-4 w-4 text-blue-500" />
+                    <p className="text-sm font-black text-blue-700">{ot.surfaceAreaM2 || '0'} m²</p>
                   </div>
                 </div>
               </div>
@@ -488,6 +517,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <p className="text-[10px] font-black text-emerald-900 uppercase">Sello Técnico Digital</p>
                     <p className="text-[9px] font-bold text-slate-400">{ot.technicianApprovalName}</p>
                     <p className="text-[8px] font-mono text-slate-300 mt-1">{ot.technicianApprovalCode}</p>
+                    <p className="text-[8px] font-bold text-slate-400">{formatDateLabel(ot.technicianApprovalDate)}</p>
                   </div>
                 ) : (
                   <Dialog open={isSealDialogOpen} onOpenChange={setIsSealDialogOpen}>
@@ -522,6 +552,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     <Fingerprint className="h-8 w-8 text-indigo-600" />
                     <p className="text-[10px] font-black text-indigo-900 uppercase">Aprobación Digital Conforme</p>
                     <p className="text-[9px] font-bold text-slate-400">{ot.clientApprovalCode}</p>
+                    <p className="text-[8px] font-bold text-slate-400">{formatDateLabel(ot.clientApprovalDate)}</p>
                   </div>
                 ) : (
                   <div className="h-40 border-4 border-dashed rounded-[2rem] flex flex-col items-center justify-center bg-slate-100/50 italic text-[10px] text-slate-400 uppercase font-black tracking-widest">

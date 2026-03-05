@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -36,6 +36,7 @@ export default function NewWorkOrderPage() {
   
   const [scheduledDate, setScheduledDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [durationDays, setDurationDays] = useState(1);
+  const [surfaceAreaM2, setSurfaceAreaM2] = useState("");
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
 
@@ -75,7 +76,6 @@ export default function NewWorkOrderPage() {
 
     setIsSubmitting(true);
     try {
-      // Generar PIN de 6 dígitos aleatorio
       const pin = Math.floor(100000 + Math.random() * 900000).toString();
 
       const colRef = collection(db, "companies", companyId, "workOrders");
@@ -93,6 +93,7 @@ export default function NewWorkOrderPage() {
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
         estimatedEndDate: estimatedEndDateStr ? new Date(estimatedEndDateStr).toISOString() : null,
+        surfaceAreaM2: surfaceAreaM2 ? Number(surfaceAreaM2) : null,
         checklist: checklist.map((item, idx) => ({
           id: `task-${idx}-${Date.now()}`,
           task: item.task,
@@ -171,24 +172,31 @@ export default function NewWorkOrderPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 shadow-inner">
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><CalendarIcon className="h-3 w-3" /> Fecha Inicio</Label>
-                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className="h-11 border-2 bg-white font-bold" />
-              </div>
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><Clock className="h-3 w-3" /> Plazo (Días)</Label>
-                <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} className="h-11 border-2 bg-white font-bold" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Término Previsto</Label>
-                <div className="h-11 px-4 flex items-center bg-white border-2 rounded-xl font-black text-primary">
-                  {estimatedEndDateStr ? format(parseISO(estimatedEndDateStr), 'dd/MM/yyyy') : '...'}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-4 p-6 bg-slate-50 rounded-2xl border-2 border-slate-100 shadow-inner">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><CalendarIcon className="h-3 w-3" /> Inicio</Label>
+                  <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} className="h-11 border-2 bg-white font-bold" />
                 </div>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><Clock className="h-3 w-3" /> Plazo (Días)</Label>
+                  <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} className="h-11 border-2 bg-white font-bold" />
+                </div>
+              </div>
+              
+              <div className="p-6 bg-blue-50/50 rounded-2xl border-2 border-blue-100 shadow-inner flex flex-col justify-center">
+                <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest mb-2"><Ruler className="h-3 w-3" /> Superficie (m²)</Label>
+                <Input 
+                  type="number" 
+                  placeholder="Ej: 450" 
+                  value={surfaceAreaM2} 
+                  onChange={(e) => setSurfaceAreaM2(e.target.value)} 
+                  className="h-11 border-2 bg-white font-bold text-blue-700"
+                />
+                <p className="text-[9px] text-blue-400 mt-2 italic font-medium">* Requerido para acreditar experiencia en compras públicas.</p>
               </div>
             </div>
 
-            {/* SECCIÓN DE REQUISITOS - ANIMADA Y DESTACADA */}
             <div className="space-y-4 p-1 rounded-3xl bg-gradient-to-r from-amber-500/20 via-blue-500/20 to-emerald-500/20 animate-pulse">
               <div className="bg-white rounded-[1.4rem] p-6 border-2 border-slate-100 shadow-sm space-y-6">
                 <div className="flex items-center gap-2 mb-2">

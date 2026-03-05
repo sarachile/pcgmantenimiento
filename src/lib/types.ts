@@ -161,6 +161,7 @@ export interface WorkOrder {
   scheduledDate?: string | any;
   durationDays?: number;
   estimatedEndDate?: string | any;
+  surfaceAreaM2?: number; // Nueva propiedad para certificados de experiencia
   checklist?: ChecklistItem[];
   clientSignatureUrl?: string;
   technicianSignatureUrl?: string;
