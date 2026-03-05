@@ -5,7 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar } from "lucide-react";
 import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface WorkOrderReportProps {
@@ -113,7 +113,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fecha Operativa</p>
           <div className="flex items-center gap-2">
-            <formatDateLabel className="h-4 w-4 text-slate-400" />
+            <Calendar className="h-4 w-4 text-slate-400" />
             <p className="text-sm font-bold">{formatDateLabel(workOrder.scheduledDate)}</p>
           </div>
         </div>
