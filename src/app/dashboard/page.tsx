@@ -18,7 +18,8 @@ import {
   UserPlus,
   Building2,
   Zap,
-  ChevronRight
+  ChevronRight,
+  Camera
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -100,6 +101,24 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* ACCESO RÁPIDO MÓVIL (VISIBLE SOLO EN CELULARES) */}
+      <div className="block md:hidden mb-6">
+        <Link href="/field/capture" className="group">
+          <Card className="bg-primary text-white border-none shadow-2xl overflow-hidden relative active:scale-95 transition-transform">
+            <div className="absolute top-0 right-0 p-6 opacity-20">
+              <Camera className="h-24 w-24" />
+            </div>
+            <CardContent className="p-8">
+              <div className="bg-white/20 w-14 h-14 rounded-2xl flex items-center justify-center mb-4">
+                <Camera className="h-8 w-8" />
+              </div>
+              <h3 className="text-3xl font-black italic tracking-tighter uppercase leading-none mb-2">Captura en Terreno</h3>
+              <p className="text-primary-foreground/80 font-bold text-sm uppercase tracking-widest">Sube fotos a una OT ahora</p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
       {/* ACCESOS DIRECTOS PRO */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Link href="/clients" className="group">
@@ -179,7 +198,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-3xl font-black text-slate-900">{realWorkOrders.filter(ot => ot.status === 'en revision').length}</div>
           </CardContent>
-        </Card>
+          </Card>
         <Card className="border-none shadow-sm bg-white">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Finalizadas</CardTitle>
