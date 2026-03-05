@@ -99,6 +99,10 @@ service cloud.firestore {
         allow create: if true; 
       }
 
+      match /billingDocuments/{docId} {
+        allow read, write: if isCompanyMember(companyId);
+      }
+
       match /workOrders/{workOrderId} {
         allow get: if true; 
         allow list: if isCompanyMember(companyId);
