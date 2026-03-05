@@ -43,7 +43,7 @@ import {
   ShieldCheck,
   Zap,
   ArrowRight
-} from "lucide-center";
+} from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
