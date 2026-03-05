@@ -110,6 +110,7 @@ export interface ChecklistItem {
   task: string;
   completed: boolean;
   completedAt?: string | any;
+  evidenceUrl?: string;
 }
 
 export interface WorkOrder {

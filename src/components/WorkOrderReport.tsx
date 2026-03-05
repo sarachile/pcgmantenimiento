@@ -153,24 +153,31 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
-      {/* Checklist */}
+      {/* Checklist with Embedded Evidence */}
       <div className="mb-10">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2 mb-4">PROTOCOLOS DE VERIFICACIÓN</h3>
-        <div className="grid grid-cols-1 gap-2">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2 mb-4">PROTOCOLOS DE VERIFICACIÓN Y EVIDENCIA CONTEXTUAL</h3>
+        <div className="grid grid-cols-1 gap-4">
           {workOrder.checklist && workOrder.checklist.length > 0 ? (
             workOrder.checklist.map((item) => (
-              <div key={item.id} className="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-slate-100">
-                <div className="flex items-center gap-4">
-                  <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${item.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
-                    {item.completed && <CheckCircle2 className="h-3.5 w-3.5" />}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className={`text-sm ${item.completed ? 'font-black text-slate-900' : 'text-slate-400'}`}>{item.task}</span>
-                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">
-                      {item.completed ? `REALIZADO: ${item.completedAt ? format(new Date(item.completedAt), "dd/MM/yyyy HH:mm") : ''}` : 'PENDIENTE'}
-                    </span>
+              <div key={item.id} className="flex gap-6 p-4 bg-white rounded-xl border-2 border-slate-100">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-4">
+                    <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${item.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
+                      {item.completed && <Check className="h-3.5 w-3.5" />}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className={`text-sm ${item.completed ? 'font-black text-slate-900' : 'text-slate-400'}`}>{item.task}</span>
+                      <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">
+                        {item.completed ? `REALIZADO: ${item.completedAt ? format(new Date(item.completedAt), "dd/MM/yyyy HH:mm") : ''}` : 'PENDIENTE'}
+                      </span>
+                    </div>
                   </div>
                 </div>
+                {item.evidenceUrl && (
+                  <div className="w-32 aspect-video rounded-lg overflow-hidden border bg-slate-50">
+                    <FirebaseImage url={item.evidenceUrl} className="w-full h-full object-cover" />
+                  </div>
+                )}
               </div>
             ))
           ) : (
@@ -179,11 +186,11 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
-      {/* Evidence Photos */}
+      {/* General Evidence Photos */}
       {workOrder.evidenceUrls && workOrder.evidenceUrls.length > 0 && (
         <div className="mb-10">
           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b-2 border-slate-100 pb-2 mb-4 flex items-center gap-2">
-            <Camera className="h-4 w-4" /> EVIDENCIA FOTOGRÁFICA DE CAMPO
+            <Camera className="h-4 w-4" /> OTRAS EVIDENCIAS FOTOGRÁFICAS
           </h3>
           <div className="grid grid-cols-2 gap-4">
             {workOrder.evidenceUrls.map((url, i) => (
@@ -198,7 +205,6 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
       {/* Signatures Area */}
       <div className="mt-auto pt-16 border-t-2 border-slate-100">
         <div className="grid grid-cols-2 gap-20">
-          {/* Tech Digital Seal */}
           <div className="text-center space-y-4">
             <div className="h-32 border-2 border-slate-900 flex flex-col items-center justify-center bg-slate-50/30 p-4 rounded-xl relative">
               {workOrder.technicianApprovalCode ? (
@@ -219,7 +225,6 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
             </div>
           </div>
 
-          {/* Digital Approval Record (Client) */}
           <div className="text-center space-y-4">
             <div className="h-32 border-2 border-slate-900 flex flex-col items-center justify-center bg-slate-50/50 p-4 relative rounded-xl">
               {workOrder.clientApprovalCode ? (

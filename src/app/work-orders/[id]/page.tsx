@@ -74,7 +74,7 @@ import { WorkOrderReport } from "@/components/WorkOrderReport";
 import { ExperienceCertificate } from "@/components/ExperienceCertificate";
 import { FirebaseImage } from "@/components/FirebaseImage";
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import jsPDF from "jsPDF";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
@@ -407,13 +407,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         actorId: profile.id
       });
 
-      // Descontar del inventario maestro
       const partRef = doc(db, "companies", companyId, "spareParts", selectedPart.id);
       updateDocumentNonBlocking(partRef, {
         stockActual: increment(-qty)
       });
 
-      // Bitácora
       const logCol = collection(db, "companies", companyId, "workOrders", ot.id, "digitalLogbookEntries");
       await addDoc(logCol, {
         workOrderId: ot.id,
@@ -442,7 +440,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       const usageRef = doc(db, "companies", companyId, "workOrders", ot.id, "partUsages", usage.id);
       deleteDocumentNonBlocking(usageRef);
 
-      // Devolver al stock
       const partRef = doc(db, "companies", companyId, "spareParts", usage.partId);
       updateDocumentNonBlocking(partRef, {
         stockActual: increment(usage.quantity)
@@ -566,7 +563,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {/* Tarjeta de Resumen IA (Genkit) */}
           <Card className="rounded-[2rem] border-none shadow-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white overflow-hidden relative group">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
               <Zap className="h-32 w-32" />
@@ -602,82 +598,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               )}
             </CardContent>
           </Card>
-
-          {ot.status === 'pendiente cliente' && (
-            <Card className="border-4 border-indigo-500 border-dashed bg-indigo-50/20 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-8 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-indigo-600 text-white px-4 py-1 rounded-bl-xl font-black text-[10px] uppercase tracking-widest">Seguridad Activa</div>
-              <div className="bg-white p-4 rounded-3xl shadow-inner border-2 border-indigo-100 shrink-0">
-                <img src={qrUrl} className="w-32 h-32" alt="QR de Aprobación" />
-              </div>
-              <div className="text-center md:text-left space-y-4 flex-1">
-                <div className="space-y-1">
-                  <h3 className="text-xl font-black text-indigo-900 uppercase tracking-tighter">Validación Externa Protegida</h3>
-                  <div className="flex items-center gap-2 mb-2">
-                    <KeyRound className="h-4 w-4 text-indigo-600" />
-                    <span className="text-sm font-black text-indigo-700">PIN DE ACCESO: <span className="bg-white px-3 py-1 rounded-lg border border-indigo-200 font-mono tracking-[0.3em] text-lg">{ot.approvalPin}</span></span>
-                  </div>
-                  <p className="text-sm text-slate-600 leading-relaxed font-medium">Solo el cliente con este PIN podrá autorizar. El código ha sido incluido en la notificación oficial.</p>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {!client?.contactEmail || !client?.contactName ? (
-                    <Dialog open={isRequestCertDialogOpen} onOpenChange={setIsRequestCertDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button className="rounded-xl bg-indigo-600 text-white font-bold h-12 px-6 gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200" onClick={() => {
-                          setTempClientEmail(client?.contactEmail || "");
-                          setTempClientName(client?.contactName || "");
-                        }}>
-                          <Mail className="h-4 w-4" /> Configurar Contacto y Enviar PIN
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
-                        <DialogHeader>
-                          <DialogTitle className="text-2xl font-black italic">Configurar Envío</DialogTitle>
-                          <DialogDescription>Para proceder con la validación externa, se requiere el nombre y correo del revisor responsable.</DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleRequestCertification} className="space-y-4 py-4">
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label className="font-bold text-xs uppercase text-slate-500">Nombre del Revisor</Label>
-                              <Input 
-                                required
-                                placeholder="Nombre completo"
-                                className="h-12 rounded-xl"
-                                value={tempClientName}
-                                onChange={(e) => setTempClientName(e.target.value)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="font-bold text-xs uppercase text-slate-500">Email del Revisor</Label>
-                              <Input 
-                                type="email" 
-                                required
-                                placeholder="ejemplo@cliente.cl"
-                                className="h-12 rounded-xl"
-                                value={tempClientEmail}
-                                onChange={(e) => setTempClientEmail(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button type="submit" className="w-full h-12 rounded-xl" disabled={isUpdating || !tempClientName || !tempClientEmail}>Activar Validación</Button>
-                          </DialogFooter>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
-                  ) : (
-                    <Button variant="outline" className="rounded-xl bg-white gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50" onClick={() => handleResendEmail()} disabled={isResendingEmail}>
-                      {isResendingEmail ? <Loader2 className="animate-spin h-4 w-4" /> : <Mail className="h-4 w-4" />} 
-                      Re-enviar PIN y Enlace
-                    </Button>
-                  )}
-                  <Button variant="ghost" className="rounded-xl h-10 text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-indigo-600" onClick={() => {
-                    navigator.clipboard.writeText(currentUrl);
-                    toast({ title: "Link Copiado" });
-                  }}><ExternalLink className="h-3.5 w-3.5 mr-2" /> Link Directo</Button>
-                </div>
-              </div>
-            </Card>
-          )}
 
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
             <CardHeader className="bg-primary/5 p-6 border-b">
@@ -746,186 +666,58 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             </CardContent>
           </Card>
 
-          {/* Gestión de Insumos y Repuestos */}
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between p-6 border-b bg-amber-50/30">
-              <div>
-                <CardTitle className="text-lg font-black flex items-center gap-2 uppercase tracking-tight text-amber-900">
-                  <Package className="h-5 w-5 text-amber-600" /> Insumos y Repuestos
-                </CardTitle>
-                <CardDescription className="text-amber-700/60 font-medium">Materiales utilizados en la intervención.</CardDescription>
-              </div>
-              {canEditMaterials && (
-                <Dialog open={isPartsDialogOpen} onOpenChange={setIsPartsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50 bg-white">
-                      <Plus className="h-4 w-4 mr-2" /> Añadir Material
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-black italic text-amber-900">Consumo de Materiales</DialogTitle>
-                      <DialogDescription>Seleccione un ítem del inventario para registrar su uso.</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-6 py-4">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input 
-                          placeholder="Buscar por nombre o SKU..." 
-                          className="pl-10 h-12 rounded-xl"
-                          value={partsSearch}
-                          onChange={(e) => setPartsSearch(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2">
-                        {filteredInventory.length === 0 ? (
-                          <p className="text-center py-10 text-sm text-muted-foreground italic">No se encontraron ítems.</p>
+            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolo de Inspección</CardTitle></CardHeader>
+            <CardContent className="p-6 space-y-3 bg-white">
+              {ot.checklist && ot.checklist.length > 0 ? ot.checklist.map((item) => (
+                <div key={item.id} className="flex flex-col p-4 bg-white border-2 rounded-2xl hover:border-primary/20 transition-colors shadow-sm group gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <Checkbox 
+                        checked={item.completed} 
+                        onCheckedChange={() => {
+                          const isNowCompleted = !item.completed;
+                          const newChecklist = ot.checklist?.map(i => 
+                            i.id === item.id 
+                              ? { ...i, completed: isNowCompleted, completedAt: isNowCompleted ? new Date().toISOString() : null } 
+                              : i
+                          );
+                          updateDocumentNonBlocking(otRef!, { checklist: newChecklist });
+                        }} 
+                        disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'} 
+                        className="h-6 w-6 rounded-lg"
+                      />
+                      <div className="flex flex-col">
+                        <span className={cn("text-sm font-bold", item.completed ? "text-slate-400" : "text-slate-700")}>{item.task}</span>
+                        {item.completed ? (
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">
+                            REALIZADO {item.completedAt && `- ${format(new Date(item.completedAt), "HH:mm 'hrs'", { locale: es })}`}
+                          </span>
                         ) : (
-                          filteredInventory.map(part => (
-                            <button
-                              key={part.id}
-                              onClick={() => setSelectedPart(part)}
-                              className={cn(
-                                "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between",
-                                selectedPart?.id === part.id ? "border-amber-500 bg-amber-50" : "border-slate-100 hover:border-slate-200"
-                              )}
-                            >
-                              <div>
-                                <p className="font-bold text-slate-900">{part.name}</p>
-                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{part.sku}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-[10px] font-black text-slate-400 uppercase">Stock Actual</p>
-                                <p className={cn("text-xs font-bold", part.stockActual <= part.stockMinimo ? "text-rose-600" : "text-emerald-600")}>
-                                  {part.stockActual} Unid.
-                                </p>
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-
-                      {selectedPart && (
-                        <div className="bg-amber-50 p-6 rounded-3xl border-2 border-amber-100 space-y-4 animate-in zoom-in-95">
-                          <div className="flex justify-between items-center">
-                            <Label className="font-black text-xs uppercase text-amber-900">Cantidad a utilizar</Label>
-                            <div className="flex items-center gap-3">
-                              <Button 
-                                variant="outline" 
-                                size="icon" 
-                                className="h-10 w-10 rounded-xl bg-white"
-                                onClick={() => setPartQuantity(q => Math.max(1, Number(q) - 1).toString())}
-                              >
-                                -
-                              </Button>
-                              <Input 
-                                type="number" 
-                                className="w-20 text-center h-10 rounded-xl font-bold bg-white"
-                                value={partQuantity}
-                                onChange={(e) => setPartQuantity(e.target.value)}
-                              />
-                              <Button 
-                                variant="outline" 
-                                size="icon" 
-                                className="h-10 w-10 rounded-xl bg-white"
-                                onClick={() => setPartQuantity(q => (Number(q) + 1).toString())}
-                              >
-                                +
-                              </Button>
-                            </div>
-                          </div>
-                          <p className="text-[10px] text-amber-700 italic text-center font-medium">
-                            * Al confirmar, se descontarán {partQuantity} unidades del inventario maestro.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <DialogFooter>
-                      <Button 
-                        className="w-full h-14 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest shadow-xl shadow-amber-900/20"
-                        disabled={!selectedPart || isUpdating}
-                        onClick={handleAddPartUsage}
-                      >
-                        {isUpdating ? <Loader2 className="animate-spin h-5 w-5" /> : "Confirmar Consumo"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="divide-y divide-slate-100">
-                {partUsages && partUsages.length > 0 ? (
-                  partUsages.map((usage) => (
-                    <div key={usage.id} className="p-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-amber-100 p-2 rounded-xl text-amber-600">
-                          <Package className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">{usage.partName}</p>
-                          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                            Cantidad: <span className="text-amber-600">{usage.quantity}</span>
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-[10px] font-black text-slate-400 uppercase">Costo Unit.</p>
-                          <p className="text-xs font-bold text-slate-700">${usage.unitPrice.toLocaleString()}</p>
-                        </div>
-                        {canEditMaterials && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-9 w-9 rounded-xl text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleRemovePartUsage(usage)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">PENDIENTE</span>
                         )}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="py-12 text-center space-y-2 opacity-40">
-                    <Package className="h-10 w-10 mx-auto text-slate-300" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sin materiales registrados</p>
                   </div>
-                )}
-              </div>
-              {partUsages && partUsages.length > 0 && (
-                <div className="p-4 bg-amber-50/20 border-t flex justify-between items-center">
-                  <span className="text-[10px] font-black uppercase text-amber-700 tracking-widest">Costo Total Materiales</span>
-                  <span className="text-sm font-black text-amber-900">
-                    ${partUsages.reduce((acc, u) => acc + (u.quantity * u.unitPrice), 0).toLocaleString()}
-                  </span>
+                  {item.evidenceUrl && (
+                    <div className="pl-10">
+                      <div className="w-32 aspect-video rounded-xl overflow-hidden border-2 border-slate-100 bg-slate-50 group-hover:border-primary/20 transition-all">
+                        <FirebaseImage url={item.evidenceUrl} className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )) : (
+                <p className="text-center py-6 text-xs font-bold text-slate-400 uppercase tracking-widest italic">No se definieron ítems de control.</p>
               )}
             </CardContent>
           </Card>
 
-          {ot.status === 'aprobada' && ot.clientApprovalCode && (
-            <Card className="bg-emerald-50 border-2 border-emerald-200 p-6 rounded-3xl flex items-center gap-6 shadow-sm">
-              <div className="bg-emerald-600 p-3 rounded-2xl text-white shadow-lg"><Fingerprint className="h-8 w-8" /></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.2em] mb-1">Certificado de Aprobación Digital</p>
-                <p className="text-sm font-bold text-emerald-900 mb-1">Aprobado por: {ot.clientApprovalName}</p>
-                <p className="text-[10px] font-mono font-black text-emerald-600 bg-white/50 px-2 py-1 rounded inline-block">CÓD: {ot.clientApprovalCode}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black text-emerald-700 uppercase">Fecha/Hora</p>
-                <p className="text-xs font-bold text-emerald-900">{formatDateLabel(ot.clientApprovalDate)}</p>
-              </div>
-            </Card>
-          )}
-
           <Card className="rounded-3xl border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between p-6">
               <div>
-                <CardTitle className="text-lg font-black flex items-center gap-2 uppercase tracking-tight"><Camera className="h-5 w-5 text-primary" /> Evidencias de Campo</CardTitle>
-                <CardDescription>Registro visual de la intervención técnica.</CardDescription>
+                <CardTitle className="text-lg font-black flex items-center gap-2 uppercase tracking-tight"><Camera className="h-5 w-5 text-primary" /> Evidencias Generales</CardTitle>
+                <CardDescription>Otras fotografías de la intervención.</CardDescription>
               </div>
               {canEditPhotos && (
                 <>
@@ -955,104 +747,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               ) : (
                 <div className="text-center py-12 border-2 border-dashed rounded-3xl bg-slate-50 opacity-40">
                   <ImageIcon className="h-10 w-10 mx-auto mb-2 text-slate-400" />
-                  <p className="text-xs font-bold uppercase tracking-widest">Sin evidencias capturadas</p>
+                  <p className="text-xs font-bold uppercase tracking-widest">Sin evidencias generales</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolo de Inspección</CardTitle></CardHeader>
-            <CardContent className="p-6 space-y-3 bg-white">
-              {ot.checklist && ot.checklist.length > 0 ? ot.checklist.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-4 bg-white border-2 rounded-2xl hover:border-primary/20 transition-colors shadow-sm group">
-                  <div className="flex items-center gap-4">
-                    <Checkbox 
-                      checked={item.completed} 
-                      onCheckedChange={() => {
-                        const isNowCompleted = !item.completed;
-                        const newChecklist = ot.checklist?.map(i => 
-                          i.id === item.id 
-                            ? { ...i, completed: isNowCompleted, completedAt: isNowCompleted ? new Date().toISOString() : null } 
-                            : i
-                        );
-                        updateDocumentNonBlocking(otRef!, { checklist: newChecklist });
-                      }} 
-                      disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'} 
-                      className="h-6 w-6 rounded-lg"
-                    />
-                    <div className="flex flex-col">
-                      <span className={cn("text-sm font-bold", item.completed ? "text-slate-400" : "text-slate-700")}>{item.task}</span>
-                      {item.completed ? (
-                        <span className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">
-                          REALIZADO {item.completedAt && `- ${format(new Date(item.completedAt), "HH:mm 'hrs'", { locale: es })}`}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">PENDIENTE</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )) : (
-                <p className="text-center py-6 text-xs font-bold text-slate-400 uppercase tracking-widest italic">No se definieron ítems de control.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="p-6"><CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2"><SignatureIcon className="h-5 w-5" /> Firmas y Validaciones Digitales</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-2 gap-8 p-6 bg-slate-50/50 border-t">
-              <div className="text-center space-y-3">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Validación Técnico Responsable</p>
-                {ot.technicianApprovalCode ? (
-                  <div className="h-40 border-2 rounded-[2rem] bg-white flex flex-col items-center justify-center p-6 shadow-inner gap-2">
-                    <Check className="h-8 w-8 text-emerald-600" />
-                    <p className="text-[10px] font-black text-emerald-900 uppercase">Sello Técnico Digital</p>
-                    <p className="text-[9px] font-bold text-slate-400">{ot.technicianApprovalName}</p>
-                    <p className="text-[8px] font-mono text-slate-300 mt-1">{ot.technicianApprovalCode}</p>
-                    <p className="text-[8px] font-bold text-slate-400">{formatDateLabel(ot.technicianApprovalDate)}</p>
-                  </div>
-                ) : (
-                  <Dialog open={isSealDialogOpen} onOpenChange={setIsSealDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="w-full h-40 border-4 border-dashed rounded-[2rem] flex-col gap-3 group" disabled={ot.status === 'aprobada' || ot.status === 'pendiente cliente'}>
-                        <Fingerprint className="h-8 w-8 text-slate-300 group-hover:text-primary group-hover:scale-110 transition-all" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase">Emitir Sello Técnico Digital</span>
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[400px] rounded-[2.5rem]">
-                      <DialogHeader>
-                        <DialogTitle className="text-2xl font-black italic">Validación Técnica Digital</DialogTitle>
-                        <DialogDescription>
-                          ¿Confirma la ejecución conforme de los trabajos? 
-                          Al confirmar, la OT cambiará de estado automáticamente y se notificará al cliente.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="pt-4 flex flex-col gap-3">
-                        <Button className="h-12 rounded-xl font-bold" onClick={handleTechnicianDigitalSeal} disabled={isUpdating}>
-                          {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : "Confirmar y Notificar al Cliente"}
-                        </Button>
-                        <Button variant="ghost" onClick={() => setIsSealDialogOpen(false)} disabled={isUpdating}>Cancelar</Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
-              </div>
-              <div className="text-center space-y-3">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">Sello de Recepción Cliente</p>
-                {ot.clientApprovalCode ? (
-                  <div className="h-40 border-2 rounded-[2rem] bg-white flex flex-col items-center justify-center p-6 shadow-inner gap-2">
-                    <Fingerprint className="h-8 w-8 text-indigo-600" />
-                    <p className="text-[10px] font-black text-indigo-900 uppercase">Aprobación Digital Conforme</p>
-                    <p className="text-[9px] font-bold text-slate-400">{ot.clientApprovalCode}</p>
-                    <p className="text-[8px] font-bold text-slate-400">{formatDateLabel(ot.clientApprovalDate)}</p>
-                  </div>
-                ) : (
-                  <div className="h-40 border-4 border-dashed rounded-[2rem] flex flex-col items-center justify-center bg-slate-100/50 italic text-[10px] text-slate-400 uppercase font-black tracking-widest">
-                    Pendiente Validación
-                  </div>
-                )}
-              </div>
             </CardContent>
           </Card>
         </div>

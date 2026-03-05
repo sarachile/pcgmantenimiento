@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useMemo } from "react";
@@ -10,12 +11,14 @@ import {
   useStorage, 
   updateDocumentNonBlocking 
 } from "@/firebase";
-import { collection, query, where, doc, arrayUnion, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, doc, arrayUnion, serverTimestamp, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Camera, 
   Search, 
@@ -24,11 +27,14 @@ import {
   CheckCircle2, 
   ClipboardList,
   Building2,
-  ChevronRight
+  ChevronRight,
+  ListChecks,
+  MessageSquare,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { WorkOrder, Client } from "@/lib/types";
+import { WorkOrder, Client, ChecklistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export default function FieldCapturePage() {
@@ -41,20 +47,22 @@ export default function FieldCapturePage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedOT, setSelectedOT] = useState<WorkOrder | null>(null);
+  const [selectedChecklistItemId, setSelectedChecklistItemId] = useState<string | null>(null);
+  const [logComment, setLogComment] = useState("");
   const [isUploading, setIsUploading] = useState(false);
 
-  // Consultar OTs activas (que no estén aprobadas)
+  // Consultar OTs activas
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return query(
       collection(db, "companies", profile.companyId, "workOrders"),
-      where("status", "!=", "aprobada")
+      where("status", "not-in", ["aprobada"])
     );
   }, [db, profile?.companyId]);
 
   const { data: workOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
-  // Consultar clientes para mostrar nombres
+  // Consultar clientes
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "clients");
@@ -74,7 +82,7 @@ export default function FieldCapturePage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedOT || !profile?.companyId || !storage) return;
+    if (!file || !selectedOT || !profile?.companyId || !storage || !db) return;
 
     setIsUploading(true);
     try {
@@ -84,23 +92,55 @@ export default function FieldCapturePage() {
       await uploadBytes(sRef, file);
       const url = await getDownloadURL(sRef);
 
-      const otRef = doc(db!, "companies", profile.companyId, "workOrders", selectedOT.id);
-      updateDocumentNonBlocking(otRef, {
-        evidenceUrls: arrayUnion(url),
-        updatedAt: serverTimestamp()
+      const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
+      
+      // 1. Si hay un item del protocolo seleccionado, actualizarlo
+      if (selectedChecklistItemId) {
+        const updatedChecklist = selectedOT.checklist?.map(item => 
+          item.id === selectedChecklistItemId 
+            ? { ...item, completed: true, completedAt: new Date().toISOString(), evidenceUrl: url } 
+            : item
+        );
+        updateDocumentNonBlocking(otRef, {
+          checklist: updatedChecklist,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // Si no, añadir a evidencias generales
+        updateDocumentNonBlocking(otRef, {
+          evidenceUrls: arrayUnion(url),
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      // 2. Registrar en la bitácora digital
+      const logDetails = selectedChecklistItemId 
+        ? `Protocolo ejecutado: ${selectedOT.checklist?.find(i => i.id === selectedChecklistItemId)?.task}. ${logComment}`
+        : `Evidencia fotográfica cargada. ${logComment}`;
+
+      await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
+        workOrderId: selectedOT.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'action_taken',
+        eventDetails: logDetails,
+        actor: profile.id
       });
 
       toast({
-        title: "¡Evidencia Guardada!",
-        description: `Se añadió la foto a la OT ${selectedOT.id}.`,
+        title: "¡Registro Completado!",
+        description: `Evidencia y bitácora guardadas para ${selectedOT.id}.`,
       });
       
-      // Limpiar selección después de subir
+      // Resetear estado
       setSelectedOT(null);
+      setSelectedChecklistItemId(null);
+      setLogComment("");
       if (fileInputRef.current) fileInputRef.current.value = "";
+      
     } catch (error: any) {
       toast({
-        title: "Error al subir",
+        title: "Error al registrar",
         description: error.message,
         variant: "destructive"
       });
@@ -118,14 +158,13 @@ export default function FieldCapturePage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Header Fijo */}
+    <div className="min-h-screen bg-slate-50 flex flex-col pb-32">
       <div className="bg-slate-900 text-white p-6 sticky top-0 z-30 shadow-xl">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="text-white">
             <Link href="/dashboard"><ArrowLeft className="h-6 w-6" /></Link>
           </Button>
-          <h1 className="text-xl font-black uppercase tracking-tighter italic">Captura Rápida</h1>
+          <h1 className="text-xl font-black uppercase tracking-tighter italic">Captura de Terreno</h1>
         </div>
       </div>
 
@@ -143,10 +182,10 @@ export default function FieldCapturePage() {
             </div>
 
             <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Órdenes Activas en Terreno</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Órdenes Activas</p>
               {filtered.length === 0 ? (
                 <div className="p-10 text-center text-slate-400 italic bg-white rounded-3xl border-2 border-dashed">
-                  No hay órdenes disponibles para captura.
+                  No hay órdenes disponibles.
                 </div>
               ) : (
                 filtered.map(ot => {
@@ -165,9 +204,7 @@ export default function FieldCapturePage() {
                         <p className="text-slate-900 font-bold text-sm truncate">{client?.name || 'Cliente...'}</p>
                         <p className="text-slate-400 text-xs truncate italic">"{ot.description}"</p>
                       </div>
-                      <div className="bg-slate-50 p-2 rounded-xl group-active:bg-primary group-active:text-white transition-colors">
-                        <ChevronRight className="h-5 w-5" />
-                      </div>
+                      <ChevronRight className="h-5 w-5 text-slate-300" />
                     </button>
                   );
                 })
@@ -175,7 +212,7 @@ export default function FieldCapturePage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-6 animate-in zoom-in-95 duration-300">
+          <div className="space-y-6 animate-in zoom-in-95 duration-300 max-w-xl mx-auto">
             <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
               <CardHeader className="bg-slate-900 text-white p-8">
                 <div className="flex justify-between items-start">
@@ -185,18 +222,50 @@ export default function FieldCapturePage() {
                       {clients?.find(c => c.id === selectedOT.clientId)?.name}
                     </CardDescription>
                   </div>
-                  <Button variant="ghost" className="text-white/50 hover:text-white" onClick={() => setSelectedOT(null)}>Cambiar OT</Button>
+                  <Button variant="ghost" className="text-white/50 hover:text-white" onClick={() => setSelectedOT(null)}>Cambiar</Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-10 text-center space-y-8">
-                <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-2">
-                  <ClipboardList className="h-8 w-8 mx-auto text-slate-300" />
-                  <p className="text-sm font-medium text-slate-600 leading-relaxed italic">
-                    "{selectedOT.description}"
-                  </p>
+              <CardContent className="p-8 space-y-8">
+                {/* Selector de Protocolo (Opcional) */}
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                    <ListChecks className="h-4 w-4 text-primary" /> Vincular a Protocolo (Opcional)
+                  </Label>
+                  <div className="space-y-2">
+                    {selectedOT.checklist && selectedOT.checklist.length > 0 ? (
+                      selectedOT.checklist.filter(i => !i.completed).map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => setSelectedChecklistItemId(selectedChecklistItemId === item.id ? null : item.id)}
+                          className={cn(
+                            "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between",
+                            selectedChecklistItemId === item.id ? "border-primary bg-primary/5" : "border-slate-100 bg-slate-50/50"
+                          )}
+                        >
+                          <span className="text-xs font-bold text-slate-700">{item.task}</span>
+                          {selectedChecklistItemId === item.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-400 italic text-center py-4">Sin puntos de inspección definidos.</p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="space-y-4">
+                {/* Comentario de Bitácora */}
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-blue-500" /> Nota de Bitácora
+                  </Label>
+                  <Textarea 
+                    placeholder="¿Qué encontraste? ¿Qué acción realizaste?..." 
+                    className="rounded-2xl min-h-[100px] border-2 bg-slate-50/50 text-sm font-medium"
+                    value={logComment}
+                    onChange={(e) => setLogComment(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-4 pt-4">
                   <input 
                     type="file" 
                     accept="image/*" 
@@ -207,37 +276,32 @@ export default function FieldCapturePage() {
                   />
                   
                   <Button 
-                    className="w-full h-40 rounded-[2.5rem] bg-primary text-white shadow-xl shadow-primary/30 flex flex-col gap-4 active:scale-95 transition-transform"
+                    className="w-full h-32 rounded-[2rem] bg-primary text-white shadow-xl shadow-primary/20 flex flex-col gap-3 active:scale-95 transition-transform"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                   >
                     {isUploading ? (
-                      <Loader2 className="h-12 w-12 animate-spin" />
+                      <Loader2 className="h-10 w-10 animate-spin" />
                     ) : (
                       <>
-                        <Camera className="h-16 w-16" />
-                        <span className="text-2xl font-black uppercase tracking-tighter italic">Tomar Fotografía</span>
+                        <Camera className="h-10 w-10" />
+                        <span className="text-xl font-black uppercase tracking-tighter italic">Tomar Evidencia</span>
                       </>
                     )}
                   </Button>
                   
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">
-                    {isUploading ? "Subiendo archivo al servidor..." : "La foto se asociará automáticamente a esta OT"}
+                  <p className="text-[9px] font-black text-center text-slate-400 uppercase tracking-widest leading-relaxed">
+                    {isUploading ? "Procesando archivos..." : "Al capturar, se cerrará el protocolo seleccionado y se actualizará la bitácora."}
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Button variant="ghost" className="w-full h-12 rounded-2xl text-slate-400 font-bold uppercase tracking-widest" onClick={() => setSelectedOT(null)} disabled={isUploading}>
-              Cancelar y volver al listado
+            <Button variant="ghost" className="w-full text-slate-400 font-bold uppercase tracking-widest" onClick={() => setSelectedOT(null)} disabled={isUploading}>
+              Volver al listado
             </Button>
           </div>
         )}
-      </div>
-
-      {/* Footer Branding */}
-      <div className="p-8 text-center opacity-20 mt-auto">
-        <p className="text-[8px] font-black uppercase tracking-[0.5em]">PCGMANTENIMIENTO ERP FIELD CAPTURE</p>
       </div>
     </div>
   );
