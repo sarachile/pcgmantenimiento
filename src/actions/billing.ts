@@ -19,10 +19,15 @@ interface EmissionResponse {
 }
 
 /**
+ * Limpia el RUT de puntos para cumplir con el estándar de SimpleAPI.
+ */
+function formatRutForAPI(rut: string): string {
+  if (!rut) return "";
+  return rut.replace(/\./g, '').trim();
+}
+
+/**
  * Procesa la emisión de un DTE hacia SimpleAPI.
- * @param docData Datos del documento (items, totales, etc.)
- * @param emisorData Datos de la empresa que emite (SaaS Tenant)
- * @param isSandbox Define si se envía al ambiente de certificación del SII
  */
 export async function processElectronicEmission(docData: any, emisorData: any, isSandbox: boolean = true): Promise<EmissionResponse> {
   console.log(`Iniciando emisión ${isSandbox ? 'TEST' : 'PROD'} para:`, docData.clientName);
@@ -45,6 +50,10 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
   const tipoDTE = dteTypeMap[docData.type] || 33;
 
   try {
+    // Limpiar RUTs (SimpleAPI falla si llevan puntos)
+    const rutEmisor = formatRutForAPI(emisorData.rut);
+    const rutReceptor = formatRutForAPI(docData.clientRut);
+
     /**
      * ESTRUCTURA DE PAYLOAD PARA SIMPLEAPI:
      * Se construye el objeto siguiendo el esquema requerido por SimpleAPI para Chile.
@@ -52,7 +61,7 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
     const payload = {
       token: SIMPLE_API_KEY,
       reemplazar: true, 
-      rutEmisor: emisorData.rut,
+      rutEmisor: rutEmisor,
       ambiente: isSandbox ? 0 : 1, // 0 = Certificación (Test), 1 = Producción
       dte: {
         Encabezado: {
@@ -62,32 +71,32 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
             IndServicio: 3 
           },
           Emisor: {
-            RUTEmisor: emisorData.rut,
-            RznSoc: emisorData.name,
-            Giro: "Servicios de Mantenimiento",
-            DirOrigen: emisorData.address,
-            CmnaOrigen: "Santiago", 
+            RUTEmisor: rutEmisor,
+            RznSoc: emisorData.name || "Empresa sin nombre",
+            Giro: emisorData.giro || "Servicios de Mantenimiento",
+            DirOrigen: emisorData.address || "Dirección no especificada",
+            CmnaOrigen: emisorData.comuna || "Santiago", 
           },
           Receptor: {
-            RUTRecep: docData.clientRut,
-            RznSocRecep: docData.clientName,
-            GiroRecep: "Giro Cliente", 
-            DirRecep: docData.clientAddress || "S/I",
-            CmnaRecep: "S/I"
+            RUTRecep: rutReceptor,
+            RznSocRecep: docData.clientName || "Cliente Genérico",
+            GiroRecep: docData.clientGiro || "Giro Cliente", 
+            DirRecep: docData.clientAddress && docData.clientAddress !== "S/I" ? docData.clientAddress : "Dirección Cliente",
+            CmnaRecep: docData.clientComuna || "Santiago"
           },
           Totales: {
-            MntNeto: docData.netAmount,
+            MntNeto: Math.round(docData.netAmount),
             TasaIVA: 19,
-            IVA: docData.taxAmount,
-            MntTotal: docData.totalAmount
+            IVA: Math.round(docData.taxAmount),
+            MntTotal: Math.round(docData.totalAmount)
           }
         },
         Detalle: docData.items.map((it: any, index: number) => ({
           NroLinDet: index + 1,
-          NmbItem: it.description,
-          QtyItem: it.quantity,
-          PrcItem: it.unitPrice,
-          MntItem: it.total
+          NmbItem: it.description || "Servicio",
+          QtyItem: it.quantity || 1,
+          PrcItem: Math.round(it.unitPrice),
+          MntItem: Math.round(it.total)
         }))
       }
     };
@@ -100,7 +109,18 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
       body: JSON.stringify(payload)
     });
 
-    const result = await response.json();
+    // Intentar leer la respuesta como texto primero para evitar errores de parseo JSON si la API falla
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error("SimpleAPI no devolvió un JSON válido:", responseText);
+      return {
+        success: false,
+        error: `Respuesta inesperada del servidor (HTTP ${response.status}). Revise su configuración de SimpleAPI.`
+      };
+    }
 
     if (response.ok && result.status === "OK") {
       return {
@@ -114,7 +134,7 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
       console.error("SimpleAPI Error Response:", result);
       return {
         success: false,
-        error: result.message || "El SII rechazó el documento o hubo un error de firma.",
+        error: result.message || "El SII rechazó el documento o el token es inválido.",
         status: 'error'
       };
     }
@@ -123,7 +143,7 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
     console.error("Error crítico en comunicación con SimpleAPI:", error);
     return {
       success: false,
-      error: "Error de conexión con el servidor de facturación electrónica."
+      error: `Error de red: ${error.message || "No se pudo contactar al servidor de facturación."}`
     };
   }
 }
