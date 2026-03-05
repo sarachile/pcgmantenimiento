@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -33,13 +34,17 @@ import {
   Edit,
   Trash2,
   Building2,
-  Lock
+  Lock,
+  Globe,
+  Copy,
+  Send
 } from "lucide-react";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Client, Company } from "@/lib/types";
+import { sendSystemEmail } from "@/actions/email";
 
 export default function ClientsPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -48,6 +53,7 @@ export default function ClientsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [isSendingLink, setIsSendingLink] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -110,7 +116,8 @@ export default function ClientsPage() {
       rut: formData.rut || "RUT por definir",
       address: formData.address || "Dirección por definir",
       companyId: profile.companyId,
-      createdAt: serverTimestamp()
+      evaluationEnabled: true,
+      createdAt: new Date().toISOString()
     };
 
     if (editingClient) {
@@ -151,12 +158,63 @@ export default function ClientsPage() {
     toast({ title: "Cliente eliminado", description: "El registro ha sido removido." });
   };
 
+  const getPortalUrl = (client: Client) => {
+    if (typeof window === "undefined" || !profile?.companyId) return "";
+    return `${window.location.origin}/request/${client.id}?c=${profile.companyId}`;
+  };
+
+  const handleCopyLink = (client: Client) => {
+    const url = getPortalUrl(client);
+    navigator.clipboard.writeText(url);
+    toast({ title: "Link Copiado", description: "Enlace de requerimiento listo para enviar." });
+  };
+
+  const handleSendPortalEmail = async (client: Client) => {
+    if (!client.contactEmail) {
+      toast({ title: "Sin Email", description: "El cliente no tiene un correo de contacto registrado.", variant: "destructive" });
+      return;
+    }
+
+    setIsSendingLink(client.id);
+    const url = getPortalUrl(client);
+
+    try {
+      const result = await sendSystemEmail({
+        to: client.contactEmail,
+        subject: `PORTAL DE REQUERIMIENTOS TÉCNICOS - ${company?.name || 'PCGMANTENIMIENTO'}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 40px; border: 1px solid #e2e8f0; border-radius: 20px; background-color: #ffffff;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #1e3a8a; font-size: 24px; margin: 0; text-transform: uppercase;">${company?.name || 'PCGMANTENIMIENTO'}</h1>
+              <p style="color: #64748b; font-size: 14px; margin-top: 5px;">Portal de Gestión de Servicios</p>
+            </div>
+            <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Acceso a Autogestión de Órdenes</h2>
+            <p style="font-size: 15px; line-height: 1.6; color: #334155;">Estimados <strong>${client.name}</strong>,</p>
+            <p style="font-size: 15px; line-height: 1.6; color: #334155;">Para agilizar la atención de sus requerimientos técnicos, hemos habilitado su portal exclusivo de autogestión. A través de este enlace, podrá solicitar servicios, reportar fallas y adjuntar descripciones sin necesidad de login adicional.</p>
+            <div style="text-align: center; margin: 40px 0;">
+              <a href="${url}" style="background-color: #1e3a8a; color: #ffffff; padding: 18px 36px; text-decoration: none; border-radius: 12px; font-weight: 900; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.3);">
+                SOLICITAR SERVICIO TÉCNICO
+              </a>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8; font-style: italic; text-align: center;">Este link es exclusivo para su organización. No lo comparta con terceros.</p>
+          </div>
+        `
+      });
+
+      if (result.success) {
+        toast({ title: "Portal Enviado", description: `Enlace enviado a ${client.contactEmail}` });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (e: any) {
+      toast({ title: "Fallo en envío", description: e.message, variant: "destructive" });
+    } finally {
+      setIsSendingLink(null);
+    }
+  };
+
   if (isAuthLoading) {
-    return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -170,7 +228,7 @@ export default function ClientsPage() {
           </Button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Cartera de Clientes</h2>
-            <p className="text-muted-foreground">Administre sus clientes y puntos de servicio.</p>
+            <p className="text-muted-foreground">Administre sus clientes y portales de autogestión.</p>
           </div>
         </div>
         
@@ -236,7 +294,7 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="border-t pt-4">
-                  <p className="text-sm font-bold text-muted-foreground mb-4">Contacto Responsable</p>
+                  <p className="text-sm font-bold text-muted-foreground mb-4">Contacto Responsable (Portal)</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="contactName">Nombre</Label>
@@ -303,14 +361,14 @@ export default function ClientsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Razón Social / RUT</TableHead>
-                  <TableHead>Contacto</TableHead>
+                  <TableHead>Contacto / Autogestión</TableHead>
                   <TableHead>Ubicación</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((client) => (
-                  <TableRow key={client.id}>
+                  <TableRow key={client.id} className="group">
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="bg-primary/5 p-2 rounded-lg">
@@ -323,13 +381,25 @@ export default function ClientsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col text-xs gap-1">
-                        <span className="font-medium">{client.contactName || "S/I"}</span>
-                        {client.contactEmail && (
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> {client.contactEmail}
-                          </span>
-                        )}
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col text-xs">
+                          <span className="font-medium">{client.contactName || "S/I"}</span>
+                          <span className="text-muted-foreground flex items-center gap-1"><Mail className="h-3 w-3" /> {client.contactEmail || 'Sin email'}</span>
+                        </div>
+                        <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="outline" size="sm" className="h-7 text-[10px] font-black uppercase tracking-tighter" onClick={() => handleCopyLink(client)}>
+                            <Copy className="h-3 w-3 mr-1" /> Link Portal
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 text-[10px] font-black uppercase tracking-tighter border-primary/20 text-primary hover:bg-primary/5"
+                            disabled={isSendingLink === client.id}
+                            onClick={() => handleSendPortalEmail(client)}
+                          >
+                            {isSendingLink === client.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Send className="h-3 w-3 mr-1" /> Enviar por Mail</>}
+                          </Button>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>

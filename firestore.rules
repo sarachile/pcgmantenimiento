@@ -89,24 +89,22 @@ service cloud.firestore {
       }
 
       match /evaluations/{evalId} {
-        // Solo supervisores y admins ven feedback
         allow read: if isAtLeastSupervisor(companyId);
         allow create: if true; 
       }
 
       match /billingDocuments/{docId} {
-        // Solo supervisores y admins ven facturación
         allow read, write: if isAtLeastSupervisor(companyId);
       }
 
       match /workOrders/{workOrderId} {
+        // Permitir creación externa solo para estado 'solicitada'
+        allow create: if isCompanyMember(companyId) || (request.resource.data.status == 'solicitada' && request.resource.data.source == 'external');
         allow get: if true; 
         allow list: if isCompanyMember(companyId);
-        allow create: if isCompanyMember(companyId);
         allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
         allow delete: if isAtLeastSupervisor(companyId);
 
-        // Subcolecciones críticas
         match /digitalLogbookEntries/{entryId} {
           allow read, write: if isCompanyMember(companyId);
         }

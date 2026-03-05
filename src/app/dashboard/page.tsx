@@ -23,7 +23,8 @@ import {
   Trophy,
   ArrowUpRight,
   Lightbulb,
-  Check
+  Check,
+  Globe
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -86,6 +87,10 @@ export default function DashboardPage() {
     });
   }, [realWorkOrders, today]);
 
+  const pendingRequests = useMemo(() => {
+    return (workOrders || []).filter(ot => ot.status === 'solicitada');
+  }, [workOrders]);
+
   const upcomingOrders = useMemo(() => {
     const nextWeek = addDays(today, 7);
     return realWorkOrders.filter(ot => {
@@ -120,6 +125,23 @@ export default function DashboardPage() {
           </Button>
         )}
       </div>
+
+      {pendingRequests.length > 0 && !isTechnician && (
+        <Alert className="border-none bg-indigo-600 text-white rounded-[2rem] p-6 shadow-xl shadow-indigo-900/20 animate-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-2xl"><Globe className="h-6 w-6" /></div>
+              <div>
+                <AlertTitle className="text-lg font-black uppercase tracking-tighter italic">Nuevos Pedidos Externos</AlertTitle>
+                <AlertDescription className="font-bold opacity-90">Tienes {pendingRequests.length} servicios solicitados por clientes esperando triage.</AlertDescription>
+              </div>
+            </div>
+            <Button variant="outline" className="bg-white/10 border-white/20 hover:bg-white/20 text-white rounded-xl font-black uppercase text-[10px] tracking-widest h-10" asChild>
+              <Link href="/work-orders">Ver Solicitudes <ArrowUpRight className="ml-2 h-3 w-3" /></Link>
+            </Button>
+          </div>
+        </Alert>
+      )}
 
       {/* SISTEMA DE ONBOARDING INTUITIVO - SOLO ADMINS */}
       {!isTechnician && !allStepsCompleted && (
@@ -190,9 +212,9 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[
           { label: isTechnician ? "Mis Tareas" : "Total Órdenes", value: realWorkOrders.length, icon: ClipboardList, color: "bg-blue-600", desc: "Historial acumulado" },
-          { label: "En Ejecución", value: realWorkOrders.filter(ot => ot.status !== 'aprobada' && ot.status !== 'creada').length, icon: Activity, color: "bg-indigo-600", desc: "Tareas de campo" },
+          { label: "En Ejecución", value: realWorkOrders.filter(ot => ot.status !== 'aprobada' && ot.status !== 'creada' && ot.status !== 'solicitada').length, icon: Activity, color: "bg-indigo-600", desc: "Tareas de campo" },
           { label: "Finalizadas", value: realWorkOrders.filter(ot => ot.status === 'aprobada').length, icon: Trophy, color: "bg-emerald-600", desc: "Con sello digital" },
-          { label: "Vencidas", value: overdueOrders.length, icon: AlertTriangle, color: "bg-rose-600", desc: "Fuera de plazo" }
+          { label: "Solicitudes", value: pendingRequests.length, icon: Globe, color: "bg-purple-600", desc: "Pedidos externos" }
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm rounded-3xl overflow-hidden group hover:shadow-xl transition-all duration-500">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -221,8 +243,8 @@ export default function DashboardPage() {
             <div className="bg-primary/10 p-3 rounded-2xl"><Activity className="h-5 w-5 text-primary" /></div>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
-            {realWorkOrders.filter(ot => ot.status !== 'aprobada').length > 0 ? (
-              realWorkOrders.filter(ot => ot.status !== 'aprobada').slice(0, 5).map((ot) => {
+            {realWorkOrders.filter(ot => ot.status !== 'aprobada' && ot.status !== 'solicitada').length > 0 ? (
+              realWorkOrders.filter(ot => ot.status !== 'aprobada' && ot.status !== 'solicitada').slice(0, 5).map((ot) => {
                 const completed = ot.checklist?.filter(i => i.completed).length || 0;
                 const total = ot.checklist?.length || 1;
                 const progress = Math.round((completed / total) * 100);
