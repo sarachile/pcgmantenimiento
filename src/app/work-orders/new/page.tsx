@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin, Mail, AlertTriangle, User } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, ListChecks, Plus, Trash2, Calendar as CalendarIcon, Clock, Users, QrCode, Star, ShieldCheck, Ruler, Building2, MapPin, Mail, AlertTriangle, User, Hash } from "lucide-react";
 import Link from "next/link";
 import { addDays, format, parseISO } from "date-fns";
 import { Client, Asset, StaffMember } from "@/lib/types";
@@ -36,7 +36,8 @@ export default function NewWorkOrderPage() {
   
   const [scheduledDate, setScheduledDate] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [durationDays, setDurationDays] = useState(1);
-  const [surfaceAreaM2, setSurfaceAreaM2] = useState("");
+  const [serviceQuantity, setServiceQuantity] = useState("");
+  const [serviceUnit, setServiceUnit] = useState("Unidades");
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
   const [newTask, setNewTask] = useState("");
   const [externalEmail, setExternalEmail] = useState("");
@@ -89,7 +90,6 @@ export default function NewWorkOrderPage() {
 
     setIsSubmitting(true);
     try {
-      // Si se ingresaron nuevos datos, actualizar el cliente
       if (selectedClient && (externalEmail.trim() || externalName.trim())) {
         const clientRef = doc(db, "companies", companyId, "clients", selectedClient.id);
         const updateData: any = {
@@ -118,7 +118,8 @@ export default function NewWorkOrderPage() {
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
         estimatedEndDate: estimatedEndDateStr ? new Date(estimatedEndDateStr).toISOString() : null,
-        surfaceAreaM2: surfaceAreaM2 ? Number(surfaceAreaM2) : null,
+        serviceQuantity: serviceQuantity ? Number(serviceQuantity) : null,
+        serviceUnit: serviceUnit || null,
         checklist: checklist.map((item, idx) => ({
           id: `task-${idx}-${Date.now()}`,
           task: item.task,
@@ -227,15 +228,31 @@ export default function NewWorkOrderPage() {
               </div>
               
               <div className="p-6 bg-blue-50/50 rounded-2xl border-2 border-blue-100 shadow-inner flex flex-col justify-center">
-                <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest mb-2"><Ruler className="h-3 w-3" /> Superficie (m²)</Label>
-                <Input 
-                  type="number" 
-                  placeholder="Ej: 450" 
-                  value={surfaceAreaM2} 
-                  onChange={(e) => setSurfaceAreaM2(e.target.value)} 
-                  className="h-11 border-2 bg-white font-bold text-blue-700"
-                />
-                <p className="text-[9px] text-blue-400 mt-2 italic font-medium">* Requerido para acreditar experiencia en compras públicas.</p>
+                <Label className="flex items-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest mb-2"><Hash className="h-3 w-3" /> Magnitud del Servicio</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    type="number" 
+                    placeholder="Cant." 
+                    value={serviceQuantity} 
+                    onChange={(e) => setServiceQuantity(e.target.value)} 
+                    className="h-11 border-2 bg-white font-bold text-blue-700 flex-[1]"
+                  />
+                  <Select value={serviceUnit} onValueChange={setServiceUnit}>
+                    <SelectTrigger className="h-11 border-2 bg-white font-bold text-blue-700 flex-[2]">
+                      <SelectValue placeholder="Unidad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Unidades">Unidades</SelectItem>
+                      <SelectItem value="m²">Metros Cuadrados (m²)</SelectItem>
+                      <SelectItem value="ML">Metros Lineales (ML)</SelectItem>
+                      <SelectItem value="Kg">Kilogramos (Kg)</SelectItem>
+                      <SelectItem value="Global">Global</SelectItem>
+                      <SelectItem value="Km">Kilómetros (Km)</SelectItem>
+                      <SelectItem value="Horas">Horas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-[9px] text-blue-400 mt-2 italic font-medium">* Requerido para acreditar volumen de experiencia en licitaciones.</p>
               </div>
             </div>
 

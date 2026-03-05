@@ -5,7 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, Award, Calendar, Ruler, CheckCircle2, Fingerprint } from "lucide-react";
+import { ShieldCheck, Award, Calendar, Hash, CheckCircle2, Fingerprint } from "lucide-react";
 import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface ExperienceCertificateProps {
@@ -100,13 +100,13 @@ export const ExperienceCertificate: React.FC<ExperienceCertificateProps> = ({
 
           <div className="grid grid-cols-3 gap-6">
             <div className="bg-slate-900 text-white p-6 rounded-2xl text-center space-y-2">
-              <Ruler className="h-5 w-5 mx-auto opacity-50" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Superficie</p>
-              <p className="text-2xl font-black">{workOrder.surfaceAreaM2 || '0'} m²</p>
+              <Hash className="h-5 w-5 mx-auto opacity-50" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Magnitud</p>
+              <p className="text-2xl font-black">{workOrder.serviceQuantity || '0'} {workOrder.serviceUnit || ''}</p>
             </div>
             <div className="bg-white border-2 border-slate-100 p-6 rounded-2xl text-center space-y-2">
               <Calendar className="h-5 w-5 mx-auto text-slate-400" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fecha Inicio</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fecha Operativa</p>
               <p className="text-sm font-black text-slate-900">{formatDateLabel(workOrder.scheduledDate)}</p>
             </div>
             <div className="bg-white border-2 border-slate-100 p-6 rounded-2xl text-center space-y-2">

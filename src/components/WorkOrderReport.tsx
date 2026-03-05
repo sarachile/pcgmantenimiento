@@ -5,7 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash } from "lucide-react";
 import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface WorkOrderReportProps {
@@ -97,6 +97,31 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
             </div>
             <p className="text-xs font-bold text-slate-500 tracking-wider uppercase">CÓDIGO: {asset?.code || "S/I"}</p>
             <p className="text-xs text-slate-400 italic">Ubicación: {asset?.location || "S/I"}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Magnitud del Servicio */}
+      <div className="mb-10 grid grid-cols-3 gap-6">
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Magnitud de Servicio</p>
+          <div className="flex items-center gap-2">
+            <Hash className="h-4 w-4 text-primary" />
+            <p className="text-sm font-black">{workOrder.serviceQuantity || '0'} {workOrder.serviceUnit || ''}</p>
+          </div>
+        </div>
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Fecha Operativa</p>
+          <div className="flex items-center gap-2">
+            <formatDateLabel className="h-4 w-4 text-slate-400" />
+            <p className="text-sm font-bold">{formatDateLabel(workOrder.scheduledDate)}</p>
+          </div>
+        </div>
+        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Duración Técnica</p>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <p className="text-sm font-bold">{workOrder.durationDays || 1} días hábiles</p>
           </div>
         </div>
       </div>

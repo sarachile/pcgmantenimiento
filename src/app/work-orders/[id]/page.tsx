@@ -41,7 +41,8 @@ import {
   Award,
   Ruler,
   MapPin,
-  User
+  User,
+  Hash
 } from "lucide-react";
 import {
   Dialog,
@@ -167,6 +168,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold; width: 140px;">ORDEN DE TRABAJO:</td><td style="padding: 6px 0; font-weight: 900; color: #1e3a8a;">${ot.id}</td></tr>
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">EQUIPO / ACTIVO:</td><td style="padding: 6px 0; font-weight: bold;">${asset?.name || 'S/I'} [${asset?.code || '-'}]</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">MAGNITUD:</td><td style="padding: 6px 0; font-weight: bold;">${ot.serviceQuantity || '0'} ${ot.serviceUnit || ''}</td></tr>
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">CÓDIGO DE ACCESO:</td><td style="padding: 6px 0;"><span style="background: #1e3a8a; color: #ffffff; padding: 4px 12px; border-radius: 6px; font-family: monospace; font-weight: 900; font-size: 18px; letter-spacing: 2px;">${ot.approvalPin || '------'}</span></td></tr>
               </table>
             </div>
@@ -220,7 +222,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       return;
     }
     setIsGeneratingCert(true);
-    toast({ title: "Generando certificado de experiencia...", description: "Acreditando superficie y ejecución conforme." });
+    toast({ title: "Generando certificado de experiencia...", description: "Acreditando magnitud y ejecución conforme." });
     try {
       await new Promise(r => setTimeout(r, 1000));
       const canv = await html2canvas(certRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff", imageTimeout: 30000 });
@@ -239,7 +241,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
     setIsUpdating(true);
     try {
-      // Actualizar datos del cliente si cambiaron o no existían
       const updateData: any = {
         updatedAt: serverTimestamp()
       };
@@ -280,7 +281,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       };
       updateDocumentNonBlocking(otRef, data);
       
-      // Si pasa a pendiente cliente y tenemos los datos, enviar el correo
       const contactEmail = tempClientEmail || client?.contactEmail;
       if (nextStatus === 'pendiente cliente' && contactEmail) {
         handleResendEmail(contactEmail);
@@ -334,7 +334,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
-      {/* Hidden Templates for PDF generation */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport forwardedRef={reportRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} logbook={logbook || []} assignedStaff={assignedStaff || []} partUsages={partUsages || []} qrCodeUrl={qrUrl} />
         <ExperienceCertificate forwardedRef={certRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} />
@@ -565,10 +564,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Superficie (m²)</p>
+                  <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Magnitud del Servicio</p>
                   <div className="flex items-center gap-2">
-                    <Ruler className="h-4 w-4 text-blue-500" />
-                    <p className="text-sm font-black text-blue-700">{ot.surfaceAreaM2 || '0'} m²</p>
+                    <Hash className="h-4 w-4 text-blue-500" />
+                    <p className="text-sm font-black text-blue-700">{ot.serviceQuantity || '0'} {ot.serviceUnit || ''}</p>
                   </div>
                 </div>
               </div>
