@@ -43,8 +43,8 @@ export default function CalendarPage() {
   const db = useFirestore();
   
   // Hydration protection
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -63,8 +63,25 @@ export default function CalendarPage() {
   const workOrders = realWorkOrders && realWorkOrders.length > 0 ? realWorkOrders : MOCK_WORK_ORDERS;
   const isDemo = !realWorkOrders || realWorkOrders.length === 0;
 
-  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+  const nextMonth = () => currentMonth && setCurrentMonth(addMonths(currentMonth, 1));
+  const prevMonth = () => currentMonth && setCurrentMonth(subMonths(currentMonth, 1));
+
+  const getOrdersForDay = (day: Date) => {
+    return workOrders.filter(ot => {
+      const dateToUse = ot.scheduledDate || ot.createdAt;
+      if (!dateToUse) return false;
+      const otDate = dateToUse?.toDate ? dateToUse.toDate() : parseISO(dateToUse);
+      return isSameDay(day, otDate);
+    });
+  };
+
+  if (isAuthLoading || !mounted || !currentMonth || !selectedDate) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
@@ -76,24 +93,7 @@ export default function CalendarPage() {
     end: endDate
   });
 
-  const getOrdersForDay = (day: Date) => {
-    return workOrders.filter(ot => {
-      const dateToUse = ot.scheduledDate || ot.createdAt;
-      if (!dateToUse) return false;
-      const otDate = dateToUse?.toDate ? dateToUse.toDate() : parseISO(dateToUse);
-      return isSameDay(day, otDate);
-    });
-  };
-
   const selectedDayOrders = getOrdersForDay(selectedDate);
-
-  if (isAuthLoading || !mounted) {
-    return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
