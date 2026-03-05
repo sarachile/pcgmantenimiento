@@ -29,7 +29,9 @@ import {
   ExternalLink,
   ShieldCheck,
   ShieldAlert,
-  Zap
+  Zap,
+  Lock,
+  ArrowRight
 } from "lucide-react";
 import { 
   DropdownMenu,
@@ -46,19 +48,21 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 export default function BillingPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
+  const { canBill, planName } = usePlanLimits();
   const db = useFirestore();
   const [searchTerm, setSearchTerm] = useState("");
 
   const billingQuery = useMemoFirebase(() => {
-    if (!db || !profile?.companyId) return null;
+    if (!db || !profile?.companyId || !canBill) return null;
     return query(
       collection(db, "companies", profile.companyId, "billingDocuments"),
       orderBy("createdAt", "desc")
     );
-  }, [db, profile?.companyId]);
+  }, [db, profile?.companyId, canBill]);
 
   const { data: documents, isLoading: isDocsLoading } = useCollection<BillingDocument>(billingQuery);
 
@@ -82,6 +86,29 @@ export default function BillingPage() {
 
   if (isAuthLoading) {
     return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  // Pantalla de Upgrade si el plan no permite facturación
+  if (!canBill) {
+    return (
+      <div className="h-[80vh] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
+          <div className="bg-slate-900 p-10 text-center space-y-6">
+            <div className="bg-blue-600/20 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto border border-blue-500/30">
+              <Lock className="h-10 w-10 text-blue-400" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Facturación Bloqueada</h2>
+              <p className="text-slate-400 text-sm font-medium">Tu plan actual <strong>{planName}</strong> no incluye el módulo de facturación electrónica DTE.</p>
+            </div>
+            <Button asChild className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 font-black uppercase tracking-widest gap-2">
+              <Link href="/subscription">Subir a Plan Business <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
+            <p className="text-[10px] text-slate-500 font-bold uppercase">Cierra el ciclo operativo: de la firma en terreno a la factura legal en un clic.</p>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -131,7 +158,6 @@ export default function BillingPage() {
           </CardContent>
         </Card>
 
-        {/* Diagnóstico de API */}
         <Card className="border-none shadow-sm bg-slate-900 text-white overflow-hidden relative group">
           <CardHeader className="pb-2 border-b border-white/5">
             <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">

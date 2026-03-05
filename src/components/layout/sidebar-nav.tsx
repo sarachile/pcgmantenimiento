@@ -22,7 +22,8 @@ import {
   Camera,
   Receipt,
   Layers,
-  Sparkles
+  Sparkles,
+  Lock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -43,6 +44,7 @@ import { signOut } from "firebase/auth";
 import { useAuth } from "@/firebase";
 import { useRouter } from "next/navigation";
 import { FirebaseImage } from "@/components/FirebaseImage";
+import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 interface NavItem {
   title: string;
@@ -51,6 +53,7 @@ interface NavItem {
   roles?: Role[];
   badge?: string;
   highlight?: boolean;
+  featureFlag?: string; // Nuevo: para controlar visibilidad por plan
 }
 
 const operationalItems: NavItem[] = [
@@ -67,7 +70,7 @@ const inventoryItems: NavItem[] = [
 
 const businessItems: NavItem[] = [
   { title: "Clientes", href: "/clients", icon: Users, roles: ['companyAdmin', 'supervisor'] },
-  { title: "Facturación DTE", href: "/billing", icon: Receipt, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Facturación DTE", href: "/billing", icon: Receipt, roles: ['companyAdmin', 'supervisor'], featureFlag: 'electronicBilling' },
   { title: "Satisfacción (Feedback)", href: "/feedback", icon: MessageCircleHeart, roles: ['companyAdmin', 'supervisor'] },
   { title: "Reportes & BI", href: "/reports", icon: BarChart3, roles: ['companyAdmin', 'supervisor'] },
 ];
@@ -89,6 +92,7 @@ const adminItems: NavItem[] = [
 export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
   const pathname = usePathname();
   const { profile, isSuperAdmin } = useUser();
+  const { features } = usePlanLimits();
   const db = useFirestore();
   const auth = useAuth();
   const router = useRouter();
@@ -191,13 +195,27 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
               <SidebarGroup>
                 <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Gestión Comercial</SidebarGroupLabel>
                 <SidebarMenu>
-                  {filteredBus.map((item) => (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
-                        <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {filteredBus.map((item) => {
+                    const isLocked = item.featureFlag && !features[item.featureFlag as keyof typeof features];
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton 
+                          asChild 
+                          isActive={pathname === item.href} 
+                          className={cn(
+                            "rounded-xl px-4 h-11 transition-all",
+                            isLocked ? "opacity-50 grayscale hover:bg-transparent" : "hover:bg-white/5"
+                          )}
+                        >
+                          <Link href={isLocked ? "/subscription" : item.href}>
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                            {isLocked && <Lock className="h-3 w-3 ml-auto text-amber-500" />}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
                 </SidebarMenu>
               </SidebarGroup>
             )}

@@ -19,6 +19,7 @@ export interface PlanConfig {
     genkitAI: boolean;
     multiBranch: boolean;
     customChecklists: boolean;
+    electronicBilling: boolean; // Nuevo: Facturación DTE
   };
 }
 
@@ -36,6 +37,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
       genkitAI: false,
       multiBranch: false,
       customChecklists: true,
+      electronicBilling: false,
     }
   },
   business: {
@@ -44,13 +46,14 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     maxTechnicians: 10,
     maxClients: 25,
     maxMonthlyOrders: 200,
-    storageLimitMb: 5000, // 5GB
+    storageLimitMb: 5000,
     features: {
       digitalSignature: true,
       offlineMode: true,
       genkitAI: true,
       multiBranch: false,
       customChecklists: true,
+      electronicBilling: true,
     }
   },
   enterprise: {
@@ -59,13 +62,14 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     maxTechnicians: 100,
     maxClients: 1000,
     maxMonthlyOrders: 5000,
-    storageLimitMb: 50000, // 50GB
+    storageLimitMb: 50000,
     features: {
       digitalSignature: true,
       offlineMode: true,
       genkitAI: true,
       multiBranch: true,
       customChecklists: true,
+      electronicBilling: true,
     }
   }
 };

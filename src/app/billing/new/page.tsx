@@ -43,16 +43,20 @@ import {
   Package,
   AlertTriangle,
   Beaker,
-  Settings
+  Settings,
+  Lock,
+  ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Client, WorkOrder, BillingItem, BillingDocumentType, Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { processElectronicEmission } from "@/actions/billing";
+import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 export default function NewBillingDocumentPage() {
   const { profile, isLoading: isUserLoading } = useUser();
+  const { canBill, planName } = usePlanLimits();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -275,6 +279,28 @@ export default function NewBillingDocumentPage() {
   };
 
   if (isUserLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+  // Bloqueo por plan
+  if (!canBill) {
+    return (
+      <div className="h-[80vh] flex items-center justify-center p-6">
+        <Card className="max-w-md w-full rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
+          <div className="bg-slate-900 p-10 text-center space-y-6">
+            <div className="bg-blue-600/20 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto border border-blue-500/30">
+              <Lock className="h-10 w-10 text-blue-400" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white uppercase italic tracking-tighter">Acceso Denegado</h2>
+              <p className="text-slate-400 text-sm font-medium">La emisión de DTEs no está disponible en el <strong>{planName}</strong>.</p>
+            </div>
+            <Button asChild className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 font-black uppercase tracking-widest gap-2">
+              <Link href="/subscription">Ver Planes de Facturación <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">

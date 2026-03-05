@@ -44,12 +44,16 @@ export function usePlanLimits() {
     return {
       canAddStaff: staffCount < config.maxTechnicians,
       canAddClient: clientsCount < config.maxClients,
+      canBill: config.features.electronicBilling,
+      canUseAI: config.features.genkitAI,
+      canUseSignature: config.features.digitalSignature,
       staffCount,
       clientsCount,
       maxStaff: config.maxTechnicians,
       maxClients: config.maxClients,
       features: config.features,
-      planName: config.name
+      planName: config.name,
+      currentPlanId: config.id
     };
   }, [staff, clients, config]);
 
