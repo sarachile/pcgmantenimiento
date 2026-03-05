@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { 
   useUser, 
   useFirestore, 
+  useDoc,
   useCollection, 
   useMemoFirebase, 
   addDocumentNonBlocking,
@@ -41,7 +42,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { Client, WorkOrder, BillingItem, BillingDocumentType } from "@/lib/types";
+import { Client, WorkOrder, BillingItem, BillingDocumentType, Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { processElectronicEmission } from "@/actions/billing";
 
@@ -60,12 +61,17 @@ export default function NewBillingDocumentPage() {
   const [isFetchingParts, setIsFetchingParts] = useState(false);
 
   // Consultas
+  const companyRef = useMemoFirebase(() => 
+    db && profile?.companyId ? doc(db, "companies", profile.companyId) : null, 
+    [db, profile?.companyId]
+  );
+  const { data: company } = useDoc<Company>(companyRef);
+
   const clientsQuery = useMemoFirebase(() => 
     db && profile?.companyId ? collection(db, "companies", profile.companyId, "clients") : null, 
     [db, profile?.companyId]
   );
   
-  // Solo OTs aprobadas para facturar
   const ordersQuery = useMemoFirebase(() => 
     db && profile?.companyId ? query(
       collection(db, "companies", profile.companyId, "workOrders"), 
@@ -104,7 +110,7 @@ export default function NewBillingDocumentPage() {
           const mainService: BillingItem = {
             description: `Servicio técnico OT: ${selectedOrder.id} - ${selectedOrder.description}`,
             quantity: selectedOrder.serviceQuantity || 1,
-            unitPrice: 0, // El usuario debe definir el precio de mano de obra
+            unitPrice: 0,
             total: 0
           };
 
@@ -152,9 +158,6 @@ export default function NewBillingDocumentPage() {
     setItems(newItems);
   };
 
-  /**
-   * Solo guarda el borrador en Firestore
-   */
   const handleSaveDraft = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId || items.length === 0 || !profile?.companyId) return;
@@ -189,20 +192,21 @@ export default function NewBillingDocumentPage() {
     }
   };
 
-  /**
-   * Ejecuta la emisión real vía SimpleAPI
-   */
   const handleEmitRealDTE = async () => {
-    if (!clientId || items.length === 0 || !profile?.companyId) return;
+    if (!clientId || items.length === 0 || !profile?.companyId || !company) {
+      toast({ title: "Faltan Datos", description: "Asegúrese de seleccionar un cliente y tener datos de empresa configurados.", variant: "destructive" });
+      return;
+    }
 
     setIsEmitting(true);
     try {
-      // 1. Guardar primero en Firestore para tener registro
+      // 1. Datos del documento
       const docData = {
         companyId: profile.companyId,
         clientId,
         clientName: selectedClient?.name || "Desconocido",
         clientRut: selectedClient?.rut || "Desconocido",
+        clientAddress: selectedClient?.address || "S/I",
         workOrderId: (workOrderId && workOrderId !== 'none') ? workOrderId : null,
         type,
         status: "pendiente",
@@ -214,21 +218,20 @@ export default function NewBillingDocumentPage() {
         updatedAt: serverTimestamp()
       };
 
-      const colRef = collection(db!, "companies", profile.companyId, "billingDocuments");
-      const savedDoc = await addDoc(colRef, docData);
-
-      // 2. Llamar al Server Action para emitir en el SII (vía SimpleAPI)
-      toast({ title: "Conectando con SimpleAPI...", description: "Emitiendo documento legal ante el SII." });
+      // 2. Llamar al Server Action para emitir en SimpleAPI
+      toast({ title: "Conectando con SimpleAPI...", description: "Firmando y enviando documento al SII." });
       
-      const apiResult = await processElectronicEmission({
-        ...docData,
-        clientAddress: selectedClient?.address
+      const apiResult = await processElectronicEmission(docData, {
+        rut: company.rut,
+        name: company.name,
+        address: company.address
       });
 
       if (apiResult.success) {
-        // 3. Actualizar el documento con Folio y Links reales
-        const docRef = doc(db!, "companies", profile.companyId, "billingDocuments", savedDoc.id);
-        updateDocumentNonBlocking(docRef, {
+        // 3. Si tuvo éxito, guardar en Firestore con Folio Real
+        const colRef = collection(db!, "companies", profile.companyId, "billingDocuments");
+        await addDoc(colRef, {
+          ...docData,
           folio: apiResult.folio,
           status: 'aceptado_sii',
           pdfUrl: apiResult.pdfUrl,
@@ -330,10 +333,9 @@ export default function NewBillingDocumentPage() {
                   </Button>
                 </div>
 
-                {/* Encabezado de Columnas */}
                 {items.length > 0 && (
                   <div className="flex gap-3 px-1 mb-[-12px] opacity-60">
-                    <div className="flex-[4]"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Descripción del Producto o Servicio</Label></div>
+                    <div className="flex-[4]"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Descripción</Label></div>
                     <div className="flex-[1] min-w-[80px] text-center"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Cant.</Label></div>
                     <div className="flex-[2] min-w-[120px]"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Precio Unit. ($)</Label></div>
                     <div className="w-11"></div>
@@ -347,7 +349,7 @@ export default function NewBillingDocumentPage() {
                         <div className="relative">
                           {item.description.startsWith("Repuesto:") && <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-amber-500" />}
                           <Input 
-                            placeholder="Ej: Mantención de Climatización Central" 
+                            placeholder="Descripción del servicio o producto" 
                             value={item.description}
                             onChange={(e) => updateItem(idx, 'description', e.target.value)}
                             className={cn(
@@ -383,7 +385,7 @@ export default function NewBillingDocumentPage() {
                   
                   {items.length === 0 && (
                     <div className="py-10 text-center border-2 border-dashed rounded-2xl bg-slate-50/50">
-                      <p className="text-sm font-medium text-slate-400">Presione "Añadir Línea" para ingresar ítems a la factura.</p>
+                      <p className="text-sm font-medium text-slate-400">Presione "Añadir Línea" para ingresar ítems.</p>
                     </div>
                   )}
                 </div>
@@ -420,7 +422,7 @@ export default function NewBillingDocumentPage() {
                 <div className="flex items-start gap-2">
                   <ShieldCheck className="h-4 w-4 text-emerald-400 mt-0.5" />
                   <p className="text-[10px] text-slate-300 leading-relaxed italic">
-                    La emisión oficial consumirá un folio de su certificado digital y enviará los datos al SII.
+                    La emisión oficial firmará digitalmente el XML y enviará los datos al SII en tiempo real.
                   </p>
                 </div>
               </div>
@@ -431,7 +433,7 @@ export default function NewBillingDocumentPage() {
                   disabled={isSubmitting || isEmitting || !clientId || items.length === 0}
                   className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-900/20 uppercase tracking-widest gap-2"
                 >
-                  {isEmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><SendHorizontal className="h-5 w-5" /> Emitir SII</>}
+                  {isEmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><SendHorizontal className="h-5 w-5" /> Emitir SII Real</>}
                 </Button>
 
                 <Button 
@@ -440,12 +442,12 @@ export default function NewBillingDocumentPage() {
                   disabled={isSubmitting || isEmitting || !clientId || items.length === 0}
                   className="w-full h-12 rounded-xl bg-transparent border-white/20 text-white hover:bg-white/10 font-bold uppercase text-[10px] tracking-widest"
                 >
-                  {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Guardar Borrador"}
+                  {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Guardar Borrador Interno"}
                 </Button>
               </div>
               
               <p className="text-[9px] text-center text-slate-500 font-black uppercase tracking-widest">
-                PCGMANTENIMIENTO ERP - Módulo Billing
+                PCGMANTENIMIENTO ERP - Conexión SimpleAPI activa
               </p>
             </CardContent>
           </Card>

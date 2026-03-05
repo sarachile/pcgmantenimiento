@@ -2,13 +2,12 @@
 'use server';
 
 /**
- * @fileOverview Acción de servidor para la integración con SimpleAPI (DTE Chile).
- * Este archivo centraliza el envío de documentos al SII y la gestión de respuestas.
+ * @fileOverview Acción de servidor para la integración REAL con SimpleAPI (DTE Chile).
+ * Centraliza el envío de documentos al SII y la gestión de respuestas oficiales.
  */
 
-// NOTA: En un entorno real, estas variables deben estar en .env
-const SIMPLE_API_URL = "https://api.simpleapi.cl/api/v1"; 
-const SIMPLE_API_KEY = process.env.SIMPLE_API_KEY || "YOUR_API_KEY_HERE";
+const SIMPLE_API_URL = "https://api.simpleapi.cl/api/v1/dte/generar"; 
+const SIMPLE_API_KEY = process.env.SIMPLE_API_KEY || "";
 
 interface EmissionResponse {
   success: boolean;
@@ -16,16 +15,25 @@ interface EmissionResponse {
   pdfUrl?: string;
   xmlUrl?: string;
   error?: string;
-  status?: 'aceptado_sii' | 'error';
+  status?: 'aceptado_sii' | 'error' | 'rechazado';
 }
 
 /**
- * Procesa la emisión de un DTE hacia la API externa.
+ * Procesa la emisión de un DTE hacia SimpleAPI.
+ * @param docData Datos del documento (items, totales, etc.)
+ * @param emisorData Datos de la empresa que emite (SaaS Tenant)
  */
-export async function processElectronicEmission(docData: any): Promise<EmissionResponse> {
-  console.log("Iniciando emisión electrónica para:", docData.clientName);
+export async function processElectronicEmission(docData: any, emisorData: any): Promise<EmissionResponse> {
+  console.log("Iniciando emisión REAL para:", docData.clientName);
 
-  // Mapeo de tipos internos a códigos SII
+  if (!SIMPLE_API_KEY) {
+    return {
+      success: false,
+      error: "Error de configuración: SIMPLE_API_KEY no definida en el servidor."
+    };
+  }
+
+  // Mapeo de tipos internos a códigos SII oficiales
   const dteTypeMap: Record<string, number> = {
     'factura': 33,
     'boleta': 39,
@@ -37,49 +45,83 @@ export async function processElectronicEmission(docData: any): Promise<EmissionR
 
   try {
     /**
-     * ESTRUCTURA PARA SIMPLEAPI (EJEMPLO):
-     * Aquí se construiría el JSON exacto que requiere el endpoint de la API.
+     * ESTRUCTURA DE PAYLOAD PARA SIMPLEAPI:
+     * Se construye el objeto siguiendo el esquema requerido por SimpleAPI para Chile.
      */
     const payload = {
-      tipoDTE,
-      receptor: {
-        rut: docData.clientRut,
-        razonSocial: docData.clientName,
-        direccion: docData.clientAddress || "S/I",
-      },
-      items: docData.items.map((it: any) => ({
-        nombre: it.description,
-        cantidad: it.quantity,
-        precio: it.unitPrice
-      })),
-      totales: {
-        montoNeto: docData.netAmount,
-        iva: docData.taxAmount,
-        montoTotal: docData.totalAmount
+      token: SIMPLE_API_KEY,
+      reemplazar: true, // Si el folio ya existe, intentar usar el siguiente
+      rutEmisor: emisorData.rut,
+      dte: {
+        Encabezado: {
+          IdDoc: {
+            TipoDTE: tipoDTE,
+            FchEmis: new Date().toISOString().split('T')[0],
+            IndServicio: 3 // 3 indica servicios
+          },
+          Emisor: {
+            RUTEmisor: emisorData.rut,
+            RznSoc: emisorData.name,
+            Giro: "Servicios de Mantenimiento", // Campo requerido por SII
+            DirOrigen: emisorData.address,
+            CmnaOrigen: "Santiago", // Recomendado parametrizar en perfil empresa
+          },
+          Receptor: {
+            RUTRecep: docData.clientRut,
+            RznSocRecep: docData.clientName,
+            GiroRecep: "Giro Cliente", 
+            DirRecep: docData.clientAddress || "S/I",
+            CmnaRecep: "S/I"
+          },
+          Totales: {
+            MntNeto: docData.netAmount,
+            TasaIVA: 19,
+            IVA: docData.taxAmount,
+            MntTotal: docData.totalAmount
+          }
+        },
+        Detalle: docData.items.map((it: any, index: number) => ({
+          NroLinDet: index + 1,
+          NmbItem: it.description,
+          QtyItem: it.quantity,
+          PrcItem: it.unitPrice,
+          MntItem: it.total
+        }))
       }
     };
 
-    // SIMULACIÓN DE LLAMADA A API (2 segundos de latencia)
-    // En producción aquí iría: 
-    // const response = await fetch(`${SIMPLE_API_URL}/emitir`, { ... });
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const response = await fetch(SIMPLE_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
 
-    // Supongamos que la API responde con éxito y nos da un folio
-    const simulatedFolio = Math.floor(Math.random() * 5000) + 100;
+    const result = await response.json();
 
-    return {
-      success: true,
-      folio: simulatedFolio,
-      status: 'aceptado_sii',
-      pdfUrl: `https://cdn.simpleapi.cl/temp/pdf_${simulatedFolio}.pdf`,
-      xmlUrl: `https://cdn.simpleapi.cl/temp/xml_${simulatedFolio}.xml`
-    };
+    if (response.ok && result.status === "OK") {
+      return {
+        success: true,
+        folio: result.folio,
+        status: 'aceptado_sii',
+        pdfUrl: result.urlPdf,
+        xmlUrl: result.urlXml
+      };
+    } else {
+      console.error("SimpleAPI Error Response:", result);
+      return {
+        success: false,
+        error: result.message || "El SII rechazó el documento o hubo un error de firma.",
+        status: 'error'
+      };
+    }
 
   } catch (error: any) {
-    console.error("Error crítico en emisión SimpleAPI:", error);
+    console.error("Error crítico en comunicación con SimpleAPI:", error);
     return {
       success: false,
-      error: error.message || "Error de comunicación con el servidor de facturación."
+      error: "Error de conexión con el servidor de facturación electrónica."
     };
   }
 }
