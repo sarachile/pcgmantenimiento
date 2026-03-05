@@ -5,7 +5,9 @@ export type OTStatus = 'creada' | 'asignada' | 'ejecutada' | 'en revision' | 'pe
 
 export type AssetStatus = 'activo' | 'inactivo' | 'en mantenimiento';
 
-export type DTEStatus = 'pendiente' | 'enviado' | 'error' | 'aceptado_sii';
+export type DTEStatus = 'pendiente' | 'emitido' | 'anulado' | 'error' | 'aceptado_sii';
+
+export type BillingDocumentType = 'factura' | 'boleta' | 'guia_despacho' | 'nota_credito';
 
 export type PlanType = 'free' | 'pro' | 'enterprise';
 
@@ -144,6 +146,33 @@ export interface ServiceEvaluation {
   adminResponse?: string;
   adminResponseAt?: string | any;
   createdAt: string | any;
+}
+
+export interface BillingItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface BillingDocument {
+  id: string;
+  companyId: string;
+  clientId: string;
+  clientName: string;
+  clientRut: string;
+  workOrderId?: string;
+  type: BillingDocumentType;
+  folio?: number;
+  status: DTEStatus;
+  items: BillingItem[];
+  netAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  createdAt: string | any;
+  updatedAt: string | any;
 }
 
 export interface WorkOrder {

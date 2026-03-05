@@ -18,7 +18,9 @@ import {
   CalendarDays,
   Settings,
   MessageCircleHeart,
-  LifeBuoy
+  LifeBuoy,
+  FileText,
+  Receipt
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -47,11 +49,11 @@ interface NavItem {
   roles?: Role[];
 }
 
-// Items operativos del ERP (para empresas)
 const navItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", href: "/calendar", icon: CalendarDays },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
+  { title: "Facturación", href: "/billing", icon: Receipt, roles: ['companyAdmin', 'supervisor'] },
   { title: "Clientes", href: "/clients", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
   { title: "Inventario", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
@@ -63,7 +65,6 @@ const navItems: NavItem[] = [
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
 ];
 
-// Items maestros (solo para Superadmin)
 const adminItems: NavItem[] = [
   { title: "Control Maestro", href: "/admin", icon: Globe, roles: ['superadmin'] },
   { title: "Soporte Técnico", href: "/support", icon: LifeBuoy, roles: ['superadmin'] },

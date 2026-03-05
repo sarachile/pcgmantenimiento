@@ -37,24 +37,21 @@
       },
       "required": ["id", "companyId", "email", "role", "active"]
     },
-    "SupportTicket": {
-      "title": "SupportTicket",
+    "BillingDocument": {
+      "title": "BillingDocument",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
         "companyId": { "type": "string" },
-        "userName": { "type": "string" },
-        "companyName": { "type": "string" },
-        "subject": { "type": "string" },
-        "description": { "type": "string" },
-        "status": { "type": "string", "enum": ["open", "in_progress", "resolved", "closed"] },
-        "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
-        "category": { "type": "string", "enum": ["technical", "billing", "feature", "other"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "clientId": { "type": "string" },
+        "workOrderId": { "type": "string" },
+        "type": { "type": "string", "enum": ["factura", "boleta", "guia_despacho"] },
+        "status": { "type": "string", "enum": ["pendiente", "emitido", "anulado"] },
+        "totalAmount": { "type": "number" },
+        "folio": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "userId", "companyId", "status", "priority"]
+      "required": ["id", "companyId", "clientId", "type", "status", "totalAmount"]
     },
     "WorkOrder": {
       "title": "WorkOrder",
@@ -78,21 +75,6 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "companyId", "clientId", "status", "createdAt"]
-    },
-    "SparePart": {
-      "title": "SparePart",
-      "type": "object",
-      "description": "Represents an item in the company's inventory.",
-      "properties": {
-        "id": { "type": "string" },
-        "companyId": { "type": "string" },
-        "name": { "type": "string" },
-        "sku": { "type": "string" },
-        "stockActual": { "type": "number" },
-        "stockMinimo": { "type": "number" },
-        "unitPrice": { "type": "number" }
-      },
-      "required": ["id", "companyId", "name", "sku", "stockActual"]
     }
   },
   "auth": {
@@ -101,10 +83,8 @@
   "firestore": {
     "structure": [
       { "path": "/users/{userId}", "definition": { "entityName": "User", "description": "Global user profiles." } },
-      { "path": "/supportTickets/{ticketId}", "definition": { "entityName": "SupportTicket", "description": "Support request tickets." } },
-      { "path": "/supportTickets/{ticketId}/messages/{messageId}", "definition": { "entityName": "object", "description": "Chat messages within a ticket." } },
       { "path": "/companies/{companyId}", "definition": { "entityName": "Company", "description": "Tenant documents." } },
-      { "path": "/companies/{companyId}/spareParts/{partId}", "definition": { "entityName": "SparePart", "description": "Company inventory items." } },
+      { "path": "/companies/{companyId}/billingDocuments/{docId}", "definition": { "entityName": "BillingDocument", "description": "Invoices and receipts." } },
       { "path": "/companies/{companyId}/workOrders/{workOrderId}", "definition": { "entityName": "WorkOrder", "description": "Maintenance orders." } }
     ]
   }
