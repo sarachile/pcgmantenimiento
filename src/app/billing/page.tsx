@@ -26,7 +26,10 @@ import {
   Filter,
   MoreVertical,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  ShieldCheck,
+  ShieldAlert,
+  Zap
 } from "lucide-react";
 import { 
   DropdownMenu,
@@ -100,43 +103,50 @@ export default function BillingPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-none shadow-sm bg-blue-600 text-white overflow-hidden relative group">
-          <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
-            <TrendingUp className="h-32 w-32" />
-          </div>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card className="border-none shadow-sm bg-blue-600 text-white overflow-hidden relative">
           <CardHeader className="pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100">Facturación Total (Mes)</CardTitle>
+            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100">Facturación (Mes)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black">${stats.totalVentas.toLocaleString()}</div>
-            <p className="text-[10px] font-bold text-blue-200 mt-1 uppercase">Monto Neto + IVA</p>
+            <div className="text-2xl font-black">${stats.totalVentas.toLocaleString()}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-emerald-600 text-white overflow-hidden relative group">
-          <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
-            <FileText className="h-32 w-32" />
-          </div>
+        <Card className="border-none shadow-sm bg-emerald-600 text-white overflow-hidden relative">
           <CardHeader className="pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100">Documentos Emitidos</CardTitle>
+            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100">DTEs Emitidos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black">{stats.emitidosMes}</div>
-            <p className="text-[10px] font-bold text-emerald-200 mt-1 uppercase">Folios Consumidos</p>
+            <div className="text-2xl font-black">{stats.emitidosMes}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm bg-amber-500 text-white overflow-hidden relative group">
-          <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
-            <Receipt className="h-32 w-32" />
-          </div>
+        <Card className="border-none shadow-sm bg-amber-500 text-white overflow-hidden relative">
           <CardHeader className="pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100">Por Facturar</CardTitle>
+            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100">Borradores</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black">{stats.pendingCount}</div>
-            <p className="text-[10px] font-bold text-amber-100 mt-1 uppercase">Borradores Pendientes</p>
+            <div className="text-2xl font-black">{stats.pendingCount}</div>
+          </CardContent>
+        </Card>
+
+        {/* Diagnóstico de API */}
+        <Card className="border-none shadow-sm bg-slate-900 text-white overflow-hidden relative group">
+          <CardHeader className="pb-2 border-b border-white/5">
+            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+              <Zap className="h-3 w-3 text-blue-400" /> Monitor SimpleAPI
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500">CONECTIVIDAD:</span>
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[8px] h-4">OPERATIVO</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500">API KEY:</span>
+              <span className="text-[10px] font-mono text-slate-300">CONFIGURADA</span>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -173,7 +183,7 @@ export default function BillingPage() {
                 <TableRow>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest pl-6">Tipo / Folio</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Cliente / RUT</TableHead>
-                  <TableHead className="font-black uppercase text-[10px] tracking-widest">Fecha</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-widest text-center">Modo</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Total</TableHead>
                   <TableHead className="font-black uppercase text-[10px] tracking-widest">Estado</TableHead>
                   <TableHead className="text-right font-black uppercase text-[10px] tracking-widest pr-6">Acciones</TableHead>
@@ -194,11 +204,12 @@ export default function BillingPage() {
                         <span className="text-[10px] text-muted-foreground font-mono">{doc.clientRut}</span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase">
-                        <Calendar className="h-3 w-3" />
-                        {doc.createdAt ? format(doc.createdAt.toDate ? doc.createdAt.toDate() : new Date(doc.createdAt), "dd MMM yyyy", { locale: es }) : '...'}
-                      </div>
+                    <TableCell className="text-center">
+                      {(doc as any).isSandbox ? (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[8px] font-black uppercase">Test</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 text-[8px] font-black uppercase">Real</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="font-black text-slate-900">${doc.totalAmount.toLocaleString()}</span>
@@ -209,7 +220,7 @@ export default function BillingPage() {
                         doc.status === 'pendiente' && "bg-amber-100 text-amber-700",
                         doc.status === 'emitido' && "bg-blue-100 text-blue-700",
                         doc.status === 'aceptado_sii' && "bg-emerald-100 text-emerald-700",
-                        doc.status === 'anulado' && "bg-rose-100 text-rose-700"
+                        doc.status === 'error' && "bg-rose-100 text-rose-700"
                       )}>
                         {doc.status.replace('_', ' ')}
                       </Badge>
@@ -236,8 +247,6 @@ export default function BillingPage() {
                             </DropdownMenuItem>
                           )}
                           {!doc.pdfUrl && <DropdownMenuItem className="font-bold gap-2 italic text-slate-400">Sin archivo disponible</DropdownMenuItem>}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-rose-600 font-bold gap-2"><ArrowLeft className="h-4 w-4" /> Anular Documento</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

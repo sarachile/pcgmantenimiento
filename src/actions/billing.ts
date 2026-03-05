@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Acción de servidor para la integración REAL con SimpleAPI (DTE Chile).
- * Centraliza el envío de documentos al SII y la gestión de respuestas oficiales.
+ * Soporta modo Sandbox (Certificación) y Producción.
  */
 
 const SIMPLE_API_URL = "https://api.simpleapi.cl/api/v1/dte/generar"; 
@@ -22,14 +22,15 @@ interface EmissionResponse {
  * Procesa la emisión de un DTE hacia SimpleAPI.
  * @param docData Datos del documento (items, totales, etc.)
  * @param emisorData Datos de la empresa que emite (SaaS Tenant)
+ * @param isSandbox Define si se envía al ambiente de certificación del SII
  */
-export async function processElectronicEmission(docData: any, emisorData: any): Promise<EmissionResponse> {
-  console.log("Iniciando emisión REAL para:", docData.clientName);
+export async function processElectronicEmission(docData: any, emisorData: any, isSandbox: boolean = true): Promise<EmissionResponse> {
+  console.log(`Iniciando emisión ${isSandbox ? 'TEST' : 'PROD'} para:`, docData.clientName);
 
   if (!SIMPLE_API_KEY) {
     return {
       success: false,
-      error: "Error de configuración: SIMPLE_API_KEY no definida en el servidor."
+      error: "Error de configuración: SIMPLE_API_KEY no definida en el servidor .env"
     };
   }
 
@@ -50,21 +51,22 @@ export async function processElectronicEmission(docData: any, emisorData: any): 
      */
     const payload = {
       token: SIMPLE_API_KEY,
-      reemplazar: true, // Si el folio ya existe, intentar usar el siguiente
+      reemplazar: true, 
       rutEmisor: emisorData.rut,
+      ambiente: isSandbox ? 0 : 1, // 0 = Certificación (Test), 1 = Producción
       dte: {
         Encabezado: {
           IdDoc: {
             TipoDTE: tipoDTE,
             FchEmis: new Date().toISOString().split('T')[0],
-            IndServicio: 3 // 3 indica servicios
+            IndServicio: 3 
           },
           Emisor: {
             RUTEmisor: emisorData.rut,
             RznSoc: emisorData.name,
-            Giro: "Servicios de Mantenimiento", // Campo requerido por SII
+            Giro: "Servicios de Mantenimiento",
             DirOrigen: emisorData.address,
-            CmnaOrigen: "Santiago", // Recomendado parametrizar en perfil empresa
+            CmnaOrigen: "Santiago", 
           },
           Receptor: {
             RUTRecep: docData.clientRut,

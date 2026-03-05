@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/componen
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { 
   Select, 
   SelectContent, 
@@ -38,7 +39,9 @@ import {
   Hash,
   SendHorizontal,
   FileText,
-  Package
+  Package,
+  AlertTriangle,
+  Beaker
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +62,7 @@ export default function NewBillingDocumentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEmitting, setIsEmitting] = useState(false);
   const [isFetchingParts, setIsFetchingParts] = useState(false);
+  const [isSandbox, setIsSandbox] = useState(true);
 
   // Consultas
   const companyRef = useMemoFirebase(() => 
@@ -108,7 +112,7 @@ export default function NewBillingDocumentPage() {
           });
 
           const mainService: BillingItem = {
-            description: `Servicio técnico OT: ${selectedOrder.id} - ${selectedOrder.description}`,
+            description: `Servicio técnico OT: ${selectedOrder.id} - ${selectedOrder.description.substring(0, 50)}`,
             quantity: selectedOrder.serviceQuantity || 1,
             unitPrice: 0,
             total: 0
@@ -219,13 +223,13 @@ export default function NewBillingDocumentPage() {
       };
 
       // 2. Llamar al Server Action para emitir en SimpleAPI
-      toast({ title: "Conectando con SimpleAPI...", description: "Firmando y enviando documento al SII." });
+      toast({ title: isSandbox ? "Enviando a Sandbox SII..." : "Emitiendo documento REAL...", description: "Firmando y enviando documento al SII." });
       
       const apiResult = await processElectronicEmission(docData, {
         rut: company.rut,
         name: company.name,
         address: company.address
-      });
+      }, isSandbox);
 
       if (apiResult.success) {
         // 3. Si tuvo éxito, guardar en Firestore con Folio Real
@@ -236,12 +240,13 @@ export default function NewBillingDocumentPage() {
           status: 'aceptado_sii',
           pdfUrl: apiResult.pdfUrl,
           xmlUrl: apiResult.xmlUrl,
+          isSandbox: isSandbox,
           updatedAt: serverTimestamp()
         });
 
         toast({ 
-          title: "DTE Emitido con Éxito", 
-          description: `Folio #${apiResult.folio} generado y aceptado por el SII.`,
+          title: isSandbox ? "Prueba Exitosa" : "DTE Emitido con Éxito", 
+          description: `Folio #${apiResult.folio} generado correctamente.`,
           variant: "default"
         });
         router.push("/billing");
@@ -292,7 +297,7 @@ export default function NewBillingDocumentPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Vincular OT Aprobada (Opcional)</Label>
+                  <Label className="font-black text-[10px] uppercase text-slate-400 tracking-[0.2em]">Vincular OT Aprobada</Label>
                   <Select value={workOrderId} onValueChange={setWorkOrderId}>
                     <SelectTrigger className={cn(
                       "h-12 rounded-xl border-2 border-blue-100 bg-blue-50/30",
@@ -307,7 +312,6 @@ export default function NewBillingDocumentPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {isFetchingParts && <p className="text-[10px] text-blue-600 font-bold animate-pulse">Sincronizando repuestos usados...</p>}
                 </div>
               </div>
 
@@ -333,33 +337,25 @@ export default function NewBillingDocumentPage() {
                   </Button>
                 </div>
 
-                {items.length > 0 && (
-                  <div className="flex gap-3 px-1 mb-[-12px] opacity-60">
-                    <div className="flex-[4]"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Descripción</Label></div>
-                    <div className="flex-[1] min-w-[80px] text-center"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Cant.</Label></div>
-                    <div className="flex-[2] min-w-[120px]"><Label className="text-[9px] font-black text-slate-500 uppercase tracking-wider">Precio Unit. ($)</Label></div>
-                    <div className="w-11"></div>
-                  </div>
-                )}
-                
                 <div className="space-y-3">
+                  <div className="grid grid-cols-12 gap-3 px-1 opacity-60">
+                    <div className="col-span-6"><Label className="text-[9px] font-black uppercase">Descripción</Label></div>
+                    <div className="col-span-2"><Label className="text-[9px] font-black uppercase">Cant.</Label></div>
+                    <div className="col-span-3"><Label className="text-[9px] font-black uppercase">Unitario ($)</Label></div>
+                    <div className="col-span-1"></div>
+                  </div>
+                  
                   {items.map((item, idx) => (
-                    <div key={idx} className="flex gap-3 items-start animate-in fade-in slide-in-from-top-1">
-                      <div className="flex-[4] space-y-1">
-                        <div className="relative">
-                          {item.description.startsWith("Repuesto:") && <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-amber-500" />}
-                          <Input 
-                            placeholder="Descripción del servicio o producto" 
-                            value={item.description}
-                            onChange={(e) => updateItem(idx, 'description', e.target.value)}
-                            className={cn(
-                              "h-11 rounded-xl border-2 focus:border-primary",
-                              item.description.startsWith("Repuesto:") && "pl-9 bg-amber-50/20"
-                            )}
-                          />
-                        </div>
+                    <div key={idx} className="grid grid-cols-12 gap-3 items-start">
+                      <div className="col-span-6">
+                        <Input 
+                          placeholder="Descripción del servicio" 
+                          value={item.description}
+                          onChange={(e) => updateItem(idx, 'description', e.target.value)}
+                          className="h-11 rounded-xl border-2"
+                        />
                       </div>
-                      <div className="flex-[1] min-w-[80px]">
+                      <div className="col-span-2">
                         <Input 
                           type="number" 
                           placeholder="0" 
@@ -368,26 +364,22 @@ export default function NewBillingDocumentPage() {
                           className="h-11 rounded-xl border-2 text-center"
                         />
                       </div>
-                      <div className="flex-[2] min-w-[120px]">
+                      <div className="col-span-3">
                         <Input 
                           type="number" 
-                          placeholder="Monto neto" 
+                          placeholder="Neto" 
                           value={item.unitPrice}
                           onChange={(e) => updateItem(idx, 'unitPrice', Number(e.target.value))}
                           className="h-11 rounded-xl border-2"
                         />
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(idx)} className="h-11 w-11 rounded-xl text-rose-500 hover:bg-rose-50 shrink-0">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="col-span-1 flex justify-end">
+                        <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(idx)} className="h-11 w-11 rounded-xl text-rose-500 hover:bg-rose-50">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
-                  
-                  {items.length === 0 && (
-                    <div className="py-10 text-center border-2 border-dashed rounded-2xl bg-slate-50/50">
-                      <p className="text-sm font-medium text-slate-400">Presione "Añadir Línea" para ingresar ítems.</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </CardContent>
@@ -418,22 +410,31 @@ export default function NewBillingDocumentPage() {
                 </div>
               </div>
 
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-3">
-                <div className="flex items-start gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400 mt-0.5" />
-                  <p className="text-[10px] text-slate-300 leading-relaxed italic">
-                    La emisión oficial firmará digitalmente el XML y enviará los datos al SII en tiempo real.
-                  </p>
+              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Beaker className="h-4 w-4 text-amber-400" />
+                    <Label className="text-[10px] font-black uppercase tracking-widest">Ambiente Pruebas</Label>
+                  </div>
+                  <Switch checked={isSandbox} onCheckedChange={setIsSandbox} />
                 </div>
+                <p className="text-[9px] text-slate-400 leading-relaxed italic">
+                  {isSandbox 
+                    ? "Activado: El documento se enviará al servidor de certificación del SII (sin valor legal)." 
+                    : "⚠️ ADVERTENCIA: Se emitirá un documento tributario REAL ante el SII."}
+                </p>
               </div>
 
               <div className="space-y-3">
                 <Button 
                   onClick={handleEmitRealDTE}
                   disabled={isSubmitting || isEmitting || !clientId || items.length === 0}
-                  className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-lg shadow-xl shadow-blue-900/20 uppercase tracking-widest gap-2"
+                  className={cn(
+                    "w-full h-16 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest gap-2",
+                    isSandbox ? "bg-amber-600 hover:bg-amber-500" : "bg-blue-600 hover:bg-blue-500"
+                  )}
                 >
-                  {isEmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><SendHorizontal className="h-5 w-5" /> Emitir SII Real</>}
+                  {isEmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><SendHorizontal className="h-5 w-5" /> {isSandbox ? "Emitir Test (Sandbox)" : "Emitir SII Real"}</>}
                 </Button>
 
                 <Button 
@@ -445,10 +446,6 @@ export default function NewBillingDocumentPage() {
                   {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Guardar Borrador Interno"}
                 </Button>
               </div>
-              
-              <p className="text-[9px] text-center text-slate-500 font-black uppercase tracking-widest">
-                PCGMANTENIMIENTO ERP - Conexión SimpleAPI activa
-              </p>
             </CardContent>
           </Card>
         </div>
