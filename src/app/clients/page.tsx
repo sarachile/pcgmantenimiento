@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -15,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { 
   Dialog,
   DialogContent,
@@ -28,22 +26,17 @@ import {
 import { 
   Search, 
   Plus, 
-  Users, 
   Mail, 
-  Phone, 
   MapPin, 
-  MoreVertical,
-  Loader2,
+  Loader2, 
   ArrowLeft,
   Edit,
   Trash2,
   Building2,
-  Lock,
-  Star
+  Lock
 } from "lucide-react";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Client, Company } from "@/lib/types";
@@ -62,8 +55,7 @@ export default function ClientsPage() {
     rut: "",
     address: "",
     contactName: "",
-    contactEmail: "",
-    evaluationEnabled: true
+    contactEmail: ""
   });
 
   const companyRef = useMemoFirebase(() => {
@@ -134,7 +126,7 @@ export default function ClientsPage() {
       toast({ title: "Cliente registrado", description: "Nuevo cliente añadido exitosamente." });
     }
 
-    setFormData({ name: "", rut: "", address: "", contactName: "", contactEmail: "", evaluationEnabled: true });
+    setFormData({ name: "", rut: "", address: "", contactName: "", contactEmail: "" });
     setIsCreateOpen(false);
     setEditingClient(null);
   };
@@ -146,8 +138,7 @@ export default function ClientsPage() {
       rut: client.rut,
       address: client.address,
       contactName: client.contactName || "",
-      contactEmail: client.contactEmail || "",
-      evaluationEnabled: client.evaluationEnabled ?? true
+      contactEmail: client.contactEmail || ""
     });
     setIsCreateOpen(true);
   };
@@ -200,7 +191,7 @@ export default function ClientsPage() {
             setIsCreateOpen(open);
             if (!open) {
               setEditingClient(null);
-              setFormData({ name: "", rut: "", address: "", contactName: "", contactEmail: "", evaluationEnabled: true });
+              setFormData({ name: "", rut: "", address: "", contactName: "", contactEmail: "" });
             }
           }}>
             <DialogTrigger asChild>
@@ -241,17 +232,6 @@ export default function ClientsPage() {
                     placeholder="Calle, Número, Ciudad" 
                     value={formData.address}
                     onChange={(e) => setFormData({...formData, address: e.target.value})}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
-                  <div className="space-y-0.5">
-                    <Label className="text-primary font-bold">Evaluación de Servicio</Label>
-                    <p className="text-[10px] text-muted-foreground">Permitir que el cliente califique el trabajo técnico.</p>
-                  </div>
-                  <Switch 
-                    checked={formData.evaluationEnabled}
-                    onCheckedChange={(val) => setFormData({...formData, evaluationEnabled: val})}
                   />
                 </div>
 
@@ -324,7 +304,6 @@ export default function ClientsPage() {
                 <TableRow>
                   <TableHead>Razón Social / RUT</TableHead>
                   <TableHead>Contacto</TableHead>
-                  <TableHead>Evaluación</TableHead>
                   <TableHead>Ubicación</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -352,17 +331,6 @@ export default function ClientsPage() {
                           </span>
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {client.evaluationEnabled ? (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
-                          <Star className="h-3 w-3 fill-emerald-500 text-emerald-500" /> ACTIVA
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200">
-                          DESACTIVADA
-                        </Badge>
-                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
