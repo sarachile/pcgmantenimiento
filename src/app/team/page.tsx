@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { 
   Table, 
   TableBody, 
@@ -41,21 +41,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Search, 
   UserPlus, 
-  Phone, 
   Users, 
-  MoreVertical,
   Loader2,
   UserCheck,
   UserMinus,
   ArrowLeft,
-  Briefcase,
   Contact,
   Trash2,
-  Edit,
-  FileSpreadsheet,
-  Download,
-  Upload,
-  Shield,
   Zap,
   Users2
 } from "lucide-react";
@@ -65,7 +57,6 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { StaffMember, Team } from "@/lib/types";
-import * as XLSX from "xlsx";
 
 export default function TeamPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -76,7 +67,6 @@ export default function TeamPage() {
   const [isTeamOpen, setIsTeamOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form State Staff
   const [formData, setFormData] = useState({
@@ -167,14 +157,14 @@ export default function TeamPage() {
     setEditingTeam(null);
   };
 
-  const toggleMember = (id: string) => {
+  const toggleMember = useCallback((id: string) => {
     setTeamFormData(prev => ({
       ...prev,
       memberIds: prev.memberIds.includes(id) 
         ? prev.memberIds.filter(mid => mid !== id) 
         : [...prev.memberIds, id]
     }));
-  };
+  }, []);
 
   const handleDeleteTeam = (id: string) => {
     if (!db || !profile?.companyId) return;
@@ -252,7 +242,13 @@ export default function TeamPage() {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isTeamOpen} onOpenChange={setIsTeamOpen}>
+            <Dialog open={isTeamOpen} onOpenChange={(open) => {
+              setIsTeamOpen(open);
+              if (!open) {
+                setEditingTeam(null);
+                setTeamFormData({ name: "", memberIds: [] });
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="rounded-xl border-primary/20 text-primary font-black gap-2">
                   <Zap className="h-4 w-4" /> Crear Cuadrilla
@@ -277,20 +273,22 @@ export default function TeamPage() {
                     <Label className="text-[10px] font-black uppercase text-slate-400">Seleccionar Integrantes ({teamFormData.memberIds.length})</Label>
                     <div className="max-h-[250px] overflow-y-auto border-2 rounded-2xl p-2 space-y-1">
                       {staffMembers?.map(s => (
-                        <div 
+                        <label 
                           key={s.id} 
-                          onClick={() => toggleMember(s.id)}
                           className={cn(
                             "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border-2",
-                            teamFormData.memberIds.includes(s.id) ? "border-primary bg-primary/5" : "border-transparent hover:bg-slate-50"
+                            teamFormData.memberIds.includes(s.id) ? "border-primary bg-primary/5 shadow-inner" : "border-transparent hover:bg-slate-50"
                           )}
                         >
-                          <Checkbox checked={teamFormData.memberIds.includes(s.id)} />
+                          <Checkbox 
+                            checked={teamFormData.memberIds.includes(s.id)} 
+                            onCheckedChange={() => toggleMember(s.id)}
+                          />
                           <div className="flex-1">
                             <p className="text-xs font-bold text-slate-900">{s.name}</p>
                             <p className="text-[9px] font-black uppercase text-slate-400">{s.role}</p>
                           </div>
-                        </div>
+                        </label>
                       ))}
                     </div>
                   </div>
