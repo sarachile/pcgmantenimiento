@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { 
   Select, 
   SelectContent, 
@@ -41,7 +42,8 @@ import {
   FileText,
   Package,
   AlertTriangle,
-  Beaker
+  Beaker,
+  Settings
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +91,11 @@ export default function NewBillingDocumentPage() {
 
   const selectedClient = useMemo(() => clients?.find(c => c.id === clientId), [clients, clientId]);
   const selectedOrder = useMemo(() => approvedOrders?.find(o => o.id === workOrderId), [approvedOrders, workOrderId]);
+
+  // Validar si la empresa tiene sus datos configurados
+  const isCompanyConfigured = useMemo(() => {
+    return company?.rut && company?.rut !== "RUT por definir" && company?.name;
+  }, [company]);
 
   // Al seleccionar una OT, autocompletar ítems incluyendo materiales
   useEffect(() => {
@@ -197,14 +204,22 @@ export default function NewBillingDocumentPage() {
   };
 
   const handleEmitRealDTE = async () => {
+    if (!isCompanyConfigured) {
+      toast({ 
+        title: "Perfil Incompleto", 
+        description: "Debe configurar el RUT de su empresa en la sección 'Mi Empresa' antes de emitir documentos.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     if (!clientId || items.length === 0 || !profile?.companyId || !company) {
-      toast({ title: "Faltan Datos", description: "Asegúrese de seleccionar un cliente y tener datos de empresa configurados.", variant: "destructive" });
+      toast({ title: "Faltan Datos", description: "Asegúrese de seleccionar un cliente y tener ítems en el documento.", variant: "destructive" });
       return;
     }
 
     setIsEmitting(true);
     try {
-      // 1. Datos del documento
       const docData = {
         companyId: profile.companyId,
         clientId,
@@ -222,8 +237,7 @@ export default function NewBillingDocumentPage() {
         updatedAt: serverTimestamp()
       };
 
-      // 2. Llamar al Server Action para emitir en SimpleAPI
-      toast({ title: isSandbox ? "Enviando a Sandbox SII..." : "Emitiendo documento REAL...", description: "Firmando y enviando documento al SII." });
+      toast({ title: isSandbox ? "Conectando con Sandbox SII..." : "Emitiendo documento REAL...", description: "Construyendo DTE y validando Token..." });
       
       const apiResult = await processElectronicEmission(docData, {
         rut: company.rut,
@@ -232,7 +246,6 @@ export default function NewBillingDocumentPage() {
       }, isSandbox);
 
       if (apiResult.success) {
-        // 3. Si tuvo éxito, guardar en Firestore con Folio Real
         const colRef = collection(db!, "companies", profile.companyId, "billingDocuments");
         await addDoc(colRef, {
           ...docData,
@@ -272,6 +285,19 @@ export default function NewBillingDocumentPage() {
           <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest">Facturación Electrónica DTE</p>
         </div>
       </div>
+
+      {!isCompanyConfigured && (
+        <Alert variant="destructive" className="border-2 rounded-2xl bg-rose-50 border-rose-200">
+          <AlertTriangle className="h-5 w-5 text-rose-600" />
+          <AlertTitle className="font-black uppercase text-xs">Acción Requerida: Configuración de Empresa</AlertTitle>
+          <AlertDescription className="text-sm font-medium">
+            Tu empresa aún no tiene un RUT válido registrado. El SII rechazará cualquier documento sin estos datos.
+            <Button variant="link" className="text-rose-700 font-bold p-0 h-auto underline ml-2" asChild>
+              <Link href="/company">Ir a Configurar Mi Empresa <Settings className="ml-1 h-3 w-3" /></Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
@@ -428,7 +454,7 @@ export default function NewBillingDocumentPage() {
               <div className="space-y-3">
                 <Button 
                   onClick={handleEmitRealDTE}
-                  disabled={isSubmitting || isEmitting || !clientId || items.length === 0}
+                  disabled={isSubmitting || isEmitting || !clientId || items.length === 0 || !isCompanyConfigured}
                   className={cn(
                     "w-full h-16 rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest gap-2",
                     isSandbox ? "bg-amber-600 hover:bg-amber-500" : "bg-blue-600 hover:bg-blue-500"

@@ -39,6 +39,14 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
     };
   }
 
+  const rutEmisorLimpios = formatRutForAPI(emisorData.rut);
+  if (!rutEmisorLimpios || rutEmisorLimpios === "RUTpordefinir") {
+    return {
+      success: false,
+      error: "El RUT de tu empresa no está configurado. Por favor ve a 'Mi Empresa' y complétalo."
+    };
+  }
+
   // Mapeo de tipos internos a códigos SII oficiales
   const dteTypeMap: Record<string, number> = {
     'factura': 33,
@@ -50,7 +58,6 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
   const tipoDTE = dteTypeMap[docData.type] || 33;
 
   try {
-    // Limpiar RUTs (SimpleAPI falla si llevan puntos)
     const rutEmisor = formatRutForAPI(emisorData.rut);
     const rutReceptor = formatRutForAPI(docData.clientRut);
 
@@ -109,7 +116,15 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
       body: JSON.stringify(payload)
     });
 
-    // Intentar leer la respuesta como texto primero para evitar errores de parseo JSON si la API falla
+    // Manejar errores de autenticación explícitos (401)
+    if (response.status === 401) {
+      return {
+        success: false,
+        error: `Error de Autenticación (401): Tu SIMPLE_API_KEY es inválida o no corresponde al ambiente ${isSandbox ? 'Certificación' : 'Producción'}.`,
+        status: 'error'
+      };
+    }
+
     const responseText = await response.text();
     let result;
     try {
@@ -134,7 +149,7 @@ export async function processElectronicEmission(docData: any, emisorData: any, i
       console.error("SimpleAPI Error Response:", result);
       return {
         success: false,
-        error: result.message || "El SII rechazó el documento o el token es inválido.",
+        error: result.message || "El SII rechazó el documento o los datos del emisor son incorrectos.",
         status: 'error'
       };
     }
