@@ -30,7 +30,9 @@ import {
   MessageSquare,
   Fingerprint,
   Send,
-  AlertTriangle
+  AlertTriangle,
+  CloudUpload,
+  Check
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -111,7 +113,7 @@ export default function FieldCapturePage() {
         updateDocumentNonBlocking(otRef, {
           checklist: updatedChecklist,
           updatedAt: serverTimestamp(),
-          status: 'ejecutada' // Al subir evidencia, marcamos que se está ejecutando
+          status: 'ejecutada' 
         });
       } else {
         updateDocumentNonBlocking(otRef, {
@@ -130,7 +132,7 @@ export default function FieldCapturePage() {
         actor: profile.id
       });
 
-      toast({ title: "Evidencia Registrada" });
+      toast({ title: "Evidencia Guardada", description: "El avance se ha registrado con éxito." });
       setSelectedChecklistItemId(null);
       setLogComment("");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -264,26 +266,34 @@ export default function FieldCapturePage() {
               <CardContent className="p-8 space-y-8">
                 {/* Protocolos */}
                 <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-primary" /> Protocolos Pendientes
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                      <ListChecks className="h-4 w-4 text-primary" /> Protocolos de Servicio
+                    </Label>
+                    <Badge variant="outline" className="text-[8px] font-black border-emerald-200 text-emerald-600 bg-emerald-50">AUTO-GUARDADO</Badge>
+                  </div>
+                  
                   <div className="space-y-2">
                     {selectedOT.checklist && selectedOT.checklist.length > 0 ? (
-                      selectedOT.checklist.filter(i => !i.completed).map((item) => (
+                      selectedOT.checklist.map((item) => (
                         <button
                           key={item.id}
                           onClick={() => setSelectedChecklistItemId(selectedChecklistItemId === item.id ? null : item.id)}
                           className={cn(
                             "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between",
-                            selectedChecklistItemId === item.id ? "border-primary bg-primary/5" : "border-slate-100 bg-slate-50/50"
+                            selectedChecklistItemId === item.id ? "border-primary bg-primary/5" : 
+                            item.completed ? "border-emerald-100 bg-emerald-50/30" : "border-slate-100 bg-slate-50/50"
                           )}
                         >
-                          <span className="text-xs font-bold text-slate-700">{item.task}</span>
-                          {selectedChecklistItemId === item.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                          <div className="flex items-center gap-3">
+                            {item.completed && <div className="bg-emerald-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>}
+                            <span className={cn("text-xs font-bold", item.completed ? "text-emerald-700" : "text-slate-700")}>{item.task}</span>
+                          </div>
+                          {selectedChecklistItemId === item.id ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <ChevronRight className="h-3 w-3 text-slate-300" />}
                         </button>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-400 italic text-center py-4">Sin puntos de inspección pendientes.</p>
+                      <p className="text-xs text-slate-400 italic text-center py-4">Sin puntos de inspección definidos.</p>
                     )}
                   </div>
                 </div>
@@ -294,20 +304,35 @@ export default function FieldCapturePage() {
                     <MessageSquare className="h-4 w-4 text-blue-500" /> Nota de Bitácora
                   </Label>
                   <Textarea 
-                    placeholder="Detalles del hallazgo o acción..." 
+                    placeholder={selectedChecklistItemId ? "Añade una nota para esta tarea específica..." : "Detalles generales del hallazgo o acción..."} 
                     className="rounded-2xl min-h-[80px] border-2 bg-slate-50/50 text-sm"
                     value={logComment}
                     onChange={(e) => setLogComment(e.target.value)}
                   />
                   
-                  <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-                  <Button 
-                    className="w-full h-24 rounded-3xl bg-primary text-white shadow-xl flex flex-col gap-2"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                  >
-                    {isUploading ? <Loader2 className="animate-spin" /> : <><Camera className="h-8 w-8" /><span className="text-sm font-black uppercase italic">Subir Evidencia</span></>}
-                  </Button>
+                  <div className="flex flex-col gap-3">
+                    <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                    <Button 
+                      className={cn(
+                        "w-full h-24 rounded-3xl shadow-xl flex flex-col gap-2 transition-all",
+                        selectedChecklistItemId ? "bg-primary text-white" : "bg-slate-100 text-slate-600 border-2 border-dashed border-slate-300 hover:bg-slate-200"
+                      )}
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                    >
+                      {isUploading ? <Loader2 className="animate-spin" /> : (
+                        <>
+                          <Camera className="h-8 w-8" />
+                          <span className="text-sm font-black uppercase italic">
+                            {selectedChecklistItemId ? "Subir Evidencia para Tarea" : "Subir Evidencia General"}
+                          </span>
+                        </>
+                      )}
+                    </Button>
+                    <div className="flex items-center justify-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <CloudUpload className="h-3 w-3" /> Los cambios se guardan al subir la foto
+                    </div>
+                  </div>
                 </div>
 
                 {/* CIERRE TÉCNICO */}
@@ -327,7 +352,7 @@ export default function FieldCapturePage() {
                     onClick={handleFinalizeWork}
                     disabled={isFinalizing || isUploading}
                   >
-                    {isFinalizing ? <Loader2 className="animate-spin" /> : <><Send className="h-4 w-4" /> Finalizar y Enviar a Revisión</>}
+                    {isFinalizing ? <Loader2 className="animate-spin h-4 w-4" /> : <><Send className="h-4 w-4" /> Finalizar y Enviar a Revisión</>}
                   </Button>
                 </div>
               </CardContent>
