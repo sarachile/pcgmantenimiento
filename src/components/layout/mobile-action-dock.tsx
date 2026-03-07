@@ -25,8 +25,9 @@ export function MobileActionDock() {
 
   return (
     <div className="md:hidden fixed bottom-6 left-0 right-0 z-50 px-4 animate-in slide-in-from-bottom-10 duration-500">
-      <div className="bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] h-20 flex items-center justify-around px-2 relative overflow-hidden">
-        {/* Glow effect for capture */}
+      {/* Contenedor principal sin overflow-hidden para permitir que el botón central sobresalga */}
+      <div className="bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] h-20 flex items-center justify-around px-2 relative">
+        {/* Glow effect for capture - se mantiene contenido visualmente por su difuminado */}
         <div className="absolute left-1/2 -translate-x-1/2 w-20 h-20 bg-blue-600/20 blur-2xl rounded-full" />
         
         {navItems.map((item) => {
