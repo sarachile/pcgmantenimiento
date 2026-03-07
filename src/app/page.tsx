@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -193,7 +194,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* How it Works Section (New) */}
+      {/* How it Works Section */}
       <section id="como-funciona" className="py-32 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20">
