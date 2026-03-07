@@ -1,38 +1,31 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@/firebase";
 import { 
-  CheckCircle2, 
   ShieldCheck, 
-  ClipboardList, 
-  HardHat, 
-  Smartphone, 
-  History, 
-  BarChart3,
   ArrowRight,
-  Zap,
   LayoutDashboard,
-  Shield,
-  FileCheck,
-  Search,
-  Package,
-  Clock,
+  FileCheck as SignatureIcon,
   Menu,
   X,
   XCircle,
-  Smartphone as CameraIcon,
-  FileCheck as SignatureIcon
+  History,
+  Zap,
+  Package,
+  ClipboardList,
+  Smartphone,
+  FileCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading } = useUser();
+  const { isAuthenticated } = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -40,7 +33,6 @@ export default function HomePage() {
     setMounted(true);
   }, []);
 
-  // Prevenir Internal Server Error por desajuste de hidratación
   if (!mounted) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -49,8 +41,8 @@ export default function HomePage() {
     );
   }
 
-  const heroImage = PlaceHolderImages.find(img => img.id === 'hero-industrial');
-  const dashImage = PlaceHolderImages.find(img => img.id === 'dashboard-preview');
+  const heroImage = PlaceHolderImages?.find(img => img.id === 'hero-industrial');
+  const dashImage = PlaceHolderImages?.find(img => img.id === 'dashboard-preview');
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans">
@@ -62,7 +54,7 @@ export default function HomePage() {
               <div className="bg-primary p-2 rounded-lg">
                 <ShieldCheck className="text-white h-6 w-6" />
               </div>
-              <span className="font-black text-xl tracking-tighter text-primary">
+              <span className="font-black text-xl tracking-tighter text-primary uppercase">
                 PCGMANTENIMIENTO
               </span>
             </div>
@@ -70,17 +62,16 @@ export default function HomePage() {
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
               <a href="#solucion" className="hover:text-primary transition-colors">Solución</a>
               <a href="#como-funciona" className="hover:text-primary transition-colors">Cómo Funciona</a>
-              <a href="#beneficios" className="hover:text-primary transition-colors">Beneficios</a>
               {isAuthenticated ? (
-                <Button asChild>
+                <Button asChild className="rounded-full">
                   <Link href="/dashboard" className="gap-2">
-                    Panel de Control <LayoutDashboard className="h-4 w-4" />
+                    Panel Control <LayoutDashboard className="h-4 w-4" />
                   </Link>
                 </Button>
               ) : (
                 <div className="flex items-center gap-4">
                   <Link href="/auth/login" className="hover:text-primary transition-colors">Ingresar</Link>
-                  <Button asChild className="rounded-full px-6">
+                  <Button asChild className="rounded-full px-6 shadow-lg shadow-primary/20">
                     <Link href="/auth/signup">Probar Gratis</Link>
                   </Button>
                 </div>
@@ -94,79 +85,41 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-        
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white border-b border-slate-100 p-4 space-y-4 animate-in slide-in-from-top-2">
-            <Link href="/auth/login" className="block text-center font-bold text-slate-600 p-2">INGRESAR</Link>
-            <Button asChild className="w-full rounded-full">
-              <Link href="/auth/signup">PROBAR GRATIS</Link>
-            </Button>
-          </div>
-        )}
       </nav>
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden relative">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Badge variant="outline" className="mb-6 py-1 px-4 border-primary/20 text-primary bg-primary/5 rounded-full font-bold uppercase tracking-widest animate-pulse">
-            Plataforma de Gestión Industrial
+          <Badge variant="outline" className="mb-6 py-1 px-4 border-primary/20 text-primary bg-primary/5 rounded-full font-bold uppercase tracking-widest">
+            Gestión Industrial Avanzada
           </Badge>
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 mb-6 leading-[0.9]">
-            Controla toda tu operación <br />
-            <span className="text-primary italic font-serif">con trazabilidad y evidencia</span>
+            Toda tu operación <br />
+            <span className="text-primary italic font-serif">con trazabilidad total</span>
           </h1>
           <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-            La herramienta táctica que acredita tu experiencia técnica en terreno. <br className="hidden md:block" />
-            Certifica magnitudes, servicios realizados y conformidad de clientes con sellos digitales.
+            Elimina el papel y certifica tu experiencia técnica en terreno con evidencias reales y sellos digitales.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20 hover:scale-105 transition-transform">
-              <Link href="/auth/signup">Empieza hoy mismo <ArrowRight className="ml-2 h-5 w-5" /></Link>
+            <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
+              <Link href="/auth/signup">Empieza ahora <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
-            <p className="text-sm font-bold text-slate-400">Digitalización de procesos industriales.</p>
           </div>
           
-          {/* Dashboard Preview Mockup */}
           <div className="mt-20 relative max-w-5xl mx-auto px-4">
-            <div className="bg-slate-900 rounded-3xl p-3 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden">
-              <div className="bg-white rounded-2xl overflow-hidden border border-slate-800 relative aspect-video shadow-inner">
-                {dashImage ? (
+            <div className="bg-slate-900 rounded-3xl p-3 shadow-2xl overflow-hidden border border-slate-800">
+              <div className="bg-white rounded-2xl overflow-hidden relative aspect-video shadow-inner">
+                {dashImage && (
                   <Image 
                     src={dashImage.imageUrl} 
                     alt={dashImage.description} 
                     fill
                     priority
-                    className="object-cover opacity-100 transition-opacity duration-1000"
+                    className="object-cover"
                     data-ai-hint={dashImage.imageHint}
                   />
-                ) : (
-                  <div className="w-full h-full bg-slate-50 flex items-center justify-center animate-pulse">
-                    <LayoutDashboard className="h-12 w-12 text-slate-200" />
-                  </div>
                 )}
-              </div>
-            </div>
-            
-            {/* Overlay Floating Elements */}
-            <div className="absolute -bottom-10 -right-4 hidden lg:block animate-bounce duration-[4000ms]">
-              <div className="bg-white p-5 rounded-2xl shadow-2xl border border-emerald-100 flex items-center gap-4">
-                <div className="bg-emerald-500 p-2 rounded-full shadow-lg shadow-emerald-200"><CheckCircle2 className="text-white h-6 w-6" /></div>
-                <div className="text-left">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">OT FINALIZADA</p>
-                  <p className="font-bold text-slate-900 italic">"Validada con evidencia real"</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="absolute -top-10 -left-4 hidden lg:block animate-pulse duration-[5000ms]">
-              <div className="bg-white p-5 rounded-2xl shadow-2xl border border-blue-100 flex items-center gap-4">
-                <div className="bg-blue-600 p-2 rounded-full shadow-lg shadow-blue-200"><SignatureIcon className="text-white h-6 w-6" /></div>
-                <div className="text-left">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">FIRMA DIGITAL</p>
-                  <p className="font-bold text-slate-900 italic">"Sello técnico emitido"</p>
-                </div>
               </div>
             </div>
           </div>
@@ -178,18 +131,18 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-tight">
+              <h2 className="text-4xl md:text-5xl font-black tracking-tight">
                 Menos planillas,<br />
                 <span className="text-primary">más control operativo.</span>
               </h2>
               <div className="space-y-6">
                 {[
-                  { icon: XCircle, title: "El caos del papel y Excel", desc: "Planillas infinitas que nadie actualiza y terminan guardadas en cajones." },
-                  { icon: History, title: "Falta de trazabilidad", desc: "¿Sabes qué se hizo realmente en terreno? Sin registros, no hay historia." },
-                  { icon: Zap, title: "Mantenimiento reactivo", desc: "Corres tras las fallas porque no tienes visibilidad de lo preventivo." }
+                  { icon: XCircle, title: "Fin del Caos", desc: "Dile adiós a los reportes en papel que se pierden o nunca se actualizan." },
+                  { icon: History, title: "Trazabilidad Real", desc: "Mantén un historial inalterable de cada intervención realizada por tu equipo." },
+                  { icon: Zap, title: "Rapidez", desc: "Genera informes técnicos y certificados de experiencia en segundos." }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4">
-                    <div className="bg-rose-100 p-2 rounded-lg h-fit"><item.icon className="text-rose-600 h-5 w-5" /></div>
+                    <div className="bg-white p-2 rounded-lg h-fit shadow-sm border"><item.icon className="text-primary h-5 w-5" /></div>
                     <div>
                       <h3 className="font-bold text-lg mb-1">{item.title}</h3>
                       <p className="text-slate-600 leading-snug">{item.desc}</p>
@@ -198,18 +151,17 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 space-y-8 relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-primary/10 px-4 py-1 rounded-bl-xl font-bold text-xs text-primary uppercase">La Solución Digital</div>
-              <h3 className="text-2xl font-black italic">"Lo que no se registra, no existe"</h3>
-              <p className="text-slate-600">PCGMANTENIMIENTO centraliza toda la operación en una herramienta diseñada para ser usada en el campo, no solo en la oficina.</p>
+            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+              <h3 className="text-2xl font-black italic mb-4">"Lo que no se registra, no existe"</h3>
+              <p className="text-slate-600 mb-8">Centraliza toda tu operación en una herramienta diseñada para el campo.</p>
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="bg-slate-50 p-4 rounded-xl border">
                   <p className="text-3xl font-black text-primary mb-1">100%</p>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Trazabilidad Real</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase">Trazabilidad</p>
                 </div>
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="bg-slate-50 p-4 rounded-xl border">
                   <p className="text-3xl font-black text-primary mb-1">0</p>
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Pérdida de Datos</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase">Pérdida Datos</p>
                 </div>
               </div>
             </div>
@@ -217,40 +169,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Steps Section */}
-      <section id="como-funciona" className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-black mb-16 tracking-tight">Mantenimiento claro en 4 pasos</h2>
-          <div className="grid md:grid-cols-4 gap-8 relative">
-            <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -z-10 hidden md:block" />
-            {[
-              { icon: Package, title: "1. Registra Activos", desc: "Toda tu maquinaria y equipos organizados por código." },
-              { icon: ClipboardList, title: "2. Asigna OTs", desc: "Define tareas preventivas o correctivas en segundos." },
-              { icon: Smartphone, title: "3. Ejecuta en Terreno", desc: "Tus técnicos completan checklists y suben fotos." },
-              { icon: FileCheck, title: "4. Valida y Firma", desc: "Aprueba el trabajo con evidencias y firmas digitales." }
-            ].map((step, i) => (
-              <div key={i} className="bg-white p-6 rounded-2xl group hover:shadow-xl transition-all border border-transparent hover:border-slate-100">
-                <div className="bg-primary/5 text-primary w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-primary group-hover:text-white transition-colors">
-                  <step.icon className="h-8 w-8" />
-                </div>
-                <h3 className="font-bold text-xl mb-3">{step.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
-        <div className="flex justify-center gap-4 mb-6">
-          <ShieldCheck className="text-slate-300 h-8 w-8" />
-        </div>
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">
-          PCGMANTENIMIENTO ERP - Gestión Industrial Avanzada
-        </p>
-        <p className="text-xs text-slate-400 mb-8">
-          © {new Date().getFullYear()} Todos los derechos reservados. www.pcgmantenimiento.com
+      <footer className="py-12 bg-white border-t border-slate-100 text-center">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+          PCGMANTENIMIENTO ERP - © {new Date().getFullYear()}
         </p>
       </footer>
     </div>
