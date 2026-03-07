@@ -38,8 +38,6 @@ export default function HomePage() {
     );
   }
 
-  const dashImage = PlaceHolderImages?.find(img => img.id === 'dashboard-preview');
-
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans">
       {/* Navigation */}
@@ -97,24 +95,10 @@ export default function HomePage() {
           <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
             Elimina el papel y certifica tu experiencia técnica en terreno con evidencias reales y sellos digitales.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex items-center justify-center">
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
               <Link href="/auth/signup">Empieza ahora <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
-          </div>
-          
-          <div className="mt-20 relative max-w-5xl mx-auto px-4">
-            <div className="bg-slate-900 rounded-3xl p-3 shadow-2xl overflow-hidden border border-slate-800">
-              <div className="bg-white rounded-2xl overflow-hidden relative aspect-video shadow-inner">
-                <Image 
-                  src="/imagen1.png" 
-                  alt="PCGMantenimiento Interface" 
-                  fill
-                  priority
-                  className="object-cover"
-                />
-              </div>
-            </div>
           </div>
         </div>
       </section>
