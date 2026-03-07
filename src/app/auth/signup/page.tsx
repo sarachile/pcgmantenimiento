@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -25,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
+import { addDays } from 'date-fns';
 
 const SUPERADMIN_EMAIL = 'control@pcgoperacion.com';
 
@@ -58,13 +60,15 @@ export default function SignupPage() {
         targetCompanyId = 'pcg-central';
         role = 'superadmin';
       } 
-      // 2. CREAR NUEVA EMPRESA (FREEMIUM)
+      // 2. CREAR NUEVA EMPRESA (FREEMIUM / TRIAL)
       else if (signupMode === 'new') {
         if (!companyName.trim()) throw new Error("Debe ingresar el nombre de su empresa.");
         targetCompanyId = `comp-${Math.random().toString(36).substr(2, 8)}`;
         role = 'companyAdmin';
 
-        // Crear documento de la empresa en Plan Simple
+        const trialEndDate = addDays(new Date(), 14).toISOString();
+
+        // Crear documento de la empresa en Plan Simple con Trial de 14 días
         await setDoc(doc(db, 'companies', targetCompanyId), {
           id: targetCompanyId,
           name: companyName.trim(),
@@ -74,6 +78,7 @@ export default function SignupPage() {
           currentPlan: 'simple',
           subscriptionStatus: 'active',
           createdAt: new Date().toISOString(),
+          trialEndsAt: trialEndDate
         });
       } 
       // 3. UNIRSE A EMPRESA EXISTENTE
@@ -130,7 +135,7 @@ export default function SignupPage() {
       toast({
         title: signupMode === 'new' ? "¡Empresa Creada!" : "Cuenta vinculada",
         description: signupMode === 'new' 
-          ? "Bienvenido a su nuevo entorno Freemium. Su empresa ya está activa." 
+          ? "Bienvenido a su nuevo entorno. Su prueba de 14 días ha comenzado." 
           : "Bienvenido al sistema. Redirigiendo...",
       });
       
@@ -186,7 +191,7 @@ export default function SignupPage() {
                   <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex gap-3">
                     <Zap className="h-5 w-5 text-blue-600 shrink-0" />
                     <p className="text-[10px] font-bold text-blue-700 uppercase leading-relaxed">
-                      Activación instantánea: Incluye Plan Simple (Freemium) sin costo mensual.
+                      Acceso instantáneo: 14 días de prueba completa incluidos.
                     </p>
                   </div>
                 </TabsContent>

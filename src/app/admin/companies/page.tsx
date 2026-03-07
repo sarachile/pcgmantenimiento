@@ -52,7 +52,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  XCircle
+  XCircle,
+  Timer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -67,7 +68,7 @@ import {
 } from "@/firebase";
 import { collection, doc, serverTimestamp, query, orderBy, limit, updateDoc, addDoc } from "firebase/firestore";
 import { Company, User } from "@/lib/types";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
 
@@ -248,7 +249,7 @@ export default function AdminCompaniesPage() {
         <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
         
         <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
-          Este es un mensaje automático de la plataforma central de PCG OPERACIONES. Por favor no responda a esta casilla.
+          Este es un message automático de la plataforma central de PCG OPERACIONES. Por favor no responda a esta casilla.
         </p>
       </div>
     `;
@@ -303,6 +304,13 @@ export default function AdminCompaniesPage() {
     } catch (e) {
       return 'N/A';
     }
+  };
+
+  const getTrialDaysRemaining = (trialEndsAt: any) => {
+    if (!trialEndsAt) return null;
+    const end = trialEndsAt.toDate ? trialEndsAt.toDate() : parseISO(trialEndsAt);
+    const diff = differenceInDays(end, new Date());
+    return diff > 0 ? diff : 0;
   };
 
   const getCompanyUsers = (compId: string) => {
@@ -404,8 +412,8 @@ export default function AdminCompaniesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Empresa / Inicio</TableHead>
+                    <TableHead>Plan / Trial</TableHead>
                     <TableHead>Código Acceso</TableHead>
-                    <TableHead>Plan / Estado</TableHead>
                     <TableHead>Usuarios</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -413,6 +421,8 @@ export default function AdminCompaniesPage() {
                 <TableBody>
                   {filtered.map((company: Company) => {
                     const companyUsers = getCompanyUsers(company.id);
+                    const daysRemaining = getTrialDaysRemaining(company.trialEndsAt);
+                    
                     return (
                       <TableRow key={company.id} className="group">
                         <TableCell>
@@ -421,6 +431,25 @@ export default function AdminCompaniesPage() {
                             <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                               <Calendar className="h-3 w-3" /> {formatDate(company.createdAt)}
                             </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className={cn(
+                              "w-fit text-[9px] font-black uppercase",
+                              company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
+                              company.currentPlan === 'business' && "bg-blue-50 text-blue-700 border-blue-200"
+                            )}>
+                              {company.currentPlan?.toUpperCase() || 'SIMPLE'}
+                            </Badge>
+                            {daysRemaining !== null && (
+                              <span className={cn(
+                                "text-[10px] font-bold flex items-center gap-1",
+                                daysRemaining <= 5 ? "text-rose-600" : "text-slate-500"
+                              )}>
+                                <Timer className="h-3 w-3" /> {daysRemaining} días restantes
+                              </span>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -439,23 +468,6 @@ export default function AdminCompaniesPage() {
                             >
                               <Copy className="h-3 w-3" />
                             </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <Badge variant="outline" className={cn(
-                              "w-fit text-[9px] font-black uppercase",
-                              company.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
-                              company.currentPlan === 'pro' && "bg-blue-50 text-blue-700 border-blue-200"
-                            )}>
-                              {company.currentPlan?.toUpperCase() || 'FREE'}
-                            </Badge>
-                            <span className={cn(
-                              "text-[10px] font-bold",
-                              !company.isActive ? "text-rose-600" : "text-emerald-600"
-                            )}>
-                              {company.isActive ? 'OPERATIVA' : 'SUSPENDIDA'}
-                            </span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -726,9 +738,9 @@ export default function AdminCompaniesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="free">Plan Inicio (Demo)</SelectItem>
-                    <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
-                    <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
+                    <SelectItem value="simple">Plan Simple (Freemium)</SelectItem>
+                    <SelectItem value="business">Plan Business (1.8 UF)</SelectItem>
+                    <SelectItem value="enterprise">Plan Enterprise (3.5 UF)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

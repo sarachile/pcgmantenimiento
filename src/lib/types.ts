@@ -26,6 +26,7 @@ export interface Company {
   isActive: boolean;
   createdAt: string | any;
   updatedAt?: string | any;
+  trialEndsAt?: string | any; // Fecha fin de prueba
   requestedPlan?: string;
   // Métricas de control para límites
   metrics?: {
@@ -57,6 +58,8 @@ export interface User {
   companyId: string;
   active: boolean;
   createdAt: string;
+  staffId?: string;
+  isStaffAccount?: boolean;
 }
 
 export interface StaffMember {
@@ -69,6 +72,8 @@ export interface StaffMember {
   email?: string;
   active: boolean;
   createdAt: string | any;
+  hasAccount?: boolean;
+  userId?: string;
 }
 
 export interface Team {
@@ -165,4 +170,76 @@ export interface DigitalLogbookEntry {
   eventType: 'status_change' | 'action_taken' | 'comment' | 'system_alert';
   eventDetails: string;
   actor: string;
+}
+
+export interface BillingDocument {
+  id: string;
+  companyId: string;
+  clientId: string;
+  clientName: string;
+  clientRut: string;
+  clientAddress?: string;
+  workOrderId?: string | null;
+  type: BillingDocumentType;
+  status: DTEStatus;
+  items: BillingItem[];
+  netAmount: number;
+  taxAmount: number;
+  totalAmount: number;
+  folio?: number;
+  pdfUrl?: string;
+  xmlUrl?: string;
+  isSandbox?: boolean;
+  createdAt: string | any;
+  updatedAt: string | any;
+}
+
+export interface BillingItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface ServiceEvaluation {
+  id: string;
+  workOrderId: string;
+  clientId: string;
+  companyId: string;
+  reviewerId: string;
+  reviewerName: string;
+  ratings: {
+    quality: number;
+    timing: number;
+    safety: number;
+    documentation: number;
+  };
+  comment: string;
+  adminResponse?: string;
+  adminResponseAt?: string | any;
+  createdAt: string | any;
+}
+
+export interface TicketMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'admin' | 'user';
+  text: string;
+  timestamp: string | any;
+}
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  userName: string;
+  companyId: string;
+  companyName: string;
+  subject: string;
+  description: string;
+  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  category: 'technical' | 'billing' | 'feature' | 'other';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  createdAt: string | any;
+  updatedAt: string | any;
 }
