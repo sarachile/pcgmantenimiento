@@ -170,7 +170,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <div style="background-color: #f8fafc; border-radius: 12px; padding: 24px; margin: 24px 0; border: 1px solid #e2e8f0;">
               <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold; width: 140px;">ORDEN DE TRABAJO:</td><td style="padding: 6px 0; font-weight: 900; color: #1e3a8a;">${ot.id}</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">EMPRESA MANDANTE:</td><td style="padding: 6px 0; font-weight: bold;">${client?.name || 'S/I'}</td></tr>
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">EQUIPO / ACTIVO:</td><td style="padding: 6px 0; font-weight: bold;">${asset?.name || 'S/I'} [${asset?.code || '-'}]</td></tr>
+                <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">DESCRIPCIÓN:</td><td style="padding: 6px 0; font-style: italic;">${ot.description}</td></tr>
                 <tr><td style="padding: 6px 0; color: #64748b; font-weight: bold;">CÓDIGO DE ACCESO:</td><td style="padding: 6px 0;"><span style="background: #1e3a8a; color: #ffffff; padding: 4px 12px; border-radius: 6px; font-family: monospace; font-weight: 900; font-size: 18px; letter-spacing: 2px;">${ot.approvalPin || '------'}</span></td></tr>
               </table>
             </div>
@@ -180,6 +182,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 REVISAR Y APROBAR DIGITALMENTE
               </a>
             </div>
+            
+            <p style="font-size: 12px; color: #94a3b8; text-align: center; font-style: italic;">
+              Este es un mensaje automático del sistema de gestión PCGMANTENIMIENTO. No es necesario responder a este remitente.
+            </p>
           </div>
         `
       });
