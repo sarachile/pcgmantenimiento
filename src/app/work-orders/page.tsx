@@ -43,7 +43,8 @@ import {
   ShieldCheck,
   Zap,
   ArrowRight,
-  Copy
+  Copy,
+  Edit2
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
@@ -56,7 +57,7 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
 export default function WorkOrdersPage() {
-  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -121,6 +122,8 @@ export default function WorkOrdersPage() {
   }, [filteredOTs]);
 
   if (isUserLoading || !mounted) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+  const isAdminOrSupervisor = isCompanyAdmin || isSupervisor;
 
   return (
     <div className="space-y-8 pb-10">
@@ -288,6 +291,13 @@ export default function WorkOrdersPage() {
                                               <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
                                             </Link>
                                           </DropdownMenuItem>
+                                          {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+                                            <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
+                                              <Link href={`/work-orders/new?editId=${ot.id}`} className="font-bold flex items-center gap-2 text-amber-600">
+                                                <Edit2 className="h-4 w-4" /> Editar Orden
+                                              </Link>
+                                            </DropdownMenuItem>
+                                          )}
                                           <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
                                             <Link href={`/work-orders/new?duplicateFrom=${ot.id}`} className="font-bold flex items-center gap-2 text-blue-600">
                                               <Copy className="h-4 w-4" /> Duplicar OT (Plantilla)

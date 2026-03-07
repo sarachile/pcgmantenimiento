@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where, doc, getDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, Plus, Users, Building2, Search, Zap, ShieldCheck, QrCode, Star, Hash, MapPin, User } from "lucide-react";
+import { ArrowLeft, Loader2, ClipboardPlus, Plus, Users, Building2, Search, Zap, ShieldCheck, QrCode, Star, Hash, MapPin, User, Edit2, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Client, Asset, StaffMember, Team } from "@/lib/types";
@@ -29,6 +30,10 @@ function NewWorkOrderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+
+  const editId = searchParams.get('editId');
+  const duplicateFrom = searchParams.get('duplicateFrom');
+  const isEditing = !!editId;
 
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
@@ -45,6 +50,7 @@ function NewWorkOrderContent() {
   const [reviewerRequired, setReviewerRequired] = useState(true);
   const [evaluationRequired, setEvaluationRequired] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   
   const [scheduledDate, setScheduledDate] = useState("");
   const [durationDays, setDurationDays] = useState(1);
@@ -53,11 +59,12 @@ function NewWorkOrderContent() {
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
 
   useEffect(() => {
-    setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
-  }, []);
+    if (!isEditing) {
+      setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
+    }
+  }, [isEditing]);
 
   const companyId = profile?.companyId || "";
-  const duplicateFrom = searchParams.get('duplicateFrom');
 
   const clientsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "clients") : null, [db, companyId]);
   const assetsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "assets") : null, [db, companyId]);
@@ -69,21 +76,14 @@ function NewWorkOrderContent() {
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
   const { data: teams } = useCollection<Team>(teamsQuery);
 
+  // Carga de datos para EDICIÓN o DUPLICACIÓN
   useEffect(() => {
-    if (clientId && clients) {
-      const selected = clients.find(c => c.id === clientId);
-      if (selected) {
-        if (!serviceLocation) setServiceLocation(selected.address);
-        if (!requestedByName) setRequestedByName(selected.contactName || "");
-      }
-    }
-  }, [clientId, clients, serviceLocation, requestedByName]);
-
-  useEffect(() => {
-    if (duplicateFrom && db && companyId) {
-      const fetchSource = async () => {
+    const sourceId = editId || duplicateFrom;
+    if (sourceId && db && companyId) {
+      const fetchData = async () => {
+        setIsLoadingData(true);
         try {
-          const docRef = doc(db, "companies", companyId, "workOrders", duplicateFrom);
+          const docRef = doc(db, "companies", companyId, "workOrders", sourceId);
           const snap = await getDoc(docRef);
           if (snap.exists()) {
             const data = snap.data();
@@ -99,18 +99,31 @@ function NewWorkOrderContent() {
             setEvaluationRequired(data.evaluationRequired ?? true);
             setServiceQuantity(data.serviceQuantity?.toString() || "");
             setServiceUnit(data.serviceUnit || "Unidades");
+            
+            if (data.scheduledDate) {
+              const d = data.scheduledDate.toDate ? data.scheduledDate.toDate() : new Date(data.scheduledDate);
+              setScheduledDate(format(d, 'yyyy-MM-dd'));
+            }
+            setDurationDays(data.durationDays || 1);
+
             if (data.checklist) {
               setChecklist(data.checklist.map((i: any) => ({ task: i.task })));
             }
-            toast({ title: "Plantilla Cargada", description: "Se han copiado los datos de la orden anterior." });
+            
+            toast({ 
+              title: isEditing ? "Cargando Orden" : "Plantilla Cargada", 
+              description: isEditing ? "Datos listos para modificar." : "Se han copiado los datos de la orden anterior." 
+            });
           }
         } catch (e) {
-          console.error("Error duplicando OT:", e);
+          console.error("Error fetching source OT:", e);
+        } finally {
+          setIsLoadingData(false);
         }
       };
-      fetchSource();
+      fetchData();
     }
-  }, [duplicateFrom, db, companyId, toast]);
+  }, [editId, duplicateFrom, db, companyId, toast, isEditing]);
 
   const uniqueRoles = useMemo(() => {
     if (!staffMembers) return [];
@@ -137,29 +150,22 @@ function NewWorkOrderContent() {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim() || !clientId || !companyId || !profile) return;
 
     setIsSubmitting(true);
     try {
-      const pin = Math.floor(100000 + Math.random() * 900000).toString();
-      const colRef = collection(db!, "companies", companyId, "workOrders");
-      
-      const newOT = {
-        companyId,
+      const commonData = {
         clientId,
         assetId: assetId === 'none' ? null : (assetId || null),
         description: description.trim(),
         serviceLocation: serviceLocation.trim(),
         requestedByName: requestedByName.trim(),
-        status: "creada",
         assignedToStaffIds,
         assignedTeamId: assignmentMode === 'team' ? assignedTeamId : null,
-        createdByUserId: profile.id,
         reviewerRequired,
         evaluationRequired,
-        approvalPin: pin,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
         serviceQuantity: serviceQuantity ? Number(serviceQuantity) : null,
@@ -169,13 +175,28 @@ function NewWorkOrderContent() {
           task: item.task, 
           completed: false 
         })),
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      const docRef = await addDoc(colRef, newOT);
-      toast({ title: "Orden Generada", description: `OT ${docRef.id} creada exitosamente.` });
-      router.push(`/work-orders/${docRef.id}`);
+      if (isEditing) {
+        const docRef = doc(db!, "companies", companyId, "workOrders", editId);
+        updateDocumentNonBlocking(docRef, commonData);
+        toast({ title: "Orden Actualizada", description: `Los cambios en la OT ${editId} han sido guardados.` });
+        router.push(`/work-orders/${editId}`);
+      } else {
+        const pin = Math.floor(100000 + Math.random() * 900000).toString();
+        const colRef = collection(db!, "companies", companyId, "workOrders");
+        const docRef = await addDoc(colRef, {
+          ...commonData,
+          companyId,
+          status: "creada",
+          createdByUserId: profile.id,
+          approvalPin: pin,
+          createdAt: serverTimestamp(),
+        });
+        toast({ title: "Orden Generada", description: `OT ${docRef.id} creada exitosamente.` });
+        router.push(`/work-orders/${docRef.id}`);
+      }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -183,32 +204,40 @@ function NewWorkOrderContent() {
     }
   };
 
-  if (isUserLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  const addChecklistItem = () => setChecklist([...checklist, { task: "" }]);
+  const removeChecklistItem = (idx: number) => setChecklist(checklist.filter((_, i) => i !== idx));
+  const updateChecklistItem = (idx: number, val: string) => {
+    const next = [...checklist];
+    next[idx].task = val;
+    setChecklist(next);
+  };
+
+  if (isUserLoading || isLoadingData) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 px-4 py-8 pb-20">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
+          <Button variant="ghost" size="icon" asChild><Link href={isEditing ? `/work-orders/${editId}` : "/work-orders"}><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
             <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">
-              {duplicateFrom ? "Duplicar Orden" : "Nueva Orden de Trabajo"}
+              {isEditing ? "Editar Orden de Trabajo" : (duplicateFrom ? "Duplicar Orden" : "Nueva Orden de Trabajo")}
             </h2>
             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">
-              {duplicateFrom ? "Editando copia de seguridad" : "Configuración de Operación Industrial"}
+              {isEditing ? "Modificación de parámetros técnicos" : "Configuración de Operación Industrial"}
             </p>
           </div>
         </div>
-        {duplicateFrom && (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-black uppercase text-[10px]">Modo Plantilla</Badge>
+        {isEditing && (
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-black uppercase text-[10px]">Modo Edición</Badge>
         )}
       </div>
 
-      <form onSubmit={handleCreate} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8">
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="bg-slate-900 text-white p-8">
+          <CardHeader className={cn("text-white p-8", isEditing ? "bg-amber-600" : "bg-slate-900")}>
             <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
-              <ClipboardPlus className="h-6 w-6 text-blue-400" /> 1. Datos del Servicio
+              {isEditing ? <Edit2 className="h-6 w-6" /> : <ClipboardPlus className="h-6 w-6 text-blue-400" />} 1. Datos del Servicio
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8 space-y-8">
@@ -440,10 +469,35 @@ function NewWorkOrderContent() {
                 <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} className="h-12 border-2 rounded-xl font-bold" />
               </div>
             </div>
+
+            <div className="space-y-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Checklist / Protocolos Técnicos</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addChecklistItem} className="h-8 rounded-lg font-bold text-[10px] uppercase">
+                  <Plus className="h-3 w-3 mr-1" /> Añadir Tarea
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {checklist.map((item, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <Input 
+                      placeholder="Ej: Revisión de niveles de aceite" 
+                      value={item.task}
+                      onChange={(e) => updateChecklistItem(idx, e.target.value)}
+                      className="h-11 rounded-xl border-2"
+                    />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeChecklistItem(idx)} className="h-11 w-11 text-rose-500">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {checklist.length === 0 && <p className="text-center py-4 text-xs text-slate-400 italic">No hay protocolos definidos.</p>}
+              </div>
+            </div>
           </CardContent>
           <CardFooter className="p-8 pt-0">
-            <Button type="submit" disabled={isSubmitting || !clientId || !description.trim() || assignedToStaffIds.length === 0} className="w-full h-16 rounded-2xl bg-primary text-white font-black text-lg uppercase tracking-widest shadow-xl shadow-primary/20 gap-3">
-              {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><Plus className="h-6 w-6" /> {duplicateFrom ? "Generar OT desde Copia" : "Generar Orden de Trabajo"}</>}
+            <Button type="submit" disabled={isSubmitting || !clientId || !description.trim() || assignedToStaffIds.length === 0} className={cn("w-full h-16 rounded-2xl text-white font-black text-lg uppercase tracking-widest shadow-xl gap-3", isEditing ? "bg-amber-600 hover:bg-amber-700 shadow-amber-900/20" : "bg-primary shadow-primary/20")}>
+              {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : (isEditing ? <><Edit2 className="h-6 w-6" /> Actualizar Orden de Trabajo</> : <><Plus className="h-6 w-6" /> Generar Orden de Trabajo</>)}
             </Button>
           </CardFooter>
         </Card>

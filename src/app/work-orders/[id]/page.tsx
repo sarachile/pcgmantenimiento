@@ -37,7 +37,8 @@ import {
   Sparkles,
   FileText,
   Copy,
-  ImageOff
+  ImageOff,
+  Edit2
 } from "lucide-react";
 import {
   Dialog,
@@ -288,6 +289,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   if (!ot) return <div className="p-8 text-center border-2 border-dashed rounded-3xl opacity-50">Orden no encontrada.</div>;
 
   const canEditPhotos = ot.status !== 'aprobada' && ot.status !== 'pendiente cliente';
+  const isAdminOrSupervisor = isCompanyAdmin || isSupervisor;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -310,6 +312,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {isAdminOrSupervisor && (
+            <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50 font-bold" disabled={ot.status === 'aprobada'}>
+              <Link href={`/work-orders/new?editId=${ot.id}`}><Edit2 className="h-4 w-4 mr-2" /> Editar OT</Link>
+            </Button>
+          )}
           <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-blue-200 text-blue-700 hover:bg-blue-50 font-bold">
             <Link href={`/work-orders/new?duplicateFrom=${ot.id}`}><Copy className="h-4 w-4 mr-2" /> Duplicar OT</Link>
           </Button>
