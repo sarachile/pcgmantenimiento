@@ -21,6 +21,8 @@ import { format } from "date-fns";
 import { Client, Asset, StaffMember, Team } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+export const dynamic = 'force-dynamic';
+
 function NewWorkOrderContent() {
   const { profile, isLoading: isUserLoading } = useUser();
   const db = useFirestore();

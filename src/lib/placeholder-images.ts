@@ -1,4 +1,3 @@
-
 import data from '@/app/lib/placeholder-images.json';
 
 export type ImagePlaceholder = {

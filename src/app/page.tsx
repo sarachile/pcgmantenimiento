@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from "react";
@@ -8,16 +7,11 @@ import {
   ShieldCheck, 
   ArrowRight,
   LayoutDashboard,
-  FileCheck as SignatureIcon,
   Menu,
   X,
   XCircle,
   History,
-  Zap,
-  Package,
-  ClipboardList,
-  Smartphone,
-  FileCheck
+  Zap
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

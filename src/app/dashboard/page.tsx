@@ -1,44 +1,31 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   ClipboardList, 
-  Clock, 
   Plus, 
-  ArrowRight, 
   Loader2, 
   AlertTriangle, 
   Activity,
-  Users,
-  Building2,
   Zap,
   ChevronRight,
-  Target,
   Trophy,
-  ArrowUpRight,
-  Lightbulb,
-  Check,
-  Globe
+  Check
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { isBefore, isAfter, addDays, parseISO, startOfDay } from "date-fns";
+import { isBefore, parseISO, startOfDay } from "date-fns";
 import { WorkOrder, Client, Company, StaffMember } from "@/lib/types";
-import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading, isTechnician, isSupervisor, isCompanyAdmin } = useUser();
-  const { staffCount, clientsCount, maxStaff, maxClients } = usePlanLimits();
+  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
   const [today, setToday] = useState<Date | null>(null);

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -37,6 +36,8 @@ import { MOCK_WORK_ORDERS } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { WorkOrder } from "@/lib/types";
+
+export const dynamic = 'force-dynamic';
 
 export default function CalendarPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
