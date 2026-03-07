@@ -35,6 +35,13 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-industrial');
   const dashImage = PlaceHolderImages.find(img => img.id === 'dashboard-preview');

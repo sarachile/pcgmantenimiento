@@ -1,7 +1,6 @@
-
 "use client";
 
-import { use, useState, useEffect, useMemo } from "react";
+import { use, useState, useEffect, useMemo, Suspense } from "react";
 import { 
   Card, 
   CardContent, 
@@ -36,9 +35,8 @@ import { Client, Company } from "@/lib/types";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-export default function PublicRequestPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
-  const clientId = resolvedParams.id;
+function PublicRequestContent({ params }: { params: { id: string } }) {
+  const clientId = params.id;
   const searchParams = useSearchParams();
   const companyId = searchParams.get('c');
   const { toast } = useToast();
@@ -277,5 +275,14 @@ export default function PublicRequestPage({ params }: { params: Promise<{ id: st
         )}
       </div>
     </div>
+  );
+}
+
+export default function PublicRequestPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <PublicRequestContent params={resolvedParams} />
+    </Suspense>
   );
 }

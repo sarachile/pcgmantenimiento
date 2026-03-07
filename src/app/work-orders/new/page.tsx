@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where, doc, getDoc } from "firebase/firestore";
@@ -22,7 +21,7 @@ import { format } from "date-fns";
 import { Client, Asset, StaffMember, Team } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-export default function NewWorkOrderPage() {
+function NewWorkOrderContent() {
   const { profile, isLoading: isUserLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
@@ -51,7 +50,6 @@ export default function NewWorkOrderPage() {
   const [serviceUnit, setServiceUnit] = useState("Unidades");
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
 
-  // Hydration safety
   useEffect(() => {
     setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
   }, []);
@@ -449,5 +447,13 @@ export default function NewWorkOrderPage() {
         </Card>
       </form>
     </div>
+  );
+}
+
+export default function NewWorkOrderPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <NewWorkOrderContent />
+    </Suspense>
   );
 }

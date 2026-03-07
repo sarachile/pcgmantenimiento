@@ -1,7 +1,6 @@
-
 "use client";
 
-import { use, useState, useEffect, useMemo } from "react";
+import { use, useState, useEffect, useMemo, Suspense } from "react";
 import { 
   Card, 
   CardContent, 
@@ -41,9 +40,8 @@ import { useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
-export default function ExternalApprovalPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params);
-  const otId = resolvedParams.id;
+function ExternalApprovalContent({ params }: { params: { id: string } }) {
+  const otId = params.id;
   const searchParams = useSearchParams();
   const companyId = searchParams.get('c');
   const { toast } = useToast();
@@ -493,5 +491,14 @@ export default function ExternalApprovalPage({ params }: { params: Promise<{ id:
         )}
       </div>
     </div>
+  );
+}
+
+export default function ExternalApprovalPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <ExternalApprovalContent params={resolvedParams} />
+    </Suspense>
   );
 }
