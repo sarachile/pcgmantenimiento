@@ -115,6 +115,19 @@ export default function DashboardPage() {
           <p className="text-muted-foreground font-medium">Bienvenido, {profile?.name}.</p>
         </div>
 
+        {/* AYUDA VISUAL MÓVIL: TARJETA DE INSTRUCCIÓN (OPCIÓN B) */}
+        <Card className="md:hidden rounded-[2rem] border-none bg-blue-600 text-white shadow-xl mb-6 overflow-hidden relative animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="absolute right-0 top-0 p-6 opacity-20">
+            <Zap className="h-16 w-16 text-white fill-white" />
+          </div>
+          <CardContent className="p-8">
+            <h3 className="text-xl font-black uppercase tracking-tight italic mb-2">¿Listo para reportar?</h3>
+            <p className="text-sm font-medium text-blue-50 leading-relaxed max-w-[85%]">
+              Usa el botón central <span className="bg-white/20 px-2 py-1 rounded-lg inline-flex items-center gap-1.5 font-black border border-white/10 mx-1 shadow-sm"> <Camera className="h-3.5 w-3.5" /> CAPTURA </span> de la barra inferior para subir fotos y notas de tus trabajos asignados.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* ACCIÓN PRINCIPAL DE CAPTURA (SOLO PC) */}
         <Card className="hidden md:flex rounded-[2rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden relative group">
           <div className="absolute -right-4 -top-4 p-8 opacity-10 group-hover:scale-110 transition-transform">
