@@ -145,6 +145,18 @@ export default function TeamPage() {
     setEditingStaff(null);
   };
 
+  const handleEditStaff = (staff: StaffMember) => {
+    setEditingStaff(staff);
+    setFormData({
+      name: staff.name,
+      role: staff.role,
+      identification: staff.identification || "",
+      phone: staff.phone || "",
+      email: staff.email || ""
+    });
+    setIsCreateOpen(true);
+  };
+
   const handleTeamSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !profile?.companyId || !teamFormData.name || teamFormData.memberIds.length === 0) return;
@@ -353,7 +365,13 @@ export default function TeamPage() {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <Dialog open={isCreateOpen} onOpenChange={(open) => {
+              setIsCreateOpen(open);
+              if (!open) {
+                setEditingStaff(null);
+                setFormData({ name: "", role: "Técnico", identification: "", phone: "", email: "" });
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button className="rounded-xl shadow-lg font-black gap-2">
                   <UserPlus className="h-4 w-4" /> Nuevo Técnico
@@ -361,8 +379,8 @@ export default function TeamPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
                 <DialogHeader>
-                  <DialogTitle className="text-2xl font-black italic">Registrar Personal</DialogTitle>
-                  <DialogDescription>Añada un nuevo colaborador a la base de datos maestra.</DialogDescription>
+                  <DialogTitle className="text-2xl font-black italic">{editingStaff ? "Editar Técnico" : "Registrar Personal"}</DialogTitle>
+                  <DialogDescription>Añada o actualice los datos de un colaborador en la base de datos maestra.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleStaffSubmit} className="space-y-4 py-4">
                   <div className="space-y-2">
@@ -400,7 +418,9 @@ export default function TeamPage() {
                     </div>
                   </div>
                   <DialogFooter className="pt-4">
-                    <Button type="submit" className="w-full h-12 rounded-xl font-black uppercase tracking-widest">Guardar Registro</Button>
+                    <Button type="submit" className="w-full h-12 rounded-xl font-black uppercase tracking-widest">
+                      {editingStaff ? "Guardar Cambios" : "Guardar Registro"}
+                    </Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -504,6 +524,15 @@ export default function TeamPage() {
                         <TableCell><Badge className={staff.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100"}>{staff.active ? "ACTIVO" : "INACTIVO"}</Badge></TableCell>
                         <TableCell className="text-right pr-6">
                           <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-9 w-9 text-blue-600 bg-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" 
+                              title="Editar Datos"
+                              onClick={() => handleEditStaff(staff)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             <Button 
                               variant="ghost" 
                               size="icon" 
