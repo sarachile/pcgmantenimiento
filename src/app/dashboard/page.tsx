@@ -59,7 +59,6 @@ export default function DashboardPage() {
   const realWorkOrders = useMemo(() => {
     if (!workOrders) return [];
     if (isTechnician && profile?.id) {
-      // Intentar filtrar por ID de usuario vinculado al staff o por el nombre si no hay vinculación de ID aún
       return workOrders.filter(ot => 
         ot.assignedToStaffIds?.includes(profile.id) || 
         ot.assignedToStaffIds?.includes(profile.staffId || '')
@@ -116,32 +115,31 @@ export default function DashboardPage() {
           <p className="text-muted-foreground font-medium">Bienvenido, {profile?.name}.</p>
         </div>
 
-        {/* ACCIÓN PRINCIPAL DE CAPTURA */}
-        <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden relative group">
+        {/* ACCIÓN PRINCIPAL DE CAPTURA (SOLO PC) */}
+        <Card className="hidden md:flex rounded-[2rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden relative group">
           <div className="absolute -right-4 -top-4 p-8 opacity-10 group-hover:scale-110 transition-transform">
-            <Zap className="h-40 w-40 text-amber-400" />
+            <Zap className="h-24 w-24 text-amber-400" />
           </div>
-          <CardHeader className="p-8 pb-4">
-            <CardTitle className="text-2xl font-black italic tracking-tighter uppercase text-amber-400">Reporte de Terreno</CardTitle>
-            <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Herramienta de Captura Rápida</CardDescription>
-          </CardHeader>
-          <CardContent className="p-8 pt-0 space-y-6">
-            <Button asChild className="w-full h-24 rounded-3xl bg-white text-slate-900 hover:bg-slate-100 font-black text-xl uppercase tracking-widest gap-4 shadow-xl shadow-blue-900/40">
+          <div className="flex-1 p-8 space-y-4">
+            <div>
+              <CardTitle className="text-xl font-black italic tracking-tighter uppercase text-amber-400">Reporte de Terreno</CardTitle>
+              <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Herramienta de Captura Rápida</CardDescription>
+            </div>
+            <Button asChild className="h-12 px-8 rounded-xl bg-white text-slate-900 hover:bg-slate-100 font-black uppercase tracking-widest gap-2">
               <Link href="/field/capture">
-                <Camera className="h-8 w-8" /> Iniciar Captura
+                <Camera className="h-5 w-5" /> Iniciar Captura
               </Link>
             </Button>
-            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest">
-                <Sparkles className="h-4 w-4" /> Inteligencia Operativa
-              </div>
-              <p className="text-[10px] text-slate-500 font-bold uppercase">Estado: Conectado</p>
+          </div>
+          <div className="bg-white/5 p-8 border-l border-white/10 flex flex-col justify-center">
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest">
+              <Sparkles className="h-4 w-4" /> IA Operativa Activa
             </div>
-          </CardContent>
+          </div>
         </Card>
 
         {/* RESUMEN DE TRABAJOS ASIGNADOS */}
-        <div className="grid gap-4 grid-cols-2">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <Card className="border-none shadow-sm rounded-3xl bg-white">
             <CardContent className="p-6">
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">Órdenes Hoy</p>
@@ -157,7 +155,7 @@ export default function DashboardPage() {
         </div>
 
         {/* LISTADO DE TRABAJOS PENDIENTES */}
-        <Card className="rounded-[2rem] border-none shadow-sm overflow-hidden bg-white">
+        <Card className="rounded-[2rem] border-none shadow-sm overflow-hidden bg-white max-w-4xl">
           <CardHeader className="bg-slate-50/50 p-6 border-b">
             <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-primary" /> Mi Hoja de Ruta
