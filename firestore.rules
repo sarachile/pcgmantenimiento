@@ -65,7 +65,10 @@ service cloud.firestore {
       allow delete: if isPlatformAdmin();
 
       match /staff/{staffId} {
-        allow read, write: if isCompanyMember(companyId);
+        // Permitir GET para que el técnico pueda ver su nombre/RUT antes de registrarse
+        allow get: if true;
+        allow list: if isCompanyMember(companyId);
+        allow write: if isCompanyMember(companyId);
       }
 
       match /teams/{teamId} {
@@ -98,7 +101,6 @@ service cloud.firestore {
       }
 
       match /workOrders/{workOrderId} {
-        // Permitir creación externa solo para estado 'solicitada'
         allow create: if isCompanyMember(companyId) || (request.resource.data.status == 'solicitada' && request.resource.data.source == 'external');
         allow get: if true; 
         allow list: if isCompanyMember(companyId);

@@ -23,7 +23,7 @@ import {
   Lock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { initializeFirebase } from "@/firebase";
+import { initializeFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { StaffMember, Company } from "@/lib/types";
@@ -63,7 +63,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
           }
         }
       } catch (e) {
-        console.error(e);
+        console.error("Error loading setup data:", e);
       } finally {
         setLoading(false);
       }
@@ -106,7 +106,8 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       const userId = userCredential.user.uid;
 
       // 3. Crear documento de usuario
-      await setDoc(doc(firestore, "users", userId), {
+      const userRef = doc(firestore, "users", userId);
+      const userData = {
         id: userId,
         email: syntheticEmail,
         name: staff.name,
@@ -116,13 +117,30 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         isStaffAccount: true,
         staffId: staff.id,
         createdAt: new Date().toISOString(),
+      };
+
+      setDoc(userRef, userData).catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'create',
+          requestResourceData: userData
+        }));
       });
 
       // 4. Vincular el staff con el usuario de auth
-      await updateDoc(doc(firestore, "companies", company.id, "staff", staff.id), {
+      const staffRef = doc(firestore, "companies", company.id, "staff", staff.id);
+      const staffUpdate = {
         userId: userId,
         hasAccount: true,
         updatedAt: serverTimestamp()
+      };
+
+      updateDoc(staffRef, staffUpdate).catch(async (err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: staffRef.path,
+          operation: 'update',
+          requestResourceData: staffUpdate
+        }));
       });
 
       setStep(3);
@@ -149,7 +167,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
           <div className="bg-primary/20 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto border border-primary/30 mb-4">
             <HardHat className="h-10 w-10 text-primary" />
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic italic">Activa tu Acceso</h1>
+          <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic">Activa tu Acceso</h1>
           <p className="text-slate-400 font-medium">{company.name}</p>
         </div>
 
