@@ -38,7 +38,10 @@ import {
   FileText,
   Copy,
   ImageOff,
-  Edit2
+  Edit2,
+  SendHorizontal,
+  CheckCircle2,
+  AlertTriangle
 } from "lucide-react";
 import {
   Dialog,
@@ -271,6 +274,22 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e: any) { toast({ title: "Error al procesar", variant: "destructive" }); } finally { setIsUpdating(false); }
   };
 
+  const handleDirectApproval = async () => {
+    if (!otRef || !profile) return;
+    setIsUpdating(true);
+    try {
+      const verificationCode = `ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      updateDocumentNonBlocking(otRef, {
+        status: 'aprobada',
+        clientApprovalName: profile.name + " (Administración)",
+        clientApprovalDate: serverTimestamp(),
+        clientApprovalCode: verificationCode,
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Orden Aprobada Internamente" });
+    } catch (e: any) { toast({ title: "Error al aprobar", variant: "destructive" }); } finally { setIsUpdating(false); }
+  };
+
   const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !companyId || !ot || !storage || !otRef) return;
@@ -312,6 +331,28 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+            <div className="flex gap-2 mr-4 border-r pr-4 border-slate-200">
+              {ot.reviewerRequired ? (
+                <Button 
+                  onClick={handleRequestClientApproval} 
+                  disabled={isUpdating}
+                  className="rounded-xl h-11 bg-indigo-600 hover:bg-indigo-700 font-black uppercase text-[10px] tracking-widest gap-2 shadow-lg shadow-indigo-200"
+                >
+                  {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <><SendHorizontal className="h-4 w-4" /> Solicitar Validación Cliente</>}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleDirectApproval} 
+                  disabled={isUpdating}
+                  className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 font-black uppercase text-[10px] tracking-widest gap-2 shadow-lg shadow-emerald-200"
+                >
+                  {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <><CheckCircle2 className="h-4 w-4" /> Finalizar y Aprobar</>}
+                </Button>
+              )}
+            </div>
+          )}
+
           {isAdminOrSupervisor && (
             <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50 font-bold" disabled={ot.status === 'aprobada'}>
               <Link href={`/work-orders/new?editId=${ot.id}`}><Edit2 className="h-4 w-4 mr-2" /> Editar OT</Link>
@@ -365,6 +406,19 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
+          {ot.status === 'rechazada' && (
+            <Card className="border-none shadow-lg bg-rose-50 border-rose-200 rounded-3xl overflow-hidden animate-in slide-in-from-top-4">
+              <CardHeader className="bg-rose-100 flex flex-row items-center gap-3 p-6">
+                <AlertTriangle className="h-6 w-6 text-rose-600" />
+                <CardTitle className="text-lg font-black text-rose-900 uppercase italic">Orden Rechazada por Cliente</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <p className="text-sm font-bold text-rose-800 mb-4 tracking-tight leading-relaxed">Observación: "{ot.rejectedReason}"</p>
+                <p className="text-xs text-rose-600 font-medium">Por favor, realice las correcciones indicadas y vuelva a solicitar la aprobación.</p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="rounded-[2rem] border-none shadow-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white overflow-hidden relative group">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-32 w-32" /></div>
             <CardHeader className="p-8 pb-4">
