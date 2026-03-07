@@ -1,11 +1,10 @@
-
 "use client";
 
 import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar, User } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar, User, Building2 } from "lucide-react";
 import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface WorkOrderReportProps {
@@ -52,11 +51,8 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
       {/* Header */}
       <div className="flex justify-between items-start border-b-4 border-slate-900 pb-8 mb-8">
         <div className="flex gap-6 items-center">
-          <div className="relative h-24 w-24 border-2 border-slate-100 rounded-xl overflow-hidden bg-white">
-            <FirebaseImage 
-              url={company?.logoUrl} 
-              className="w-full h-full"
-            />
+          <div className="bg-slate-900 p-4 rounded-2xl">
+            <Building2 className="text-white h-10 w-10" />
           </div>
           <div>
             <h1 className="text-2xl font-black uppercase tracking-tight text-slate-900">

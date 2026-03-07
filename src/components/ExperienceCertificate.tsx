@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -46,15 +45,9 @@ export const ExperienceCertificate: React.FC<ExperienceCertificateProps> = ({
       
       {/* Header */}
       <div className="flex flex-col items-center text-center mb-16">
-        {company?.logoUrl ? (
-          <div className="h-24 w-auto mb-6">
-            <FirebaseImage url={company.logoUrl} className="h-full w-auto" />
-          </div>
-        ) : (
-          <div className="bg-slate-900 p-4 rounded-2xl mb-6">
-            <ShieldCheck className="text-white h-12 w-12" />
-          </div>
-        )}
+        <div className="bg-slate-900 p-4 rounded-2xl mb-6">
+          <ShieldCheck className="text-white h-12 w-12" />
+        </div>
         <h1 className="text-sm font-black uppercase tracking-[0.4em] text-slate-400 mb-2">Certificado de Experiencia Técnica</h1>
         <div className="h-1 w-24 bg-slate-900 mb-8" />
         <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Acreditación de Servicios Realizados</h2>
@@ -138,13 +131,6 @@ export const ExperienceCertificate: React.FC<ExperienceCertificateProps> = ({
         </div>
         
         <div className="text-right">
-          <div className="mb-4">
-            {company?.logoUrl && (
-              <div className="h-12 w-auto ml-auto grayscale opacity-30">
-                <FirebaseImage url={company.logoUrl} className="h-full w-auto" />
-              </div>
-            )}
-          </div>
           <p className="text-xs font-black text-slate-900 uppercase">{company?.name}</p>
           <p className="text-[10px] font-bold text-slate-400 uppercase">Departamento de Operaciones</p>
         </div>
