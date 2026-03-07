@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -17,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+
+export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
   const { isAuthenticated } = useUser();

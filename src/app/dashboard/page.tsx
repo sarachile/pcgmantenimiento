@@ -24,18 +24,17 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
-import { collection, doc, query, orderBy, limit } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
-import { isBefore, parseISO, startOfDay, format } from "date-fns";
-import { es } from "date-fns/locale";
+import { isBefore, parseISO, startOfDay } from "date-fns";
 import { WorkOrder, Client, Company, StaffMember } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
   const [today, setToday] = useState<Date | null>(null);
@@ -290,15 +289,16 @@ export default function DashboardPage() {
             <CardContent className="p-6 space-y-4">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-600 uppercase">Activos Registrados</span>
-                  <span className="text-sm font-black">{realWorkOrders.length}</span>
+                  <span className="text-xs font-bold text-slate-600 uppercase">Personal Técnico</span>
+                  <span className="text-sm font-black">{staff?.length || 0}</span>
                 </div>
-                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="bg-primary h-full w-[65%]" />
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-600 uppercase">Clientes</span>
+                  <span className="text-sm font-black">{clients?.length || 0}</span>
                 </div>
               </div>
               <Button variant="outline" className="w-full rounded-xl font-bold text-xs" asChild>
-                <Link href="/inventory">Gestionar Insumos</Link>
+                <Link href="/team">Gestionar Equipo <Users className="ml-2 h-3 w-3" /></Link>
               </Button>
             </CardContent>
           </Card>
