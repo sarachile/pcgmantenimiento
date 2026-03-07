@@ -82,7 +82,7 @@ export default function DashboardPage() {
   const allStepsCompleted = onboardingSteps.length === 0 || onboardingSteps.every(s => s.completed);
 
   const overdueOrders = useMemo(() => {
-    if (!today) return [];
+    if (!today || !realWorkOrders) return [];
     return realWorkOrders.filter(ot => {
       if (ot.status === 'aprobada') return false;
       const dateToUse = ot.scheduledDate || ot.createdAt;
@@ -96,7 +96,7 @@ export default function DashboardPage() {
   }, [workOrders]);
 
   const upcomingOrders = useMemo(() => {
-    if (!today) return [];
+    if (!today || !realWorkOrders) return [];
     const nextWeek = addDays(today, 7);
     return realWorkOrders.filter(ot => {
       const dateToUse = ot.scheduledDate || ot.createdAt;
@@ -109,7 +109,7 @@ export default function DashboardPage() {
     });
   }, [realWorkOrders, today]);
 
-  if (isUserLoading || isOrdersLoading || !mounted || !today) {
+  if (!mounted || isUserLoading || isOrdersLoading || !today) {
     return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 

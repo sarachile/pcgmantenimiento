@@ -67,15 +67,16 @@ export default function CalendarPage() {
   const prevMonth = () => currentMonth && setCurrentMonth(subMonths(currentMonth, 1));
 
   const getOrdersForDay = (day: Date) => {
+    if (!workOrders) return [];
     return workOrders.filter(ot => {
       const dateToUse = ot.scheduledDate || ot.createdAt;
       if (!dateToUse) return false;
-      const otDate = dateToUse?.toDate ? dateToUse.toDate() : parseISO(dateToUse);
-      return isSameDay(day, otDate);
+      const otDate = dateToUse?.toDate ? dateToUse.toDate() : (typeof dateToUse === 'string' ? parseISO(dateToUse) : null);
+      return otDate && isSameDay(day, otDate);
     });
   };
 
-  if (isAuthLoading || !mounted || !currentMonth || !selectedDate) {
+  if (!mounted || isAuthLoading || !currentMonth || !selectedDate) {
     return (
       <div className="flex h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
