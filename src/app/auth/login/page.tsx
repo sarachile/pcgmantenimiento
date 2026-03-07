@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck, Loader2, HardHat, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
@@ -79,7 +79,23 @@ export default function LoginPage() {
             <Button className="w-full" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Iniciar Sesión"}
             </Button>
-            <p className="text-sm text-center text-muted-foreground">
+            
+            <div className="w-full pt-4 border-t border-dashed">
+              <Button asChild variant="outline" className="w-full h-14 rounded-xl border-2 border-slate-100 hover:bg-slate-50 group">
+                <Link href="/staff/login" className="flex items-center justify-between px-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-primary/10 p-2 rounded-lg text-primary"><HardHat className="h-5 w-5" /></div>
+                    <div className="text-left">
+                      <p className="text-[10px] font-black text-slate-400 uppercase leading-none">Personal en Terreno</p>
+                      <p className="text-xs font-bold text-slate-900 uppercase">Acceso con RUT y PIN</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+            </div>
+
+            <p className="text-sm text-center text-muted-foreground mt-4">
               ¿No tiene una cuenta? <Link href="/auth/signup" className="text-primary hover:underline">Regístrese aquí</Link>
             </p>
           </CardFooter>

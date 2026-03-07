@@ -54,7 +54,10 @@ import {
   Download,
   CheckCircle2,
   AlertTriangle,
-  Edit
+  Edit,
+  MessageCircle,
+  Copy,
+  Smartphone
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -193,6 +196,24 @@ export default function TeamPage() {
     toast({ title: "Equipo eliminado" });
   };
 
+  const handleWhatsAppInvite = (staff: StaffMember) => {
+    if (!staff.phone || !profile?.companyId) {
+      toast({ 
+        title: "Faltan datos", 
+        description: "El técnico debe tener un teléfono móvil registrado para invitarlo por WhatsApp.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    const baseUrl = window.location.origin;
+    const inviteLink = `${baseUrl}/staff/setup/${staff.id}?c=${profile.companyId}`;
+    const message = `Hola ${staff.name}, bienvenido al equipo técnico de PCGMANTENIMIENTO. Para ver tus órdenes asignadas y reportar tus trabajos, activa tu acceso aquí: ${inviteLink}`;
+    const encodedMsg = encodeURIComponent(message);
+    const cleanPhone = staff.phone.replace(/\D/g, '');
+    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMsg}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
   // LÓGICA DE CARGA MASIVA
   const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -217,7 +238,7 @@ export default function TeamPage() {
             name: row.Nombre || row.nombre || "Sin Nombre",
             role: row.Rol || row.rol || "Técnico",
             identification: row.RUT || row.rut || row.Identificacion || "",
-            phone: row.Telefono || row.telefono || "",
+            phone: String(row.Telefono || row.telefono || ""),
             email: row.Email || row.email || "",
             companyId: profile.companyId,
             active: true,
@@ -250,8 +271,8 @@ export default function TeamPage() {
 
   const downloadTemplate = () => {
     const template = [
-      { Nombre: "Juan Perez", Rol: "Técnico", RUT: "12.345.678-9", Telefono: "+56912345678", Email: "juan@empresa.cl" },
-      { Nombre: "Maria Soto", Rol: "Supervisor", RUT: "9.876.543-2", Telefono: "+56987654321", Email: "maria@empresa.cl" }
+      { Nombre: "Juan Perez", Rol: "Técnico", RUT: "12.345.678-9", Telefono: "56912345678", Email: "juan@empresa.cl" },
+      { Nombre: "Maria Soto", Rol: "Supervisor", RUT: "9.876.543-2", Telefono: "56987654321", Email: "maria@empresa.cl" }
     ];
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
@@ -364,8 +385,18 @@ export default function TeamPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">Identificación</Label>
+                      <Label className="text-[10px] font-black uppercase text-slate-400">RUT / Identificación</Label>
                       <Input value={formData.identification} onChange={(e) => setFormData({...formData, identification: e.target.value})} placeholder="12.345.678-9" className="h-12 rounded-xl border-2" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Teléfono (WhatsApp)</Label>
+                      <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="569XXXXXXXX" className="h-12 rounded-xl border-2" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Email (Opcional)</Label>
+                      <Input value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="tecnico@empresa.cl" className="h-12 rounded-xl border-2" />
                     </div>
                   </div>
                   <DialogFooter className="pt-4">
@@ -454,12 +485,12 @@ export default function TeamPage() {
                       <TableHead className="font-black pl-6 text-[10px] uppercase tracking-widest">Nombre / Identificación</TableHead>
                       <TableHead className="font-black text-[10px] uppercase tracking-widest">Especialidad</TableHead>
                       <TableHead className="font-black text-[10px] uppercase tracking-widest">Estado</TableHead>
-                      <TableHead className="text-right pr-6 font-black text-[10px] uppercase tracking-widest">Acciones</TableHead>
+                      <TableHead className="text-right pr-6 font-black text-[10px] uppercase tracking-widest">Invitación</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredStaff.map((staff) => (
-                      <TableRow key={staff.id} className="hover:bg-muted/5">
+                      <TableRow key={staff.id} className="hover:bg-muted/5 group">
                         <TableCell className="pl-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="bg-primary/5 p-2 rounded-lg font-black text-xs text-primary">{staff.name.charAt(0)}</div>
@@ -472,9 +503,25 @@ export default function TeamPage() {
                         <TableCell><Badge variant="outline" className="font-black text-[9px] uppercase">{staff.role}</Badge></TableCell>
                         <TableCell><Badge className={staff.active ? "bg-emerald-100 text-emerald-700" : "bg-slate-100"}>{staff.active ? "ACTIVO" : "INACTIVO"}</Badge></TableCell>
                         <TableCell className="text-right pr-6">
-                          <Button variant="ghost" size="icon" onClick={() => updateDocumentNonBlocking(doc(db!, "companies", profile!.companyId, "staff", staff.id), { active: !staff.active })}>
-                            {staff.active ? <UserMinus className="h-4 w-4 text-rose-500" /> : <UserCheck className="h-4 w-4 text-emerald-500" />}
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-9 w-9 text-emerald-600 bg-emerald-50 opacity-0 group-hover:opacity-100 transition-opacity" 
+                              title="Invitar por WhatsApp"
+                              onClick={() => handleWhatsAppInvite(staff)}
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-9 w-9 text-slate-400" 
+                              onClick={() => updateDocumentNonBlocking(doc(db!, "companies", profile!.companyId, "staff", staff.id), { active: !staff.active })}
+                            >
+                              {staff.active ? <UserMinus className="h-4 w-4 text-rose-500" /> : <UserCheck className="h-4 w-4 text-emerald-500" />}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
