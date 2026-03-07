@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from "react";
@@ -41,7 +40,14 @@ export default function HomePage() {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  // Prevenir Internal Server Error por desajuste de hidratación
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <ShieldCheck className="text-slate-100 h-12 w-12 animate-pulse" />
+      </div>
+    );
+  }
 
   const heroImage = PlaceHolderImages.find(img => img.id === 'hero-industrial');
   const dashImage = PlaceHolderImages.find(img => img.id === 'dashboard-preview');
@@ -211,32 +217,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Hero-like visual support section */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-[3rem] overflow-hidden relative h-[450px] shadow-2xl">
-            {heroImage ? (
-              <Image 
-                src={heroImage.imageUrl} 
-                alt={heroImage.description} 
-                fill
-                className="object-cover brightness-50"
-                data-ai-hint={heroImage.imageHint}
-              />
-            ) : (
-              <div className="w-full h-full bg-slate-900" />
-            )}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-              <Badge className="bg-white/20 text-white mb-6 backdrop-blur-md border-white/30 px-4 py-1 uppercase tracking-[0.2em] font-black text-[10px]">Acreditación Oficial</Badge>
-              <h2 className="text-3xl md:text-6xl font-black text-white italic tracking-tighter mb-6 leading-none">Acredita tu experiencia técnica</h2>
-              <p className="text-white/80 max-w-2xl text-lg md:text-xl font-medium leading-relaxed">
-                Cada trabajo terminado es un respaldo sólido para tus próximas licitaciones y contratos comerciales. Transforma tus OTs en certificados de experiencia válidos.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Steps Section */}
       <section id="como-funciona" className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -261,49 +241,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Benefits Section */}
-      <section id="beneficios" className="py-24 bg-slate-900 text-white overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6 text-center md:text-left">
-            <div>
-              <Badge className="bg-primary text-white mb-4">Diferenciación Real</Badge>
-              <h2 className="text-4xl md:text-5xl font-black leading-tight italic">No es un ERP complejo,<br /> es una herramienta táctica.</h2>
-            </div>
-            <p className="text-slate-400 max-w-sm">Mientras otros se pierden en burocracia, nosotros nos enfocamos en que el trabajo se haga y se registre bien.</p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-12">
-            {[
-              { icon: CameraIcon, title: "Evidencia Fotográfica", desc: "Valida el trabajo realizado con fotos antes y después directamente en la OT." },
-              { icon: SignatureIcon, title: "Firma Digital en Terreno", desc: "Captura la conformidad del cliente y del técnico al instante." },
-              { icon: BarChart3, title: "Reportes en un Clic", desc: "Genera documentos PDF profesionales para auditorías o cobros sin esfuerzo." }
-            ].map((benefit, i) => (
-              <div key={i} className="space-y-4">
-                <div className="bg-white/10 p-3 rounded-xl w-fit"><benefit.icon className="h-6 w-6 text-primary" /></div>
-                <h3 className="text-xl font-bold">{benefit.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{benefit.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-32 relative">
-        <div className="max-w-5xl mx-auto px-4 text-center">
-          <h2 className="text-5xl md:text-6xl font-black tracking-tighter mb-8 italic text-primary">
-            Todo tu mantenimiento,<br /> claro y trazable.
-          </h2>
-          <p className="text-xl text-slate-600 mb-12">¿Listo para dejar atrás las planillas y tomar el control?</p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <Button asChild size="lg" className="h-16 px-12 rounded-full text-xl font-black shadow-2xl">
-              <Link href="/auth/signup">Probar Gratis Ahora</Link>
-            </Button>
-            <Link href="/auth/login" className="text-sm font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-widest underline underline-offset-8">O inicia sesión si ya eres cliente</Link>
-          </div>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
         <div className="flex justify-center gap-4 mb-6">
@@ -315,11 +252,6 @@ export default function HomePage() {
         <p className="text-xs text-slate-400 mb-8">
           © {new Date().getFullYear()} Todos los derechos reservados. www.pcgmantenimiento.com
         </p>
-        <div className="flex justify-center gap-8 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-          <Link href="#" className="hover:text-primary">Términos</Link>
-          <Link href="#" className="hover:text-primary">Privacidad</Link>
-          <Link href="#" className="hover:text-primary">Soporte</Link>
-        </div>
       </footer>
     </div>
   );

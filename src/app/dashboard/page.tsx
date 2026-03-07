@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -37,12 +36,14 @@ import { es } from "date-fns/locale";
 import { WorkOrder, Client, Company, StaffMember } from "@/lib/types";
 import { usePlanLimits } from "@/hooks/use-plan-limits";
 
+// Forzar renderizado dinámico para evitar fallos durante el build de Firebase
+export const dynamic = 'force-dynamic';
+
 export default function DashboardPage() {
   const { profile, isLoading: isUserLoading, isTechnician, isSupervisor, isCompanyAdmin } = useUser();
   const { staffCount, clientsCount, maxStaff, maxClients } = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
-  // Inicializamos today en null para evitar el error de hidratación (server vs client)
   const [today, setToday] = useState<Date | null>(null);
 
   useEffect(() => { 
