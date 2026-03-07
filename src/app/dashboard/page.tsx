@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -18,7 +19,8 @@ import {
   Building2,
   HardHat,
   MessageSquare,
-  Camera
+  Camera,
+  Users
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
