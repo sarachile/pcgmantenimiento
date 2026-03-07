@@ -53,7 +53,8 @@ import {
   FileUp,
   Download,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Edit
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -149,22 +150,31 @@ export default function TeamPage() {
       name: teamFormData.name,
       memberIds: teamFormData.memberIds,
       companyId: profile.companyId,
-      createdAt: serverTimestamp()
+      updatedAt: serverTimestamp()
     };
 
     if (editingTeam) {
       const teamRef = doc(db, "companies", profile.companyId, "teams", editingTeam.id);
-      updateDocumentNonBlocking(teamRef, { ...dataToSave });
+      updateDocumentNonBlocking(teamRef, dataToSave);
       toast({ title: "Cuadrilla actualizada" });
     } else {
       const colRef = collection(db, "companies", profile.companyId, "teams");
-      addDocumentNonBlocking(colRef, dataToSave);
+      addDocumentNonBlocking(colRef, { ...dataToSave, createdAt: serverTimestamp() });
       toast({ title: "Cuadrilla creada" });
     }
 
     setTeamFormData({ name: "", memberIds: [] });
     setIsTeamOpen(false);
     setEditingTeam(null);
+  };
+
+  const handleEditTeam = (team: Team) => {
+    setEditingTeam(team);
+    setTeamFormData({
+      name: team.name,
+      memberIds: team.memberIds
+    });
+    setIsTeamOpen(true);
   };
 
   const toggleMember = useCallback((id: string) => {
@@ -379,7 +389,7 @@ export default function TeamPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
                 <DialogHeader>
-                  <DialogTitle className="text-2xl font-black italic">Nueva Cuadrilla / Equipo</DialogTitle>
+                  <DialogTitle className="text-2xl font-black italic">{editingTeam ? "Editar Cuadrilla" : "Nueva Cuadrilla / Equipo"}</DialogTitle>
                   <DialogDescription>Agrupe técnicos para agilizar la asignación de obras masivas.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleTeamSubmit} className="space-y-6 py-4">
@@ -494,9 +504,14 @@ export default function TeamPage() {
                         <CardTitle className="text-lg font-black italic tracking-tight">{team.name}</CardTitle>
                         <CardDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">{team.memberIds.length} Miembros</CardDescription>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-white/20 hover:text-white" onClick={() => handleDeleteTeam(team.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="text-white/20 hover:text-white" onClick={() => handleEditTeam(team)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="text-white/20 hover:text-white" onClick={() => handleDeleteTeam(team.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
