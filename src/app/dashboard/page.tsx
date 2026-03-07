@@ -17,7 +17,8 @@ import {
   ArrowRight,
   Building2,
   HardHat,
-  MessageSquare
+  MessageSquare,
+  Camera
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
