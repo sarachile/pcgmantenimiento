@@ -38,7 +38,6 @@ export default function HomePage() {
     );
   }
 
-  const heroImage = PlaceHolderImages?.find(img => img.id === 'hero-industrial');
   const dashImage = PlaceHolderImages?.find(img => img.id === 'dashboard-preview');
 
   return (
@@ -107,58 +106,77 @@ export default function HomePage() {
           <div className="mt-20 relative max-w-5xl mx-auto px-4">
             <div className="bg-slate-900 rounded-3xl p-3 shadow-2xl overflow-hidden border border-slate-800">
               <div className="bg-white rounded-2xl overflow-hidden relative aspect-video shadow-inner">
-                {dashImage && (
-                  <Image 
-                    src={dashImage.imageUrl} 
-                    alt={dashImage.description} 
-                    fill
-                    priority
-                    className="object-cover"
-                    data-ai-hint={dashImage.imageHint}
-                  />
-                )}
+                <Image 
+                  src="/imagen1.png" 
+                  alt="PCGMantenimiento Interface" 
+                  fill
+                  priority
+                  className="object-cover"
+                />
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Problem Section */}
+      {/* Problem Section - Redesigned */}
       <section id="solucion" className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <h2 className="text-4xl md:text-5xl font-black tracking-tight">
-                Menos planillas,<br />
-                <span className="text-primary">más control operativo.</span>
-              </h2>
+            {/* Left Column: Image */}
+            <div className="relative aspect-square md:aspect-video lg:aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200 bg-white p-2">
+              <div className="relative w-full h-full rounded-[2rem] overflow-hidden">
+                <Image 
+                  src="/imagen1.png" 
+                  alt="Gestión Operativa" 
+                  fill 
+                  className="object-cover"
+                />
+              </div>
+            </div>
+
+            {/* Right Column: Content */}
+            <div className="space-y-10">
+              <div className="space-y-4">
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
+                  Menos planillas,<br />
+                  <span className="text-primary">más control operativo.</span>
+                </h2>
+              </div>
+
               <div className="space-y-6">
                 {[
                   { icon: XCircle, title: "Fin del Caos", desc: "Dile adiós a los reportes en papel que se pierden o nunca se actualizan." },
                   { icon: History, title: "Trazabilidad Real", desc: "Mantén un historial inalterable de cada intervención realizada por tu equipo." },
                   { icon: Zap, title: "Rapidez", desc: "Genera informes técnicos y certificados de experiencia en segundos." }
                 ].map((item, i) => (
-                  <div key={i} className="flex gap-4">
-                    <div className="bg-white p-2 rounded-lg h-fit shadow-sm border"><item.icon className="text-primary h-5 w-5" /></div>
+                  <div key={i} className="flex gap-4 group">
+                    <div className="bg-white p-3 rounded-xl h-fit shadow-sm border border-slate-100 group-hover:border-primary/30 transition-colors">
+                      <item.icon className="text-primary h-6 w-6" />
+                    </div>
                     <div>
-                      <h3 className="font-bold text-lg mb-1">{item.title}</h3>
-                      <p className="text-slate-600 leading-snug">{item.desc}</p>
+                      <h3 className="font-bold text-xl mb-1 text-slate-900">{item.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">{item.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
-              <h3 className="text-2xl font-black italic mb-4">"Lo que no se registra, no existe"</h3>
-              <p className="text-slate-600 mb-8">Centraliza toda tu operación en una herramienta diseñada para el campo.</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-4 rounded-xl border">
-                  <p className="text-3xl font-black text-primary mb-1">100%</p>
-                  <p className="text-xs font-bold text-slate-500 uppercase">Trazabilidad</p>
+
+              <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5">
+                  <ShieldCheck className="h-24 w-24" />
                 </div>
-                <div className="bg-slate-50 p-4 rounded-xl border">
-                  <p className="text-3xl font-black text-primary mb-1">0</p>
-                  <p className="text-xs font-bold text-slate-500 uppercase">Pérdida Datos</p>
+                <h3 className="text-2xl font-black italic mb-2 text-slate-900">"Lo que no se registra, no existe"</h3>
+                <p className="text-slate-500 font-medium mb-8">Centraliza toda tu operación en una herramienta diseñada para el campo.</p>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-4xl font-black text-primary tracking-tighter">100%</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trazabilidad</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-4xl font-black text-primary tracking-tighter">0</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pérdida Datos</p>
+                  </div>
                 </div>
               </div>
             </div>
