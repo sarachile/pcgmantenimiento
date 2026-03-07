@@ -1,15 +1,16 @@
+
 {
   "placeholderImages": [
     {
       "id": "hero-industrial",
       "description": "Entorno de mantenimiento industrial profesional",
-      "imageUrl": "https://picsum.photos/seed/pcg-hero-99/1200/800",
+      "imageUrl": "/imagen1.png",
       "imageHint": "industrial maintenance"
     },
     {
       "id": "dashboard-preview",
       "description": "Previsualización del Dashboard PCGMANTENIMIENTO",
-      "imageUrl": "https://picsum.photos/seed/pcg-dash-preview/1200/800",
+      "imageUrl": "/imagen1.png",
       "imageHint": "software dashboard"
     },
     {
