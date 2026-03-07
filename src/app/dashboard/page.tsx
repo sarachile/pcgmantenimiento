@@ -19,7 +19,8 @@ import {
   HardHat,
   MessageSquare,
   Camera,
-  Users
+  Users,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -58,10 +59,14 @@ export default function DashboardPage() {
   const realWorkOrders = useMemo(() => {
     if (!workOrders) return [];
     if (isTechnician && profile?.id) {
-      return workOrders.filter(ot => ot.assignedToStaffIds?.includes(profile.id));
+      // Intentar filtrar por ID de usuario vinculado al staff o por el nombre si no hay vinculación de ID aún
+      return workOrders.filter(ot => 
+        ot.assignedToStaffIds?.includes(profile.id) || 
+        ot.assignedToStaffIds?.includes(profile.staffId || '')
+      );
     }
     return workOrders;
-  }, [workOrders, isTechnician, profile?.id]);
+  }, [workOrders, isTechnician, profile?.id, profile?.staffId]);
 
   const criticalOrders = useMemo(() => {
     if (!today || !realWorkOrders) return [];
@@ -102,15 +107,101 @@ export default function DashboardPage() {
     return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
+  // VISTA PARA EL TÉCNICO EN TERRENO
+  if (isTechnician) {
+    return (
+      <div className="space-y-8 pb-32">
+        <div className="space-y-1">
+          <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Mi Trabajo</h2>
+          <p className="text-muted-foreground font-medium">Bienvenido, {profile?.name}.</p>
+        </div>
+
+        {/* ACCIÓN PRINCIPAL DE CAPTURA */}
+        <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden relative group">
+          <div className="absolute -right-4 -top-4 p-8 opacity-10 group-hover:scale-110 transition-transform">
+            <Zap className="h-40 w-40 text-amber-400" />
+          </div>
+          <CardHeader className="p-8 pb-4">
+            <CardTitle className="text-2xl font-black italic tracking-tighter uppercase text-amber-400">Reporte de Terreno</CardTitle>
+            <CardDescription className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Herramienta de Captura Rápida</CardDescription>
+          </CardHeader>
+          <CardContent className="p-8 pt-0 space-y-6">
+            <Button asChild className="w-full h-24 rounded-3xl bg-white text-slate-900 hover:bg-slate-100 font-black text-xl uppercase tracking-widest gap-4 shadow-xl shadow-blue-900/40">
+              <Link href="/field/capture">
+                <Camera className="h-8 w-8" /> Iniciar Captura
+              </Link>
+            </Button>
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-widest">
+                <Sparkles className="h-4 w-4" /> Inteligencia Operativa
+              </div>
+              <p className="text-[10px] text-slate-500 font-bold uppercase">Estado: Conectado</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* RESUMEN DE TRABAJOS ASIGNADOS */}
+        <div className="grid gap-4 grid-cols-2">
+          <Card className="border-none shadow-sm rounded-3xl bg-white">
+            <CardContent className="p-6">
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">Órdenes Hoy</p>
+              <p className="text-3xl font-black text-slate-900 italic">{realWorkOrders.filter(o => o.status !== 'aprobada').length}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-none shadow-sm rounded-3xl bg-white">
+            <CardContent className="p-6">
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">Completadas</p>
+              <p className="text-3xl font-black text-emerald-600 italic">{realWorkOrders.filter(o => o.status === 'aprobada').length}</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* LISTADO DE TRABAJOS PENDIENTES */}
+        <Card className="rounded-[2rem] border-none shadow-sm overflow-hidden bg-white">
+          <CardHeader className="bg-slate-50/50 p-6 border-b">
+            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-primary" /> Mi Hoja de Ruta
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {recentOrders.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 italic text-sm">No tienes órdenes asignadas pendientes.</div>
+            ) : (
+              <div className="divide-y divide-slate-50">
+                {recentOrders.map((ot) => {
+                  const client = clients?.find(c => c.id === ot.clientId);
+                  return (
+                    <Link key={ot.id} href={`/work-orders/${ot.id}`}>
+                      <div className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-black text-primary italic">{ot.id}</span>
+                            <Badge variant="outline" className="text-[8px] font-black uppercase px-1.5 h-4">{ot.status}</Badge>
+                          </div>
+                          <p className="text-xs font-bold text-slate-900 truncate">{client?.name || 'Cargando...'}</p>
+                          <p className="text-[10px] text-slate-400 truncate italic mt-0.5">"{ot.description}"</p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-slate-300 ml-4" />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // VISTA PARA ADMINISTRADORES / SUPERVISORES
   const showAdminActions = isCompanyAdmin || isSupervisor;
 
   return (
     <div className="space-y-8 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic">
-            {isTechnician ? "Mi Hoja de Ruta" : "Panel de Gestión"}
-          </h2>
+          <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic">Panel de Gestión</h2>
           <p className="text-muted-foreground font-medium">Bienvenido, {profile?.name}.</p>
         </div>
         {showAdminActions && (
@@ -128,7 +219,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {!isTechnician && !allStepsCompleted && (
+      {!allStepsCompleted && (
         <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
           <div className="grid md:grid-cols-3">
             <div className="p-8 md:p-12 space-y-6 bg-blue-600/10 border-r border-white/5">
