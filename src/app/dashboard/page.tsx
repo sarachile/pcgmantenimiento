@@ -28,7 +28,8 @@ import {
   PlusSquare,
   Info,
   Timer,
-  CreditCard
+  CreditCard,
+  History
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -245,7 +246,7 @@ export default function DashboardPage() {
     <div className="space-y-8 pb-10">
       {/* BANNER DE TRIAL */}
       {trialDaysRemaining !== null && trialDaysRemaining <= 5 && (
-        <Card className="rounded-[2rem] border-none bg-rose-600 text-white shadow-xl overflow-hidden animate-in slide-in-from-top-4 duration-500">
+        <Card className="rounded-[2.5rem] border-none bg-rose-600 text-white shadow-xl overflow-hidden animate-in slide-in-from-top-4 duration-500">
           <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="bg-white/20 p-3 rounded-2xl"><Timer className="h-6 w-6" /></div>
