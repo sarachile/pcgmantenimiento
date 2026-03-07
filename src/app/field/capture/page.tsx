@@ -25,16 +25,16 @@ import {
   Loader2, 
   ArrowLeft, 
   CheckCircle2, 
-  ClipboardList,
-  Building2,
   ChevronRight,
   ListChecks,
   MessageSquare,
-  Sparkles
+  Fingerprint,
+  Send,
+  AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { WorkOrder, Client, ChecklistItem } from "@/lib/types";
+import { WorkOrder, Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export default function FieldCapturePage() {
@@ -50,8 +50,9 @@ export default function FieldCapturePage() {
   const [selectedChecklistItemId, setSelectedChecklistItemId] = useState<string | null>(null);
   const [logComment, setLogComment] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
 
-  // Consultar OTs activas
+  // Consultar OTs activas (no aprobadas)
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return query(
@@ -72,15 +73,12 @@ export default function FieldCapturePage() {
 
   const filtered = useMemo(() => {
     let list = workOrders || [];
-
-    // FILTRADO POR ROL: Si es técnico, solo mostrar las suyas
     if (isTechnician && profile) {
       list = list.filter(ot => 
         ot.assignedToStaffIds?.includes(profile.id) || 
         ot.assignedToStaffIds?.includes(profile.staffId || '')
       );
     }
-
     return list.filter(ot => {
       const client = clients?.find(c => c.id === ot.clientId);
       return (
@@ -104,7 +102,6 @@ export default function FieldCapturePage() {
 
       const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
       
-      // 1. Si hay un item del protocolo seleccionado, actualizarlo
       if (selectedChecklistItemId) {
         const updatedChecklist = selectedOT.checklist?.map(item => 
           item.id === selectedChecklistItemId 
@@ -113,58 +110,75 @@ export default function FieldCapturePage() {
         );
         updateDocumentNonBlocking(otRef, {
           checklist: updatedChecklist,
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          status: 'ejecutada' // Al subir evidencia, marcamos que se está ejecutando
         });
       } else {
-        // Si no, añadir a evidencias generales
         updateDocumentNonBlocking(otRef, {
           evidenceUrls: arrayUnion(url),
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          status: 'ejecutada'
         });
       }
-
-      // 2. Registrar en la bitácora digital
-      const logDetails = selectedChecklistItemId 
-        ? `Protocolo ejecutado: ${selectedOT.checklist?.find(i => i.id === selectedChecklistItemId)?.task}. ${logComment}`
-        : `Evidencia fotográfica cargada. ${logComment}`;
 
       await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
         workOrderId: selectedOT.id,
         companyId: profile.companyId,
         timestamp: serverTimestamp(),
         eventType: 'action_taken',
-        eventDetails: logDetails,
+        eventDetails: logComment || "Evidencia fotográfica cargada desde terreno.",
         actor: profile.id
       });
 
-      toast({
-        title: "¡Registro Completado!",
-        description: `Evidencia y bitácora guardadas para ${selectedOT.id}.`,
-      });
-      
-      // Resetear estado
-      setSelectedOT(null);
+      toast({ title: "Evidencia Registrada" });
       setSelectedChecklistItemId(null);
       setLogComment("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       
     } catch (error: any) {
-      toast({
-        title: "Error al registrar",
-        description: error.message,
-        variant: "destructive"
-      });
+      toast({ title: "Error al registrar", description: error.message, variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
   };
 
+  const handleFinalizeWork = async () => {
+    if (!selectedOT || !db || !profile?.companyId) return;
+    
+    setIsFinalizing(true);
+    try {
+      const techCode = `TCH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
+      
+      updateDocumentNonBlocking(otRef, {
+        status: 'en revision',
+        technicianApprovalName: profile.name,
+        technicianApprovalDate: serverTimestamp(),
+        technicianApprovalCode: techCode,
+        executedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
+        workOrderId: selectedOT.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'status_change',
+        eventDetails: `El técnico ${profile.name} ha finalizado los trabajos y enviado la orden a revisión técnica.`,
+        actor: profile.id
+      });
+
+      toast({ title: "Trabajo Finalizado", description: "La orden ha pasado a revisión técnica." });
+      setSelectedOT(null);
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsFinalizing(false);
+    }
+  };
+
   if (isUserLoading || isOrdersLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 
   return (
@@ -202,6 +216,9 @@ export default function FieldCapturePage() {
               ) : (
                 filtered.map(ot => {
                   const client = clients?.find(c => c.id === ot.clientId);
+                  const completedCount = ot.checklist?.filter(i => i.completed).length || 0;
+                  const totalCount = ot.checklist?.length || 0;
+                  
                   return (
                     <button 
                       key={ot.id}
@@ -214,7 +231,14 @@ export default function FieldCapturePage() {
                           <Badge variant="outline" className="text-[8px] font-black uppercase px-1.5 h-4">{ot.status}</Badge>
                         </div>
                         <p className="text-slate-900 font-bold text-sm truncate">{client?.name || 'Cliente...'}</p>
-                        <p className="text-slate-400 text-xs truncate italic">"{ot.description}"</p>
+                        {totalCount > 0 && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+                              <div className="bg-emerald-500 h-full transition-all" style={{ width: `${(completedCount / totalCount) * 100}%` }} />
+                            </div>
+                            <span className="text-[9px] font-black text-slate-400">{completedCount}/{totalCount}</span>
+                          </div>
+                        )}
                       </div>
                       <ChevronRight className="h-5 w-5 text-slate-300" />
                     </button>
@@ -228,9 +252,9 @@ export default function FieldCapturePage() {
             <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
               <CardHeader className="bg-slate-900 text-white p-8">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-3xl font-black italic tracking-tighter">{selectedOT.id}</CardTitle>
-                    <CardDescription className="text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-3xl font-black italic tracking-tighter truncate">{selectedOT.id}</CardTitle>
+                    <CardDescription className="text-slate-400 font-bold uppercase tracking-widest mt-1 truncate">
                       {clients?.find(c => c.id === selectedOT.clientId)?.name}
                     </CardDescription>
                   </div>
@@ -238,10 +262,10 @@ export default function FieldCapturePage() {
                 </div>
               </CardHeader>
               <CardContent className="p-8 space-y-8">
-                {/* Selector de Protocolo (Opcional) */}
+                {/* Protocolos */}
                 <div className="space-y-4">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-primary" /> Vincular a Protocolo (Opcional)
+                    <ListChecks className="h-4 w-4 text-primary" /> Protocolos Pendientes
                   </Label>
                   <div className="space-y-2">
                     {selectedOT.checklist && selectedOT.checklist.length > 0 ? (
@@ -259,57 +283,57 @@ export default function FieldCapturePage() {
                         </button>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-400 italic text-center py-4">Sin puntos de inspección definidos.</p>
+                      <p className="text-xs text-slate-400 italic text-center py-4">Sin puntos de inspección pendientes.</p>
                     )}
                   </div>
                 </div>
 
-                {/* Comentario de Bitácora */}
-                <div className="space-y-3">
+                {/* Comentario y Foto */}
+                <div className="space-y-4">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-blue-500" /> Nota de Bitácora
                   </Label>
                   <Textarea 
-                    placeholder="¿Qué encontraste? ¿Qué acción realizaste?..." 
-                    className="rounded-2xl min-h-[100px] border-2 bg-slate-50/50 text-sm font-medium"
+                    placeholder="Detalles del hallazgo o acción..." 
+                    className="rounded-2xl min-h-[80px] border-2 bg-slate-50/50 text-sm"
                     value={logComment}
                     onChange={(e) => setLogComment(e.target.value)}
                   />
-                </div>
-
-                <div className="space-y-4 pt-4">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    capture="environment" 
-                    className="hidden" 
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                  />
                   
+                  <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
                   <Button 
-                    className="w-full h-32 rounded-[2rem] bg-primary text-white shadow-xl shadow-primary/20 flex flex-col gap-3 active:scale-95 transition-transform"
+                    className="w-full h-24 rounded-3xl bg-primary text-white shadow-xl flex flex-col gap-2"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                   >
-                    {isUploading ? (
-                      <Loader2 className="h-10 w-10 animate-spin" />
-                    ) : (
-                      <>
-                        <Camera className="h-10 w-10" />
-                        <span className="text-xl font-black uppercase tracking-tighter italic">Tomar Evidencia</span>
-                      </>
-                    )}
+                    {isUploading ? <Loader2 className="animate-spin" /> : <><Camera className="h-8 w-8" /><span className="text-sm font-black uppercase italic">Subir Evidencia</span></>}
                   </Button>
+                </div>
+
+                {/* CIERRE TÉCNICO */}
+                <div className="pt-8 border-t-2 border-dashed space-y-4">
+                  <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex gap-3">
+                    <Fingerprint className="h-6 w-6 text-blue-600 shrink-0" />
+                    <div>
+                      <p className="text-xs font-black text-blue-900 uppercase">Finalización Técnica</p>
+                      <p className="text-[10px] text-blue-700/70 font-medium leading-relaxed">
+                        Al pulsar el botón inferior, declaras que has completado tu labor. Se generará un sello digital con tu nombre y la orden pasará a revisión administrativa.
+                      </p>
+                    </div>
+                  </div>
                   
-                  <p className="text-[9px] font-black text-center text-slate-400 uppercase tracking-widest leading-relaxed">
-                    {isUploading ? "Procesando archivos..." : "Al capturar, se cerrará el protocolo seleccionado y se actualizará la bitácora."}
-                  </p>
+                  <Button 
+                    className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest gap-2 shadow-2xl"
+                    onClick={handleFinalizeWork}
+                    disabled={isFinalizing || isUploading}
+                  >
+                    {isFinalizing ? <Loader2 className="animate-spin" /> : <><Send className="h-4 w-4" /> Finalizar y Enviar a Revisión</>}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
 
-            <Button variant="ghost" className="w-full text-slate-400 font-bold uppercase tracking-widest" onClick={() => setSelectedOT(null)} disabled={isUploading}>
+            <Button variant="ghost" className="w-full text-slate-400 font-bold uppercase tracking-widest" onClick={() => setSelectedOT(null)} disabled={isUploading || isFinalizing}>
               Volver al listado
             </Button>
           </div>
