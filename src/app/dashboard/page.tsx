@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const { staffCount, clientsCount, maxStaff, maxClients } = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
+  // Inicializamos today en null para evitar el error de hidratación (server vs client)
   const [today, setToday] = useState<Date | null>(null);
 
   useEffect(() => { 
@@ -86,6 +87,7 @@ export default function DashboardPage() {
     return realWorkOrders.filter(ot => {
       if (ot.status === 'aprobada') return false;
       const dateToUse = ot.scheduledDate || ot.createdAt;
+      if (!dateToUse) return false;
       const endDate = dateToUse?.toDate ? dateToUse.toDate() : (typeof dateToUse === 'string' ? parseISO(dateToUse) : null);
       return endDate && isBefore(endDate, today);
     });
@@ -100,11 +102,14 @@ export default function DashboardPage() {
     const nextWeek = addDays(today, 7);
     return realWorkOrders.filter(ot => {
       const dateToUse = ot.scheduledDate || ot.createdAt;
+      if (!dateToUse) return false;
       const startDate = dateToUse?.toDate ? dateToUse.toDate() : (typeof dateToUse === 'string' ? parseISO(dateToUse) : null);
       return startDate && isAfter(startDate, today) && isBefore(startDate, nextWeek);
     }).sort((a, b) => {
-      const dateA = a.scheduledDate?.toDate ? a.scheduledDate.toDate() : (typeof a.scheduledDate === 'string' ? parseISO(a.scheduledDate) : new Date());
-      const dateB = b.scheduledDate?.toDate ? b.scheduledDate.toDate() : (typeof b.scheduledDate === 'string' ? parseISO(b.scheduledDate) : new Date());
+      const dateToParseA = a.scheduledDate || a.createdAt;
+      const dateToParseB = b.scheduledDate || b.createdAt;
+      const dateA = dateToParseA?.toDate ? dateToParseA.toDate() : (typeof dateToParseA === 'string' ? parseISO(dateToParseA) : new Date());
+      const dateB = dateToParseB?.toDate ? dateToParseB.toDate() : (typeof dateToParseB === 'string' ? parseISO(dateToParseB) : new Date());
       return dateA.getTime() - dateB.getTime();
     });
   }, [realWorkOrders, today]);
