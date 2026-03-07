@@ -90,8 +90,8 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     e.preventDefault();
     if (!staff || !company || isSubmitting) return;
 
-    if (pinInput.length < 4) {
-      toast({ title: "PIN muy corto", description: "Use al menos 4 números.", variant: "destructive" });
+    if (pinInput.length < 6) {
+      toast({ title: "PIN muy corto", description: "Use al menos 6 números (requerido por seguridad).", variant: "destructive" });
       return;
     }
 
@@ -119,7 +119,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         createdAt: new Date().toISOString(),
       };
 
-      setDoc(userRef, userData).catch(async (err) => {
+      await setDoc(userRef, userData).catch(async (err) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userRef.path,
           operation: 'create',
@@ -135,7 +135,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         updatedAt: serverTimestamp()
       };
 
-      updateDoc(staffRef, staffUpdate).catch(async (err) => {
+      await updateDoc(staffRef, staffUpdate).catch(async (err) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: staffRef.path,
           operation: 'update',
@@ -206,12 +206,12 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
             <CardContent className="p-8">
               <form onSubmit={handleCreateAccess} className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Define tu PIN (mín. 4 números)</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Define tu PIN (6 números)</Label>
                   <Input 
                     type="password"
                     inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="****" 
+                    maxLength={6}
+                    placeholder="******" 
                     className="h-16 rounded-2xl border-2 text-3xl font-black text-center tracking-[0.5em]"
                     value={pinInput}
                     onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}

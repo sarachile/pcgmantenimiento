@@ -43,17 +43,14 @@ export default function StaffLoginPage() {
     if (isSubmitting) return;
 
     const cleanRut = rutInput.replace(/\D/g, '').toLowerCase();
-    if (!cleanRut || pinInput.length < 4) {
-      toast({ title: "Datos incompletos", description: "Verifique su RUT y PIN.", variant: "destructive" });
+    if (!cleanRut || pinInput.length < 6) {
+      toast({ title: "Datos incompletos", description: "Verifique su RUT y que el PIN tenga 6 dígitos.", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // 1. Encontrar la empresa del técnico (necesitamos el companyId para construir el email sintético)
-      // Buscamos en todas las colecciones de staff (proceso costoso pero necesario si no tenemos el link de WhatsApp)
-      // MEJORA: Para mayor eficiencia, el link de WhatsApp debería incluir el companyId siempre.
-      
+      // 1. Encontrar la empresa del técnico
       const staffQuery = query(collection(firestore, "users"), where("email", ">=", cleanRut), where("email", "<=", cleanRut + "\uf8ff"));
       const staffSnap = await getDocs(staffQuery);
       
@@ -116,11 +113,12 @@ export default function StaffLoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">PIN de Acceso</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">PIN de Acceso (6 dígitos)</Label>
                 <Input 
                   type="password"
                   inputMode="numeric"
-                  placeholder="****" 
+                  maxLength={6}
+                  placeholder="******" 
                   className="h-14 rounded-2xl border-2 text-2xl font-black text-center tracking-[0.5em]"
                   value={pinInput}
                   onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
