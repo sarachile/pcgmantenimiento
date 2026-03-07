@@ -38,7 +38,7 @@ import { WorkOrder, Client, ChecklistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export default function FieldCapturePage() {
-  const { profile, isLoading: isUserLoading } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   const { toast } = useToast();
@@ -71,14 +71,24 @@ export default function FieldCapturePage() {
   const { data: clients } = useCollection<Client>(clientsQuery);
 
   const filtered = useMemo(() => {
-    return (workOrders || []).filter(ot => {
+    let list = workOrders || [];
+
+    // FILTRADO POR ROL: Si es técnico, solo mostrar las suyas
+    if (isTechnician && profile) {
+      list = list.filter(ot => 
+        ot.assignedToStaffIds?.includes(profile.id) || 
+        ot.assignedToStaffIds?.includes(profile.staffId || '')
+      );
+    }
+
+    return list.filter(ot => {
       const client = clients?.find(c => c.id === ot.clientId);
       return (
         ot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client?.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     });
-  }, [workOrders, clients, searchTerm]);
+  }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -182,10 +192,12 @@ export default function FieldCapturePage() {
             </div>
 
             <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Órdenes Activas</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">
+                {isTechnician ? "Mis Órdenes Asignadas" : "Órdenes de Trabajo Activas"}
+              </p>
               {filtered.length === 0 ? (
                 <div className="p-10 text-center text-slate-400 italic bg-white rounded-3xl border-2 border-dashed">
-                  No hay órdenes disponibles.
+                  No hay órdenes disponibles para captura.
                 </div>
               ) : (
                 filtered.map(ot => {

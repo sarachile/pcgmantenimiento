@@ -88,11 +88,14 @@ export default function WorkOrdersPage() {
 
   const workOrders = useMemo(() => {
     if (!rawWorkOrders) return [];
-    if (isTechnician && profile?.id) {
-      return rawWorkOrders.filter(ot => ot.assignedToStaffIds?.includes(profile.id));
+    if (isTechnician && profile) {
+      return rawWorkOrders.filter(ot => 
+        ot.assignedToStaffIds?.includes(profile.id) || 
+        ot.assignedToStaffIds?.includes(profile.staffId || '')
+      );
     }
     return rawWorkOrders;
-  }, [rawWorkOrders, isTechnician, profile?.id]);
+  }, [rawWorkOrders, isTechnician, profile]);
 
   const filteredOTs = useMemo(() => {
     return workOrders.filter(ot => {
