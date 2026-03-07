@@ -9,10 +9,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { ShieldPlus, Loader2, Building2, AlertCircle, KeyRound, User } from 'lucide-react';
+import { 
+  ShieldPlus, 
+  Loader2, 
+  Building2, 
+  AlertCircle, 
+  KeyRound, 
+  User,
+  Zap,
+  CheckCircle2,
+  ArrowRight
+} from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from '@/lib/utils';
 
 const SUPERADMIN_EMAIL = 'control@pcgoperacion.com';
 
@@ -20,7 +32,9 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [companyName, setCompanyName] = useState('');
   const [companyCode, setCompanyCode] = useState('');
+  const [signupMode, setSignupMode] = useState<'new' | 'join'>('new');
   const [loading, setLoading] = useState(false);
   
   const auth = useAuth();
@@ -36,65 +50,63 @@ export default function SignupPage() {
     const isSuperAdminAccount = cleanEmail === SUPERADMIN_EMAIL;
 
     try {
-      let targetCompanyId = isSuperAdminAccount ? 'pcg-central' : companyCode.trim();
-      let role = isSuperAdminAccount ? 'superadmin' : 'companyAdmin'; 
+      let targetCompanyId = "";
+      let role = "";
 
-      // 1. VALIDACIÓN PRE-REGISTRO
-      if (!isSuperAdminAccount) {
-        if (!targetCompanyId) {
-          throw new Error("Debe ingresar el código de vinculación de su empresa.");
-        }
+      // 1. LÓGICA DE SUPERADMIN (INFRAESTRUCTURA)
+      if (isSuperAdminAccount) {
+        targetCompanyId = 'pcg-central';
+        role = 'superadmin';
+      } 
+      // 2. CREAR NUEVA EMPRESA (FREEMIUM)
+      else if (signupMode === 'new') {
+        if (!companyName.trim()) throw new Error("Debe ingresar el nombre de su empresa.");
+        targetCompanyId = `comp-${Math.random().toString(36).substr(2, 8)}`;
+        role = 'companyAdmin';
+
+        // Crear documento de la empresa en Plan Simple
+        await setDoc(doc(db, 'companies', targetCompanyId), {
+          id: targetCompanyId,
+          name: companyName.trim(),
+          rut: 'RUT por definir',
+          address: 'Dirección por definir',
+          isActive: true,
+          currentPlan: 'simple',
+          subscriptionStatus: 'active',
+          createdAt: new Date().toISOString(),
+        });
+      } 
+      // 3. UNIRSE A EMPRESA EXISTENTE
+      else {
+        if (!companyCode.trim()) throw new Error("Debe ingresar el código de vinculación.");
+        targetCompanyId = companyCode.trim();
 
         const companySnap = await getDoc(doc(db, 'companies', targetCompanyId));
+        if (!companySnap.exists()) throw new Error("El código de acceso no es válido.");
         
-        if (!companySnap.exists()) {
-          throw new Error("El código de acceso no es válido. Verifíquelo con su administrador.");
-        }
-
         const companyData = companySnap.data();
-        if (!companyData.isActive) {
-          throw new Error("Esta empresa se encuentra suspendida. Contacte a soporte.");
-        }
+        if (!companyData.isActive) throw new Error("Esta empresa se encuentra suspendida.");
 
-        // Validar límites de usuarios
+        // Validar límites
         const usersQuery = query(collection(db, "users"), where("companyId", "==", targetCompanyId));
         const usersSnap = await getDocs(usersQuery);
         
-        const planLimits: Record<string, number> = { free: 1, pro: 3, enterprise: 5 };
-        const currentPlan = companyData.currentPlan || 'free';
-        const maxUsers = planLimits[currentPlan] || 1;
+        const planLimits: Record<string, number> = { simple: 2, business: 10, enterprise: 100 };
+        const currentPlan = companyData.currentPlan || 'simple';
+        const maxUsers = planLimits[currentPlan] || 2;
 
         if (usersSnap.size >= maxUsers) {
-          throw new Error(`La empresa ha alcanzado el límite de ${maxUsers} usuarios para el plan ${currentPlan.toUpperCase()}.`);
+          throw new Error(`Límite alcanzado para el plan ${currentPlan.toUpperCase()}.`);
         }
 
-        if (usersSnap.size > 0) {
-          role = 'tecnico';
-        }
+        role = usersSnap.size === 0 ? 'companyAdmin' : 'tecnico';
       }
 
       // 2. Crear usuario en Auth
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       const userId = userCredential.user.uid;
 
-      // 3. Si es Super Admin, asegurar que la empresa central exista
-      if (isSuperAdminAccount) {
-        const centralSnap = await getDoc(doc(db, 'companies', 'pcg-central'));
-        if (!centralSnap.exists()) {
-          await setDoc(doc(db, 'companies', 'pcg-central'), {
-            id: 'pcg-central',
-            name: 'PCG OPERACIONES CENTRAL',
-            rut: '76.000.000-0',
-            address: 'PCG HQ',
-            isActive: true,
-            currentPlan: 'enterprise',
-            subscriptionStatus: 'active',
-            createdAt: new Date().toISOString(),
-          });
-        }
-      }
-
-      // 4. Crear Perfil de Usuario en colección central /users
+      // 3. Crear Perfil de Usuario
       await setDoc(doc(db, 'users', userId), {
         id: userId,
         email: cleanEmail,
@@ -105,7 +117,7 @@ export default function SignupPage() {
         createdAt: new Date().toISOString(),
       });
 
-      // 5. Registro en platform_admins (nombre exacto para firestore.rules)
+      // 4. Registro adicional si es Super Admin
       if (isSuperAdminAccount) {
         await setDoc(doc(db, 'platform_admins', userId), {
           id: userId,
@@ -116,8 +128,10 @@ export default function SignupPage() {
       }
 
       toast({
-        title: isSuperAdminAccount ? "Acceso Maestro Activado" : "Cuenta vinculada",
-        description: "Bienvenido al sistema. Redirigiendo...",
+        title: signupMode === 'new' ? "¡Empresa Creada!" : "Cuenta vinculada",
+        description: signupMode === 'new' 
+          ? "Bienvenido a su nuevo entorno Freemium. Su empresa ya está activa." 
+          : "Bienvenido al sistema. Redirigiendo...",
       });
       
       router.push('/dashboard');
@@ -136,71 +150,128 @@ export default function SignupPage() {
   const isSuperAdminEmail = email.toLowerCase().trim() === SUPERADMIN_EMAIL;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md border-none shadow-xl">
-        <CardHeader className="space-y-1 flex flex-col items-center">
-          <div className="bg-primary/10 p-3 rounded-2xl mb-4">
-            <ShieldPlus className="h-8 w-8 text-primary" />
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <Card className="w-full max-w-lg border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+        <CardHeader className="space-y-1 flex flex-col items-center p-10 bg-white">
+          <div className="bg-primary/10 p-4 rounded-3xl mb-4">
+            <ShieldPlus className="h-10 w-10 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">Registro de Usuario</CardTitle>
-          <CardDescription>Cree su perfil personal y vincúlelo a su empresa</CardDescription>
+          <CardTitle className="text-3xl font-black tracking-tighter uppercase italic">Empezar Ahora</CardTitle>
+          <CardDescription className="text-base font-medium">Digitalice su operación técnica en minutos.</CardDescription>
         </CardHeader>
+        
         <form onSubmit={handleSignup}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Corporativo</Label>
-              <Input id="email" type="email" placeholder="nombre@empresa.cl" required value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            
+          <CardContent className="space-y-6 px-10 pb-6">
             {!isSuperAdminEmail && (
-              <div className="space-y-2 p-4 bg-primary/5 rounded-xl border border-primary/10 animate-in fade-in slide-in-from-top-2">
-                <Label htmlFor="companyCode" className="flex items-center gap-2 text-primary font-bold">
-                  <Building2 className="h-4 w-4" /> Código de Acceso Empresa
-                </Label>
-                <Input 
-                  id="companyCode" 
-                  required 
-                  placeholder="Ej: comp-xxxxx"
-                  className="bg-white border-primary/20"
-                  value={companyCode} 
-                  onChange={(e) => setCompanyCode(e.target.value)} 
-                />
-                <p className="text-[10px] text-primary/70 italic leading-tight">
-                  * Este código vincula su cuenta a su organización.
-                </p>
-              </div>
+              <Tabs defaultValue="new" onValueChange={(v) => setSignupMode(v as any)} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 h-14 bg-slate-100 rounded-2xl p-1 mb-6">
+                  <TabsTrigger value="new" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary">Registrar Empresa</TabsTrigger>
+                  <TabsTrigger value="join" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary">Unirme a Empresa</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="new" className="space-y-4 animate-in fade-in slide-in-from-left-2">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Nombre de su Empresa / Negocio</Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input 
+                        placeholder="Ej: Mantenimiento Industrial SPA" 
+                        required={signupMode === 'new'} 
+                        className="h-14 pl-12 rounded-2xl border-2 focus:border-primary font-bold"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100 flex gap-3">
+                    <Zap className="h-5 w-5 text-blue-600 shrink-0" />
+                    <p className="text-[10px] font-bold text-blue-700 uppercase leading-relaxed">
+                      Activación instantánea: Incluye Plan Simple (Freemium) sin costo mensual.
+                    </p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="join" className="space-y-4 animate-in fade-in slide-in-from-right-2">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Código de Vinculación Maestro</Label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input 
+                        placeholder="comp-xxxxxx" 
+                        required={signupMode === 'join'}
+                        className="h-14 pl-12 rounded-2xl border-2 border-primary/20 focus:border-primary font-mono font-bold"
+                        value={companyCode}
+                        onChange={(e) => setCompanyCode(e.target.value)}
+                      />
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter px-1">Solicite este código al administrador de su organización.</p>
+                  </div>
+                </TabsContent>
+              </Tabs>
             )}
 
-            <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-2">
-                <User className="h-3.5 w-3.5 text-muted-foreground" /> Nombre Completo
-              </Label>
-              <Input id="name" placeholder="Ej: Juan Soto" required value={name} onChange={(e) => setName(e.target.value)} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Nombre Completo</Label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    placeholder="Juan Soto" 
+                    required 
+                    className="h-12 pl-12 rounded-xl border-2 font-bold"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Email Corporativo</Label>
+                <Input 
+                  type="email" 
+                  placeholder="nombre@empresa.cl" 
+                  required 
+                  className="h-12 rounded-xl border-2 font-bold"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="flex items-center gap-2">
-                <KeyRound className="h-3.5 w-3.5 text-muted-foreground" /> Contraseña Personal
-              </Label>
-              <Input id="password" type="password" placeholder="Mínimo 6 caracteres" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Contraseña de Acceso</Label>
+              <Input 
+                type="password" 
+                placeholder="Mínimo 6 caracteres" 
+                required 
+                className="h-12 rounded-xl border-2 font-bold"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
 
             {isSuperAdminEmail && (
-              <Alert className="bg-primary/5 border-primary/20">
+              <Alert className="bg-primary/5 border-primary/20 rounded-2xl">
                 <AlertCircle className="h-4 w-4 text-primary" />
-                <AlertDescription className="text-xs font-medium text-primary">
-                  Identidad Confirmada: Registro de Administrador de Infraestructura.
+                <AlertDescription className="text-xs font-bold text-primary uppercase tracking-widest">
+                  Acceso Maestro: Configurando cuenta de Administrador de Infraestructura.
                 </AlertDescription>
               </Alert>
             )}
           </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button className="w-full h-12 text-sm font-bold" type="submit" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Finalizar y Acceder al ERP"}
+          
+          <CardFooter className="flex flex-col gap-6 p-10 pt-0 bg-white">
+            <Button 
+              className="w-full h-16 rounded-2xl bg-primary text-white font-black text-lg uppercase tracking-widest shadow-xl shadow-primary/20 gap-2 transition-all hover:scale-[1.02] active:scale-95" 
+              type="submit" 
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <>{signupMode === 'new' ? "Crear Empresa y Entrar" : "Vincular Cuenta"} <ArrowRight className="h-5 w-5" /></>}
             </Button>
-            <p className="text-sm text-center text-muted-foreground">
-              ¿Ya tiene una cuenta? <Link href="/auth/login" className="text-primary hover:underline">Inicie sesión</Link>
-            </p>
+            
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <span>¿Ya tiene una cuenta?</span>
+              <Link href="/auth/login" className="text-primary font-black uppercase text-xs hover:underline underline-offset-4">Iniciar Sesión</Link>
+            </div>
           </CardFooter>
         </form>
       </Card>
