@@ -20,7 +20,12 @@ import {
   MessageSquare,
   Camera,
   Users,
-  Sparkles
+  Sparkles,
+  Smartphone,
+  Share,
+  MoreVertical,
+  PlusSquare,
+  Info
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -30,6 +35,14 @@ import { Progress } from "@/components/ui/progress";
 import { isBefore, parseISO, startOfDay } from "date-fns";
 import { WorkOrder, Client, Company, StaffMember } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export const dynamic = 'force-dynamic';
 
@@ -110,12 +123,63 @@ export default function DashboardPage() {
   if (isTechnician) {
     return (
       <div className="space-y-8 pb-32">
-        <div className="space-y-1">
-          <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Mi Trabajo</h2>
-          <p className="text-muted-foreground font-medium">Bienvenido, {profile?.name}.</p>
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Mi Trabajo</h2>
+            <p className="text-muted-foreground font-medium">Bienvenido, {profile?.name}.</p>
+          </div>
+          
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon" className="h-12 w-12 rounded-2xl bg-white shadow-sm border-slate-200 text-primary">
+                <Smartphone className="h-6 w-6" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black italic tracking-tighter uppercase text-primary">Instalar App</DialogTitle>
+                <DialogDescription className="font-bold text-slate-500">Ten tu herramienta siempre a mano en tu pantalla de inicio.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-6 py-4">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-100 p-2 rounded-lg text-blue-600 font-bold text-xs">iOS</div>
+                    <p className="text-sm font-bold text-slate-700">En iPhone (Safari):</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl border space-y-3">
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Share className="h-3 w-3" /></div>
+                      <span>1. Pulsa el botón <strong>"Compartir"</strong> en la barra inferior.</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><PlusSquare className="h-3 w-3" /></div>
+                      <span>2. Busca y selecciona <strong>"Agregar a Inicio"</strong>.</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600 font-bold text-xs">Android</div>
+                    <p className="text-sm font-bold text-slate-700">En Android (Chrome):</p>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-2xl border space-y-3">
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><MoreVertical className="h-3 w-3" /></div>
+                      <span>1. Pulsa los <strong>3 puntos</strong> de la esquina superior.</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Zap className="h-3 w-3" /></div>
+                      <span>2. Selecciona <strong>"Instalar aplicación"</strong> o "Agregar a inicio".</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        {/* AYUDA VISUAL MÓVIL: TARJETA DE INSTRUCCIÓN (OPCIÓN B) */}
+        {/* AYUDA VISUAL MÓVIL: TARJETA DE INSTRUCCIÓN */}
         <Card className="md:hidden rounded-[2rem] border-none bg-blue-600 text-white shadow-xl mb-6 overflow-hidden relative animate-in fade-in slide-in-from-top-4 duration-700">
           <div className="absolute right-0 top-0 p-6 opacity-20">
             <Zap className="h-16 w-16 text-white fill-white" />
@@ -123,7 +187,7 @@ export default function DashboardPage() {
           <CardContent className="p-8">
             <h3 className="text-xl font-black uppercase tracking-tight italic mb-2">¿Listo para reportar?</h3>
             <p className="text-sm font-medium text-blue-50 leading-relaxed max-w-[85%]">
-              Usa el botón central <span className="bg-white/20 px-2 py-1 rounded-lg inline-flex items-center gap-1.5 font-black border border-white/10 mx-1 shadow-sm"> <Camera className="h-3.5 w-3.5" /> CAPTURA </span> de la barra inferior para subir fotos y notas de tus trabajos asignados.
+              Usa el botón central <span className="bg-white/20 px-2 py-1 rounded-lg inline-flex items-center gap-1.5 font-black border border-white/10 mx-1 shadow-sm"> <Camera className="h-3.5 w-3.5" /> CAPTURA </span> de la barra inferior para subir fotos y notas de tus trabajos.
             </p>
           </CardContent>
         </Card>
@@ -201,6 +265,43 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* HERRAMIENTA DE INSTALACIÓN (PIE) */}
+        <div className="md:hidden">
+          <Card className="rounded-[2rem] border-2 border-dashed bg-slate-50/50 p-6 text-center">
+            <div className="bg-primary/10 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 text-primary">
+              <Smartphone className="h-6 w-6" />
+            </div>
+            <h4 className="text-sm font-black uppercase italic tracking-tighter">¿Usas mucho la plataforma?</h4>
+            <p className="text-[11px] text-slate-500 font-medium mb-4">Agrégala a tu pantalla de inicio como una aplicación para entrar más rápido.</p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="rounded-xl font-bold text-xs uppercase h-10 px-6">Ver cómo instalar</Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black italic text-primary uppercase tracking-tighter">Guía de Instalación</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                  <div className="bg-slate-50 p-5 rounded-2xl border space-y-4">
+                    <p className="text-xs font-black text-slate-400 uppercase">iPhone / Safari</p>
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg border shadow-sm"><Share className="h-4 w-4" /></div>
+                      <p className="text-xs font-medium">Pulsa "Compartir" y luego "Agregar a Inicio"</p>
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 p-5 rounded-2xl border space-y-4">
+                    <p className="text-xs font-black text-slate-400 uppercase">Android / Chrome</p>
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg border shadow-sm"><MoreVertical className="h-4 w-4" /></div>
+                      <p className="text-xs font-medium">Pulsa los 3 puntos y luego "Instalar aplicación"</p>
+                    </div>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </Card>
+        </div>
       </div>
     );
   }
