@@ -16,7 +16,28 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Loader2, ClipboardPlus, Plus, Users, Building2, Search, Zap, ShieldCheck, QrCode, Star, Hash, MapPin, User, Edit2, Trash2 } from "lucide-react";
+import { 
+  ArrowLeft, 
+  Loader2, 
+  ClipboardPlus, 
+  Plus, 
+  Users, 
+  Building2, 
+  Search, 
+  Zap, 
+  ShieldCheck, 
+  QrCode, 
+  Star, 
+  Hash, 
+  MapPin, 
+  User, 
+  Edit2, 
+  Trash2,
+  Info,
+  AlertTriangle,
+  Lightbulb,
+  Camera
+} from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Client, Asset, StaffMember, Team } from "@/lib/types";
@@ -47,8 +68,10 @@ function NewWorkOrderContent() {
   const [staffSearch, setStaffSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
-  const [reviewerRequired, setReviewerRequired] = useState(true);
-  const [evaluationRequired, setEvaluationRequired] = useState(true);
+  // AHORA INICIAN APAGADOS POR DEFECTO
+  const [reviewerRequired, setReviewerRequired] = useState(false);
+  const [evaluationRequired, setEvaluationRequired] = useState(false);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   
@@ -76,7 +99,6 @@ function NewWorkOrderContent() {
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
   const { data: teams } = useCollection<Team>(teamsQuery);
 
-  // Carga de datos para EDICIÓN o DUPLICACIÓN
   useEffect(() => {
     const sourceId = editId || duplicateFrom;
     if (sourceId && db && companyId) {
@@ -95,8 +117,8 @@ function NewWorkOrderContent() {
             setAssignedToStaffIds(data.assignedToStaffIds || []);
             setAssignedTeamId(data.assignedTeamId || null);
             setAssignmentMode(data.assignedTeamId ? 'team' : 'individual');
-            setReviewerRequired(data.reviewerRequired ?? true);
-            setEvaluationRequired(data.evaluationRequired ?? true);
+            setReviewerRequired(data.reviewerRequired ?? false);
+            setEvaluationRequired(data.evaluationRequired ?? false);
             setServiceQuantity(data.serviceQuantity?.toString() || "");
             setServiceUnit(data.serviceUnit || "Unidades");
             
@@ -109,11 +131,6 @@ function NewWorkOrderContent() {
             if (data.checklist) {
               setChecklist(data.checklist.map((i: any) => ({ task: i.task })));
             }
-            
-            toast({ 
-              title: isEditing ? "Cargando Orden" : "Plantilla Cargada", 
-              description: isEditing ? "Datos listos para modificar." : "Se han copiado los datos de la orden anterior." 
-            });
           }
         } catch (e) {
           console.error("Error fetching source OT:", e);
@@ -146,7 +163,7 @@ function NewWorkOrderContent() {
     if (team) {
       setAssignedTeamId(team.id);
       setAssignedToStaffIds(team.memberIds);
-      toast({ title: `Cuadrilla "${team.name}" cargada`, description: `${team.memberIds.length} técnicos asignados automáticamente.` });
+      toast({ title: `Cuadrilla "${team.name}" cargada` });
     }
   };
 
@@ -181,7 +198,7 @@ function NewWorkOrderContent() {
       if (isEditing) {
         const docRef = doc(db!, "companies", companyId, "workOrders", editId);
         updateDocumentNonBlocking(docRef, commonData);
-        toast({ title: "Orden Actualizada", description: `Los cambios en la OT ${editId} han sido guardados.` });
+        toast({ title: "Orden Actualizada" });
         router.push(`/work-orders/${editId}`);
       } else {
         const pin = Math.floor(100000 + Math.random() * 900000).toString();
@@ -194,7 +211,7 @@ function NewWorkOrderContent() {
           approvalPin: pin,
           createdAt: serverTimestamp(),
         });
-        toast({ title: "Orden Generada", description: `OT ${docRef.id} creada exitosamente.` });
+        toast({ title: "Orden Generada" });
         router.push(`/work-orders/${docRef.id}`);
       }
     } catch (error: any) {
@@ -215,25 +232,23 @@ function NewWorkOrderContent() {
   if (isUserLoading || isLoadingData) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 px-4 py-8 pb-20">
+    <div className="max-w-3xl mx-auto space-y-6 px-4 py-8 pb-32">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild><Link href={isEditing ? `/work-orders/${editId}` : "/work-orders"}><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
             <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">
-              {isEditing ? "Editar Orden de Trabajo" : (duplicateFrom ? "Duplicar Orden" : "Nueva Orden de Trabajo")}
+              {isEditing ? "Editar Orden de Trabajo" : (duplicateFrom ? "Duplicar Orden" : "Generar Orden")}
             </h2>
             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">
-              {isEditing ? "Modificación de parámetros técnicos" : "Configuración de Operación Industrial"}
+              Flujo de Gestión Industrial
             </p>
           </div>
         </div>
-        {isEditing && (
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-black uppercase text-[10px]">Modo Edición</Badge>
-        )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-10">
+        {/* SECCIÓN 1: DATOS DEL SERVICIO */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className={cn("text-white p-8", isEditing ? "bg-amber-600" : "bg-slate-900")}>
             <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
@@ -272,49 +287,28 @@ function NewWorkOrderContent() {
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                   <MapPin className="h-3 w-3" /> Lugar del Servicio
                 </Label>
-                <Input 
-                  placeholder="Dirección de la intervención" 
-                  className="h-12 rounded-xl border-2 font-medium"
-                  value={serviceLocation}
-                  onChange={(e) => setServiceLocation(e.target.value)}
-                />
+                <Input placeholder="Dirección de la intervención" className="h-12 rounded-xl border-2 font-medium" value={serviceLocation} onChange={(e) => setServiceLocation(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                   <User className="h-3 w-3" /> Solicitado Por
                 </Label>
-                <Input 
-                  placeholder="Nombre de quien requiere el servicio" 
-                  className="h-12 rounded-xl border-2 font-medium"
-                  value={requestedByName}
-                  onChange={(e) => setRequestedByName(e.target.value)}
-                />
+                <Input placeholder="Nombre del solicitante" className="h-12 rounded-xl border-2 font-medium" value={requestedByName} onChange={(e) => setRequestedByName(e.target.value)} />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Descripción de los Trabajos</Label>
-              <Textarea 
-                placeholder="Detalle el alcance técnico de la intervención..." 
-                className="min-h-[120px] rounded-2xl border-2 p-4 text-sm font-medium" 
-                value={description} 
-                onChange={(e) => setDescription(e.target.value)} 
-              />
+              <Textarea placeholder="Detalle el alcance técnico de la intervención..." className="min-h-[120px] rounded-2xl border-2 p-4 text-sm font-medium bg-slate-50/50" value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cantidad / Magnitud</Label>
-                <Input 
-                  type="number" 
-                  placeholder="Ej: 500" 
-                  className="h-12 rounded-xl border-2 font-bold"
-                  value={serviceQuantity}
-                  onChange={(e) => setServiceQuantity(e.target.value)}
-                />
+                <Input type="number" placeholder="Ej: 500" className="h-12 rounded-xl border-2 font-bold" value={serviceQuantity} onChange={(e) => setServiceQuantity(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Unidad de Medida</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Unidad</Label>
                 <Select value={serviceUnit} onValueChange={setServiceUnit}>
                   <SelectTrigger className="h-12 rounded-xl border-2">
                     <SelectValue />
@@ -325,7 +319,6 @@ function NewWorkOrderContent() {
                     <SelectItem value="Kg">Kilogramos</SelectItem>
                     <SelectItem value="Lt">Litros</SelectItem>
                     <SelectItem value="Hr">Horas</SelectItem>
-                    <SelectItem value="Gl">Galones</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -333,129 +326,155 @@ function NewWorkOrderContent() {
           </CardContent>
         </Card>
 
+        {/* SECCIÓN 2: ASIGNACIÓN */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className="bg-primary p-8">
             <CardTitle className="flex items-center gap-3 text-xl font-black text-white uppercase tracking-tighter italic">
-              <Users className="h-6 w-6" /> 2. Asignación de Personal
+              <Users className="h-6 w-6" /> 2. Personal Técnico
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8 space-y-6">
             <Tabs value={assignmentMode} onValueChange={(v: any) => setAssignmentMode(v)} className="w-full">
               <TabsList className="grid w-full grid-cols-2 h-14 bg-slate-100 rounded-2xl p-1 mb-6">
                 <TabsTrigger value="individual" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary">Asignación Directa</TabsTrigger>
-                <TabsTrigger value="team" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary">Carga de Cuadrilla</TabsTrigger>
+                <TabsTrigger value="team" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary">Cuadrillas</TabsTrigger>
               </TabsList>
 
               <TabsContent value="individual" className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border-2 border-slate-100">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input 
-                      placeholder="Buscar por nombre..." 
-                      className="pl-9 h-10 rounded-xl border-none shadow-sm bg-white"
-                      value={staffSearch}
-                      onChange={(e) => setStaffSearch(e.target.value)}
-                    />
+                    <Input placeholder="Buscar por nombre..." className="pl-9 h-10 rounded-xl border-none shadow-sm bg-white" value={staffSearch} onChange={(e) => setStaffSearch(e.target.value)} />
                   </div>
                   <Select value={roleFilter} onValueChange={setRoleFilter}>
                     <SelectTrigger className="h-10 rounded-xl border-none shadow-sm bg-white font-bold text-xs uppercase tracking-tighter">
-                      <SelectValue placeholder="Filtrar por Rol" />
+                      <SelectValue placeholder="Rol" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los Roles</SelectItem>
-                      {uniqueRoles.map(role => (
-                        <SelectItem key={role} value={role}>{role.toUpperCase()}</SelectItem>
-                      ))}
+                      {uniqueRoles.map(role => <SelectItem key={role} value={role}>{role.toUpperCase()}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between px-2">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Personal Filtrado ({filteredStaff.length})</p>
-                    {assignedToStaffIds.length > 0 && (
-                      <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[9px] font-black">{assignedToStaffIds.length} SELECCIONADOS</Badge>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                    {filteredStaff.map(s => (
-                      <label key={s.id} className={cn(
-                        "flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all",
-                        assignedToStaffIds.includes(s.id) ? "border-primary bg-primary/5 shadow-inner" : "border-slate-100 hover:border-slate-200 bg-white"
-                      )}>
-                        <Checkbox 
-                          checked={assignedToStaffIds.includes(s.id)} 
-                          onCheckedChange={() => {
-                            setAssignedToStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]);
-                            setAssignedTeamId(null);
-                          }} 
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-black text-slate-900 truncate">{s.name}</p>
-                          <p className="text-[9px] font-black uppercase text-slate-400">{s.role}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                  {filteredStaff.map(s => (
+                    <label key={s.id} className={cn(
+                      "flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all",
+                      assignedToStaffIds.includes(s.id) ? "border-primary bg-primary/5 shadow-inner" : "border-slate-100 hover:border-slate-200 bg-white"
+                    )}>
+                      <Checkbox checked={assignedToStaffIds.includes(s.id)} onCheckedChange={() => { setAssignedToStaffIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]); setAssignedTeamId(null); }} />
+                      <div className="flex-1 min-w-0"><p className="text-xs font-black text-slate-900 truncate">{s.name}</p><p className="text-[9px] font-black uppercase text-slate-400">{s.role}</p></div>
+                    </label>
+                  ))}
                 </div>
               </TabsContent>
 
               <TabsContent value="team" className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Seleccionar Cuadrilla de Trabajo</Label>
-                  <Select value={assignedTeamId || ""} onValueChange={handleSelectTeam}>
-                    <SelectTrigger className="h-14 rounded-2xl border-2 text-primary font-black uppercase text-xs tracking-widest">
-                      <SelectValue placeholder="Busque una cuadrilla..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      {teams?.map(t => <SelectItem key={t.id} value={t.id} className="font-black py-3">{t.name.toUpperCase()} ({t.memberIds.length} TÉCNICOS)</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {assignedTeamId && (
-                  <div className="p-6 bg-slate-900 text-white rounded-[2rem] space-y-4 shadow-xl">
-                    <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.2em] flex items-center gap-2">
-                      <Zap className="h-3 w-3" /> Resumen de Cuadrilla Cargada
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {teams?.find(t => t.id === assignedTeamId)?.memberIds.map(mid => {
-                        const m = staffMembers?.find(s => s.id === mid);
-                        return <Badge key={mid} variant="outline" className="bg-white/10 text-white border-none font-bold text-[9px]">{m?.name || "Técnico"}</Badge>;
-                      })}
-                    </div>
-                  </div>
-                )}
+                <Select value={assignedTeamId || ""} onValueChange={handleSelectTeam}>
+                  <SelectTrigger className="h-14 rounded-2xl border-2 text-primary font-black uppercase text-xs tracking-widest">
+                    <SelectValue placeholder="Busque una cuadrilla..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {teams?.map(t => <SelectItem key={t.id} value={t.id} className="font-black py-3">{t.name.toUpperCase()} ({t.memberIds.length} TÉCNICOS)</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-slate-50">
-          <CardHeader className="p-8 pb-4">
-            <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3 text-slate-900">
-              <ShieldCheck className="h-6 w-6 text-emerald-600" /> 3. Protocolos y Cierre
+        {/* SECCIÓN 3: PROTOCOLOS - MEJORADA CON INSTRUCCIONES */}
+        <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="bg-slate-900 text-white p-8">
+            <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
+              <Camera className="h-6 w-6 text-amber-400" /> 3. Protocolos Técnicos
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8 pt-0 space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-100 flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="font-black text-xs uppercase text-slate-900 tracking-tighter flex items-center gap-2">
-                    <QrCode className="h-4 w-4 text-amber-600" /> Validación Externa
-                  </Label>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase">Firma del cliente vía PIN/QR</p>
-                </div>
-                <Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} />
+          <CardContent className="p-8 space-y-6">
+            <div className="bg-amber-50 border border-amber-100 p-6 rounded-3xl space-y-3">
+              <div className="flex items-center gap-2 text-amber-700">
+                <Info className="h-5 w-5" />
+                <span className="font-black text-xs uppercase tracking-widest">Guía de Trazabilidad</span>
               </div>
-              <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-slate-100 flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label className="font-black text-xs uppercase text-slate-900 tracking-tighter flex items-center gap-2">
-                    <Star className="h-4 w-4 text-emerald-600" /> Evaluación
-                  </Label>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase">Calificación por estrellas</p>
+              <p className="text-xs text-amber-900/70 font-medium leading-relaxed italic">
+                Defina puntos específicos de control (ej: "Revisión niveles", "Estado filtros"). Al hacerlo, el técnico verá estos ítems en su móvil y se verá obligado a subir una foto para cada uno, garantizando evidencia real del trabajo.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Items de Inspección Obligatoria</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addChecklistItem} className="h-10 rounded-xl font-black text-[10px] uppercase gap-2 border-primary/20 text-primary">
+                  <Plus className="h-4 w-4" /> Añadir Punto Control
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {checklist.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 animate-in slide-in-from-left-2">
+                    <Input placeholder="Ej: Foto de placa de identificación del equipo" value={item.task} onChange={(e) => updateChecklistItem(idx, e.target.value)} className="h-12 rounded-xl border-2 font-bold" />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeChecklistItem(idx)} className="h-12 w-12 text-rose-500 hover:bg-rose-50 rounded-xl">
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
+                  </div>
+                ))}
+                {checklist.length === 0 && (
+                  <div className="text-center py-10 border-2 border-dashed rounded-[2rem] bg-slate-50/50">
+                    <Lightbulb className="h-8 w-8 mx-auto mb-2 text-slate-300" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pase de largo solo si no requiere fotos específicas</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* SECCIÓN 4: CIERRE Y VALIDACIÓN - MEJORADA CON ALERTAS */}
+        <Card className={cn(
+          "border-none shadow-xl rounded-[2.5rem] overflow-hidden transition-all duration-500",
+          (reviewerRequired || evaluationRequired) ? "bg-indigo-50/50 ring-2 ring-indigo-500/20" : "bg-slate-50"
+        )}>
+          <CardHeader className="p-8 pb-4">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3 text-slate-900">
+                <ShieldCheck className="h-6 w-6 text-emerald-600" /> 4. Cierre y Validación
+              </CardTitle>
+              {(reviewerRequired || evaluationRequired) && (
+                <Badge className="bg-indigo-600 text-white font-black text-[8px] uppercase tracking-[0.2em] animate-pulse">Interacción con Cliente Activa</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 pt-0 space-y-8">
+            <div className="bg-white p-6 rounded-3xl border-2 border-slate-100 flex flex-col gap-4">
+              <div className="flex items-center gap-3 text-slate-400">
+                <Info className="h-4 w-4" />
+                <p className="text-[10px] font-bold uppercase tracking-widest">Nota: Estas opciones notifican automáticamente al mandante.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+                <div className={cn(
+                  "p-6 rounded-3xl shadow-sm border-2 transition-all flex items-center justify-between",
+                  reviewerRequired ? "border-indigo-500 bg-indigo-50" : "border-slate-100 bg-slate-50/50"
+                )}>
+                  <div className="space-y-1">
+                    <Label className="font-black text-xs uppercase text-slate-900 tracking-tighter flex items-center gap-2">
+                      <QrCode className={cn("h-4 w-4", reviewerRequired ? "text-indigo-600" : "text-slate-400")} /> Validación Externa
+                    </Label>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase">Firma vía PIN/QR</p>
+                  </div>
+                  <Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} />
                 </div>
-                <Switch checked={evaluationRequired} onCheckedChange={setEvaluationRequired} />
+                <div className={cn(
+                  "p-6 rounded-3xl shadow-sm border-2 transition-all flex items-center justify-between",
+                  evaluationRequired ? "border-emerald-500 bg-emerald-50" : "border-slate-100 bg-slate-50/50"
+                )}>
+                  <div className="space-y-1">
+                    <Label className="font-black text-xs uppercase text-slate-900 tracking-tighter flex items-center gap-2">
+                      <Star className={cn("h-4 w-4", evaluationRequired ? "text-emerald-600" : "text-slate-400")} /> Evaluación
+                    </Label>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase">Nota por Estrellas</p>
+                  </div>
+                  <Switch checked={evaluationRequired} onCheckedChange={setEvaluationRequired} />
+                </div>
               </div>
             </div>
 
@@ -469,35 +488,10 @@ function NewWorkOrderContent() {
                 <Input type="number" min="1" value={durationDays} onChange={(e) => setDurationDays(Number(e.target.value) || 1)} className="h-12 border-2 rounded-xl font-bold" />
               </div>
             </div>
-
-            <div className="space-y-4 pt-4 border-t border-slate-200">
-              <div className="flex items-center justify-between">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Checklist / Protocolos Técnicos</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addChecklistItem} className="h-8 rounded-lg font-bold text-[10px] uppercase">
-                  <Plus className="h-3 w-3 mr-1" /> Añadir Tarea
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {checklist.map((item, idx) => (
-                  <div key={idx} className="flex gap-2">
-                    <Input 
-                      placeholder="Ej: Revisión de niveles de aceite" 
-                      value={item.task}
-                      onChange={(e) => updateChecklistItem(idx, e.target.value)}
-                      className="h-11 rounded-xl border-2"
-                    />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeChecklistItem(idx)} className="h-11 w-11 text-rose-500">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                {checklist.length === 0 && <p className="text-center py-4 text-xs text-slate-400 italic">No hay protocolos definidos.</p>}
-              </div>
-            </div>
           </CardContent>
           <CardFooter className="p-8 pt-0">
-            <Button type="submit" disabled={isSubmitting || !clientId || !description.trim() || assignedToStaffIds.length === 0} className={cn("w-full h-16 rounded-2xl text-white font-black text-lg uppercase tracking-widest shadow-xl gap-3", isEditing ? "bg-amber-600 hover:bg-amber-700 shadow-amber-900/20" : "bg-primary shadow-primary/20")}>
-              {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : (isEditing ? <><Edit2 className="h-6 w-6" /> Actualizar Orden de Trabajo</> : <><Plus className="h-6 w-6" /> Generar Orden de Trabajo</>)}
+            <Button type="submit" disabled={isSubmitting || !clientId || !description.trim() || assignedToStaffIds.length === 0} className={cn("w-full h-20 rounded-[2rem] text-white font-black text-xl uppercase tracking-widest shadow-2xl gap-3 transition-all", isEditing ? "bg-amber-600 hover:bg-amber-700 shadow-amber-900/20" : "bg-primary shadow-primary/20 hover:scale-[1.02]")}>
+              {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : (isEditing ? <><Edit2 className="h-8 w-8" /> Actualizar Orden Técnica</> : <><Plus className="h-8 w-8" /> Activar Orden de Trabajo</>)}
             </Button>
           </CardFooter>
         </Card>
