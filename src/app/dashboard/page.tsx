@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -34,7 +33,7 @@ import { Badge } from "@/components/ui/badge";
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
   const [today, setToday] = useState<Date | null>(null);
@@ -103,6 +102,8 @@ export default function DashboardPage() {
     return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
+  const showAdminActions = isCompanyAdmin || isSupervisor;
+
   return (
     <div className="space-y-8 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -112,12 +113,15 @@ export default function DashboardPage() {
           </h2>
           <p className="text-muted-foreground font-medium">Bienvenido, {profile?.name}.</p>
         </div>
-        {!isTechnician && (
-          <div className="flex items-center gap-3">
-            <Button asChild variant="outline" className="h-12 px-6 rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5">
-              <Link href="/field/capture"><Activity className="mr-2 h-4 w-4" /> Monitor en Vivo</Link>
+        {showAdminActions && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button asChild variant="outline" className="h-11 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50">
+              <Link href="/clients"><Building2 className="mr-2 h-4 w-4" /> Clientes</Link>
             </Button>
-            <Button asChild className="h-12 px-6 rounded-xl shadow-xl shadow-primary/20 font-black gap-2">
+            <Button asChild variant="outline" className="h-11 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50">
+              <Link href="/team"><Users className="mr-2 h-4 w-4" /> Equipo</Link>
+            </Button>
+            <Button asChild className="h-11 px-6 rounded-xl shadow-lg font-black gap-2">
               <Link href="/work-orders/new"><Plus className="h-5 w-5" /> Nueva OT</Link>
             </Button>
           </div>
@@ -163,7 +167,7 @@ export default function DashboardPage() {
             if (ot.status === 'aprobada') return false;
             const dateToUse = ot.scheduledDate || ot.createdAt;
             const endDate = dateToUse?.toDate ? dateToUse.toDate() : (typeof dateToUse === 'string' ? parseISO(dateToUse) : null);
-            return endDate && isBefore(endDate, today);
+            return endDate && isBefore(endDate, today!);
           }).length, icon: AlertTriangle, color: "bg-rose-600" }
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm rounded-3xl overflow-hidden">
@@ -297,9 +301,14 @@ export default function DashboardPage() {
                   <span className="text-sm font-black">{clients?.length || 0}</span>
                 </div>
               </div>
-              <Button variant="outline" className="w-full rounded-xl font-bold text-xs" asChild>
-                <Link href="/team">Gestionar Equipo <Users className="ml-2 h-3 w-3" /></Link>
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="rounded-xl font-bold text-[10px] uppercase h-10" asChild>
+                  <Link href="/team">Personal</Link>
+                </Button>
+                <Button variant="outline" className="rounded-xl font-bold text-[10px] uppercase h-10" asChild>
+                  <Link href="/clients">Clientes</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
