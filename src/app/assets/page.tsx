@@ -86,10 +86,22 @@ export default function AssetsPage() {
     setMounted(true);
   }, []);
 
-  // FAILSAFE: Restaurar interacción si el diálogo queda mal cerrado por Radix
+  /**
+   * CRITICAL FAILSAFE: 
+   * Radix UI a veces deja el body con pointer-events: none al cerrar diálogos 
+   * disparados desde menús. Este efecto fuerza la restauración de la interactividad.
+   */
   useEffect(() => {
     if (!isDialogOpen) {
-      document.body.style.pointerEvents = 'auto';
+      const unlockInterface = () => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'auto';
+      };
+      
+      // Ejecutar inmediatamente y con un leve retardo para asegurar que la limpieza de Radix no nos sobreescriba
+      unlockInterface();
+      const timer = setTimeout(unlockInterface, 100);
+      return () => clearTimeout(timer);
     }
   }, [isDialogOpen]);
 
@@ -137,8 +149,8 @@ export default function AssetsPage() {
       iotType: asset.iotType || "otro",
       unit: asset.unit || ""
     });
-    // Pequeño retardo para asegurar que el Dropdown se cierre antes que el Dialog abra
-    setTimeout(() => setIsDialogOpen(true), 50);
+    // Pequeño retardo para asegurar que el Dropdown se cierre y desmonte antes que el Dialog abra
+    setTimeout(() => setIsDialogOpen(true), 150);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -305,7 +317,16 @@ export default function AssetsPage() {
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none">
+                        <DropdownMenuContent 
+                          align="end" 
+                          className="w-48 rounded-xl shadow-xl border-none"
+                          onCloseAutoFocus={(e) => {
+                            // Prevenir que el foco regrese al trigger si el cuerpo está bloqueado
+                            if (document.body.style.pointerEvents === 'none') {
+                              e.preventDefault();
+                            }
+                          }}
+                        >
                           <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">Gestión Activo</DropdownMenuLabel>
                           <DropdownMenuItem 
                             className="font-bold gap-2" 
