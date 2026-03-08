@@ -25,7 +25,9 @@ import {
   Sun,
   Waves,
   Database,
-  Check
+  Check,
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +58,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-77xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-2">
               <div className="bg-primary p-2 rounded-lg">
@@ -69,6 +71,7 @@ export default function HomePage() {
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
               <a href="#solucion" className="hover:text-primary transition-colors">Solución</a>
+              <a href="#plataforma" className="hover:text-primary transition-colors">La Plataforma</a>
               <a href="#solar" className="hover:text-primary transition-colors">Energía Solar</a>
               <a href="#iot" className="hover:text-primary transition-colors">Ecosistema IoT</a>
               {isAuthenticated ? (
@@ -98,6 +101,7 @@ export default function HomePage() {
         {isMenuOpen && (
           <div className="md:hidden bg-white border-b p-4 space-y-4 flex flex-col animate-in slide-in-from-top-2">
             <a href="#solucion" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Solución</a>
+            <a href="#plataforma" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>La Plataforma</a>
             <a href="#solar" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Energía Solar</a>
             <a href="#iot" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Ecosistema IoT</a>
             <hr />
@@ -110,7 +114,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden relative">
+      <section className="pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden relative border-b">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Badge variant="outline" className="mb-6 py-1 px-4 border-primary/20 text-primary bg-primary/5 rounded-full font-bold uppercase tracking-widest">
@@ -134,8 +138,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Differentiation Section (UPGRADED POSITION) */}
-      <section id="solucion" className="py-24 bg-white border-y">
+      {/* Differentiation Section (PROMINENT POSITION) */}
+      <section id="solucion" className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Left Column: Image */}
@@ -167,7 +171,7 @@ export default function HomePage() {
                   { icon: Zap, title: "Informes al Instante", desc: "Genera el informe técnico PDF y el certificado de experiencia en un clic." }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4 group">
-                    <div className="bg-slate-50 p-3 rounded-xl h-fit border group-hover:border-primary/30 transition-colors">
+                    <div className="bg-white p-3 rounded-xl h-fit border group-hover:border-primary/30 shadow-sm transition-colors">
                       <item.icon className="text-primary h-6 w-6" />
                     </div>
                     <div>
@@ -195,6 +199,47 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Platform Overview Description Section */}
+      <section id="plataforma" className="py-32 bg-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20 space-y-6">
+            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 italic uppercase">
+              El Sistema Nervioso Central de tu <br />
+              <span className="text-primary">Ecosistema Industrial</span>
+            </h2>
+            <p className="text-xl text-slate-500 max-w-4xl mx-auto font-medium leading-relaxed">
+              PCGMANTENIMIENTO no es solo una App de tareas o una base de datos. Es un ecosistema híbrido que une la **movilidad del terreno** con la **inteligencia administrativa**, permitiendo que tu empresa escale sin perder el control de la calidad.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <div className="p-10 rounded-[3rem] bg-slate-900 text-white space-y-6 shadow-2xl relative group">
+              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Layers className="h-6 w-6 text-white" /></div>
+              <h3 className="text-2xl font-black italic tracking-tight uppercase">Unidad de Gestión</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Integramos personal, activos, clientes e inventario en un solo flujo. Desde que una falla es detectada hasta que se emite la factura legal, todo viaja de forma fluida y transparente.
+              </p>
+            </div>
+
+            <div className="p-10 rounded-[3rem] border-2 border-slate-100 bg-white space-y-6 hover:border-primary/20 transition-all">
+              <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Database className="h-6 w-6 text-primary" /></div>
+              <h3 className="text-2xl font-black italic tracking-tight uppercase">Base de Datos Viva</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Cada foto, cada firma y cada nota técnica alimenta un histórico inalterable por activo. Cumple con normativas de auditoría y genera reportes de cumplimiento instantáneos.
+              </p>
+            </div>
+
+            <div className="p-10 rounded-[3rem] bg-blue-50 border-2 border-blue-100 space-y-6">
+              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-white" /></div>
+              <h3 className="text-2xl font-black italic tracking-tight uppercase text-blue-900">Inteligencia Terreno</h3>
+              <p className="text-blue-800/70 text-sm leading-relaxed">
+                Utilizamos IA para resumir bitácoras técnicas extensas y convertir datos crudos en información estratégica para tus clientes, ahorrando horas de redacción administrativa.
+              </p>
             </div>
           </div>
         </div>
@@ -339,7 +384,7 @@ export default function HomePage() {
               <span className="text-[10px] font-black uppercase">Cloud Native</span>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <Search className="text-[10px] h-8 w-8" />
+              <Search className="h-8 w-8" />
               <span className="text-[10px] font-black uppercase">Auditable 100%</span>
             </div>
             <div className="flex flex-col items-center gap-2">
