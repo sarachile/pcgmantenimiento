@@ -49,6 +49,7 @@ export interface Client {
   contactName?: string;
   contactEmail?: string;
   evaluationEnabled: boolean;
+  portalLastSentAt?: string | any; // Nueva traza de envío
   createdAt: string;
 }
 
