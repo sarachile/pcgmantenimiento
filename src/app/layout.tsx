@@ -13,8 +13,14 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
   },
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: [
+      { url: "/logo.png?v=1", type: "image/png" },
+      { url: "/logo.png?v=1", sizes: "32x32", type: "image/png" },
+      { url: "/logo.png?v=1", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [
+      { url: "/logo.png?v=1", sizes: "180x180", type: "image/png" },
+    ],
   }
 };
 
@@ -40,7 +46,7 @@ export default function RootLayout({
         {/* Metatags para simular App en el escritorio del teléfono y PC */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="PCG ERP" />
-        <link rel="apple-touch-icon" href="/logo.png" />
+        <link rel="apple-touch-icon" href="/logo.png?v=1" />
       </head>
       <body className="font-body antialiased min-h-screen bg-background">
         <FirebaseClientProvider>
