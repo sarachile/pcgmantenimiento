@@ -264,7 +264,7 @@ export default function HomePage() {
                 {[
                   { icon: Sun, title: "Protocolos Fotovoltaicos", desc: "Checklists específicos para inversores, cableado y anclajes." },
                   { icon: Fingerprint, title: "Sello de Recepción", desc: "El cliente firma en terreno vía QR para evitar disputas de pago." },
-                  { icon: Activity, title: "Eficiencia Real-Time", desc: "Monitoreo de rendimiento para asegurar el ROI del cliente." },
+                  { icon: Activity, title: "Tu Ahorro en Vivo", desc: "Tu cliente ve en vivo cómo sus paneles generan dinero, asegurando su inversión segundo a segundo." },
                   { icon: Bell, title: "Alertas Preventivas", desc: "Detección automática de caídas de tensión o suciedad extrema." }
                 ].map((f, i) => (
                   <div key={i} className="flex gap-3">
@@ -291,9 +291,24 @@ export default function HomePage() {
                   <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Monitor Live</span>
                 </div>
               </div>
+              
+              <div className="mb-8 p-6 bg-blue-600/20 rounded-[2rem] border border-blue-500/30 relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-20"><Waves className="h-24 w-24 text-blue-400" /></div>
+                <div className="flex justify-between items-end relative z-10">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Eficiencia Real-Time</p>
+                    <p className="text-4xl font-black italic tracking-tighter text-blue-100">98.4%</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[8px] font-black uppercase text-slate-500">Última lectura</p>
+                    <p className="text-[10px] font-bold text-emerald-400">Hace 2 segundos</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-4">
                 {[
-                  { label: "Eficiencia del Sistema", value: "Lectura Real-Time", highlight: true },
+                  { label: "Generación Hoy", value: "Lectura Real-Time", highlight: true },
                   { label: "Necesidad Mantención", value: "Alerta Automática", highlight: true },
                   { label: "Evidencia de Inversores", value: "Fotos Obligatorias" },
                   { label: "Ubicación GPS", value: "Validación por Mapa" },
