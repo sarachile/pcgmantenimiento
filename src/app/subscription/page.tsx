@@ -19,7 +19,8 @@ import {
   Sparkles,
   Receipt,
   Users,
-  HardHat
+  HardHat,
+  Code2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
@@ -87,7 +88,7 @@ export default function SubscriptionPage() {
         `${PLAN_CONFIGS.enterprise.maxClients} Clientes / Activos`,
         "DTE Ilimitado & Automático",
         "Gestión Multi-sucursal",
-        "Análisis BI Predictivo"
+        "Acceso API para Integraciones"
       ],
       current: company?.currentPlan === 'enterprise'
     }
@@ -173,6 +174,12 @@ export default function SubscriptionPage() {
               </ul>
               
               <div className="mt-8 pt-6 border-t border-dashed space-y-3">
+                {plan.id === 'enterprise' && (
+                  <div className="bg-slate-900 p-3 rounded-xl border border-white/10 flex items-center gap-2">
+                    <Code2 className="h-4 w-4 text-blue-400" />
+                    <p className="text-[10px] font-black text-blue-100 uppercase">Documentación API Disponible</p>
+                  </div>
+                )}
                 {plan.id !== 'simple' && (
                   <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 flex items-center gap-2">
                     <Receipt className="h-4 w-4 text-blue-600" />

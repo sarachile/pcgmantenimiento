@@ -20,6 +20,7 @@ export interface PlanConfig {
     multiBranch: boolean;
     customChecklists: boolean;
     electronicBilling: boolean;
+    apiAccess: boolean; // Nuevo: Acceso para integraciones externas
   };
 }
 
@@ -39,6 +40,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
       multiBranch: false,
       customChecklists: true,
       electronicBilling: false,
+      apiAccess: false,
     }
   },
   business: {
@@ -56,6 +58,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
       multiBranch: false,
       customChecklists: true,
       electronicBilling: true,
+      apiAccess: false,
     }
   },
   enterprise: {
@@ -73,6 +76,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
       multiBranch: true,
       customChecklists: true,
       electronicBilling: true,
+      apiAccess: true, // Característica exclusiva
     }
   }
 };
