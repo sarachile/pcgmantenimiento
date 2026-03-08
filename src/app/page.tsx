@@ -121,7 +121,7 @@ export default function HomePage() {
             <span className="text-primary italic font-serif">con trazabilidad inalterable</span>
           </h1>
           <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Certifica la experiencia de tu equipo en terreno. Reemplaza los grupos de WhatsApp por evidencia real, firmas digitales y <span className="text-primary font-bold">monitoreo IoT en tiempo real</span>.
+            Certifica la calidad de tu equipo en terreno. Reemplaza la incertidumbre por evidencia real, firmas digitales y <span className="text-primary font-bold">monitoreo IoT en tiempo real</span>.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
@@ -261,15 +261,15 @@ export default function HomePage() {
             <div className="space-y-10">
               <div className="space-y-4">
                 <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
-                  Menos planillas,<br />
-                  <span className="text-primary">más control real de campo.</span>
+                  Trazabilidad blindada:<br />
+                  <span className="text-primary">Evidencia real que respalda tu marca.</span>
                 </h2>
               </div>
 
               <div className="space-y-6">
                 {[
                   { icon: XCircle, title: "Fin del Caos", desc: "Dile adiós a los reportes en papel que se pierden, se mojan o nunca se actualizan." },
-                  { icon: History, title: "Trazabilidad Inalterable", desc: "Marcas de tiempo y GPS de cada intervención para certificaciones sin dudas." },
+                  { icon: History, title: "Certificación Inalterable", desc: "Marcas de tiempo y GPS de cada intervención para auditorías técnicas sin dudas." },
                   { icon: Zap, title: "Informes al Instante", desc: "Genera el informe técnico PDF y el certificado de experiencia en un clic." }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4 group">
@@ -289,7 +289,7 @@ export default function HomePage() {
                   <ShieldCheck className="h-24 w-24" />
                 </div>
                 <h3 className="text-2xl font-black italic mb-2 text-slate-900">"Lo que no se registra, no existe"</h3>
-                <p className="text-slate-500 font-medium mb-8">Centraliza toda tu operación en una herramienta diseñada para el rigor del terreno.</p>
+                <p className="text-slate-500 font-medium mb-8">Centraliza toda tu operación en una herramienta diseñada para el rigor del terreno y la confianza del cliente.</p>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1">
                     <p className="text-4xl font-black text-primary tracking-tighter">100%</p>
@@ -317,7 +317,7 @@ export default function HomePage() {
           </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <Button asChild size="lg" className="h-20 px-12 rounded-[2rem] text-xl font-black shadow-2xl shadow-primary/30 group">
+            <Button asChild size="lg" className="h-20 px-12 rounded-[2rem] text-xl font-black shadow-2xl shadow-primary/20 group">
               <Link href="/auth/signup">
                 Empezar gratis ahora <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
               </Link>
