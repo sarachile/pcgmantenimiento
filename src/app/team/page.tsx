@@ -57,7 +57,8 @@ import {
   Edit,
   MessageCircle,
   Copy,
-  Smartphone
+  Smartphone,
+  Lock
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -66,9 +67,11 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { StaffMember, Team } from "@/lib/types";
 import * as XLSX from "xlsx";
+import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 export default function TeamPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
+  const { maxTechs, canAddTech, techCount, planName } = usePlanLimits();
   const db = useFirestore();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -119,9 +122,21 @@ export default function TeamPage() {
     t.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const isAtLimit = !canAddTech && !editingStaff;
+
   const handleStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !profile?.companyId) return;
+
+    if (isAtLimit) {
+      toast({
+        title: "Límite del Plan",
+        description: `Tu ${planName} permite hasta ${maxTechs} técnicos en terreno.`,
+        variant: "destructive"
+      });
+      setIsCreateOpen(false);
+      return;
+    }
 
     const dataToSave = {
       ...formData,
@@ -231,6 +246,11 @@ export default function TeamPage() {
     const file = e.target.files?.[0];
     if (!file || !db || !profile?.companyId) return;
 
+    if (isAtLimit) {
+      toast({ title: "Límite alcanzado", description: "No puedes realizar carga masiva porque has superado el límite de tu plan.", variant: "destructive" });
+      return;
+    }
+
     setIsProcessingBulk(true);
     const reader = new FileReader();
     
@@ -246,6 +266,9 @@ export default function TeamPage() {
         let count = 0;
 
         for (const row of data as any[]) {
+          // Chequear límite en cada iteración para mayor seguridad
+          if (techCount + count >= maxTechs) break;
+
           const staffData = {
             name: row.Nombre || row.nombre || "Sin Nombre",
             role: row.Rol || row.rol || "Técnico",
@@ -349,7 +372,7 @@ export default function TeamPage() {
                     <Button 
                       className="w-full h-16 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest gap-2" 
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isProcessingBulk}
+                      disabled={isProcessingBulk || isAtLimit}
                     >
                       {isProcessingBulk ? <Loader2 className="animate-spin h-5 w-5" /> : <><FileUp className="h-5 w-5" /> Seleccionar Archivo</>}
                     </Button>
@@ -366,6 +389,10 @@ export default function TeamPage() {
             </Dialog>
 
             <Dialog open={isCreateOpen} onOpenChange={(open) => {
+              if (open && isAtLimit) {
+                toast({ title: "Límite alcanzado", description: `Has alcanzado el máximo de ${maxTechs} técnicos para tu ${planName}.` });
+                return;
+              }
               setIsCreateOpen(open);
               if (!open) {
                 setEditingStaff(null);
@@ -373,7 +400,7 @@ export default function TeamPage() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="rounded-xl shadow-lg font-black gap-2">
+                <Button className="rounded-xl shadow-lg font-black gap-2" disabled={isAtLimit}>
                   <UserPlus className="h-4 w-4" /> Nuevo Técnico
                 </Button>
               </DialogTrigger>
@@ -490,9 +517,18 @@ export default function TeamPage() {
         <TabsContent value="staff">
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
             <CardHeader className="bg-white border-b">
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input placeholder="Buscar personal..." className="pl-10 h-11 border-none bg-muted/20 rounded-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="relative max-w-md w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input placeholder="Buscar personal..." className="pl-10 h-11 border-none bg-muted/20 rounded-xl" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Cupos Personal</p>
+                    <p className="text-sm font-black text-slate-900">{staffMembers?.length || 0} / {maxTechs}</p>
+                  </div>
+                  {isAtLimit && <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 gap-1"><Lock className="h-3 w-3" /> Límite alcanzado</Badge>}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">

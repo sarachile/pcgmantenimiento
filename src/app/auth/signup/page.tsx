@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth, useFirebase, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -29,6 +29,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
 import { addDays } from 'date-fns';
+import { PLAN_CONFIGS } from '@/lib/plan-configs';
 
 const SUPERADMIN_EMAIL = 'control@pcgoperacion.com';
 
@@ -99,19 +100,23 @@ export default function SignupPage() {
         const companyData = companySnap.data();
         if (!companyData.isActive) throw new Error("Esta empresa se encuentra suspendida.");
 
-        // Validar límites
+        // Validar límites utilizando PLAN_CONFIGS globales
         const usersQuery = query(collection(db, "users"), where("companyId", "==", targetCompanyId));
         const usersSnap = await getDocs(usersQuery);
         
-        const planLimits: Record<string, number> = { simple: 2, business: 10, enterprise: 100 };
-        const currentPlan = companyData.currentPlan || 'simple';
-        const maxUsers = planLimits[currentPlan] || 2;
+        const currentPlanId = companyData.currentPlan || 'simple';
+        const planConfig = PLAN_CONFIGS[currentPlanId as keyof typeof PLAN_CONFIGS] || PLAN_CONFIGS.simple;
+        
+        // Al unirse, usualmente el usuario es técnico. El primer usuario es admin.
+        const isFirstUser = usersSnap.size === 0;
+        role = isFirstUser ? 'companyAdmin' : 'tecnico';
 
-        if (usersSnap.size >= maxUsers) {
-          throw new Error(`Límite alcanzado para el plan ${currentPlan.toUpperCase()}.`);
+        const maxAllowed = isFirstUser ? planConfig.maxAdmins : planConfig.maxTechnicians;
+        const currentInRole = usersSnap.docs.filter(d => d.data().role === role).length;
+
+        if (currentInRole >= maxAllowed) {
+          throw new Error(`Límite alcanzado para el rol ${role.toUpperCase()} en el plan ${planConfig.name}.`);
         }
-
-        role = usersSnap.size === 0 ? 'companyAdmin' : 'tecnico';
       }
 
       // 2. Crear usuario en Auth

@@ -46,9 +46,11 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Client, Company } from "@/lib/types";
 import { sendSystemEmail } from "@/actions/email";
+import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 export default function ClientsPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
+  const { maxClients, canAddClient, planName } = usePlanLimits();
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -81,16 +83,8 @@ export default function ClientsPage() {
 
   const clients = clientsData || [];
 
-  // Lógica de límites
-  const planLimits = {
-    free: 1,
-    pro: 5,
-    enterprise: 15
-  };
-  
-  const currentPlan = company?.currentPlan || 'free';
-  const maxClients = planLimits[currentPlan as keyof typeof planLimits] || 1;
-  const isAtLimit = clients.length >= maxClients && !editingClient;
+  // La lógica de bloqueo se basa ahora estrictamente en canAddClient del hook global
+  const isAtLimit = !canAddClient && !editingClient;
 
   const filtered = clients.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -104,7 +98,7 @@ export default function ClientsPage() {
     if (isAtLimit) {
       toast({
         title: "Límite alcanzado",
-        description: `Tu plan ${currentPlan.toUpperCase()} permite hasta ${maxClients} clientes. Mejora tu plan para añadir más.`,
+        description: `Tu ${planName} permite hasta ${maxClients} clientes. Mejora tu plan para añadir más.`,
         variant: "destructive"
       });
       setIsCreateOpen(false);
@@ -140,7 +134,6 @@ export default function ClientsPage() {
   };
 
   const handleEdit = (client: Client) => {
-    setEditingStaff(null);
     setEditingClient(client);
     setFormData({
       name: client.name,
@@ -151,10 +144,6 @@ export default function ClientsPage() {
     });
     setIsCreateOpen(true);
   };
-
-  function setEditingStaff(arg0: null) {
-    // Helper para limpiar estados de edición de otras entidades si fuera necesario
-  }
 
   const handleDelete = (client: Client) => {
     if (!db || !profile?.companyId) return;
@@ -266,7 +255,7 @@ export default function ClientsPage() {
             if (open && isAtLimit) {
               toast({
                 title: "Actualización Requerida",
-                description: `Has alcanzado el máximo de ${maxClients} clientes para el plan ${currentPlan.toUpperCase()}.`,
+                description: `Has alcanzado el máximo de ${maxClients} clientes para tu ${planName}.`,
               });
               return;
             }
