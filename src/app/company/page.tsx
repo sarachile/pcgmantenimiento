@@ -33,9 +33,11 @@ import { Company } from "@/lib/types";
 import { FirebaseImage } from "@/components/FirebaseImage";
 import { validateRut, formatRut } from "@/lib/utils-rut";
 import { cn } from "@/lib/utils";
+import { usePlanLimits } from "@/hooks/use-plan-limits";
 
 export default function CompanyProfilePage() {
   const { profile, isLoading: isAuthLoading } = useUser();
+  const { features } = usePlanLimits();
   const db = useFirestore();
   const storage = useStorage();
   const { toast } = useToast();
@@ -177,7 +179,7 @@ export default function CompanyProfilePage() {
     );
   }
 
-  const isEnterprise = company?.currentPlan === 'enterprise';
+  const hasApiAccess = features.apiAccess;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-20">
@@ -226,7 +228,7 @@ export default function CompanyProfilePage() {
             </CardContent>
           </Card>
 
-          {/* SECCIÓN IOT / API */}
+          {/* SECCIÓN IOT / API - AHORA ABIERTA A BUSINESS */}
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-slate-900 text-white">
             <CardHeader className="bg-white/5 border-b border-white/10">
               <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
@@ -234,10 +236,12 @@ export default function CompanyProfilePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
-              {isEnterprise ? (
+              {hasApiAccess ? (
                 <div className="space-y-4">
                   <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                    Usa esta llave para conectar tus sensores. Permite que las máquinas creen OTs automáticamente.
+                    {company?.currentPlan === 'business' 
+                      ? "Conecta hasta 1 sistema externo o sensores PYME." 
+                      : "Usa esta llave para conectar tus sensores industriales ilimitados."}
                   </p>
                   {company?.apiKey ? (
                     <div className="space-y-2">
@@ -259,10 +263,10 @@ export default function CompanyProfilePage() {
                 <div className="space-y-4 opacity-60">
                   <div className="flex items-center gap-2 text-amber-400">
                     <Lock className="h-3 w-3" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Característica Enterprise</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Requiere Plan Business</span>
                   </div>
                   <p className="text-[10px] text-slate-400 leading-relaxed italic">
-                    La conexión a sensores IoT y acceso API no están disponibles en tu plan actual.
+                    La automatización con sensores no está disponible en el Plan Simple.
                   </p>
                   <Button asChild variant="outline" className="w-full border-white/20 text-white hover:bg-white/10 text-[9px] h-9 font-black uppercase tracking-widest">
                     <Link href="/subscription">Mejorar Plan</Link>

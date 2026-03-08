@@ -22,7 +22,8 @@ import {
   Users,
   HardHat,
   Code2,
-  Cpu
+  Cpu,
+  Zap
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
@@ -66,14 +67,15 @@ export default function SubscriptionPage() {
       config: PLAN_CONFIGS.business,
       price: "1.8 UF",
       period: "/ mes",
-      description: "Operación avanzada con facturación y soporte legal.",
+      description: "Ideal para PYMES de Energía y Servicios Especializados.",
       features: [
         `${PLAN_CONFIGS.business.maxAdmins} Administradores`,
         `${PLAN_CONFIGS.business.maxTechnicians} Técnicos Incluidos`,
         `Hasta ${PLAN_CONFIGS.business.maxClients} Clientes`,
         "Facturación Electrónica DTE",
         "Firmas Digitales & Sello QR",
-        "IA para Resúmenes de Bitácora"
+        "IA para Resúmenes de Bitácora",
+        "Conexión API (1 Canal IoT)"
       ],
       popular: true,
       current: company?.currentPlan === 'business'
@@ -90,7 +92,7 @@ export default function SubscriptionPage() {
         `${PLAN_CONFIGS.enterprise.maxClients} Clientes / Activos`,
         "DTE Ilimitado & Automático",
         "Gestión Multi-sucursal",
-        "Acceso API & Conexión Sensores IoT"
+        "API Ilimitada & Sensores IoT"
       ],
       current: company?.currentPlan === 'enterprise'
     }
@@ -176,10 +178,12 @@ export default function SubscriptionPage() {
               </ul>
               
               <div className="mt-8 pt-6 border-t border-dashed space-y-3">
-                {plan.id === 'enterprise' && (
+                {(plan.id === 'enterprise' || plan.id === 'business') && (
                   <div className="bg-slate-900 p-3 rounded-xl border border-white/10 flex items-center gap-2">
                     <Cpu className="h-4 w-4 text-blue-400" />
-                    <p className="text-[10px] font-black text-blue-100 uppercase">Gateway para Sensores IoT</p>
+                    <p className="text-[10px] font-black text-blue-100 uppercase">
+                      {plan.id === 'enterprise' ? 'Gateway para Sensores IoT' : 'Canal de Datos IoT PYME'}
+                    </p>
                   </div>
                 )}
                 {plan.id !== 'simple' && (
@@ -213,17 +217,17 @@ export default function SubscriptionPage() {
       </div>
 
       <Card className="rounded-[3rem] border-none shadow-xl bg-slate-900 text-white p-10 overflow-hidden relative group">
-        <div className="absolute right-0 top-0 p-12 opacity-10 group-hover:scale-110 transition-transform"><Building2 className="h-48 w-48" /></div>
+        <div className="absolute right-0 top-0 p-12 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-48 w-48 text-blue-400" /></div>
         <div className="flex flex-col md:flex-row items-center justify-between gap-10 relative z-10">
           <div className="space-y-4">
-            <Badge className="bg-blue-600 text-white font-black uppercase px-4 py-1 tracking-widest">Corporativo</Badge>
-            <h3 className="text-4xl font-black italic tracking-tighter uppercase leading-none">¿Flotas de +50 técnicos?</h3>
+            <Badge className="bg-blue-600 text-white font-black uppercase px-4 py-1 tracking-widest">Oferta PYME Energy</Badge>
+            <h3 className="text-4xl font-black italic tracking-tighter uppercase leading-none">Monitoreo Solar Pro</h3>
             <p className="text-slate-400 font-medium max-w-xl text-lg">
-              Diseñamos soluciones personalizadas con cobros por usuario adicional, integraciones API y soporte dedicado en sitio.
+              ¿Instalas paneles? Obtén nuestro kit de sensores pre-configurados. Convierte tu servicio técnico en un centro de monitoreo 24/7 para tus clientes.
             </p>
           </div>
           <Button variant="outline" className="h-16 px-10 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-xs tracking-[0.2em] shadow-2xl">
-            Contactar Ventas
+            Pedir Kit de Sensores
           </Button>
         </div>
       </Card>

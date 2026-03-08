@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -28,7 +29,9 @@ import {
   CreditCard,
   History,
   ShieldCheck,
-  Briefcase
+  Briefcase,
+  Cpu,
+  Waves
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -243,6 +246,38 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+        </Card>
+      )}
+
+      {/* MONITOR IOT EXCLUSIVO BUSINESS/ENTERPRISE */}
+      {limits.features.apiAccess && (
+        <Card className="rounded-[2rem] border-none shadow-lg bg-blue-600 text-white overflow-hidden animate-in fade-in duration-700">
+          <CardContent className="p-0">
+            <div className="grid md:grid-cols-4">
+              <div className="p-6 bg-white/10 flex flex-col justify-center items-center text-center border-r border-white/10">
+                <div className="bg-white/20 p-3 rounded-2xl mb-3"><Cpu className="h-6 w-6" /></div>
+                <p className="text-[10px] font-black uppercase tracking-widest">Gateway IoT</p>
+                <p className="text-sm font-bold">ONLINE</p>
+              </div>
+              <div className="md:col-span-3 p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex-1">
+                  <h3 className="text-lg font-black uppercase italic tracking-tighter mb-1">Monitoreo de Energía en Tiempo Real</h3>
+                  <p className="text-xs text-blue-100 font-medium">Tus sensores están enviando datos. Las OTs se crearán automáticamente ante fallas.</p>
+                </div>
+                <div className="flex gap-4">
+                  <div className="text-center">
+                    <p className="text-3xl font-black italic">2</p>
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Activos IoT</p>
+                  </div>
+                  <div className="h-10 w-px bg-white/20 self-center" />
+                  <div className="text-center text-emerald-300">
+                    <Waves className="h-8 w-8 animate-pulse" />
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Señal</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
         </Card>
       )}
 

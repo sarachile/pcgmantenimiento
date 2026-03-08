@@ -3,6 +3,7 @@ import { PlanType } from "./types";
 /**
  * @fileOverview Definición maestra de límites y funcionalidades por plan.
  * Se implementa la estrategia de "Valor por Rol": Administradores (Gestión) vs Técnicos (Ejecución).
+ * ACTUALIZACIÓN: Se habilita apiAccess limitado para el Plan Business para potenciar a PYMEs especializadas (Ej: Solar).
  */
 
 export interface PlanConfig {
@@ -20,7 +21,7 @@ export interface PlanConfig {
     multiBranch: boolean;
     customChecklists: boolean;
     electronicBilling: boolean;
-    apiAccess: boolean; // Nuevo: Acceso para integraciones externas
+    apiAccess: boolean; 
   };
 }
 
@@ -58,7 +59,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
       multiBranch: false,
       customChecklists: true,
       electronicBilling: true,
-      apiAccess: false,
+      apiAccess: true, // AHORA DISPONIBLE PARA PYMES
     }
   },
   enterprise: {
@@ -76,7 +77,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
       multiBranch: true,
       customChecklists: true,
       electronicBilling: true,
-      apiAccess: true, // Característica exclusiva
+      apiAccess: true,
     }
   }
 };
