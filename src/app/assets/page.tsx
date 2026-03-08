@@ -22,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -68,8 +67,8 @@ export default function AssetsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
   
-  // Dialog States
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  // Singleton Dialog State
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
   // Form State
@@ -115,6 +114,25 @@ export default function AssetsPage() {
     setEditingAsset(null);
   };
 
+  const handleOpenCreate = () => {
+    resetForm();
+    setIsDialogOpen(true);
+  };
+
+  const handleEdit = (asset: Asset) => {
+    setEditingAsset(asset);
+    setFormData({
+      name: asset.name,
+      code: asset.code,
+      location: asset.location,
+      status: asset.status,
+      isIoT: asset.isIoT || false,
+      iotType: asset.iotType || "otro",
+      unit: asset.unit || ""
+    });
+    setIsDialogOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !profile?.companyId) return;
@@ -140,22 +158,8 @@ export default function AssetsPage() {
       toast({ title: "Activo registrado", description: "Nuevo equipo añadido al catálogo." });
     }
 
-    setIsCreateOpen(false);
+    setIsDialogOpen(false);
     resetForm();
-  };
-
-  const handleEdit = (asset: Asset) => {
-    setEditingAsset(asset);
-    setFormData({
-      name: asset.name,
-      code: asset.code,
-      location: asset.location,
-      status: asset.status,
-      isIoT: asset.isIoT || false,
-      iotType: asset.iotType || "otro",
-      unit: asset.unit || ""
-    });
-    setIsCreateOpen(true);
   };
 
   const handleDelete = (asset: Asset) => {
@@ -198,114 +202,9 @@ export default function AssetsPage() {
           </div>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={(open) => {
-          setIsCreateOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button className="font-bold shadow-lg gap-2">
-              <Plus className="h-4 w-4" /> Nuevo Activo
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black italic tracking-tight">
-                {editingAsset ? "Editar Activo" : "Registrar Nuevo Activo"}
-              </DialogTitle>
-              <DialogDescription>Defina las características técnicas del equipo.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Equipo</Label>
-                  <Input 
-                    placeholder="Ej: Grupo Electrógeno 500kVA" 
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Código Interno</Label>
-                  <Input 
-                    placeholder="Ej: GE-001" 
-                    value={formData.code}
-                    onChange={(e) => setFormData({...formData, code: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Estado Inicial</Label>
-                  <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="activo">Operativo</SelectItem>
-                      <SelectItem value="inactivo">Fuera de Servicio</SelectItem>
-                      <SelectItem value="en mantenimiento">En Mantención</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Ubicación / Planta</Label>
-                <Input 
-                  placeholder="Ej: Sala Técnica Piso -1" 
-                  value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  required
-                />
-              </div>
-
-              <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="h-5 w-5 text-blue-600" />
-                    <Label className="font-black text-sm uppercase tracking-tighter">Configuración IoT</Label>
-                  </div>
-                  <Switch checked={formData.isIoT} onCheckedChange={(v) => setFormData({...formData, isIoT: v})} />
-                </div>
-                
-                {formData.isIoT && (
-                  <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400">Tipo de Sensor</Label>
-                      <Select value={formData.iotType} onValueChange={(v: any) => setFormData({...formData, iotType: v})}>
-                        <SelectTrigger className="h-10 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="solar">Solar (kW)</SelectItem>
-                          <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
-                          <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
-                          <SelectItem value="presion">Presión (Bar)</SelectItem>
-                          <SelectItem value="otro">Genérico</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400">Unidad Medida</Label>
-                      <Input 
-                        placeholder="Ej: kW, °C, Bar" 
-                        className="h-10 text-xs"
-                        value={formData.unit}
-                        onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full h-12 font-black uppercase tracking-widest shadow-xl">
-                  {editingAsset ? "Guardar Cambios" : "Activar Activo en Sistema"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleOpenCreate} className="font-bold shadow-lg gap-2">
+          <Plus className="h-4 w-4" /> Nuevo Activo
+        </Button>
       </div>
 
       <Card className="border-none shadow-sm">
@@ -429,6 +328,114 @@ export default function AssetsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Singleton Dialog for Create/Edit */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          // Pequeño delay para asegurar que el scroll lock se libere antes de resetear el estado
+          setTimeout(resetForm, 200);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black italic tracking-tight">
+              {editingAsset ? "Editar Activo" : "Registrar Nuevo Activo"}
+            </DialogTitle>
+            <DialogDescription>Defina las características técnicas del equipo.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-6 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Equipo</Label>
+                <Input 
+                  placeholder="Ej: Grupo Electrógeno 500kVA" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Código Interno</Label>
+                <Input 
+                  placeholder="Ej: GE-001" 
+                  value={formData.code}
+                  onChange={(e) => setFormData({...formData, code: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Estado Inicial</Label>
+                <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="activo">Operativo</SelectItem>
+                    <SelectItem value="inactivo">Fuera de Servicio</SelectItem>
+                    <SelectItem value="en mantenimiento">En Mantención</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400">Ubicación / Planta</Label>
+              <Input 
+                placeholder="Ej: Sala Técnica Piso -1" 
+                value={formData.location}
+                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                required
+              />
+            </div>
+
+            <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Cpu className="h-5 w-5 text-blue-600" />
+                  <Label className="font-black text-sm uppercase tracking-tighter">Configuración IoT</Label>
+                </div>
+                <Switch checked={formData.isIoT} onCheckedChange={(v) => setFormData({...formData, isIoT: v})} />
+              </div>
+              
+              {formData.isIoT && (
+                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase text-slate-400">Tipo de Sensor</Label>
+                    <Select value={formData.iotType} onValueChange={(v: any) => setFormData({...formData, iotType: v})}>
+                      <SelectTrigger className="h-10 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="solar">Solar (kW)</SelectItem>
+                        <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
+                        <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
+                        <SelectItem value="presion">Presión (Bar)</SelectItem>
+                        <SelectItem value="otro">Genérico</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase text-slate-400">Unidad Medida</Label>
+                    <Input 
+                      placeholder="Ej: kW, °C, Bar" 
+                      className="h-10 text-xs"
+                      value={formData.unit}
+                      onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="pt-4">
+              <Button type="submit" className="w-full h-12 font-black uppercase tracking-widest shadow-xl">
+                {editingAsset ? "Guardar Cambios" : "Activar Activo en Sistema"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
