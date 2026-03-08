@@ -46,7 +46,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isPlatformAdmin();
-      allow list: if isPlatformAdmin() || (isSignedIn() && getUserData().companyId != null);
+      // Solo permitir listar si es admin de plataforma o si el filtro de la consulta coincide con la empresa del usuario
+      allow list: if isPlatformAdmin() || (isSignedIn() && resource.data.companyId == getUserData().companyId);
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isPlatformAdmin();
       allow delete: if isPlatformAdmin();
@@ -65,7 +66,6 @@ service cloud.firestore {
       allow delete: if isPlatformAdmin();
 
       match /staff/{staffId} {
-        // Permitir GET para que el técnico pueda ver su nombre/RUT antes de registrarse
         allow get: if true;
         allow list: if isCompanyMember(companyId);
         allow write: if isCompanyMember(companyId);
@@ -119,7 +119,8 @@ service cloud.firestore {
 
     match /supportTickets/{ticketId} {
       allow get: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isAtLeastSupervisor(resource.data.companyId));
-      allow list: if isSignedIn();
+      // Estanqueidad: Los usuarios solo pueden listar tickets de su propia empresa
+      allow list: if isPlatformAdmin() || (isSignedIn() && resource.data.companyId == getUserData().companyId);
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isAtLeastSupervisor(resource.data.companyId));
 

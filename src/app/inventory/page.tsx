@@ -60,7 +60,7 @@ import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 
 export default function InventoryPage() {
-  const { profile, isLoading: isAuthLoading } = useUser();
+  const { profile, isLoading: isAuthLoading, isTechnician, isSupervisor, isCompanyAdmin } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -178,6 +178,8 @@ export default function InventoryPage() {
     );
   }
 
+  const showPrices = isCompanyAdmin || isSupervisor;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -193,76 +195,78 @@ export default function InventoryPage() {
           </div>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Registrar Nuevo Ítem</DialogTitle>
-              <DialogDescription>
-                Añada un nuevo material o insumo al catálogo maestro.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateItem} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nombre del Ítem</Label>
-                <Input 
-                  id="name" 
-                  placeholder="Ej: Filtro de Aire, Aceite 10W40..." 
-                  value={newItem.name}
-                  onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sku">Referencia / SKU</Label>
-                <Input 
-                  id="sku" 
-                  placeholder="Código interno" 
-                  value={newItem.sku}
-                  onChange={(e) => setNewItem({...newItem, sku: e.target.value})}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        {showPrices && (
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Nuevo Ítem
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Registrar Nuevo Ítem</DialogTitle>
+                <DialogDescription>
+                  Añada un nuevo material o insumo al catálogo maestro.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateItem} className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="stock">Stock Inicial</Label>
+                  <Label htmlFor="name">Nombre del Ítem</Label>
                   <Input 
-                    id="stock" 
-                    type="number" 
-                    value={newItem.stockActual}
-                    onChange={(e) => setNewItem({...newItem, stockActual: e.target.value})}
+                    id="name" 
+                    placeholder="Ej: Filtro de Aire, Aceite 10W40..." 
+                    value={newItem.name}
+                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="min-stock">Stock Mínimo</Label>
+                  <Label htmlFor="sku">Referencia / SKU</Label>
                   <Input 
-                    id="min-stock" 
-                    type="number" 
-                    value={newItem.stockMinimo}
-                    onChange={(e) => setNewItem({...newItem, stockMinimo: e.target.value})}
+                    id="sku" 
+                    placeholder="Código interno" 
+                    value={newItem.sku}
+                    onChange={(e) => setNewItem({...newItem, sku: e.target.value})}
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="price">Precio Unitario ($)</Label>
-                <Input 
-                  id="price" 
-                  type="number" 
-                  value={newItem.unitPrice}
-                  onChange={(e) => setNewItem({...newItem, unitPrice: e.target.value})}
-                />
-              </div>
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Guardar en Catálogo
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stock">Stock Inicial</Label>
+                    <Input 
+                      id="stock" 
+                      type="number" 
+                      value={newItem.stockActual}
+                      onChange={(e) => setNewItem({...newItem, stockActual: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="min-stock">Stock Mínimo</Label>
+                    <Input 
+                      id="min-stock" 
+                      type="number" 
+                      value={newItem.stockMinimo}
+                      onChange={(e) => setNewItem({...newItem, stockMinimo: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Precio Unitario ($)</Label>
+                  <Input 
+                    id="price" 
+                    type="number" 
+                    value={newItem.unitPrice}
+                    onChange={(e) => setNewItem({...newItem, unitPrice: e.target.value})}
+                  />
+                </div>
+                <DialogFooter className="pt-4">
+                  <Button type="submit" className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Guardar en Catálogo
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Dialog open={isAdjustOpen} onOpenChange={setIsAdjustOpen}>
@@ -339,16 +343,18 @@ export default function InventoryPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm bg-emerald-50/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Valor Estimado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">
-              ${parts.reduce((acc, p) => acc + (Number(p.stockActual) * Number(p.unitPrice || 0)), 0).toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
+        {showPrices && (
+          <Card className="border-none shadow-sm bg-emerald-50/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Valor Estimado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-emerald-600">
+                ${parts.reduce((acc, p) => acc + (Number(p.stockActual) * Number(p.unitPrice || 0)), 0).toLocaleString()}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <Card className="border-none shadow-sm">
@@ -380,7 +386,7 @@ export default function InventoryPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Ítem / Referencia (SKU)</TableHead>
-                  <TableHead>Precio Unitario</TableHead>
+                  {showPrices && <TableHead>Precio Unitario</TableHead>}
                   <TableHead>Stock Actual</TableHead>
                   <TableHead>Estado Stock</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -400,9 +406,11 @@ export default function InventoryPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm font-medium">
-                      ${Number(part.unitPrice || 0).toLocaleString()}
-                    </TableCell>
+                    {showPrices && (
+                      <TableCell className="text-sm font-medium">
+                        ${Number(part.unitPrice || 0).toLocaleString()}
+                      </TableCell>
+                    )}
                     <TableCell>
                       <span className={cn(
                         "font-bold",
@@ -423,7 +431,7 @@ export default function InventoryPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
                             <MoreVertical className="h-4 w-4" />
@@ -437,17 +445,21 @@ export default function InventoryPage() {
                           <DropdownMenuItem onClick={() => openAdjustDialog(part, "salida")}>
                             <TrendingDown className="mr-2 h-4 w-4 text-rose-500" /> Registrar Salida
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuLabel>Opciones Ítem</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" /> Editar Datos
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-rose-600"
-                            onClick={() => handleDeleteItem(part)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar del Catálogo
-                          </DropdownMenuItem>
+                          {showPrices && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuLabel>Opciones Ítem</DropdownMenuLabel>
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" /> Editar Datos
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-rose-600"
+                                onClick={() => handleDeleteItem(part)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar del Catálogo
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

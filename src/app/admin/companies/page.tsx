@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { 
   useUser, 
@@ -79,6 +80,17 @@ export default function AdminCompaniesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
   
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Redirigir si no es superadmin
+  useEffect(() => {
+    if (!isUserLoading && !isSuperAdmin) {
+      redirect("/dashboard");
+    }
+  }, [isUserLoading, isSuperAdmin]);
+
   // Create Company State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,10 +117,6 @@ export default function AdminCompaniesPage() {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [isSendingInvite, setIsSendingInvite] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const companiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
@@ -317,7 +325,7 @@ export default function AdminCompaniesPage() {
     return (allUsers || []).filter(u => u.companyId === compId);
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || !isSuperAdmin) {
     return (
       <div className="flex h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -371,7 +379,7 @@ export default function AdminCompaniesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="free">Plan Inicio (Demo)</SelectItem>
+                      <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
                       <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
                       <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
                     </SelectContent>

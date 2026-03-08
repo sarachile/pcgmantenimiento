@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Table, 
   TableBody, 
@@ -30,6 +30,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNo
 import { collection, doc, query, orderBy } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { User, Company } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,6 +39,13 @@ export default function AdminUsersPage() {
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Redirigir si no es superadmin
+  useEffect(() => {
+    if (!isAuthLoading && !isSuperAdmin) {
+      redirect("/dashboard");
+    }
+  }, [isAuthLoading, isSuperAdmin]);
 
   const usersQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
@@ -67,7 +75,7 @@ export default function AdminUsersPage() {
     });
   };
 
-  if (isAuthLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
+  if (isAuthLoading || !isSuperAdmin) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-6">

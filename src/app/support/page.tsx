@@ -46,7 +46,7 @@ import { useToast } from "@/hooks/use-toast";
 import { sendSystemEmail } from "@/actions/email";
 
 export default function SupportPage() {
-  const { profile, isSuperAdmin, isLoading: isAuthLoading } = useUser();
+  const { profile, isSuperAdmin, isSupervisor, isCompanyAdmin, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -66,10 +66,9 @@ export default function SupportPage() {
   const { data: company } = useDoc<Company>(companyRef);
 
   const ticketsQuery = useMemoFirebase(() => {
-    if (!db || !profile?.id) return null;
+    if (!db || !profile?.id || !profile?.companyId) return null;
     
-    // Si es superadmin, cargamos sus tickets (aunque usualmente usa el panel admin)
-    // Si es usuario normal, filtramos obligatoriamente por su ID
+    // Si es superadmin, ve todo
     if (isSuperAdmin) {
       return query(
         collection(db, "supportTickets"),
@@ -77,12 +76,22 @@ export default function SupportPage() {
       );
     }
 
+    // Si es admin de empresa o supervisor, ve todos los tickets de su empresa
+    if (isCompanyAdmin || isSupervisor) {
+      return query(
+        collection(db, "supportTickets"),
+        where("companyId", "==", profile.companyId),
+        orderBy("createdAt", "desc")
+      );
+    }
+
+    // Los técnicos solo ven sus propios tickets
     return query(
       collection(db, "supportTickets"),
       where("userId", "==", profile.id),
       orderBy("createdAt", "desc")
     );
-  }, [db, profile?.id, isSuperAdmin]);
+  }, [db, profile?.id, profile?.companyId, isSuperAdmin, isCompanyAdmin, isSupervisor]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection<SupportTicket>(ticketsQuery);
 
@@ -231,7 +240,9 @@ export default function SupportPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Sus Tickets Activos</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
+            {isCompanyAdmin || isSupervisor ? "Tickets de la Empresa" : "Mis Tickets Activos"}
+          </h3>
           
           {isTicketsLoading ? (
             <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" /></div>
