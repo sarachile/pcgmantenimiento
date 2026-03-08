@@ -24,15 +24,15 @@ export interface Company {
   currentPlan: PlanType;
   subscriptionStatus: SubscriptionStatus;
   isActive: boolean;
+  apiKey?: string; // Llave para integraciones externas
   createdAt: string | any;
   updatedAt?: string | any;
-  trialEndsAt?: string | any; // Fecha fin de prueba
+  trialEndsAt?: string | any;
   requestedPlan?: string;
-  // Métricas de control para límites
   metrics?: {
     usedStorageMb: number;
     monthlyOrdersCount: number;
-    currentMonth: string; // Formato YYYY-MM para resetear contadores
+    currentMonth: string;
   };
 }
 
@@ -128,13 +128,13 @@ export interface WorkOrder {
   id: string;
   companyId: string;
   clientId: string;
-  assetId?: string;
+  assetId?: string | null;
   description: string;
   serviceLocation?: string;
   requestedByName?: string;
   status: OTStatus;
   assignedToStaffIds?: string[];
-  assignedTeamId?: string;
+  assignedTeamId?: string | null;
   createdByUserId: string;
   reviewerRequired: boolean;
   evaluationRequired: boolean;
@@ -142,8 +142,8 @@ export interface WorkOrder {
   scheduledDate?: string | any;
   durationDays?: number;
   estimatedEndDate?: string | any;
-  serviceQuantity?: number;
-  serviceUnit?: string;
+  serviceQuantity?: number | null;
+  serviceUnit?: string | null;
   checklist?: ChecklistItem[];
   clientApprovalName?: string;
   clientApprovalDate?: string | any;
@@ -157,7 +157,7 @@ export interface WorkOrder {
   evidenceUrls?: string[];
   aiSummary?: string;
   evaluationId?: string;
-  source?: 'internal' | 'external';
+  source?: 'internal' | 'external' | 'api' | 'sensor'; // Tracking de origen
   requestedByEmail?: string;
   urgency?: 'low' | 'medium' | 'high';
 }
