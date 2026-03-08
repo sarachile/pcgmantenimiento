@@ -92,6 +92,7 @@ export interface Asset {
   code: string;
   location: string;
   status: AssetStatus;
+  isIoT?: boolean; // Flag para activos con sensores
   lastMaintenanceAt?: string | any;
   createdAt: string | any;
 }

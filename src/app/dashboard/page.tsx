@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { isBefore, parseISO, startOfDay, differenceInDays, format } from "date-fns";
 import { es } from "date-fns/locale";
-import { WorkOrder, Client, Company } from "@/lib/types";
+import { WorkOrder, Client, Company, Asset } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -70,10 +70,12 @@ export default function DashboardPage() {
   // Consultas Reales a Firestore
   const workOrdersQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "workOrders") : null, [db, companyId]);
   const clientsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "clients") : null, [db, companyId]);
+  const assetsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "assets") : null, [db, companyId]);
   const companyRef = useMemoFirebase(() => db && companyId ? doc(db, "companies", companyId) : null, [db, companyId]);
 
   const { data: workOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
   const { data: clients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: assets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
   const { data: company, isLoading: isCompanyLoading } = useDoc<Company>(companyRef);
 
   const realWorkOrders = useMemo(() => {
@@ -101,6 +103,10 @@ export default function DashboardPage() {
     return { total, completed, active, alert };
   }, [realWorkOrders, today]);
 
+  const iotAssetsCount = useMemo(() => {
+    return (assets || []).filter(a => a.isIoT).length;
+  }, [assets]);
+
   const recentOrders = useMemo(() => {
     return [...realWorkOrders].sort((a, b) => {
       const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt) : new Date(0));
@@ -127,7 +133,7 @@ export default function DashboardPage() {
     return differenceInDays(end, today);
   }, [company?.trialEndsAt, today]);
 
-  if (!mounted || isUserLoading || isOrdersLoading || isClientsLoading || isCompanyLoading || !today) {
+  if (!mounted || isUserLoading || isOrdersLoading || isClientsLoading || isCompanyLoading || isAssetsLoading || !today) {
     return (
       <div className="flex flex-col h-[400px] items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -169,7 +175,7 @@ export default function DashboardPage() {
           </Dialog>
         </div>
 
-        <Card className="rounded-[2rem] border-none shadow-sm overflow-hidden bg-white max-w-4xl">
+        <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white max-w-4xl">
           <CardHeader className="bg-slate-50/50 p-6 border-b"><CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><ClipboardList className="h-4 w-4 text-primary" /> Mi Hoja de Ruta</CardTitle></CardHeader>
           <CardContent className="p-0">
             {recentOrders.length === 0 ? (
@@ -257,22 +263,26 @@ export default function DashboardPage() {
               <div className="p-6 bg-white/10 flex flex-col justify-center items-center text-center border-r border-white/10">
                 <div className="bg-white/20 p-3 rounded-2xl mb-3"><Cpu className="h-6 w-6" /></div>
                 <p className="text-[10px] font-black uppercase tracking-widest">Gateway IoT</p>
-                <p className="text-sm font-bold">ONLINE</p>
+                <p className="text-sm font-bold">{iotAssetsCount > 0 ? 'ONLINE' : 'IDLE'}</p>
               </div>
               <div className="md:col-span-3 p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div className="flex-1">
                   <h3 className="text-lg font-black uppercase italic tracking-tighter mb-1">Monitoreo de Energía en Tiempo Real</h3>
-                  <p className="text-xs text-blue-100 font-medium">Tus sensores están enviando datos. Las OTs se crearán automáticamente ante fallas.</p>
+                  <p className="text-xs text-blue-100 font-medium">
+                    {iotAssetsCount > 0 
+                      ? `Tus ${iotAssetsCount} sensores están enviando datos. Las OTs se crearán automáticamente ante fallas.` 
+                      : "No hay sensores vinculados actualmente. Conecta tus activos para activar el monitoreo automático."}
+                  </p>
                 </div>
                 <div className="flex gap-4">
                   <div className="text-center">
-                    <p className="text-3xl font-black italic">2</p>
+                    <p className="text-3xl font-black italic">{iotAssetsCount}</p>
                     <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Activos IoT</p>
                   </div>
                   <div className="h-10 w-px bg-white/20 self-center" />
-                  <div className="text-center text-emerald-300">
-                    <Waves className="h-8 w-8 animate-pulse" />
-                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Señal</p>
+                  <div className="text-center">
+                    <Waves className={cn("h-8 w-8", iotAssetsCount > 0 ? "text-emerald-300 animate-pulse" : "text-white/20")} />
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">{iotAssetsCount > 0 ? 'Señal' : 'Sin Señal'}</p>
                   </div>
                 </div>
               </div>
