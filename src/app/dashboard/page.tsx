@@ -183,10 +183,17 @@ export default function DashboardPage() {
               </DialogHeader>
               <div className="space-y-6 py-4">
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3"><div className="bg-blue-100 p-2 rounded-lg text-blue-600 font-bold text-xs">iOS</div><p className="text-sm font-bold text-slate-700">En iPhone (Safari):</p></div>
+                  <div className="flex items-center gap-3"><div className="bg-blue-100 p-2 rounded-lg text-blue-600 font-bold text-xs uppercase">iOS</div><p className="text-sm font-bold text-slate-700">En iPhone (Safari):</p></div>
                   <div className="bg-slate-50 p-4 rounded-2xl border space-y-3">
-                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Share className="h-3 w-3" /></div><span>1. Pulsa el botón <strong>"Compartir"</strong>.</span></div>
-                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><PlusSquare className="h-3 w-3" /></div><span>2. Selecciona <strong>"Agregar a Inicio"</strong>.</span></div>
+                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Share className="h-3 w-3 text-slate-400" /></div><span>1. Pulsa el botón <strong>"Compartir"</strong>.</span></div>
+                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><PlusSquare className="h-3 w-3 text-slate-400" /></div><span>2. Selecciona <strong>"Agregar a Inicio"</strong>.</span></div>
+                  </div>
+                </div>
+                <div className="space-y-4 pt-2">
+                  <div className="flex items-center gap-3"><div className="bg-emerald-100 p-2 rounded-lg text-emerald-600 font-bold text-xs uppercase">Android</div><p className="text-sm font-bold text-slate-700">En Chrome:</p></div>
+                  <div className="bg-slate-50 p-4 rounded-2xl border space-y-3">
+                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm font-black text-slate-400">⋮</div><span>1. Pulsa los <strong>tres puntos</strong> arriba a la derecha.</span></div>
+                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Smartphone className="h-3 w-3 text-slate-400" /></div><span>2. Selecciona <strong>"Instalar aplicación"</strong>.</span></div>
                   </div>
                 </div>
               </div>
