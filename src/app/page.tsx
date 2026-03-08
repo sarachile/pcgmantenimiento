@@ -21,7 +21,10 @@ import {
   Smartphone,
   BarChart3,
   Search,
-  MessageSquareShare
+  MessageSquareShare,
+  Sun,
+  Waves,
+  Database
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,8 +67,8 @@ export default function HomePage() {
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
               <a href="#solucion" className="hover:text-primary transition-colors">Solución</a>
-              <a href="#como-funciona" className="hover:text-primary transition-colors">Cómo Funciona</a>
-              <a href="#diferenciadores" className="hover:text-primary transition-colors">Diferenciales</a>
+              <a href="#solar" className="hover:text-primary transition-colors">Energía Solar</a>
+              <a href="#iot" className="hover:text-primary transition-colors">Ecosistema IoT</a>
               {isAuthenticated ? (
                 <Button asChild className="rounded-full">
                   <Link href="/dashboard" className="gap-2">
@@ -93,8 +96,8 @@ export default function HomePage() {
         {isMenuOpen && (
           <div className="md:hidden bg-white border-b p-4 space-y-4 flex flex-col animate-in slide-in-from-top-2">
             <a href="#solucion" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Solución</a>
-            <a href="#como-funciona" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Cómo Funciona</a>
-            <a href="#diferenciadores" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Diferenciales</a>
+            <a href="#solar" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Energía Solar</a>
+            <a href="#iot" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Ecosistema IoT</a>
             <hr />
             <Link href="/auth/login" className="font-bold text-primary px-4">Ingresar</Link>
             <Button asChild className="w-full rounded-xl">
@@ -109,28 +112,135 @@ export default function HomePage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Badge variant="outline" className="mb-6 py-1 px-4 border-primary/20 text-primary bg-primary/5 rounded-full font-bold uppercase tracking-widest">
-            Gestión Industrial de Próxima Generación
+            ¿Instalas Paneles Solares? Eleva tu estándar tecnológico
           </Badge>
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 mb-6 leading-[0.9]">
             Toda tu operación técnica <br />
             <span className="text-primary italic font-serif">con trazabilidad inalterable</span>
           </h1>
           <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Elimina la incertidumbre del papel. Certifica la experiencia de tu equipo en terreno con evidencia fotográfica real y sellos digitales de aprobación.
+            Certifica la experiencia de tu equipo en terreno. Reemplaza los grupos de WhatsApp por evidencia real, firmas digitales y <span className="text-primary font-bold">monitoreo IoT en tiempo real</span>.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
               <Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
             <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2">
-              <a href="#como-funciona">Ver demo visual</a>
+              <a href="#solar">Ver Solución Solar</a>
             </Button>
           </div>
         </div>
       </section>
 
-      {/* Solution Section */}
-      <section id="solucion" className="py-24 bg-slate-50 border-y">
+      {/* Special Solar Section */}
+      <section id="solar" className="py-24 bg-slate-900 text-white overflow-hidden relative">
+        <div className="absolute top-0 left-0 p-20 opacity-10"><Sun className="h-64 w-64 text-amber-400 animate-pulse" /></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <Badge className="bg-amber-500 text-black font-black px-4 py-1 uppercase tracking-widest">Exclusivo: Energía Solar</Badge>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-none">
+                El ERP que tu cuadrilla <br />
+                <span className="text-amber-400">solar realmente usará.</span>
+              </h2>
+              <p className="text-slate-400 text-lg leading-relaxed">
+                Sabemos que en la instalación de paneles, la foto del inversor y la placa es ley. Nuestra plataforma obliga al cumplimiento de protocolos para que cada visita sea facturable y sin reclamos.
+              </p>
+              
+              <div className="grid sm:grid-cols-2 gap-6">
+                {[
+                  { icon: Sun, title: "Protocolos Fotovoltaicos", desc: "Checklists específicos para inversores, cableado y anclajes." },
+                  { icon: Fingerprint, title: "Sello de Recepción", desc: "El cliente firma en terreno vía QR para evitar disputas de pago." },
+                  { icon: Cpu, title: "Resumen IA", desc: "Genera informes ejecutivos automáticos de visitas largas." },
+                  { icon: MessageSquareShare, title: "Feedback Directo", desc: "Mide la satisfacción del cliente tras cada instalación." }
+                ].map((f, i) => (
+                  <div key={i} className="flex gap-3">
+                    <div className="bg-white/5 p-2 rounded-lg h-fit border border-white/10">
+                      <f.icon className="h-5 w-5 text-amber-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white text-sm">{f.title}</h4>
+                      <p className="text-slate-500 text-[11px] mt-1">{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
+              <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce">
+                <Zap className="h-6 w-6 text-black" />
+              </div>
+              <h3 className="text-2xl font-black italic mb-6">Blindaje de Operación</h3>
+              <div className="space-y-4">
+                {[
+                  { label: "Evidencia de Inversores", value: "Fotos Obligatorias" },
+                  { label: "Ubicación GPS", value: "Validación por Mapa" },
+                  { label: "Certificado de Exp.", value: "Generación Instantánea" },
+                  { label: "Sincronización API", value: "Listo para tu CRM" }
+                ].map((row, i) => (
+                  <div key={i} className="flex justify-between items-center py-3 border-b border-white/5 text-xs">
+                    <span className="text-slate-400 font-bold uppercase tracking-widest">{row.label}</span>
+                    <span className="text-amber-400 font-black flex items-center gap-2">
+                      <CheckCircle2 className="h-3 w-3" /> {row.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* IoT Integration Section */}
+      <section id="iot" className="py-32 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20 space-y-4">
+            <Badge variant="outline" className="py-1 px-4 border-blue-200 text-blue-600 bg-blue-50 font-black uppercase tracking-widest">
+              Conectividad Industrial
+            </Badge>
+            <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 uppercase italic">Tu Servicio en la Nube IoT</h2>
+            <p className="text-slate-500 text-lg max-w-2xl mx-auto font-medium">
+              No esperes a que el cliente te llame. Deja que tus activos hablen por ti.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="p-8 rounded-[2.5rem] border-none shadow-xl bg-white space-y-6">
+              <div className="bg-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+                <Waves className="text-white h-8 w-8" />
+              </div>
+              <h3 className="text-2xl font-black italic uppercase tracking-tight">Monitoreo 24/7</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Integramos sensores de corriente, presión y temperatura. Si un parámetro sale de rango, el ERP crea una **Orden de Trabajo automática**.
+              </p>
+            </Card>
+
+            <Card className="p-8 rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white space-y-6">
+              <div className="bg-blue-500 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900">
+                <Database className="text-white h-8 w-8" />
+              </div>
+              <h3 className="text-2xl font-black italic uppercase tracking-tight">API Gateway</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                ¿Usas SAP o Softland? Nuestra API abierta sincroniza clientes, facturas y personal, eliminando la doble digitación.
+              </p>
+            </Card>
+
+            <Card className="p-8 rounded-[2.5rem] border-none shadow-xl bg-white space-y-6">
+              <div className="bg-emerald-500 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100">
+                <Check className="text-white h-8 w-8" />
+              </div>
+              <h3 className="text-2xl font-black italic uppercase tracking-tight">Mantenimiento Predictivo</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Anticípate a las fallas. Recibe alertas en tu panel de control antes de que el equipo del cliente se detenga.
+              </p>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Differentiation Section */}
+      <section id="diferenciadores" className="py-24 bg-white border-y">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Left Column: Image */}
@@ -157,11 +267,11 @@ export default function HomePage() {
               <div className="space-y-6">
                 {[
                   { icon: XCircle, title: "Fin del Caos", desc: "Dile adiós a los reportes en papel que se pierden, se mojan o nunca se actualizan." },
-                  { icon: History, title: "Trazabilidad Inalterable", desc: "Mantén un historial con marcas de tiempo y GPS de cada intervención realizada." },
-                  { icon: Zap, title: "Informes al Instante", desc: "Genera el informe técnico PDF y el certificado de experiencia en un clic tras el cierre." }
+                  { icon: History, title: "Trazabilidad Inalterable", desc: "Marcas de tiempo y GPS de cada intervención para certificaciones sin dudas." },
+                  { icon: Zap, title: "Informes al Instante", desc: "Genera el informe técnico PDF y el certificado de experiencia en un clic." }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4 group">
-                    <div className="bg-white p-3 rounded-xl h-fit shadow-sm border border-slate-100 group-hover:border-primary/30 transition-colors">
+                    <div className="bg-slate-50 p-3 rounded-xl h-fit border group-hover:border-primary/30 transition-colors">
                       <item.icon className="text-primary h-6 w-6" />
                     </div>
                     <div>
@@ -188,118 +298,6 @@ export default function HomePage() {
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fugas de Información</p>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* How it Works Section */}
-      <section id="como-funciona" className="py-32 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 uppercase italic">El Círculo de Confianza Técnica</h2>
-            <p className="text-slate-500 mt-4 text-lg max-w-2xl mx-auto font-medium">Un flujo optimizado para que tu empresa nunca pierda una certificación por falta de pruebas.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-12 relative">
-            <div className="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -z-10" />
-            
-            {[
-              { 
-                step: "01", 
-                title: "Asignación Inteligente", 
-                desc: "Crea OTs masivas o individuales. Define protocolos de inspección obligatorios para que nada quede al azar.",
-                icon: HardHat,
-                color: "text-blue-600 bg-blue-50"
-              },
-              { 
-                step: "02", 
-                title: "Captura de Evidencia", 
-                desc: "Tus técnicos reportan desde el móvil. Fotos, notas y checklists con sello digital técnico inmediato.",
-                icon: Smartphone,
-                color: "text-amber-600 bg-amber-50"
-              },
-              { 
-                step: "03", 
-                title: "Certificación Final", 
-                desc: "El cliente aprueba vía PIN o QR. Se genera automáticamente el Certificado de Experiencia legal.",
-                icon: FileBadge,
-                color: "text-emerald-600 bg-emerald-50"
-              }
-            ].map((item, i) => (
-              <div key={i} className="bg-white p-8 rounded-[2.5rem] border-2 border-slate-50 hover:border-primary/20 transition-all group shadow-sm hover:shadow-xl">
-                <div className="flex justify-between items-start mb-6">
-                  <div className={cn("p-4 rounded-2xl", item.color)}>
-                    <item.icon className="h-8 w-8" />
-                  </div>
-                  <span className="text-5xl font-black text-slate-100 group-hover:text-primary/10 transition-colors">{item.step}</span>
-                </div>
-                <h3 className="text-xl font-black text-slate-900 mb-3">{item.title}</h3>
-                <p className="text-slate-500 text-sm leading-relaxed font-medium">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Differentiation Section (The Tech Edge) */}
-      <section id="diferenciadores" className="py-24 bg-slate-900 text-white overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px] -z-0" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div className="space-y-8">
-              <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest">Diferencial Tecnológico</Badge>
-              <h2 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-none">
-                No somos solo un ERP. <br />
-                <span className="text-blue-400">Somos tu blindaje operativo.</span>
-              </h2>
-              <p className="text-slate-400 text-lg leading-relaxed">
-                Mientras otros se enfocan en la contabilidad, nosotros nos enfocamos en que cada hora hombre de tu equipo sea certificable y pagable.
-              </p>
-              
-              <div className="grid sm:grid-cols-2 gap-6">
-                {[
-                  { icon: Cpu, title: "IA Operativa", desc: "Resúmenes ejecutivos automáticos de bitácoras técnicas extensas." },
-                  { icon: Fingerprint, title: "Sello Digital", desc: "Validación por PIN único que evita suplantaciones de firma." },
-                  { icon: CloudLightning, title: "Modo Offline", desc: "Sigue reportando en minas o sótanos sin señal de internet." },
-                  { icon: BarChart3, title: "BI Industrial", desc: "Métricas de cumplimiento y desgaste de activos en tiempo real." }
-                ].map((f, i) => (
-                  <div key={i} className="flex gap-3">
-                    <div className="bg-white/5 p-2 rounded-lg h-fit border border-white/10">
-                      <f.icon className="h-5 w-5 text-blue-400" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-white text-sm">{f.title}</h4>
-                      <p className="text-slate-500 text-[11px] mt-1">{f.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
-              <div className="absolute -top-6 -left-6 bg-blue-600 p-4 rounded-2xl shadow-xl shadow-blue-900/40 animate-bounce">
-                <Zap className="h-6 w-6 text-white" />
-              </div>
-              <h3 className="text-2xl font-black italic mb-6">Comparativa de Valor</h3>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 text-[10px] font-black uppercase tracking-widest text-slate-500 pb-2 border-b border-white/10">
-                  <span>Proceso Tradicional</span>
-                  <span className="text-blue-400">PCGMANTENIMIENTO</span>
-                </div>
-                {[
-                  { old: "Firma en papel que se borra", new: "Sello Digital con código único" },
-                  { old: "Fotos perdidas en WhatsApp", new: "Evidencia indexada a la OT" },
-                  { old: "Informe manual (2 días)", new: "Informe automático (1 segundo)" },
-                  { old: "Sin respaldo de experiencia", new: "Certificado validado por cliente" },
-                  { old: "Discusiones por cobros", new: "Trazabilidad total aceptada" }
-                ].map((row, i) => (
-                  <div key={i} className="grid grid-cols-2 gap-4 py-3 border-b border-white/5 text-xs font-medium">
-                    <div className="flex items-center gap-2 text-slate-500"><XCircle className="h-3 w-3 shrink-0" /> {row.old}</div>
-                    <div className="flex items-center gap-2 text-white font-bold"><CheckCircle2 className="h-3 w-3 text-blue-400 shrink-0" /> {row.new}</div>
-                  </div>
-                ))}
               </div>
             </div>
           </div>
@@ -359,9 +357,9 @@ export default function HomePage() {
             © {new Date().getFullYear()} - Todos los derechos reservados.
           </p>
           <div className="flex gap-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-            <a href="#" className="hover:text-primary transition-colors">Términos</a>
+            <Link href="/terms" className="hover:text-primary transition-colors">Términos</Link>
             <a href="#" className="hover:text-primary transition-colors">Privacidad</a>
-            <a href="#" className="hover:text-primary transition-colors">Soporte</a>
+            <Link href="/support" className="hover:text-primary transition-colors">Soporte</Link>
           </div>
         </div>
       </footer>
