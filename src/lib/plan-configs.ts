@@ -3,7 +3,7 @@ import { PlanType } from "./types";
 /**
  * @fileOverview Definición maestra de límites y funcionalidades por plan.
  * Se implementa la estrategia de "Valor por Rol": Administradores (Gestión) vs Técnicos (Ejecución).
- * ACTUALIZACIÓN: Se añade límite de Activos IoT para control de infraestructura.
+ * ACTUALIZACIÓN: Se ajusta el límite de Enterprise a 50 IoT. Mayores volúmenes vía comercial.
  */
 
 export interface PlanConfig {
@@ -71,7 +71,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     maxAdmins: 10,
     maxTechnicians: 50,
     maxClients: 200,
-    maxIoTAssets: 100,
+    maxIoTAssets: 50,
     maxMonthlyOrders: 5000,
     storageLimitMb: 50000,
     features: {

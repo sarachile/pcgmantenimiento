@@ -23,7 +23,8 @@ import {
   HardHat,
   Code2,
   Cpu,
-  Zap
+  Zap,
+  MessageSquare
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
@@ -216,21 +217,38 @@ export default function SubscriptionPage() {
         ))}
       </div>
 
-      <Card className="rounded-[3rem] border-none shadow-xl bg-slate-900 text-white p-10 overflow-hidden relative group">
-        <div className="absolute right-0 top-0 p-12 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-48 w-48 text-blue-400" /></div>
-        <div className="flex flex-col md:flex-row items-center justify-between gap-10 relative z-10">
-          <div className="space-y-4">
-            <Badge className="bg-blue-600 text-white font-black uppercase px-4 py-1 tracking-widest">Oferta PYME Energy</Badge>
-            <h3 className="text-4xl font-black italic tracking-tighter uppercase leading-none">Monitoreo Solar Pro</h3>
-            <p className="text-slate-400 font-medium max-w-xl text-lg">
-              ¿Instalas paneles? Obtén nuestro kit de sensores pre-configurados. Convierte tu servicio técnico en un centro de monitoreo 24/7 para tus clientes.
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="rounded-[3rem] border-none shadow-xl bg-slate-900 text-white p-10 overflow-hidden relative group">
+          <div className="absolute right-0 top-0 p-12 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-48 w-48 text-blue-400" /></div>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-10 relative z-10">
+            <div className="space-y-4">
+              <Badge className="bg-blue-600 text-white font-black uppercase px-4 py-1 tracking-widest">Oferta PYME Energy</Badge>
+              <h3 className="text-4xl font-black italic tracking-tighter uppercase leading-none">Monitoreo Solar Pro</h3>
+              <p className="text-slate-400 font-medium max-w-xl text-lg">
+                ¿Instalas paneles? Obtén nuestro kit de sensores pre-configurados. Convierte tu servicio técnico en un centro de monitoreo 24/7 para tus clientes.
+              </p>
+            </div>
+            <Button variant="outline" className="h-16 px-10 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-xs tracking-[0.2em] shadow-2xl">
+              Pedir Kit de Sensores
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="rounded-[3rem] border-2 border-dashed border-slate-200 p-10 flex flex-col justify-center items-center text-center space-y-6">
+          <div className="bg-primary/10 p-4 rounded-3xl">
+            <MessageSquare className="h-10 w-10 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-2xl font-black italic uppercase tracking-tighter">¿Necesitas Mayor Escala?</h3>
+            <p className="text-slate-500 text-sm font-medium max-w-xs mx-auto">
+              Para flotas masivas, despliegues multi-regionales o más de 50 activos IoT, contacta directamente con nuestro equipo comercial.
             </p>
           </div>
-          <Button variant="outline" className="h-16 px-10 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-xs tracking-[0.2em] shadow-2xl">
-            Pedir Kit de Sensores
+          <Button asChild variant="outline" className="rounded-xl font-bold px-8">
+            <Link href="/support">Hablar con un Ejecutivo</Link>
           </Button>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       {isUpgrading && (
         <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
