@@ -60,7 +60,9 @@ export default function HomePage() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <ShieldCheck className="text-slate-100 h-12 w-12 animate-pulse" />
+        <div className="animate-pulse">
+          <img src="/logo.png" alt="Cargando..." className="h-12 w-12 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+        </div>
       </div>
     );
   }
@@ -84,9 +86,9 @@ export default function HomePage() {
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
-            <div className="flex items-center gap-2">
-              <div className="bg-primary p-2 rounded-lg">
-                <ShieldCheck className="text-white h-6 w-6" />
+            <div className="flex items-center gap-3">
+              <div className="bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                <img src="/logo.png" alt="PCG" className="h-8 w-8 object-contain" />
               </div>
               <span className="font-black text-xl tracking-tighter text-primary uppercase">
                 PCGMANTENIMIENTO
@@ -268,7 +270,7 @@ export default function HomePage() {
 
               <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-5">
-                  <ShieldCheck className="h-24 w-24" />
+                  <img src="/logo.png" alt="PCG" className="h-24 w-24 object-contain grayscale" />
                 </div>
                 <h3 className="text-2xl font-black italic mb-2 text-slate-900">"Lo que no se registra, no existe"</h3>
                 <p className="text-slate-500 font-medium mb-8">Centraliza toda tu operación en una herramienta diseñada para el rigor del terreno y la confianza del cliente.</p>
@@ -445,7 +447,7 @@ export default function HomePage() {
 
           <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-40 grayscale">
             <div className="flex flex-col items-center gap-2">
-              <ShieldCheck className="h-8 w-8" />
+              <img src="/logo.png" alt="Seguridad" className="h-10 w-10 object-contain" />
               <span className="text-[10px] font-black uppercase">Seguridad SSL</span>
             </div>
             <div className="flex flex-col items-center gap-2">
@@ -466,9 +468,9 @@ export default function HomePage() {
 
       <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2 opacity-50">
-            <ShieldCheck className="h-5 w-5" />
-            <span className="font-black text-sm uppercase tracking-tighter">PCGMANTENIMIENTO ERP</span>
+          <div className="flex items-center gap-3 opacity-50">
+            <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
+            <span className="font-black text-sm uppercase tracking-tighter text-slate-900">PCGMANTENIMIENTO ERP</span>
           </div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
             © {new Date().getFullYear()} - Todos los derechos reservados.
