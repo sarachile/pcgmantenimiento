@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   ShieldPlus, 
   Loader2, 
@@ -38,6 +39,7 @@ export default function SignupPage() {
   const [companyCode, setCompanyCode] = useState('');
   const [signupMode, setSignupMode] = useState<'new' | 'join'>('new');
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   
   const auth = useAuth();
   const db = useFirestore();
@@ -46,6 +48,10 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!acceptedTerms) {
+      toast({ title: "Acción requerida", description: "Debe aceptar los términos y condiciones para continuar.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     
     const cleanEmail = email.toLowerCase().trim();
@@ -262,13 +268,34 @@ export default function SignupPage() {
                 </AlertDescription>
               </Alert>
             )}
+
+            {/* ACEPCIÓN DE TÉRMINOS LEGALES */}
+            <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 mt-4">
+              <Checkbox 
+                id="terms" 
+                checked={acceptedTerms} 
+                onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+                className="mt-1 h-5 w-5 rounded-md"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <Label htmlFor="terms" className="text-xs font-bold text-slate-700 cursor-pointer">
+                  Acepto los términos y condiciones
+                </Label>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Al registrarse, usted confirma que ha leído y acepta nuestra <Link href="/terms" target="_blank" className="text-primary font-black underline hover:text-blue-700">política de servicio y privacidad</Link> según la legislación chilena.
+                </p>
+              </div>
+            </div>
           </CardContent>
           
           <CardFooter className="flex flex-col gap-6 p-10 pt-0 bg-white">
             <Button 
-              className="w-full h-16 rounded-2xl bg-primary text-white font-black text-lg uppercase tracking-widest shadow-xl shadow-primary/20 gap-2 transition-all hover:scale-[1.02] active:scale-95" 
+              className={cn(
+                "w-full h-16 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl gap-2 transition-all active:scale-95",
+                acceptedTerms ? "bg-primary text-white shadow-primary/20 hover:scale-[1.02]" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              )} 
               type="submit" 
-              disabled={loading}
+              disabled={loading || !acceptedTerms}
             >
               {loading ? <Loader2 className="animate-spin h-6 w-6" /> : <>{signupMode === 'new' ? "Crear Empresa y Entrar" : "Vincular Cuenta"} <ArrowRight className="h-5 w-5" /></>}
             </Button>
