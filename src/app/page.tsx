@@ -73,7 +73,7 @@ export default function HomePage() {
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
               <a href="#plataforma" className="hover:text-primary transition-colors">La Plataforma</a>
-              <a href="#solucion" className="hover:text-primary transition-colors">Solución</a>
+              <a href="#solucion" className="hover:text-primary transition-colors">Trazabilidad</a>
               <a href="#solar" className="hover:text-primary transition-colors">Energía Solar</a>
               <a href="#iot" className="hover:text-primary transition-colors">Ecosistema IoT</a>
               {isAuthenticated ? (
@@ -103,7 +103,7 @@ export default function HomePage() {
         {isMenuOpen && (
           <div className="md:hidden bg-white border-b p-4 space-y-4 flex flex-col animate-in slide-in-from-top-2">
             <a href="#plataforma" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>La Plataforma</a>
-            <a href="#solucion" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Solución</a>
+            <a href="#solucion" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Trazabilidad</a>
             <a href="#solar" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Energía Solar</a>
             <a href="#iot" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Ecosistema IoT</a>
             <hr />
@@ -120,14 +120,14 @@ export default function HomePage() {
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <Badge variant="outline" className="mb-6 py-1 px-4 border-primary/20 text-primary bg-primary/5 rounded-full font-bold uppercase tracking-widest">
-            ¿Instalas Paneles Solares? Eleva tu estándar tecnológico
+            Trazabilidad Inalterable e Integración IoT para Servicios Técnicos
           </Badge>
           <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 mb-6 leading-[0.9]">
             Toda tu operación técnica <br />
             <span className="text-primary italic font-serif">con trazabilidad inalterable</span>
           </h1>
           <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Certifica la calidad de tu equipo en terreno. Reemplaza la incertidumbre por evidencia real, firmas digitales y <span className="text-primary font-bold">monitoreo IoT en tiempo real</span>.
+            Certifica la calidad de tu equipo en terreno. Reemplaza la incertidumbre por evidencia real, firmas digitales y <span className="text-primary font-bold">monitoreo inteligente de activos</span>.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
@@ -140,7 +140,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Description Section */}
+      {/* Description Section - EL SISTEMA NERVIOSO CENTRAL */}
       <section id="plataforma" className="py-32 bg-white relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20 space-y-6">
@@ -149,7 +149,7 @@ export default function HomePage() {
               <span className="text-primary">Ecosistema Industrial</span>
             </h2>
             <p className="text-xl text-slate-500 max-w-4xl mx-auto font-medium leading-relaxed">
-              PCGMANTENIMIENTO no es solo una App de tareas o una base de datos. Es un ecosistema híbrido que une la **movilidad del terreno** con la **inteligencia administrativa**, permitiendo que tu empresa escale sin perder el control de la calidad.
+              PCGMANTENIMIENTO no es solo una App de tareas. Es un ecosistema híbrido que une la **movilidad del terreno** con la **inteligencia administrativa**, permitiendo que tu empresa escale sin perder el control de la calidad.
             </p>
           </div>
 
@@ -158,7 +158,7 @@ export default function HomePage() {
               <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Layers className="h-6 w-6 text-white" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase">Unidad de Gestión</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Integramos personal, activos, clientes e inventario en un solo flujo. Desde que una falla es detectada hasta que se emite la factura legal, todo viaja de forma fluida y transparente.
+                Integramos personal, activos, clientes e inventario en un solo flujo. Desde que una falla es detectada hasta que se emite la factura legal, todo viaja de forma fluida.
               </p>
             </div>
 
@@ -166,7 +166,7 @@ export default function HomePage() {
               <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Database className="h-6 w-6 text-primary" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase">Base de Datos Viva</h3>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Cada foto, cada firma y cada nota técnica alimenta un histórico inalterable por activo. Cumple con normativas de auditoría y genera reportes de cumplimiento instantáneos.
+                Cada foto, cada firma y cada nota técnica alimenta un histórico inalterable por activo. Cumple con normativas de auditoría y genera reportes instantáneos.
               </p>
             </div>
 
@@ -174,7 +174,7 @@ export default function HomePage() {
               <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-white" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase text-blue-900">Inteligencia Terreno</h3>
               <p className="text-blue-800/70 text-sm leading-relaxed">
-                Utilizamos IA para resumir bitácoras técnicas extensas y convertir datos crudos en información estratégica para tus clientes, ahorrando horas de redacción administrativa.
+                Utilizamos IA para resumir bitácoras técnicas extensas y convertir datos crudos en información estratégica para tus clientes, ahorrando horas de redacción.
               </p>
             </div>
           </div>
@@ -251,7 +251,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <Badge className="bg-amber-500 text-black font-black px-4 py-1 uppercase tracking-widest">Exclusivo: Energía Solar</Badge>
+              <Badge className="bg-amber-500 text-black font-black px-4 py-1 uppercase tracking-widest">Especialización: Energía Solar</Badge>
               <h2 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-none">
                 El ERP que tu cuadrilla <br />
                 <span className="text-amber-400">solar realmente usará.</span>
