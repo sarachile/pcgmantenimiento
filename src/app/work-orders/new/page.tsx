@@ -92,6 +92,23 @@ function NewWorkOrderContent() {
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
   const { data: teams } = useCollection<Team>(teamsQuery);
 
+  // Auto-fill client defaults
+  useEffect(() => {
+    // Solo auto-completar si es una OT nueva (no edición ni duplicación)
+    if (!isEditing && !duplicateFrom && clientId && clients) {
+      const selectedClient = clients.find(c => c.id === clientId);
+      if (selectedClient) {
+        setServiceLocation(selectedClient.address || "");
+        setRequestedByName(selectedClient.contactName || "");
+        
+        toast({
+          title: "Datos de cliente cargados",
+          description: "Se han pre-rellenado la ubicación y contacto. Puede modificarlos si es necesario.",
+        });
+      }
+    }
+  }, [clientId, clients, isEditing, duplicateFrom, toast]);
+
   useEffect(() => {
     const sourceId = editId || duplicateFrom;
     if (sourceId && db && companyId) {
@@ -133,7 +150,7 @@ function NewWorkOrderContent() {
       };
       fetchData();
     }
-  }, [editId, duplicateFrom, db, companyId, toast, isEditing]);
+  }, [editId, duplicateFrom, db, companyId, isEditing]);
 
   const uniqueRoles = useMemo(() => {
     if (!staffMembers) return [];
@@ -194,13 +211,12 @@ function NewWorkOrderContent() {
         toast({ title: "Orden Actualizada" });
         router.push(`/work-orders/${editId}`);
       } else {
-        // GENERACIÓN DE ID CORTO Y PROFESIONAL
         const shortId = `OT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         const docRef = doc(db!, "companies", companyId, "workOrders", shortId);
         
         await setDoc(docRef, {
           ...commonData,
-          id: shortId, // Guardar el ID explícitamente para mayor seguridad
+          id: shortId,
           companyId,
           status: "creada",
           createdByUserId: profile.id,
@@ -282,15 +298,25 @@ function NewWorkOrderContent() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                  <MapPin className="h-3 w-3" /> Lugar del Servicio
+                  <MapPin className="h-3 w-3" /> Lugar del Servicio (Manual o Cliente)
                 </Label>
-                <Input placeholder="Dirección de la intervención" className="h-12 rounded-xl border-2 font-medium" value={serviceLocation} onChange={(e) => setServiceLocation(e.target.value)} />
+                <Input 
+                  placeholder="Dirección de la intervención" 
+                  className="h-12 rounded-xl border-2 font-medium" 
+                  value={serviceLocation} 
+                  onChange={(e) => setServiceLocation(e.target.value)} 
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                  <User className="h-3 w-3" /> Solicitado Por
+                  <User className="h-3 w-3" /> Solicitado Por (Manual o Cliente)
                 </Label>
-                <Input placeholder="Nombre del solicitante" className="h-12 rounded-xl border-2 font-medium" value={requestedByName} onChange={(e) => setRequestedByName(e.target.value)} />
+                <Input 
+                  placeholder="Nombre del solicitante" 
+                  className="h-12 rounded-xl border-2 font-medium" 
+                  value={requestedByName} 
+                  onChange={(e) => setRequestedByName(e.target.value)} 
+                />
               </div>
             </div>
 
@@ -395,7 +421,7 @@ function NewWorkOrderContent() {
                 <span className="font-black text-xs uppercase tracking-widest">Guía de Trazabilidad</span>
               </div>
               <p className="text-xs text-amber-900/70 font-medium leading-relaxed italic">
-                Defina puntos específicos de control (ej: "Revisión niveles", "Estado filtros"). Al hacerlo, el técnico verá estos ítems en su móvil y se verá obligado a subir una foto para cada uno, garantizando evidencia real del trabajo.
+                Defina puntos específicos de control. El técnico verá estos ítems en su móvil y podrá subir fotos específicas para cada uno.
               </p>
             </div>
 
@@ -415,12 +441,6 @@ function NewWorkOrderContent() {
                     </Button>
                   </div>
                 ))}
-                {checklist.length === 0 && (
-                  <div className="text-center py-10 border-2 border-dashed rounded-[2rem] bg-slate-50/50">
-                    <Lightbulb className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pase de largo solo si no requiere fotos específicas</p>
-                  </div>
-                )}
               </div>
             </div>
           </CardContent>
