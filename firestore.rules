@@ -46,8 +46,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isPlatformAdmin();
-      // Solo permitir listar si es admin de plataforma o si el filtro de la consulta coincide con la empresa del usuario
-      allow list: if isPlatformAdmin() || (isSignedIn() && resource.data.companyId == getUserData().companyId);
+      allow list: if isPlatformAdmin() || (isSignedIn() && (resource == null || resource.data.companyId == getUserData().companyId));
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isPlatformAdmin();
       allow delete: if isPlatformAdmin();
@@ -61,7 +60,7 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow get: if true;
       allow list: if isPlatformAdmin() || isSignedIn();
-      allow create: if isPlatformAdmin();
+      allow create: if isSignedIn(); 
       allow update: if isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin'));
       allow delete: if isPlatformAdmin();
 
@@ -119,8 +118,7 @@ service cloud.firestore {
 
     match /supportTickets/{ticketId} {
       allow get: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isAtLeastSupervisor(resource.data.companyId));
-      // Estanqueidad: Los usuarios solo pueden listar tickets de su propia empresa
-      allow list: if isPlatformAdmin() || (isSignedIn() && resource.data.companyId == getUserData().companyId);
+      allow list: if isPlatformAdmin() || (isSignedIn() && (resource == null || resource.data.companyId == getUserData().companyId));
       allow create: if isSignedIn();
       allow update: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isAtLeastSupervisor(resource.data.companyId));
 

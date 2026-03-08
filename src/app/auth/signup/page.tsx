@@ -1,9 +1,10 @@
+
 "use client";
 
 import { useState } from 'react';
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,20 +15,14 @@ import {
   ShieldPlus, 
   Loader2, 
   Building2, 
-  AlertCircle, 
   KeyRound, 
-  User,
-  Zap,
   ArrowRight,
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from '@/lib/utils';
 import { addDays } from 'date-fns';
-import { PLAN_CONFIGS } from '@/lib/plan-configs';
 
 const SUPERADMIN_EMAIL = 'control@pcgoperacion.com';
 
@@ -61,63 +56,61 @@ export default function SignupPage() {
       let targetCompanyId = "";
       let role = "";
 
-      if (isSuperAdminAccount) {
-        targetCompanyId = 'pcg-central';
-        role = 'superadmin';
-      } 
-      else if (signupMode === 'new') {
+      // 1. Validaciones previas a Auth
+      if (signupMode === 'new') {
         if (!companyName.trim()) throw new Error("Debe ingresar el nombre de su empresa.");
         targetCompanyId = `comp-${Math.random().toString(36).substr(2, 8)}`;
         role = 'companyAdmin';
-        const trialEndDate = addDays(new Date(), 14).toISOString();
-
-        await setDoc(doc(db!, 'companies', targetCompanyId), {
-          id: targetCompanyId,
-          name: companyName.trim(),
-          rut: 'RUT por definir',
-          isActive: true,
-          currentPlan: 'simple',
-          subscriptionStatus: 'active',
-          createdAt: new Date().toISOString(),
-          trialEndsAt: trialEndDate
-        });
-      } 
-      else {
+      } else {
         if (!companyCode.trim()) throw new Error("Debe ingresar el código de vinculación.");
         targetCompanyId = companyCode.trim();
         const companySnap = await getDoc(doc(db!, 'companies', targetCompanyId));
         if (!companySnap.exists()) throw new Error("El código de acceso no es válido.");
         const companyData = companySnap.data();
         if (!companyData.isActive) throw new Error("Esta empresa se encuentra suspendida.");
-
-        // VALIDAR LÍMITES GLOBALES
-        const usersQuery = query(collection(db!, "users"), where("companyId", "==", targetCompanyId));
-        const usersSnap = await getDocs(usersQuery);
-        const currentPlanId = companyData.currentPlan || 'simple';
-        const planConfig = PLAN_CONFIGS[currentPlanId as keyof typeof PLAN_CONFIGS] || PLAN_CONFIGS.simple;
-        
-        const isFirstUser = usersSnap.size === 0;
-        role = isFirstUser ? 'companyAdmin' : 'tecnico';
-        const maxAllowed = isFirstUser ? planConfig.maxAdmins : planConfig.maxTechnicians;
-        const currentInRole = usersSnap.docs.filter(d => d.data().role === role).length;
-
-        if (currentInRole >= maxAllowed) {
-          throw new Error(`Límite alcanzado para el rol ${role.toUpperCase()} en el plan ${planConfig.name}.`);
-        }
+        role = 'tecnico';
       }
 
+      if (isSuperAdminAccount) {
+        targetCompanyId = 'pcg-central';
+        role = 'superadmin';
+      }
+
+      // 2. Crear usuario en Auth (esto nos da el UID y nos autentica)
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-      await setDoc(doc(db!, 'users', userCredential.user.uid), {
-        id: userCredential.user.uid,
+      const uid = userCredential.user.uid;
+
+      // 3. Crear empresa si es nueva (Non-blocking)
+      if (signupMode === 'new' || isSuperAdminAccount) {
+        const trialEndDate = addDays(new Date(), 14).toISOString();
+        const companyData = {
+          id: targetCompanyId,
+          name: isSuperAdminAccount ? 'PCG Central' : companyName.trim(),
+          rut: 'RUT por definir',
+          isActive: true,
+          currentPlan: 'simple',
+          subscriptionStatus: 'active',
+          createdAt: new Date().toISOString(),
+          trialEndsAt: trialEndDate
+        };
+        setDocumentNonBlocking(doc(db!, 'companies', targetCompanyId), companyData, { merge: true });
+      }
+
+      // 4. Crear perfil de usuario (Non-blocking)
+      const userData = {
+        id: uid,
         email: cleanEmail,
         name: name,
         role: role,
         companyId: targetCompanyId,
         active: true,
         createdAt: new Date().toISOString(),
-      });
+      };
+      setDocumentNonBlocking(doc(db!, 'users', uid), userData, { merge: true });
 
       toast({ title: "Registro Completo", description: "Bienvenido a la plataforma." });
+      
+      // Proceder inmediatamente al dashboard (Firestore local cache manejará la consistencia)
       router.push('/dashboard');
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
