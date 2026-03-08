@@ -114,6 +114,8 @@ export default function FieldCapturePage() {
       description: "Su progreso ha sido sincronizado correctamente.",
     });
     setIsSaving(false);
+    // Volver al listado
+    router.push('/work-orders');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -290,7 +292,6 @@ export default function FieldCapturePage() {
                 </div>
               </CardHeader>
               <CardContent className="p-8 space-y-8">
-                {/* Protocolos */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -324,7 +325,6 @@ export default function FieldCapturePage() {
                   </div>
                 </div>
 
-                {/* Comentario y Foto */}
                 <div className="space-y-4">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-blue-500" /> Nota de Bitácora
@@ -361,7 +361,6 @@ export default function FieldCapturePage() {
                   </div>
                 </div>
 
-                {/* ACCIONES DE GUARDADO PARCIAL Y CIERRE */}
                 <div className="pt-8 border-t-2 border-dashed space-y-4">
                   <div className="flex gap-3">
                     <Button 

@@ -150,6 +150,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       title: "Progreso Guardado",
       description: "Toda la información actual ha sido sincronizada con el servidor.",
     });
+    router.push('/work-orders');
   };
 
   const handleResendEmail = async (overrideEmail?: string) => {
@@ -315,7 +316,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {/* Botón Guardar Avance (Psicológico y Real) */}
           {ot.status !== 'aprobada' && (
             <Button onClick={handleManualSave} variant="outline" className="rounded-xl h-11 border-primary/20 text-primary font-black uppercase text-[10px] tracking-widest gap-2">
               <Save className="h-4 w-4" /> Guardar Avance
@@ -353,7 +353,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {/* Alerta de Trabajo en Terreno */}
           {ot.status !== 'aprobada' && (
             <Card className="rounded-3xl border-none shadow-sm bg-blue-50/50 border-blue-100 overflow-hidden">
               <CardContent className="p-6">
