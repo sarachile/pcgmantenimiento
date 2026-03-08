@@ -86,6 +86,13 @@ export default function AssetsPage() {
     setMounted(true);
   }, []);
 
+  // FAILSAFE: Restaurar interacción si el diálogo queda mal cerrado por Radix
+  useEffect(() => {
+    if (!isDialogOpen) {
+      document.body.style.pointerEvents = 'auto';
+    }
+  }, [isDialogOpen]);
+
   const assetsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "assets");
@@ -130,7 +137,8 @@ export default function AssetsPage() {
       iotType: asset.iotType || "otro",
       unit: asset.unit || ""
     });
-    setIsDialogOpen(true);
+    // Pequeño retardo para asegurar que el Dropdown se cierre antes que el Dialog abra
+    setTimeout(() => setIsDialogOpen(true), 50);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -146,7 +154,7 @@ export default function AssetsPage() {
     if (editingAsset) {
       const assetRef = doc(db, "companies", profile.companyId, "assets", editingAsset.id);
       updateDocumentNonBlocking(assetRef, dataToSave);
-      toast({ title: "Activo actualizado", description: "Los datos han sido guardados." });
+      toast({ title: "Activo actualizado" });
     } else {
       const colRef = collection(db, "companies", profile.companyId, "assets");
       addDocumentNonBlocking(colRef, {
@@ -155,7 +163,7 @@ export default function AssetsPage() {
         lastValue: 0,
         maintenanceRequired: false
       });
-      toast({ title: "Activo registrado", description: "Nuevo equipo añadido al catálogo." });
+      toast({ title: "Activo registrado" });
     }
 
     setIsDialogOpen(false);
@@ -166,7 +174,7 @@ export default function AssetsPage() {
     if (!db || !profile?.companyId) return;
     const assetRef = doc(db, "companies", profile.companyId, "assets", asset.id);
     deleteDocumentNonBlocking(assetRef);
-    toast({ title: "Activo eliminado", description: "El equipo ha sido removido del sistema." });
+    toast({ title: "Activo eliminado" });
   };
 
   const formatDate = (date: any) => {
@@ -329,15 +337,8 @@ export default function AssetsPage() {
         </CardContent>
       </Card>
 
-      {/* Singleton Dialog for Create/Edit */}
-      <Dialog open={isDialogOpen} onOpenChange={(open) => {
-        setIsDialogOpen(open);
-        if (!open) {
-          // Pequeño delay para asegurar que el scroll lock se libere antes de resetear el estado
-          setTimeout(resetForm, 200);
-        }
-      }}>
-        <DialogContent className="sm:max-w-[500px]" onPointerDownOutside={(e) => e.preventDefault()}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black italic tracking-tight">
               {editingAsset ? "Editar Activo" : "Registrar Nuevo Activo"}
