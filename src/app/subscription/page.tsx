@@ -75,7 +75,7 @@ export default function SubscriptionPage() {
         "Facturación Electrónica DTE",
         "Firmas Digitales & Sello QR",
         "IA para Resúmenes de Bitácora",
-        "Conexión API (1 Canal IoT)"
+        `Conexión API (${PLAN_CONFIGS.business.maxIoTAssets} Canales IoT)`
       ],
       popular: true,
       current: company?.currentPlan === 'business'
@@ -92,7 +92,7 @@ export default function SubscriptionPage() {
         `${PLAN_CONFIGS.enterprise.maxClients} Clientes / Activos`,
         "DTE Ilimitado & Automático",
         "Gestión Multi-sucursal",
-        "API Ilimitada & Sensores IoT"
+        `API Ilimitada & ${PLAN_CONFIGS.enterprise.maxIoTAssets} Sensores IoT`
       ],
       current: company?.currentPlan === 'enterprise'
     }
