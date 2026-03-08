@@ -20,7 +20,7 @@ Agrega estos registros en la sección **"Custom Records"** de Squarespace usando
 | **A** | `@` | `35.219.200.7` | Apunta el dominio raíz a Google. |
 | **CNAME** | `www` | `@` | Hace que www.pcgmantenimiento.com use la misma IP. |
 | **TXT** | `@` | (Código `fah-claim`) | Valida que eres el dueño del dominio. |
-| **CNAME** | `_acme-challenge` | (Código SSL de Firebase) | **CLAVE:** Valida el certificado para el dominio SIN www. |
+| **CNAME** | `_acme-challenge` | (Código SSL de Firebase) | Valida el certificado para el dominio SIN www. |
 | **CNAME** | `_acme-challenge.www` | (Código SSL de Firebase) | Valida el certificado para el dominio CON www. |
 
 ### Paso 3: Configuración de Correo (Google Workspace)
@@ -41,6 +41,16 @@ Para recibir y enviar correos sin bloqueos, agrega estos registros:
 - **Host**: `_dmarc`
 - **Tipo**: `TXT`
 - **Data**: `v=DMARC1; p=none;`
+
+### 🛠️ Solución de Problemas (FAQ)
+
+**¿Por qué Firebase me pide borrar registros que no veo?**
+- **Presets ocultos:** Squarespace a veces mantiene registros internos de "Parking". Asegúrate de haber borrado el bloque "Email Security" con el basurero rojo si aparece.
+- **Propagación:** Si acabas de borrar un registro, Firebase puede tardar horas en dejar de verlo. Ten paciencia.
+- **Registros CNAME conflictivos:** Si intentas poner un registro A en `@`, asegúrate de que no haya un CNAME en `@` (Squarespace no suele permitir ambos).
+
+**¿Cuánto tarda en aparecer el candado (SSL)?**
+- Una vez que los registros DNS están correctos (en verde en Firebase), el certificado puede tardar desde **1 a 24 horas** en generarse. No intentes forzarlo, es un proceso automático de Google.
 
 ## 🛠️ Tecnologías
 - **NextJS 15** (App Router)
