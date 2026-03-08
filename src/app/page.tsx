@@ -27,7 +27,9 @@ import {
   Database,
   Check,
   Layers,
-  Sparkles
+  Sparkles,
+  Activity,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -138,7 +140,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Platform Overview Description Section (MOVE TO TOP POSITION) */}
+      {/* Description Section */}
       <section id="plataforma" className="py-32 bg-white relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20 space-y-6">
@@ -179,11 +181,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Differentiation Section */}
+      {/* Trazabilidad Section */}
       <section id="solucion" className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left Column: Image */}
             <div className="relative aspect-square md:aspect-video lg:aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200 bg-white p-2">
               <div className="relative w-full h-full rounded-[2rem] overflow-hidden">
                 <Image 
@@ -196,7 +197,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right Column: Content */}
             <div className="space-y-10">
               <div className="space-y-4">
                 <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
@@ -264,8 +264,8 @@ export default function HomePage() {
                 {[
                   { icon: Sun, title: "Protocolos Fotovoltaicos", desc: "Checklists específicos para inversores, cableado y anclajes." },
                   { icon: Fingerprint, title: "Sello de Recepción", desc: "El cliente firma en terreno vía QR para evitar disputas de pago." },
-                  { icon: Cpu, title: "Resumen IA", desc: "Genera informes ejecutivos automáticos de visitas largas." },
-                  { icon: MessageSquareShare, title: "Feedback Directo", desc: "Mide la satisfacción del cliente tras cada instalación." }
+                  { icon: Activity, title: "Eficiencia Real-Time", desc: "Monitoreo de rendimiento para asegurar el ROI del cliente." },
+                  { icon: Bell, title: "Alertas Preventivas", desc: "Detección automática de caídas de tensión o suciedad extrema." }
                 ].map((f, i) => (
                   <div key={i} className="flex gap-3">
                     <div className="bg-white/5 p-2 rounded-lg h-fit border border-white/10">
@@ -284,17 +284,28 @@ export default function HomePage() {
               <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce">
                 <Zap className="h-6 w-6 text-black" />
               </div>
-              <h3 className="text-2xl font-black italic mb-6">Blindaje de Operación</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-black italic">Blindaje de Operación</h3>
+                <div className="flex items-center gap-2 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Monitor Live</span>
+                </div>
+              </div>
               <div className="space-y-4">
                 {[
+                  { label: "Eficiencia del Sistema", value: "Lectura Real-Time", highlight: true },
+                  { label: "Necesidad Mantención", value: "Alerta Automática", highlight: true },
                   { label: "Evidencia de Inversores", value: "Fotos Obligatorias" },
                   { label: "Ubicación GPS", value: "Validación por Mapa" },
                   { label: "Certificado de Exp.", value: "Generación Instantánea" },
                   { label: "Sincronización API", value: "Listo para tu CRM" }
                 ].map((row, i) => (
-                  <div key={i} className="flex justify-between items-center py-3 border-b border-white/5 text-xs">
-                    <span className="text-slate-400 font-bold uppercase tracking-widest">{row.label}</span>
-                    <span className="text-amber-400 font-black flex items-center gap-2">
+                  <div key={i} className={cn(
+                    "flex justify-between items-center py-3 border-b border-white/5 text-xs",
+                    row.highlight && "bg-white/5 rounded-lg px-2 border-none"
+                  )}>
+                    <span className={cn("text-slate-400 font-bold uppercase tracking-widest", row.highlight && "text-amber-100")}>{row.label}</span>
+                    <span className={cn("font-black flex items-center gap-2", row.highlight ? "text-amber-400" : "text-white opacity-60")}>
                       <CheckCircle2 className="h-3 w-3" /> {row.value}
                     </span>
                   </div>
