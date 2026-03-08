@@ -102,6 +102,19 @@ export default function AssetsPage() {
     a.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const resetForm = () => {
+    setFormData({
+      name: "",
+      code: "",
+      location: "",
+      status: "activo",
+      isIoT: false,
+      iotType: "otro",
+      unit: ""
+    });
+    setEditingAsset(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !profile?.companyId) return;
@@ -129,19 +142,6 @@ export default function AssetsPage() {
 
     setIsCreateOpen(false);
     resetForm();
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      code: "",
-      location: "",
-      status: "activo",
-      isIoT: false,
-      iotType: "otro",
-      unit: ""
-    });
-    setEditingAsset(null);
   };
 
   const handleEdit = (asset: Asset) => {
@@ -400,11 +400,23 @@ export default function AssetsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none">
                           <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">Gestión Activo</DropdownMenuLabel>
-                          <DropdownMenuItem className="font-bold gap-2" onClick={() => handleEdit(asset)}>
+                          <DropdownMenuItem 
+                            className="font-bold gap-2" 
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              handleEdit(asset);
+                            }}
+                          >
                             <Edit className="h-4 w-4 text-blue-600" /> Editar Datos
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="font-bold gap-2 text-rose-600" onClick={() => handleDelete(asset)}>
+                          <DropdownMenuItem 
+                            className="font-bold gap-2 text-rose-600" 
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              handleDelete(asset);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4" /> Eliminar Activo
                           </DropdownMenuItem>
                         </DropdownMenuContent>
