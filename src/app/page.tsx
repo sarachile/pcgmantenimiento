@@ -35,6 +35,7 @@ import {
   Wrench,
   Construction,
   Stethoscope,
+  Building2,
   Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -190,29 +191,29 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <div className="p-10 rounded-[3rem] bg-slate-900 text-white space-y-6 shadow-2xl relative group">
+            <Card className="p-10 rounded-[3rem] bg-slate-900 text-white space-y-6 shadow-2xl relative group">
               <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Layers className="h-6 w-6 text-white" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase">Unidad de Gestión</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
                 Integramos personal, activos, clientes e inventario en un solo flujo. Desde que una falla es detectada hasta que se emite la factura legal, todo viaja de forma fluida.
               </p>
-            </div>
+            </Card>
 
-            <div className="p-10 rounded-[3rem] border-2 border-slate-100 bg-white space-y-6 hover:border-primary/20 transition-all">
+            <Card className="p-10 rounded-[3rem] border-2 border-slate-100 bg-white space-y-6 hover:border-primary/20 transition-all">
               <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Database className="h-6 w-6 text-primary" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase">Base de Datos Viva</h3>
               <p className="text-slate-500 text-sm leading-relaxed">
                 Cada foto, cada firma y cada nota técnica alimenta un histórico inalterable por activo. Cumple con normativas de auditoría y genera reportes instantáneos.
               </p>
-            </div>
+            </Card>
 
-            <div className="p-10 rounded-[3rem] bg-blue-50 border-2 border-blue-100 space-y-6">
+            <Card className="p-10 rounded-[3rem] bg-blue-50 border-2 border-blue-100 space-y-6">
               <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-white" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase text-blue-900">Inteligencia Terreno</h3>
               <p className="text-blue-800/70 text-sm leading-relaxed">
                 Utilizamos IA para resumir bitácoras técnicas extensas y convertir datos crudos en información estratégica para tus clientes, ahorrando horas de redacción.
               </p>
-            </div>
+            </Card>
           </div>
         </div>
       </section>
@@ -316,7 +317,7 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
+            <Card className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
               <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce">
                 <Zap className="h-6 w-6 text-black" />
               </div>
@@ -362,7 +363,7 @@ export default function HomePage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </section>
