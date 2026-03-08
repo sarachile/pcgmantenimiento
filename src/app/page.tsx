@@ -29,11 +29,17 @@ import {
   Layers,
   Sparkles,
   Activity,
-  Bell
+  Bell,
+  Thermometer,
+  Wind,
+  Wrench,
+  Construction,
+  Stethoscope,
+  Briefcase
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -55,6 +61,17 @@ export default function HomePage() {
       </div>
     );
   }
+
+  const applications = [
+    { title: "Mantención Industrial", icon: Wrench, color: "text-blue-600", bg: "bg-blue-50" },
+    { title: "Energía Solar / PV", icon: Sun, color: "text-amber-600", bg: "bg-amber-50" },
+    { title: "Ascensores y Elevación", icon: Layers, color: "text-slate-600", bg: "bg-slate-50" },
+    { title: "Climatización (HVAC)", icon: Wind, color: "text-cyan-600", bg: "bg-cyan-50" },
+    { title: "Construcción y Obras", icon: Construction, color: "text-orange-600", bg: "bg-orange-50" },
+    { title: "Servicios Post-Venta", icon: MessageSquareShare, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { title: "Equipos Médicos", icon: Stethoscope, color: "text-rose-600", bg: "bg-rose-50" },
+    { title: "Facility Management", icon: Building2, color: "text-indigo-600", bg: "bg-indigo-50" },
+  ];
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
@@ -136,6 +153,25 @@ export default function HomePage() {
             <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2">
               <a href="#solar">Ver Solución Solar</a>
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Áreas de Aplicación Section */}
+      <section className="py-16 bg-white overflow-hidden border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] mb-4">Sectores que confían en nuestra tecnología</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {applications.map((app, i) => (
+              <div key={i} className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-primary/20 hover:shadow-md transition-all group">
+                <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110", app.bg)}>
+                  <app.icon className={cn("h-5 w-5", app.color)} />
+                </div>
+                <span className="text-xs font-black uppercase tracking-tight text-slate-700">{app.title}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
