@@ -25,7 +25,9 @@ import {
   KeyRound, 
   Copy,
   Zap,
-  Lock
+  Lock,
+  Globe,
+  Code2
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -189,7 +191,7 @@ export default function CompanyProfilePage() {
         </Button>
         <div>
           <h2 className="text-3xl font-black tracking-tight italic">Mi Empresa</h2>
-          <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Identidad y Conectividad IoT</p>
+          <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Configuración Global y Ecosistema API</p>
         </div>
       </div>
 
@@ -228,34 +230,46 @@ export default function CompanyProfilePage() {
             </CardContent>
           </Card>
 
-          {/* SECCIÓN IOT / API - AHORA ABIERTA A BUSINESS */}
+          {/* SECCIÓN API GATEWAY - REDISEÑADA PARA SER INCLUSIVA */}
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-slate-900 text-white">
             <CardHeader className="bg-white/5 border-b border-white/10">
               <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-blue-400" /> Integración IoT
+                <Globe className="h-4 w-4 text-blue-400" /> API Gateway & Ecosistema
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               {hasApiAccess ? (
                 <div className="space-y-4">
-                  <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
-                    {company?.currentPlan === 'business' 
-                      ? "Conecta hasta 1 sistema externo o sensores PYME." 
-                      : "Usa esta llave para conectar tus sensores industriales ilimitados."}
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Conectividad Abierta</p>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Sincroniza PCGMANTENIMIENTO con tu ecosistema digital: 
+                    <strong> ERPs (SAP, Softland), Sistemas de RRHH, Software Contable</strong> o 
+                    <strong> Sensores IoT industriales</strong>.
                   </p>
+                  
                   {company?.apiKey ? (
-                    <div className="space-y-2">
-                      <div className="bg-white/10 p-3 rounded-xl border border-white/10 flex items-center justify-between gap-2 overflow-hidden">
-                        <code className="text-[10px] font-mono text-blue-300 truncate">{company.apiKey}</code>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10" onClick={() => copyToClipboard(company.apiKey!)}>
-                          <Copy className="h-3 w-3" />
-                        </Button>
+                    <div className="space-y-3 pt-2">
+                      <div className="bg-white/10 p-4 rounded-xl border border-white/10 space-y-2 overflow-hidden">
+                        <Label className="text-[9px] font-black uppercase text-blue-400 tracking-widest">Tu API Key Privada</Label>
+                        <div className="flex items-center justify-between gap-2">
+                          <code className="text-[10px] font-mono text-white truncate">{company.apiKey}</code>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10" onClick={() => copyToClipboard(company.apiKey!)}>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                      <Button variant="link" className="text-[9px] text-slate-500 p-0 h-auto uppercase font-black" onClick={handleGenerateApiKey}>Regenerar Llave</Button>
+                      <div className="flex flex-col gap-2">
+                        <Button variant="link" className="text-[9px] text-slate-500 p-0 h-auto uppercase font-black justify-start" onClick={handleGenerateApiKey}>
+                          Regenerar Llave de Acceso
+                        </Button>
+                        <Link href="/docs/api" className="text-[9px] text-blue-400 p-0 h-auto uppercase font-black flex items-center gap-1 hover:underline">
+                          <Code2 className="h-3 w-3" /> Ver Documentación Técnica
+                        </Link>
+                      </div>
                     </div>
                   ) : (
-                    <Button onClick={handleGenerateApiKey} className="w-full bg-blue-600 hover:bg-blue-500 font-black text-[10px] uppercase tracking-widest h-10 rounded-xl">
-                      Activar Gateway API
+                    <Button onClick={handleGenerateApiKey} className="w-full bg-blue-600 hover:bg-blue-500 font-black text-[10px] uppercase tracking-widest h-12 rounded-xl shadow-lg shadow-blue-900/40">
+                      Activar Gateway de Integración
                     </Button>
                   )}
                 </div>
@@ -263,10 +277,10 @@ export default function CompanyProfilePage() {
                 <div className="space-y-4 opacity-60">
                   <div className="flex items-center gap-2 text-amber-400">
                     <Lock className="h-3 w-3" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Requiere Plan Business</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">Requiere Plan Business o Superior</span>
                   </div>
                   <p className="text-[10px] text-slate-400 leading-relaxed italic">
-                    La automatización con sensores no está disponible en el Plan Simple.
+                    La interconexión con otros softwares y automatización industrial está reservada para planes de escala.
                   </p>
                   <Button asChild variant="outline" className="w-full border-white/20 text-white hover:bg-white/10 text-[9px] h-9 font-black uppercase tracking-widest">
                     <Link href="/subscription">Mejorar Plan</Link>
