@@ -58,7 +58,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
-        <div className="max-w-77xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-2">
               <div className="bg-primary p-2 rounded-lg">
@@ -70,8 +70,8 @@ export default function HomePage() {
             </div>
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
-              <a href="#solucion" className="hover:text-primary transition-colors">Solución</a>
               <a href="#plataforma" className="hover:text-primary transition-colors">La Plataforma</a>
+              <a href="#solucion" className="hover:text-primary transition-colors">Solución</a>
               <a href="#solar" className="hover:text-primary transition-colors">Energía Solar</a>
               <a href="#iot" className="hover:text-primary transition-colors">Ecosistema IoT</a>
               {isAuthenticated ? (
@@ -100,8 +100,8 @@ export default function HomePage() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden bg-white border-b p-4 space-y-4 flex flex-col animate-in slide-in-from-top-2">
-            <a href="#solucion" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Solución</a>
             <a href="#plataforma" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>La Plataforma</a>
+            <a href="#solucion" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Solución</a>
             <a href="#solar" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Energía Solar</a>
             <a href="#iot" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Ecosistema IoT</a>
             <hr />
@@ -138,7 +138,48 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Differentiation Section (PROMINENT POSITION) */}
+      {/* Platform Overview Description Section (MOVE TO TOP POSITION) */}
+      <section id="plataforma" className="py-32 bg-white relative overflow-hidden border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-20 space-y-6">
+            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 italic uppercase">
+              El Sistema Nervioso Central de tu <br />
+              <span className="text-primary">Ecosistema Industrial</span>
+            </h2>
+            <p className="text-xl text-slate-500 max-w-4xl mx-auto font-medium leading-relaxed">
+              PCGMANTENIMIENTO no es solo una App de tareas o una base de datos. Es un ecosistema híbrido que une la **movilidad del terreno** con la **inteligencia administrativa**, permitiendo que tu empresa escale sin perder el control de la calidad.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <div className="p-10 rounded-[3rem] bg-slate-900 text-white space-y-6 shadow-2xl relative group">
+              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Layers className="h-6 w-6 text-white" /></div>
+              <h3 className="text-2xl font-black italic tracking-tight uppercase">Unidad de Gestión</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Integramos personal, activos, clientes e inventario en un solo flujo. Desde que una falla es detectada hasta que se emite la factura legal, todo viaja de forma fluida y transparente.
+              </p>
+            </div>
+
+            <div className="p-10 rounded-[3rem] border-2 border-slate-100 bg-white space-y-6 hover:border-primary/20 transition-all">
+              <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Database className="h-6 w-6 text-primary" /></div>
+              <h3 className="text-2xl font-black italic tracking-tight uppercase">Base de Datos Viva</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                Cada foto, cada firma y cada nota técnica alimenta un histórico inalterable por activo. Cumple con normativas de auditoría y genera reportes de cumplimiento instantáneos.
+              </p>
+            </div>
+
+            <div className="p-10 rounded-[3rem] bg-blue-50 border-2 border-blue-100 space-y-6">
+              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-white" /></div>
+              <h3 className="text-2xl font-black italic tracking-tight uppercase text-blue-900">Inteligencia Terreno</h3>
+              <p className="text-blue-800/70 text-sm leading-relaxed">
+                Utilizamos IA para resumir bitácoras técnicas extensas y convertir datos crudos en información estratégica para tus clientes, ahorrando horas de redacción administrativa.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Differentiation Section */}
       <section id="solucion" className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -199,47 +240,6 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Platform Overview Description Section */}
-      <section id="plataforma" className="py-32 bg-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20 space-y-6">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 italic uppercase">
-              El Sistema Nervioso Central de tu <br />
-              <span className="text-primary">Ecosistema Industrial</span>
-            </h2>
-            <p className="text-xl text-slate-500 max-w-4xl mx-auto font-medium leading-relaxed">
-              PCGMANTENIMIENTO no es solo una App de tareas o una base de datos. Es un ecosistema híbrido que une la **movilidad del terreno** con la **inteligencia administrativa**, permitiendo que tu empresa escale sin perder el control de la calidad.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <div className="p-10 rounded-[3rem] bg-slate-900 text-white space-y-6 shadow-2xl relative group">
-              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Layers className="h-6 w-6 text-white" /></div>
-              <h3 className="text-2xl font-black italic tracking-tight uppercase">Unidad de Gestión</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Integramos personal, activos, clientes e inventario en un solo flujo. Desde que una falla es detectada hasta que se emite la factura legal, todo viaja de forma fluida y transparente.
-              </p>
-            </div>
-
-            <div className="p-10 rounded-[3rem] border-2 border-slate-100 bg-white space-y-6 hover:border-primary/20 transition-all">
-              <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Database className="h-6 w-6 text-primary" /></div>
-              <h3 className="text-2xl font-black italic tracking-tight uppercase">Base de Datos Viva</h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                Cada foto, cada firma y cada nota técnica alimenta un histórico inalterable por activo. Cumple con normativas de auditoría y genera reportes de cumplimiento instantáneos.
-              </p>
-            </div>
-
-            <div className="p-10 rounded-[3rem] bg-blue-50 border-2 border-blue-100 space-y-6">
-              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-white" /></div>
-              <h3 className="text-2xl font-black italic tracking-tight uppercase text-blue-900">Inteligencia Terreno</h3>
-              <p className="text-blue-800/70 text-sm leading-relaxed">
-                Utilizamos IA para resumir bitácoras técnicas extensas y convertir datos crudos en información estratégica para tus clientes, ahorrando horas de redacción administrativa.
-              </p>
             </div>
           </div>
         </div>
