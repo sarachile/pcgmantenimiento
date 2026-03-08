@@ -21,7 +21,7 @@ import {
   Smartphone,
   BarChart3,
   Search,
-  MessageSquareShare,
+  MessageSquare,
   Sun,
   Waves,
   Database,
@@ -69,13 +69,28 @@ export default function HomePage() {
     { title: "Ascensores y Elevación", icon: Layers, color: "text-slate-600", bg: "bg-slate-50" },
     { title: "Climatización (HVAC)", icon: Wind, color: "text-cyan-600", bg: "bg-cyan-50" },
     { title: "Construcción y Obras", icon: Construction, color: "text-orange-600", bg: "bg-orange-50" },
-    { title: "Servicios Post-Venta", icon: MessageSquareShare, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { title: "Servicios Post-Venta", icon: MessageSquare, color: "text-emerald-600", bg: "bg-emerald-50" },
     { title: "Equipos Médicos", icon: Stethoscope, color: "text-rose-600", bg: "bg-rose-50" },
     { title: "Facility Management", icon: Building2, color: "text-indigo-600", bg: "bg-indigo-50" },
   ];
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
+      <style jsx global>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          display: flex;
+          width: max-content;
+          animation: marquee 30s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -158,19 +173,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Áreas de Aplicación Section */}
-      <section className="py-16 bg-white overflow-hidden border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] mb-4">Sectores que confían en nuestra tecnología</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {applications.map((app, i) => (
-              <div key={i} className="flex items-center gap-3 p-4 rounded-2xl border border-slate-100 hover:border-primary/20 hover:shadow-md transition-all group">
-                <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110", app.bg)}>
-                  <app.icon className={cn("h-5 w-5", app.color)} />
+      {/* Áreas de Aplicación Section - ANIMATED MARQUEE */}
+      <section className="py-20 bg-slate-50/50 overflow-hidden border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 text-center">
+          <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.4em] mb-4">Industrias Digitalizadas</p>
+          <h3 className="text-2xl font-black italic tracking-tighter uppercase text-slate-900">Sectores que potencian su valor con nuestra tecnología</h3>
+        </div>
+        
+        <div className="relative flex overflow-x-hidden">
+          <div className="animate-marquee whitespace-nowrap flex py-4">
+            {[...applications, ...applications].map((app, i) => (
+              <div key={i} className="mx-4 flex items-center gap-6 p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 transition-all cursor-default">
+                <div className={cn("p-4 rounded-2xl", app.bg)}>
+                  <app.icon className={cn("h-8 w-8", app.color)} />
                 </div>
-                <span className="text-xs font-black uppercase tracking-tight text-slate-700">{app.title}</span>
+                <span className="text-lg font-black uppercase tracking-tighter text-slate-800 pr-4">{app.title}</span>
               </div>
             ))}
           </div>
@@ -451,7 +468,7 @@ export default function HomePage() {
               <span className="text-[10px] font-black uppercase">Auditable 100%</span>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <MessageSquareShare className="h-8 w-8" />
+              <MessageSquare className="h-8 w-8" />
               <span className="text-[10px] font-black uppercase">Feedback Directo</span>
             </div>
           </div>
