@@ -60,8 +60,8 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow get: if true;
       allow list: if isPlatformAdmin() || isSignedIn();
-      allow create: if isSignedIn(); 
-      allow update: if isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin'));
+      // Permitimos write si es creación (resource == null) o si cumple requisitos de admin/miembro
+      allow write: if isSignedIn() && (resource == null || isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin')));
       allow delete: if isPlatformAdmin();
 
       match /staff/{staffId} {
