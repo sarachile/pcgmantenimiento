@@ -60,7 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Asset, AssetStatus, IoTType } from "@/lib/types";
 
 export default function AssetsPage() {
-  const { profile, isLoading: isAuthLoading } = useUser();
+  const { profile, isLoading: isAuthLoading, isTechnician } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -213,9 +213,11 @@ export default function AssetsPage() {
           </div>
         </div>
         
-        <Button onClick={handleOpenCreate} className="font-bold shadow-lg gap-2">
-          <Plus className="h-4 w-4" /> Nuevo Activo
-        </Button>
+        {!isTechnician && (
+          <Button onClick={handleOpenCreate} className="font-bold shadow-lg gap-2">
+            <Plus className="h-4 w-4" /> Nuevo Activo
+          </Button>
+        )}
       </div>
 
       <Card className="border-none shadow-sm">
@@ -253,7 +255,7 @@ export default function AssetsPage() {
                   <TableHead className="font-black text-[10px] uppercase tracking-widest text-center">Modo</TableHead>
                   <TableHead className="font-black text-[10px] uppercase tracking-widest">Estado</TableHead>
                   <TableHead className="font-black text-[10px] uppercase tracking-widest">Última Mantención</TableHead>
-                  <TableHead className="text-right pr-6 font-black text-[10px] uppercase tracking-widest">Acciones</TableHead>
+                  {!isTechnician && <TableHead className="text-right pr-6 font-black text-[10px] uppercase tracking-widest">Acciones</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -301,40 +303,42 @@ export default function AssetsPage() {
                         {formatDate(asset.lastMaintenanceAt)}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <DropdownMenu modal={false}>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="rounded-xl">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent 
-                          align="end" 
-                          className="w-48 rounded-xl shadow-xl border-none"
-                        >
-                          <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">Gestión Activo</DropdownMenuLabel>
-                          <DropdownMenuItem 
-                            className="font-bold gap-2 cursor-pointer" 
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              handleEdit(asset);
-                            }}
+                    {!isTechnician && (
+                      <TableCell className="text-right pr-6">
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-xl">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent 
+                            align="end" 
+                            className="w-48 rounded-xl shadow-xl border-none"
                           >
-                            <Edit className="h-4 w-4 text-blue-600" /> Editar Datos
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="font-bold gap-2 text-rose-600 cursor-pointer" 
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              handleDelete(asset);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" /> Eliminar Activo
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">Gestión Activo</DropdownMenuLabel>
+                            <DropdownMenuItem 
+                              className="font-bold gap-2 cursor-pointer" 
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                handleEdit(asset);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 text-blue-600" /> Editar Datos
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="font-bold gap-2 text-rose-600 cursor-pointer" 
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                handleDelete(asset);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" /> Eliminar Activo
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -344,115 +348,117 @@ export default function AssetsPage() {
       </Card>
 
       {/* SINGLETON DIALOG: Aislado de la jerarquía de la tabla para evitar conflictos modal */}
-      <Dialog 
-        open={isDialogOpen} 
-        onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}
-      >
-        <DialogContent 
-          className="sm:max-w-[500px] rounded-[2.5rem]"
-          onCloseAutoFocus={(e) => e.preventDefault()}
+      {!isTechnician && (
+        <Dialog 
+          open={isDialogOpen} 
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}
         >
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black italic tracking-tight">
-              {editingAsset ? "Editar Activo" : "Registrar Nuevo Activo"}
-            </DialogTitle>
-            <DialogDescription>Defina las características técnicas del equipo.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Equipo</Label>
+          <DialogContent 
+            className="sm:max-w-[500px] rounded-[2.5rem]"
+            onCloseAutoFocus={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black italic tracking-tight">
+                {editingAsset ? "Editar Activo" : "Registrar Nuevo Activo"}
+              </DialogTitle>
+              <DialogDescription>Defina las características técnicas del equipo.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Equipo</Label>
+                  <Input 
+                    placeholder="Ej: Grupo Electrógeno 500kVA" 
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Código Interno</Label>
+                  <Input 
+                    placeholder="Ej: GE-001" 
+                    value={formData.code}
+                    onChange={(e) => setFormData({...formData, code: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Estado Inicial</Label>
+                  <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="activo">Operativo</SelectItem>
+                      <SelectItem value="inactivo">Fuera de Servicio</SelectItem>
+                      <SelectItem value="en mantenimiento">En Mantención</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Ubicación / Planta</Label>
                 <Input 
-                  placeholder="Ej: Grupo Electrógeno 500kVA" 
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  placeholder="Ej: Sala Técnica Piso -1" 
+                  value={formData.location}
+                  onChange={(e) => setFormData({...formData, location: e.target.value})}
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Código Interno</Label>
-                <Input 
-                  placeholder="Ej: GE-001" 
-                  value={formData.code}
-                  onChange={(e) => setFormData({...formData, code: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Estado Inicial</Label>
-                <Select value={formData.status} onValueChange={(v: any) => setFormData({...formData, status: v})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="activo">Operativo</SelectItem>
-                    <SelectItem value="inactivo">Fuera de Servicio</SelectItem>
-                    <SelectItem value="en mantenimiento">En Mantención</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">Ubicación / Planta</Label>
-              <Input 
-                placeholder="Ej: Sala Técnica Piso -1" 
-                value={formData.location}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Cpu className="h-5 w-5 text-blue-600" />
-                  <Label className="font-black text-sm uppercase tracking-tighter">Configuración IoT</Label>
-                </div>
-                <Switch checked={formData.isIoT} onCheckedChange={(v) => setFormData({...formData, isIoT: v})} />
-              </div>
-              
-              {formData.isIoT && (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                  <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase text-slate-400">Tipo de Sensor</Label>
-                    <Select value={formData.iotType} onValueChange={(v: any) => setFormData({...formData, iotType: v})}>
-                      <SelectTrigger className="h-10 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="solar">Solar (kW)</SelectItem>
-                        <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
-                        <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
-                        <SelectItem value="presion">Presión (Bar)</SelectItem>
-                        <SelectItem value="otro">Genérico</SelectItem>
-                      </SelectContent>
-                    </Select>
+              <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="h-5 w-5 text-blue-600" />
+                    <Label className="font-black text-sm uppercase tracking-tighter">Configuración IoT</Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase text-slate-400">Unidad Medida</Label>
-                    <Input 
-                      placeholder="Ej: kW, °C, Bar" 
-                      className="h-10 text-xs"
-                      value={formData.unit}
-                      onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                    />
-                  </div>
+                  <Switch checked={formData.isIoT} onCheckedChange={(v) => setFormData({...formData, isIoT: v})} />
                 </div>
-              )}
-            </div>
+                
+                {formData.isIoT && (
+                  <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400">Tipo de Sensor</Label>
+                      <Select value={formData.iotType} onValueChange={(v: any) => setFormData({...formData, iotType: v})}>
+                        <SelectTrigger className="h-10 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="solar">Solar (kW)</SelectItem>
+                          <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
+                          <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
+                          <SelectItem value="presion">Presión (Bar)</SelectItem>
+                          <SelectItem value="otro">Genérico</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400">Unidad Medida</Label>
+                      <Input 
+                        placeholder="Ej: kW, °C, Bar" 
+                        className="h-10 text-xs"
+                        value={formData.unit}
+                        onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
 
-            <DialogFooter className="pt-4">
-              <Button type="submit" className="w-full h-12 font-black uppercase tracking-widest shadow-xl">
-                {editingAsset ? "Guardar Cambios" : "Activar Activo en Sistema"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="w-full h-12 font-black uppercase tracking-widest shadow-xl">
+                  {editingAsset ? "Guardar Cambios" : "Activar Activo en Sistema"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
