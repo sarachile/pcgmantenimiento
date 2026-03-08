@@ -36,7 +36,9 @@ import {
   Construction,
   Stethoscope,
   Building2,
-  Briefcase
+  Briefcase,
+  Truck,
+  Bug
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +74,8 @@ export default function HomePage() {
     { title: "Servicios Post-Venta", icon: MessageSquare, color: "text-emerald-600", bg: "bg-emerald-50" },
     { title: "Equipos Médicos", icon: Stethoscope, color: "text-rose-600", bg: "bg-rose-50" },
     { title: "Facility Management", icon: Building2, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { title: "Mantención de Flota", icon: Truck, color: "text-purple-600", bg: "bg-purple-50" },
+    { title: "Control de Plagas", icon: Bug, color: "text-red-600", bg: "bg-red-50" },
   ];
 
   return (
