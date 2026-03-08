@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { initializeFirebase } from '@/firebase';
-import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, setDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 
 /**
  * @fileOverview Endpoint para la creación de OTs vía API/Sensores IoT.
@@ -24,8 +24,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan campos obligatorios: companyId, clientId, description' }, { status: 400 });
     }
 
-    // 1. Validar Empresa y Plan (Simulado: en un caso real buscaríamos el apiKey en la colección de empresas)
-    // Para el demo, permitimos si el companyId es válido
     const companyRef = doc(firestore, "companies", companyId);
     const companySnap = await getDoc(companyRef);
 
@@ -34,16 +32,18 @@ export async function POST(request: Request) {
     }
 
     const companyData = companySnap.data();
-    if (companyData.currentPlan !== 'enterprise') {
-      return NextResponse.json({ error: 'El acceso API requiere Plan Enterprise' }, { status: 403 });
+    if (companyData.currentPlan === 'simple') {
+      return NextResponse.json({ error: 'El acceso API requiere Plan Business o Superior' }, { status: 403 });
     }
 
-    // 2. Generar PIN de aprobación único
+    // GENERACIÓN DE ID CORTO PROFESIONAL
+    const shortId = `OT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
     const pin = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // 3. Crear la Orden de Trabajo con origen 'sensor' o 'api'
-    const otCol = collection(firestore, "companies", companyId, "workOrders");
-    const docRef = await addDoc(otCol, {
+    const otRef = doc(firestore, "companies", companyId, "workOrders", shortId);
+    
+    await setDoc(otRef, {
+      id: shortId,
       companyId,
       clientId,
       assetId: assetId || null,
@@ -58,10 +58,10 @@ export async function POST(request: Request) {
       updatedAt: serverTimestamp(),
     });
 
-    // 4. Registrar en Bitácora
-    const logCol = collection(firestore, "companies", companyId, "workOrders", docRef.id, "digitalLogbookEntries");
-    await addDoc(logCol, {
-      workOrderId: docRef.id,
+    // Registrar en Bitácora
+    const logCol = collection(firestore, "companies", companyId, "workOrders", shortId, "digitalLogbookEntries");
+    await setDoc(doc(logCol), {
+      workOrderId: shortId,
       companyId,
       timestamp: serverTimestamp(),
       eventType: 'system_alert',
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      workOrderId: docRef.id,
+      workOrderId: shortId,
       status: 'creada',
       message: 'Orden de trabajo generada exitosamente'
     });

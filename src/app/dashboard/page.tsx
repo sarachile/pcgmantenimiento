@@ -23,23 +23,23 @@ import {
   Sparkles,
   Smartphone,
   Share,
-  MoreVertical,
   PlusSquare,
   Timer,
   CreditCard,
   History,
-  ShieldCheck,
   Briefcase,
   Cpu,
-  Waves
+  Waves,
+  Calendar
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
-import { isBefore, parseISO, startOfDay, differenceInDays } from "date-fns";
-import { WorkOrder, Client, Company, StaffMember } from "@/lib/types";
+import { isBefore, parseISO, startOfDay, differenceInDays, format } from "date-fns";
+import { es } from "date-fns/locale";
+import { WorkOrder, Client, Company } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -54,7 +54,7 @@ import { usePlanLimits } from "@/hooks/use-plan-limits";
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin } = useUser();
   const limits = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
@@ -297,7 +297,12 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-          <CardHeader className="bg-slate-50 border-b p-8"><CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3"><History className="h-6 w-6 text-primary" /> Actividad Reciente</CardTitle></CardHeader>
+          <CardHeader className="bg-slate-50 border-b p-8">
+            <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+              <History className="h-6 w-6 text-primary" /> Actividad Reciente
+            </CardTitle>
+            <CardDescription className="font-bold text-xs uppercase text-slate-400 tracking-widest">Últimos movimientos en tu red de servicios.</CardDescription>
+          </CardHeader>
           <CardContent className="p-0">
             {recentOrders.length === 0 ? (
               <div className="py-32 text-center space-y-6">
@@ -308,14 +313,37 @@ export default function DashboardPage() {
               <div className="divide-y divide-slate-50">
                 {recentOrders.map((ot) => {
                   const client = clients?.find(c => c.id === ot.clientId);
+                  const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
                   return (
                     <Link key={ot.id} href={`/work-orders/${ot.id}`} className="block group">
                       <div className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shrink-0", ot.status === 'aprobada' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600")}>{ot.status === 'aprobada' ? <Trophy className="h-6 w-6" /> : <Clock className="h-6 w-6" />}</div>
-                          <div className="min-w-0"><p className="text-[10px] font-black uppercase text-slate-400 mb-0.5">{ot.id}</p><p className="font-black text-slate-900 truncate max-w-[200px]">{client?.name || '...'}</p></div>
+                        <div className="flex items-start gap-4 min-w-0">
+                          <div className={cn(
+                            "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 mt-1", 
+                            ot.status === 'aprobada' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+                          )}>
+                            {ot.status === 'aprobada' ? <Trophy className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-black text-primary italic tracking-tight">{ot.id}</span>
+                              <Badge variant="outline" className={cn(
+                                "text-[8px] font-black uppercase tracking-tighter h-4 px-1.5",
+                                ot.status === 'aprobada' ? "border-emerald-200 text-emerald-600" : "border-blue-200 text-blue-600"
+                              )}>
+                                {ot.status}
+                              </Badge>
+                            </div>
+                            <p className="font-black text-slate-900 truncate text-sm">{client?.name || '...'}</p>
+                            <p className="text-xs text-slate-500 line-clamp-1 italic mt-0.5">"{ot.description}"</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                <Calendar className="h-3 w-3" /> {format(date, "dd MMM, HH:mm", { locale: es })}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-slate-300" />
+                        <ChevronRight className="h-5 w-5 text-slate-300 group-hover:translate-x-1 transition-transform" />
                       </div>
                     </Link>
                   );

@@ -4,10 +4,9 @@
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { collection, addDoc, serverTimestamp, query, where, doc, getDoc } from "firebase/firestore";
+import { collection, serverTimestamp, query, where, doc, getDoc, setDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -22,19 +21,14 @@ import {
   ClipboardPlus, 
   Plus, 
   Users, 
-  Building2, 
   Search, 
-  Zap, 
-  ShieldCheck, 
   QrCode, 
   Star, 
-  Hash, 
   MapPin, 
   User, 
   Edit2, 
   Trash2,
   Info,
-  AlertTriangle,
   Lightbulb,
   Camera
 } from "lucide-react";
@@ -68,7 +62,6 @@ function NewWorkOrderContent() {
   const [staffSearch, setStaffSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
-  // AHORA INICIAN APAGADOS POR DEFECTO
   const [reviewerRequired, setReviewerRequired] = useState(false);
   const [evaluationRequired, setEvaluationRequired] = useState(false);
   
@@ -201,18 +194,22 @@ function NewWorkOrderContent() {
         toast({ title: "Orden Actualizada" });
         router.push(`/work-orders/${editId}`);
       } else {
-        const pin = Math.floor(100000 + Math.random() * 900000).toString();
-        const colRef = collection(db!, "companies", companyId, "workOrders");
-        const docRef = await addDoc(colRef, {
+        // GENERACIÓN DE ID CORTO Y PROFESIONAL
+        const shortId = `OT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        const docRef = doc(db!, "companies", companyId, "workOrders", shortId);
+        
+        await setDoc(docRef, {
           ...commonData,
+          id: shortId, // Guardar el ID explícitamente para mayor seguridad
           companyId,
           status: "creada",
           createdByUserId: profile.id,
-          approvalPin: pin,
+          approvalPin: Math.floor(100000 + Math.random() * 900000).toString(),
           createdAt: serverTimestamp(),
         });
+        
         toast({ title: "Orden Generada" });
-        router.push(`/work-orders/${docRef.id}`);
+        router.push(`/work-orders/${shortId}`);
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -384,7 +381,7 @@ function NewWorkOrderContent() {
           </CardContent>
         </Card>
 
-        {/* SECCIÓN 3: PROTOCOLOS - MEJORADA CON INSTRUCCIONES */}
+        {/* SECCIÓN 3: PROTOCOLOS */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className="bg-slate-900 text-white p-8">
             <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
@@ -429,7 +426,7 @@ function NewWorkOrderContent() {
           </CardContent>
         </Card>
 
-        {/* SECCIÓN 4: CIERRE Y VALIDACIÓN - MEJORADA CON ALERTAS */}
+        {/* SECCIÓN 4: CIERRE Y VALIDACIÓN */}
         <Card className={cn(
           "border-none shadow-xl rounded-[2.5rem] overflow-hidden transition-all duration-500",
           (reviewerRequired || evaluationRequired) ? "bg-indigo-50/50 ring-2 ring-indigo-500/20" : "bg-slate-50"
