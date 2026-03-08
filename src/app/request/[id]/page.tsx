@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect, useMemo, Suspense } from "react";
+import { use, useState, useEffect, useMemo, Suspense, useRef } from "react";
 import { 
   Card, 
   CardContent, 
@@ -26,26 +26,34 @@ import {
   ShieldCheck,
   Smartphone,
   MapPin,
-  User
+  User,
+  Camera,
+  Trash2,
+  Hash
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { initializeFirebase } from "@/firebase";
-import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { initializeFirebase, useStorage } from "@/firebase";
+import { doc, getDoc, collection, setDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Client, Company } from "@/lib/types";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { FirebaseImage } from "@/components/FirebaseImage";
 
 function PublicRequestContent({ params }: { params: { id: string } }) {
   const clientId = params.id;
   const searchParams = useSearchParams();
   const companyId = searchParams.get('c');
   const { toast } = useToast();
+  const storage = useStorage();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [client, setClient] = useState<Client | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setStep] = useState(false);
+  const [generatedTicket, setGeneratedTicket] = useState("");
 
   // Form State
   const [emailInput, setEmailInput] = useState("");
@@ -54,6 +62,8 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
   const [serviceLocation, setServiceLocation] = useState("");
   const [requestedByName, setRequestedByName] = useState("");
   const [urgency, setUrgency] = useState<'low' | 'medium' | 'high'>('medium');
+  const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { firestore } = useMemo(() => initializeFirebase(), []);
 
@@ -94,14 +104,39 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
     }
   };
 
+  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !companyId || !storage) return;
+
+    setIsUploading(true);
+    try {
+      const path = `companies/${companyId}/public_requests/temp_${Date.now()}_${file.name}`;
+      const sRef = ref(storage, path);
+      await uploadBytes(sRef, file);
+      const url = await getDownloadURL(sRef);
+      setEvidenceUrls(prev => [...prev, url]);
+      toast({ title: "Foto adjuntada" });
+    } catch (e: any) {
+      toast({ title: "Error al subir foto", description: e.message, variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyId || !clientId || !description.trim()) return;
 
     setIsSubmitting(true);
     try {
-      const colRef = collection(firestore, "companies", companyId, "workOrders");
-      await addDoc(colRef, {
+      const shortId = `OT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+      const docRef = doc(firestore, "companies", companyId, "workOrders", shortId);
+      
+      const pin = Math.floor(100000 + Math.random() * 900000).toString();
+
+      await setDoc(docRef, {
+        id: shortId,
         companyId,
         clientId,
         description: description.trim(),
@@ -112,12 +147,15 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
         requestedByEmail: emailInput,
         urgency,
         checklist: [],
+        evidenceUrls: evidenceUrls,
+        approvalPin: pin,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
+      setGeneratedTicket(shortId);
       setStep(true);
-      toast({ title: "Solicitud Recibida", description: "Su requerimiento ha sido ingresado al sistema de triage técnico." });
+      toast({ title: "Solicitud Recibida", description: `Ticket #${shortId} generado.` });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -131,13 +169,24 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
   if (success) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <Card className="max-w-md w-full p-10 text-center rounded-[2.5rem] shadow-2xl border-none animate-in zoom-in-95">
-          <div className="bg-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8">
+        <Card className="max-w-md w-full p-10 text-center rounded-[3rem] shadow-2xl border-none animate-in zoom-in-95 duration-500">
+          <div className="bg-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
             <CheckCircle2 className="h-12 w-12 text-emerald-600" />
           </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter uppercase italic">¡Recibido!</h2>
-          <p className="text-slate-500 font-bold mb-8 leading-relaxed">Su solicitud ha sido ingresada. La central de operaciones revisará su pedido y le asignará un técnico a la brevedad.</p>
-          <Button className="w-full h-14 rounded-2xl bg-slate-900 font-black uppercase tracking-widest" onClick={() => window.close()}>Cerrar Portal</Button>
+          <h2 className="text-3xl font-black text-slate-900 mb-2 tracking-tighter uppercase italic">¡Solicitud Exitosa!</h2>
+          <p className="text-slate-500 font-bold mb-8">Su requerimiento ha sido ingresado al sistema.</p>
+          
+          <div className="bg-slate-900 text-white p-8 rounded-[2rem] mb-10 space-y-2 relative overflow-hidden">
+            <div className="absolute right-0 top-0 p-4 opacity-10"><Hash className="h-20 w-20" /></div>
+            <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.3em]">Número de Ticket</p>
+            <p className="text-4xl font-black italic tracking-widest">{generatedTicket}</p>
+          </div>
+
+          <p className="text-xs text-slate-400 leading-relaxed mb-10 px-4">
+            Utilice este número para consultas telefónicas. Un técnico será asignado a la brevedad según la prioridad indicada.
+          </p>
+
+          <Button className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest shadow-xl" onClick={() => window.close()}>Finalizar y Cerrar</Button>
         </Card>
       </div>
     );
@@ -255,10 +304,39 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
                   </div>
                 </div>
 
+                <div className="space-y-4 pt-4">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 flex items-center gap-2">
+                    <Camera className="h-4 w-4" /> Adjuntar Evidencia (Opcional)
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {evidenceUrls.map((url, i) => (
+                      <div key={i} className="group relative aspect-video rounded-xl overflow-hidden border bg-slate-50">
+                        <FirebaseImage url={url} className="w-full h-full object-cover" />
+                        <button 
+                          type="button"
+                          className="absolute top-1 right-1 bg-rose-600 text-white p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => setEvidenceUrls(prev => prev.filter((_, idx) => idx !== i))}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    <button 
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="aspect-video rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 text-slate-400 hover:bg-slate-50 transition-colors"
+                    >
+                      {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Camera className="h-6 w-6" /><span className="text-[9px] font-black uppercase">Subir Foto</span></>}
+                    </button>
+                    <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleUploadPhoto} />
+                  </div>
+                </div>
+
                 <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 flex gap-4">
                   <Smartphone className="h-6 w-6 text-amber-600 shrink-0" />
                   <p className="text-xs font-bold text-amber-800 leading-relaxed italic">
-                    Nota: Al enviar, recibirá un número de seguimiento. Podrá adjuntar evidencias fotográficas una vez que el técnico sea asignado.
+                    Nota: Al enviar, se generará un número de ticket único para que pueda consultar el estado de su requerimiento por canales oficiales.
                   </p>
                 </div>
 
