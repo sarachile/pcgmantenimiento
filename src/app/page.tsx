@@ -134,6 +134,72 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Differentiation Section (UPGRADED POSITION) */}
+      <section id="solucion" className="py-24 bg-white border-y">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            {/* Left Column: Image */}
+            <div className="relative aspect-square md:aspect-video lg:aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200 bg-white p-2">
+              <div className="relative w-full h-full rounded-[2rem] overflow-hidden">
+                <Image 
+                  src="/imagen1.png" 
+                  alt="Gestión Operativa PCGMANTENIMIENTO" 
+                  fill 
+                  className="object-cover"
+                  data-ai-hint="industrial maintenance"
+                />
+              </div>
+            </div>
+
+            {/* Right Column: Content */}
+            <div className="space-y-10">
+              <div className="space-y-4">
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
+                  Trazabilidad blindada:<br />
+                  <span className="text-primary">Evidencia real que respalda tu marca.</span>
+                </h2>
+              </div>
+
+              <div className="space-y-6">
+                {[
+                  { icon: XCircle, title: "Fin del Caos", desc: "Dile adiós a los reportes en papel que se pierden, se mojan o nunca se actualizan." },
+                  { icon: History, title: "Certificación Inalterable", desc: "Marcas de tiempo y GPS de cada intervención para auditorías técnicas sin dudas." },
+                  { icon: Zap, title: "Informes al Instante", desc: "Genera el informe técnico PDF y el certificado de experiencia en un clic." }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-4 group">
+                    <div className="bg-slate-50 p-3 rounded-xl h-fit border group-hover:border-primary/30 transition-colors">
+                      <item.icon className="text-primary h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl mb-1 text-slate-900">{item.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-5">
+                  <ShieldCheck className="h-24 w-24" />
+                </div>
+                <h3 className="text-2xl font-black italic mb-2 text-slate-900">"Lo que no se registra, no existe"</h3>
+                <p className="text-slate-500 font-medium mb-8">Centraliza toda tu operación en una herramienta diseñada para el rigor del terreno y la confianza del cliente.</p>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-4xl font-black text-primary tracking-tighter">100%</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trazabilidad de Activos</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-4xl font-black text-primary tracking-tighter">0</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fugas de Información</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Special Solar Section */}
       <section id="solar" className="py-24 bg-slate-900 text-white overflow-hidden relative">
         <div className="absolute top-0 left-0 p-20 opacity-10"><Sun className="h-64 w-64 text-amber-400 animate-pulse" /></div>
@@ -237,71 +303,6 @@ export default function HomePage() {
                 Anticípate a las fallas. Recibe alertas en tu panel de control antes de que el equipo del cliente se detenga.
               </p>
             </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Differentiation Section */}
-      <section id="diferenciadores" className="py-24 bg-white border-y">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left Column: Image */}
-            <div className="relative aspect-square md:aspect-video lg:aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200 bg-white p-2">
-              <div className="relative w-full h-full rounded-[2rem] overflow-hidden">
-                <Image 
-                  src="/imagen1.png" 
-                  alt="Gestión Operativa PCGMANTENIMIENTO" 
-                  fill 
-                  className="object-cover"
-                />
-              </div>
-            </div>
-
-            {/* Right Column: Content */}
-            <div className="space-y-10">
-              <div className="space-y-4">
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
-                  Trazabilidad blindada:<br />
-                  <span className="text-primary">Evidencia real que respalda tu marca.</span>
-                </h2>
-              </div>
-
-              <div className="space-y-6">
-                {[
-                  { icon: XCircle, title: "Fin del Caos", desc: "Dile adiós a los reportes en papel que se pierden, se mojan o nunca se actualizan." },
-                  { icon: History, title: "Certificación Inalterable", desc: "Marcas de tiempo y GPS de cada intervención para auditorías técnicas sin dudas." },
-                  { icon: Zap, title: "Informes al Instante", desc: "Genera el informe técnico PDF y el certificado de experiencia en un clic." }
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-4 group">
-                    <div className="bg-slate-50 p-3 rounded-xl h-fit border group-hover:border-primary/30 transition-colors">
-                      <item.icon className="text-primary h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-xl mb-1 text-slate-900">{item.title}</h3>
-                      <p className="text-slate-600 leading-relaxed">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5">
-                  <ShieldCheck className="h-24 w-24" />
-                </div>
-                <h3 className="text-2xl font-black italic mb-2 text-slate-900">"Lo que no se registra, no existe"</h3>
-                <p className="text-slate-500 font-medium mb-8">Centraliza toda tu operación en una herramienta diseñada para el rigor del terreno y la confianza del cliente.</p>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <p className="text-4xl font-black text-primary tracking-tighter">100%</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trazabilidad de Activos</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-4xl font-black text-primary tracking-tighter">0</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fugas de Información</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
