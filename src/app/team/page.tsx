@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useMemo } from "react";
 import { 
   Table, 
   TableBody, 
@@ -46,6 +46,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Search, 
   UserPlus, 
@@ -67,7 +68,9 @@ import {
   Link2,
   Smartphone,
   CheckCircle2,
-  Clock
+  Clock,
+  Plus,
+  Shield
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -86,14 +89,23 @@ export default function TeamPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("staff");
+  
+  // UI States
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isTeamOpen, setIsTeamOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isProcessingBulk, setIsProcessingBulk] = useState(false);
   
+  // Editing States
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
 
+  // Form States
   const [formData, setFormData] = useState({ name: "", role: "Técnico", identification: "", phone: "", email: "" });
+  const [teamFormData, setTeamFormData] = useState({ name: "", leaderId: "", memberIds: [] as string[] });
 
+  // Queries
   const staffQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "staff") : null, [db, profile?.companyId]);
   const teamsQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "teams") : null, [db, profile?.companyId]);
 
@@ -104,6 +116,7 @@ export default function TeamPage() {
 
   const isAtLimit = !canAddTech && !editingStaff;
 
+  // --- STAFF HANDLERS ---
   const handleStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !profile?.companyId) return;
@@ -133,6 +146,46 @@ export default function TeamPage() {
     toast({ title: "Técnico eliminado" });
   };
 
+  // --- TEAM HANDLERS ---
+  const handleTeamSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !profile?.companyId) return;
+
+    const dataToSave = {
+      ...teamFormData,
+      companyId: profile.companyId,
+      createdAt: serverTimestamp()
+    };
+
+    if (editingTeam) {
+      updateDocumentNonBlocking(doc(db, "companies", profile.companyId, "teams", editingTeam.id), { ...dataToSave, updatedAt: serverTimestamp() });
+      toast({ title: "Cuadrilla actualizada" });
+    } else {
+      addDocumentNonBlocking(collection(db, "companies", profile.companyId, "teams"), dataToSave);
+      toast({ title: "Cuadrilla creada" });
+    }
+    setIsTeamOpen(false);
+    setEditingTeam(null);
+    setTeamFormData({ name: "", leaderId: "", memberIds: [] });
+  };
+
+  const handleEditTeam = (team: Team) => {
+    setEditingTeam(team);
+    setTeamFormData({
+      name: team.name,
+      leaderId: team.leaderId || "",
+      memberIds: team.memberIds || []
+    });
+    setIsTeamOpen(true);
+  };
+
+  const handleDeleteTeam = (team: Team) => {
+    if (!db || !profile?.companyId) return;
+    deleteDocumentNonBlocking(doc(db, "companies", profile.companyId, "teams", team.id));
+    toast({ title: "Cuadrilla eliminada" });
+  };
+
+  // --- UTILS ---
   const getInvitationLink = (staffId: string) => {
     if (typeof window === "undefined" || !profile?.companyId) return "";
     return `${window.location.origin}/staff/setup/${staffId}?c=${profile.companyId}`;
@@ -203,15 +256,21 @@ export default function TeamPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="staff" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <TabsList className="bg-white p-1 rounded-2xl h-14 border shadow-sm">
             <TabsTrigger value="staff" className="rounded-xl px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">Personal Técnico</TabsTrigger>
             <TabsTrigger value="teams" className="rounded-xl px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">Cuadrillas</TabsTrigger>
           </TabsList>
           <div className="flex gap-2">
-            <Button variant="outline" className="rounded-xl h-12 border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 font-bold" onClick={() => setIsBulkOpen(true)}><FileUp className="h-4 w-4 mr-2" /> Carga Excel</Button>
-            <Button className="rounded-xl h-12 px-6 font-black gap-2 shadow-lg" onClick={() => setIsCreateOpen(true)} disabled={isAtLimit}><UserPlus className="h-5 w-5" /> Nuevo Registro</Button>
+            {activeTab === 'staff' ? (
+              <>
+                <Button variant="outline" className="rounded-xl h-12 border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 font-bold" onClick={() => setIsBulkOpen(true)}><FileUp className="h-4 w-4 mr-2" /> Carga Excel</Button>
+                <Button className="rounded-xl h-12 px-6 font-black gap-2 shadow-lg" onClick={() => setIsCreateOpen(true)} disabled={isAtLimit}><UserPlus className="h-5 w-5" /> Nuevo Registro</Button>
+              </>
+            ) : (
+              <Button className="rounded-xl h-12 px-6 font-black gap-2 shadow-lg" onClick={() => setIsTeamOpen(true)}><Plus className="h-5 w-5" /> Nueva Cuadrilla</Button>
+            )}
           </div>
         </div>
 
@@ -296,9 +355,75 @@ export default function TeamPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        <TabsContent value="teams">
+          <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+            <CardHeader className="bg-white border-b p-8">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900">Cuadrillas Operativas</h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Equipos de trabajo consolidados</p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-slate-50/50">
+                  <TableRow className="border-none">
+                    <TableHead className="pl-10 h-14 font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Nombre de Cuadrilla</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Miembros</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Líder Asignado</TableHead>
+                    <TableHead className="text-right pr-10 font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {isTeamsLoading ? (
+                    <TableRow><TableCell colSpan={4} className="py-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary/20" /></TableCell></TableRow>
+                  ) : !teams || teams.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="py-24 text-center space-y-4">
+                      <div className="bg-slate-50 p-6 rounded-full w-fit mx-auto opacity-50"><Users2 className="h-12 w-12 text-slate-300" /></div>
+                      <p className="font-black italic uppercase text-slate-400">Sin cuadrillas configuradas.</p>
+                      <Button variant="outline" className="rounded-xl font-black" onClick={() => setIsTeamOpen(true)}>Crear mi primera cuadrilla</Button>
+                    </TableCell></TableRow>
+                  ) : (
+                    teams.map((t) => (
+                      <TableRow key={t.id} className="hover:bg-slate-50 transition-colors group">
+                        <TableCell className="pl-10 py-6">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-blue-50 p-3 rounded-2xl group-hover:bg-blue-100 transition-colors"><Users2 className="h-6 w-6 text-blue-600" /></div>
+                            <span className="font-black text-slate-900 uppercase italic tracking-tight">{t.name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-slate-100 text-slate-600 border-none font-black text-[9px] uppercase tracking-widest px-3 h-6">
+                            {t.memberIds?.length || 0} TÉCNICOS
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Shield className="h-3.5 w-3.5 text-amber-500" />
+                            <span className="text-xs font-bold text-slate-600">
+                              {staffMembers?.find(s => s.id === t.leaderId)?.name || "Sin líder asignado"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-10">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-100" onClick={() => handleEditTeam(t)}><Edit className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl text-rose-500 hover:bg-rose-50" onClick={() => handleDeleteTeam(t)}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
-      {/* DIÁLOGO REGISTRO */}
+      {/* DIÁLOGO REGISTRO TÉCNICO */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if(!open) setEditingStaff(null); }}>
         <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
           <DialogHeader><DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">{editingStaff ? "Editar Técnico" : "Registrar Personal"}</DialogTitle><DialogDescription className="font-medium">Defina los datos básicos para generar el acceso técnico.</DialogDescription></DialogHeader>
@@ -313,6 +438,76 @@ export default function TeamPage() {
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-12 border-2 rounded-xl" placeholder="personal@gmail.com" /></div>
             </div>
             <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">Guardar en Base de Datos</Button></DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO CUADRILLA */}
+      <Dialog open={isTeamOpen} onOpenChange={(open) => { setIsTeamOpen(open); if(!open) setEditingTeam(null); }}>
+        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">
+              {editingTeam ? "Editar Cuadrilla" : "Configurar Cuadrilla"}
+            </DialogTitle>
+            <DialogDescription className="font-medium">Defina el nombre y los miembros permanentes del equipo.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleTeamSubmit} className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre del Equipo</Label>
+              <Input 
+                placeholder="Ej: Cuadrilla Solar Norte" 
+                value={teamFormData.name} 
+                onChange={(e) => setTeamFormData({...teamFormData, name: e.target.value})} 
+                className="h-12 border-2 rounded-xl font-bold uppercase" 
+                required 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Líder de Cuadrilla (Opcional)</Label>
+              <Select value={teamFormData.leaderId} onValueChange={(v) => setTeamFormData({...teamFormData, leaderId: v})}>
+                <SelectTrigger className="h-12 border-2 rounded-xl">
+                  <SelectValue placeholder="Seleccione un responsable..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffMembers?.map(s => <SelectItem key={s.id} value={s.id}>{s.name} ({s.role})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Integrantes del Equipo</Label>
+              <Card className="border-2 rounded-2xl overflow-hidden bg-slate-50/50">
+                <ScrollArea className="h-[200px] p-4">
+                  <div className="space-y-3">
+                    {staffMembers?.map(s => (
+                      <div key={s.id} className="flex items-center space-x-3">
+                        <Checkbox 
+                          id={`member-${s.id}`} 
+                          checked={teamFormData.memberIds.includes(s.id)}
+                          onCheckedChange={(checked) => {
+                            const next = checked 
+                              ? [...teamFormData.memberIds, s.id]
+                              : teamFormData.memberIds.filter(id => id !== s.id);
+                            setTeamFormData({...teamFormData, memberIds: next});
+                          }}
+                        />
+                        <label htmlFor={`member-${s.id}`} className="text-xs font-bold text-slate-700 cursor-pointer">{s.name} <span className="text-[9px] font-black text-slate-400 uppercase">({s.role})</span></label>
+                      </div>
+                    ))}
+                    {(!staffMembers || staffMembers.length === 0) && (
+                      <p className="text-[10px] text-center text-slate-400 py-10 italic">Debe registrar técnicos antes de crear cuadrillas.</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </Card>
+            </div>
+
+            <DialogFooter className="pt-4">
+              <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">
+                {editingTeam ? "Actualizar Cuadrilla" : "Activar Cuadrilla en Sistema"}
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
