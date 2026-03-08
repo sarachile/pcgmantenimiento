@@ -1,15 +1,15 @@
-
 import { PlanType } from "./types";
 
 /**
  * @fileOverview Definición maestra de límites y funcionalidades por plan.
- * Esta es la "Fuente de Verdad" para la lógica de negocio.
+ * Se implementa la estrategia de "Valor por Rol": Administradores (Gestión) vs Técnicos (Ejecución).
  */
 
 export interface PlanConfig {
   id: PlanType;
   name: string;
-  maxTechnicians: number;
+  maxAdmins: number;      // Administradores / Supervisores
+  maxTechnicians: number; // Personal en terreno
   maxClients: number;
   maxMonthlyOrders: number;
   storageLimitMb: number;
@@ -19,14 +19,15 @@ export interface PlanConfig {
     genkitAI: boolean;
     multiBranch: boolean;
     customChecklists: boolean;
-    electronicBilling: boolean; // Nuevo: Facturación DTE
+    electronicBilling: boolean;
   };
 }
 
 export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   simple: {
     id: 'simple',
-    name: 'Plan Simple',
+    name: 'Plan Simple (Inicio)',
+    maxAdmins: 1,
     maxTechnicians: 2,
     maxClients: 5,
     maxMonthlyOrders: 30,
@@ -42,9 +43,10 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   },
   business: {
     id: 'business',
-    name: 'Plan Business',
-    maxTechnicians: 10,
-    maxClients: 25,
+    name: 'Plan Business (Escala)',
+    maxAdmins: 3,
+    maxTechnicians: 15,
+    maxClients: 50,
     maxMonthlyOrders: 200,
     storageLimitMb: 5000,
     features: {
@@ -58,9 +60,10 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   },
   enterprise: {
     id: 'enterprise',
-    name: 'Plan Enterprise',
-    maxTechnicians: 100,
-    maxClients: 1000,
+    name: 'Plan Enterprise (Poder)',
+    maxAdmins: 10,
+    maxTechnicians: 50,
+    maxClients: 200,
     maxMonthlyOrders: 5000,
     storageLimitMb: 50000,
     features: {
