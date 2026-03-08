@@ -170,8 +170,8 @@ export default function DashboardPage() {
       <div className="space-y-8 pb-32">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
-            <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Mi Trabajo</h2>
-            <p className="text-muted-foreground font-medium">Bienvenido, {profile?.name}.</p>
+            <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Hola, {profile?.name?.split(' ')[0]}</h2>
+            <p className="text-muted-foreground font-medium">Esta es tu hoja de ruta para hoy en {company?.name}.</p>
           </div>
           <Dialog>
             <DialogTrigger asChild>
@@ -198,7 +198,12 @@ export default function DashboardPage() {
         </div>
 
         <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white max-w-4xl">
-          <CardHeader className="bg-slate-50/50 p-6 border-b"><CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2"><ClipboardList className="h-4 w-4 text-primary" /> Mi Hoja de Ruta</CardTitle></CardHeader>
+          <CardHeader className="bg-slate-50/50 p-6 border-b">
+            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-primary" /> Mi Hoja de Ruta
+            </CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Trabajos asignados pendientes de ejecución</CardDescription>
+          </CardHeader>
           <CardContent className="p-0">
             {recentOrders.length === 0 ? (
               <div className="py-20 text-center space-y-4">
@@ -246,8 +251,8 @@ export default function DashboardPage() {
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Panel de Gestión</h2>
-          <p className="text-muted-foreground font-medium">Empresa: {company?.name}</p>
+          <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Hola, {profile?.name?.split(' ')[0]}</h2>
+          <p className="text-muted-foreground font-medium">Resumen operativo de {company?.name}.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button asChild variant="outline" className="h-11 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50"><Link href="/clients"><Building2 className="mr-2 h-4 w-4" /> Clientes</Link></Button>
@@ -262,9 +267,12 @@ export default function DashboardPage() {
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden border-l-[12px] border-rose-500 animate-in slide-in-from-left-4">
             <CardHeader className="bg-rose-50/50 p-6 border-b">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-rose-700">
-                  <BellRing className="h-4 w-4" /> Alertas Operativas OT
-                </CardTitle>
+                <div className="space-y-1">
+                  <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-rose-700">
+                    <BellRing className="h-4 w-4" /> Alertas Operativas OT
+                  </CardTitle>
+                  <CardDescription className="text-[10px] font-bold text-rose-600 uppercase">Órdenes que requieren gestión urgente</CardDescription>
+                </div>
                 <Badge className="bg-rose-600 text-white font-black text-[10px]">{stats.alertCount}</Badge>
               </div>
             </CardHeader>
@@ -303,9 +311,12 @@ export default function DashboardPage() {
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden transition-all group-hover:scale-[1.01] border-l-[12px] border-amber-400">
               <CardHeader className="bg-white/10 p-6 border-b border-white/10">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                    <Cpu className="h-4 w-4" /> Alertas de Planta IoT
-                  </CardTitle>
+                  <div className="space-y-1">
+                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                      <Cpu className="h-4 w-4" /> Alertas de Planta IoT
+                    </CardTitle>
+                    <CardDescription className="text-[10px] font-bold text-blue-200 uppercase">Activos con parámetros fuera de rango</CardDescription>
+                  </div>
                   <Badge className="bg-amber-400 text-slate-900 font-black text-[10px]">{iotStats.maintenanceCount}</Badge>
                 </div>
               </CardHeader>
@@ -338,6 +349,7 @@ export default function DashboardPage() {
             <div className="p-10 space-y-6 bg-blue-600/10 border-r border-white/5">
               <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40"><Zap className="h-6 w-6 text-white fill-white" /></div>
               <h3 className="text-2xl font-black tracking-tighter italic uppercase leading-none">Guía de <br />Activación</h3>
+              <p className="text-xs text-slate-400 font-bold uppercase">Pasos críticos para configurar tu entorno</p>
               <Progress value={(onboardingSteps.filter(s => s.completed).length / 4) * 100} className="h-2 bg-white/10" />
             </div>
             <div className="md:col-span-2 p-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -356,13 +368,19 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Total Órdenes", value: stats.total, icon: ClipboardList, color: "bg-blue-600" },
-          { label: "En Ejecución", value: stats.active, icon: Activity, color: "bg-indigo-600" },
-          { label: "Finalizadas", value: stats.completed, icon: Trophy, color: "bg-emerald-600" },
-          { label: "Alertas Críticas", value: stats.alertCount, icon: AlertTriangle, color: "bg-rose-600" }
+          { label: "Total Órdenes", desc: "Histórico acumulado", value: stats.total, icon: ClipboardList, color: "bg-blue-600" },
+          { label: "En Ejecución", desc: "Trabajos en curso", value: stats.active, icon: Activity, color: "bg-indigo-600" },
+          { label: "Finalizadas", desc: "OTs cerradas con éxito", value: stats.completed, icon: Trophy, color: "bg-emerald-600" },
+          { label: "Alertas Críticas", desc: "Atención inmediata", value: stats.alertCount, icon: AlertTriangle, color: "bg-rose-600" }
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm rounded-3xl overflow-hidden group hover:shadow-md transition-all">
-            <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{stat.label}</CardTitle><div className={cn("p-2 rounded-xl", stat.color)}><stat.icon className="h-4 w-4 text-white" /></div></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div className="space-y-1">
+                <CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{stat.label}</CardTitle>
+                <CardDescription className="text-[8px] font-bold uppercase text-slate-300">{stat.desc}</CardDescription>
+              </div>
+              <div className={cn("p-2 rounded-xl", stat.color)}><stat.icon className="h-4 w-4 text-white" /></div>
+            </CardHeader>
             <CardContent><div className="text-4xl font-black text-slate-900 tracking-tighter">{stat.value}</div></CardContent>
           </Card>
         ))}
@@ -371,10 +389,12 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-50 border-b p-8">
-            <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <History className="h-6 w-6 text-primary" /> Actividad Reciente
-            </CardTitle>
-            <CardDescription className="font-bold text-xs uppercase text-slate-400 tracking-widest">Últimos movimientos en tu red de servicios.</CardDescription>
+            <div className="space-y-1">
+              <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+                <History className="h-6 w-6 text-primary" /> Actividad Reciente
+              </CardTitle>
+              <CardDescription className="font-bold text-xs uppercase text-slate-400 tracking-widest">Últimos movimientos detectados en tu red de servicios</CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {recentOrders.length === 0 ? (
@@ -429,10 +449,12 @@ export default function DashboardPage() {
         <Card className="col-span-3 border-none shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden relative">
           <div className="absolute -right-10 -bottom-10 opacity-10"><Zap className="h-48 w-48 text-blue-400" /></div>
           <CardHeader className="border-b border-white/5 p-8">
-            <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <Sparkles className="h-6 w-6 text-blue-400" /> Plan {company?.currentPlan?.toUpperCase()}
-            </CardTitle>
-            <CardDescription className="text-slate-400 text-xs font-bold uppercase tracking-widest">Capacidad Híbrida del Entorno</CardDescription>
+            <div className="space-y-1">
+              <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+                <Sparkles className="h-6 w-6 text-blue-400" /> Plan {company?.currentPlan?.toUpperCase()}
+              </CardTitle>
+              <CardDescription className="text-slate-400 text-xs font-bold uppercase tracking-widest">Capacidad y límites de tu infraestructura digital</CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="p-8 space-y-10">
             {/* USO DE ADMINISTRADORES */}
@@ -454,7 +476,7 @@ export default function DashboardPage() {
                   <p className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><HardHat className="h-3 w-3 text-emerald-400" /> Ejecución Terreno</p>
                   <p className="text-3xl font-black italic tracking-tighter">{limits.techCount} / {limits.maxTechs}</p>
                 </div>
-                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Personal Operativo</span>
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Técnicos de Campo</span>
               </div>
               <Progress value={(limits.techCount / limits.maxTechs) * 100} className="h-1.5 bg-white/10" />
             </div>
@@ -474,7 +496,7 @@ export default function DashboardPage() {
             <div className="pt-6 border-t border-white/5">
               <div className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-4">
                 <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                  Este modelo separa el valor estratégico de la oficina del valor operativo en campo. Escala tu flota de técnicos y sensores sin perder el control central.
+                  Escala tu flota de técnicos y sensores sin perder el control centralizado de tu operación.
                 </p>
                 <Button asChild variant="outline" className="w-full h-11 rounded-xl border-white/10 bg-transparent text-white hover:bg-white/10 font-bold uppercase text-[10px] tracking-widest">
                   <Link href="/subscription">Gestionar Suscripción</Link>
