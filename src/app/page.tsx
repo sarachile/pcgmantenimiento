@@ -80,21 +80,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
-      <style jsx global>{`
-        @keyframes marquee {
-          0 { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquee {
-          display: flex;
-          width: max-content;
-          animation: marquee 30s linear infinite;
-        }
-        .animate-marquee:hover {
-          animation-play-state: paused;
-        }
-      `}</style>
-
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -185,7 +170,7 @@ export default function HomePage() {
         </div>
         
         <div className="relative flex overflow-x-hidden">
-          <div className="animate-marquee whitespace-nowrap flex py-4">
+          <div className="animate-marquee hover:[animation-play-state:paused] whitespace-nowrap flex py-4">
             {[...applications, ...applications].map((app, i) => (
               <div key={i} className="mx-4 flex items-center gap-6 p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 transition-all cursor-default">
                 <div className={cn("p-4 rounded-2xl", app.bg)}>
