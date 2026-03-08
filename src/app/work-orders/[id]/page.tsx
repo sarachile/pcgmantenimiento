@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -466,7 +465,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <>
                   <input type="file" className="hidden" ref={fileInputRef} onChange={handleUploadPhoto} accept="image/*" />
                   <Button size="sm" variant="outline" className="rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                    {isUploading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <><} Añadir Foto</>}
+                    {isUploading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <><Camera className="h-4 w-4 mr-2" /> Añadir Foto</>}
                   </Button>
                 </>
               )}
@@ -511,7 +510,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       eventType: 'comment', 
                       eventDetails: manualComment, 
                       actor: profile.id,
-                      actorName: profile.name // Persistiendo el nombre del autor
+                      actorName: profile.name 
                     });
                     setManualComment("");
                     toast({ title: "Bitácora actualizada" });
