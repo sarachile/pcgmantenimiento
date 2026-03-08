@@ -32,7 +32,8 @@ import {
   Send,
   AlertTriangle,
   CloudUpload,
-  Check
+  Check,
+  Save
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +54,7 @@ export default function FieldCapturePage() {
   const [logComment, setLogComment] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Consultar OTs activas (no aprobadas)
   const workOrdersQuery = useMemoFirebase(() => {
@@ -89,6 +91,30 @@ export default function FieldCapturePage() {
       );
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
+
+  const handleManualSave = async () => {
+    if (!selectedOT || !db || !profile?.companyId) return;
+    
+    setIsSaving(true);
+    // Si hay un comentario, lo guardamos en la bitácora
+    if (logComment.trim()) {
+      await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
+        workOrderId: selectedOT.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'comment',
+        eventDetails: logComment,
+        actor: profile.id
+      });
+      setLogComment("");
+    }
+
+    toast({
+      title: "Avance Guardado",
+      description: "Su progreso ha sido sincronizado correctamente.",
+    });
+    setIsSaving(false);
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -335,8 +361,19 @@ export default function FieldCapturePage() {
                   </div>
                 </div>
 
-                {/* CIERRE TÉCNICO */}
+                {/* ACCIONES DE GUARDADO PARCIAL Y CIERRE */}
                 <div className="pt-8 border-t-2 border-dashed space-y-4">
+                  <div className="flex gap-3">
+                    <Button 
+                      variant="outline"
+                      className="flex-1 h-16 rounded-2xl border-2 border-slate-200 font-black uppercase text-xs tracking-widest gap-2 bg-white"
+                      onClick={handleManualSave}
+                      disabled={isSaving || isUploading || isFinalizing}
+                    >
+                      {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <><Save className="h-4 w-4" /> Guardar Avance</>}
+                    </Button>
+                  </div>
+
                   <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex gap-3">
                     <Fingerprint className="h-6 w-6 text-blue-600 shrink-0" />
                     <div>
@@ -350,9 +387,9 @@ export default function FieldCapturePage() {
                   <Button 
                     className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest gap-2 shadow-2xl"
                     onClick={handleFinalizeWork}
-                    disabled={isFinalizing || isUploading}
+                    disabled={isFinalizing || isUploading || isSaving}
                   >
-                    {isFinalizing ? <Loader2 className="animate-spin h-4 w-4" /> : <><Send className="h-4 w-4" /> Finalizar y Enviar a Revisión</>}
+                    {isFinalizing ? <Loader2 className="animate-spin h-4 w-4" /> : <><Send className="h-4 w-4" /> Finalizar y Enviar</>}
                   </Button>
                 </div>
               </CardContent>

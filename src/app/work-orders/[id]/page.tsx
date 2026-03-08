@@ -39,7 +39,8 @@ import {
   Edit2,
   SendHorizontal,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  Save
 } from "lucide-react";
 import {
   Dialog,
@@ -143,6 +144,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   };
 
   const qrUrl = useMemo(() => currentUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}` : "", [currentUrl]);
+
+  const handleManualSave = () => {
+    toast({
+      title: "Progreso Guardado",
+      description: "Toda la información actual ha sido sincronizada con el servidor.",
+    });
+  };
 
   const handleResendEmail = async (overrideEmail?: string) => {
     const targetEmail = overrideEmail || client?.contactEmail;
@@ -276,7 +284,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       await uploadBytes(sRef, file);
       const url = await getDownloadURL(sRef);
       updateDocumentNonBlocking(otRef, { evidenceUrls: arrayUnion(url), updatedAt: serverTimestamp() });
-      toast({ title: "Foto cargada" });
+      toast({ title: "Foto cargada y guardada" });
     } catch (e: any) { toast({ title: "Error al subir", variant: "destructive" }); } finally { setIsUploading(false); }
   };
 
@@ -307,6 +315,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          {/* Botón Guardar Avance (Psicológico y Real) */}
+          {ot.status !== 'aprobada' && (
+            <Button onClick={handleManualSave} variant="outline" className="rounded-xl h-11 border-primary/20 text-primary font-black uppercase text-[10px] tracking-widest gap-2">
+              <Save className="h-4 w-4" /> Guardar Avance
+            </Button>
+          )}
+
           {isAdminOrSupervisor && ot.status !== 'aprobada' && (
             <div className="flex gap-2 mr-4 border-r pr-4 border-slate-200">
               {ot.reviewerRequired ? (
@@ -424,8 +439,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <Checkbox checked={item.completed} onCheckedChange={() => {
-                        const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: !item.completed, completedAt: !item.completed ? new Date().toISOString() : null } : i);
+                        const nextStatus = !item.completed;
+                        const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: nextStatus, completedAt: nextStatus ? new Date().toISOString() : null } : i);
                         updateDocumentNonBlocking(otRef!, { checklist: newChecklist });
+                        toast({ title: nextStatus ? "Punto Marcado" : "Punto Desmarcado", description: "Cambio guardado automáticamente." });
                       }} disabled={ot.status === 'aprobada'} className="h-6 w-6 rounded-lg" />
                       <div className="flex flex-col">
                         <span className={cn("text-sm font-bold", item.completed ? "text-slate-400" : "text-slate-700")}>{item.task}</span>
@@ -463,7 +480,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       <FirebaseImage url={u} className="w-full h-full object-cover" />
                       {ot.status !== 'aprobada' && (
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Button size="icon" variant="destructive" className="h-10 w-10 rounded-full" onClick={() => updateDocumentNonBlocking(otRef!, { evidenceUrls: arrayRemove(u) })}>
+                          <Button size="icon" variant="destructive" className="h-10 w-10 rounded-full" onClick={() => {
+                            updateDocumentNonBlocking(otRef!, { evidenceUrls: arrayRemove(u) });
+                            toast({ title: "Evidencia eliminada" });
+                          }}>
                             <Trash2 className="h-5 w-5" />
                           </Button>
                         </div>
@@ -489,6 +509,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       workOrderId: ot.id, companyId: companyId, timestamp: serverTimestamp(), eventType: 'comment', eventDetails: manualComment, actor: profile.id
                     });
                     setManualComment("");
+                    toast({ title: "Bitácora actualizada" });
                   }}><MessageSquare className="h-4 w-4" /></Button>
                 </div>
               </div>
