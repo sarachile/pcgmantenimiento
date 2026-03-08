@@ -4,7 +4,12 @@ Plataforma de gestión industrial con trazabilidad inalterable e integración Io
 
 ## 🚀 Guía de Configuración DNS (Squarespace / Firebase)
 
-Para que tu dominio `pcgmantenimiento.com` funcione correctamente, debes seguir este orden exacto:
+Para que tu dominio `pcgmantenimiento.com` funcione correctamente, debes seguir este orden exacto.
+
+### ⚠️ REGLA DE ORO EN SQUARESPACE
+**NUNCA** escribas `pcgmantenimiento.com` en el campo **HOST**. Squarespace lo añade automáticamente. 
+- Si escribes `pcgmantenimiento.com` en el host, internet verá `pcgmantenimiento.com.pcgmantenimiento.com` y **FALLARÁ**.
+- Usa siempre `@` para referirte al dominio principal.
 
 ### Paso 1: Configuración en Firebase Console
 1. Ve a la **Consola de Firebase** > **App Hosting**.
@@ -13,52 +18,43 @@ Para que tu dominio `pcgmantenimiento.com` funcione correctamente, debes seguir 
 4. Firebase te entregará los valores para los registros **A**, **TXT (fah-claim)** y **CNAME (_acme-challenge)**.
 
 ### Paso 2: Configuración en Squarespace (Custom Records)
-Agrega estos registros en la sección **"Custom Records"** de Squarespace usando los valores que te dio Firebase:
+Agrega estos registros en la sección **"Custom Records"** de Squarespace. **Copia exactamente el campo Host**:
 
 | Tipo | Host | Datos / Valor | Nota |
 | :--- | :--- | :--- | :--- |
 | **A** | `@` | `35.219.200.7` | Apunta el dominio raíz a Google. |
-| **CNAME** | `www` | `@` | Hace que www.pcgmantenimiento.com use la misma IP. |
+| **CNAME** | `www` | `@` | Hace que www use la misma configuración. |
 | **TXT** | `@` | (Código `fah-claim`) | Valida que eres el dueño del dominio. |
-| **CNAME** | `_acme-challenge` | (Código SSL de Firebase) | Valida el certificado para el dominio SIN www. |
-| **CNAME** | `_acme-challenge.www` | (Código SSL de Firebase) | Valida el certificado para el dominio CON www. |
+| **CNAME** | `_acme-challenge` | (Valor de Firebase) | Valida SSL para el dominio raíz. |
+| **CNAME** | `_acme-challenge.www` | (Valor de Firebase) | Valida SSL para la versión con www. |
 
 ### Paso 3: Configuración de Correo (Google Workspace)
-Para recibir y enviar correos sin bloqueos, agrega estos registros:
+Para recibir y enviar correos, agrega estos registros en la sección **"Custom Records"**:
 
-#### A. Registro MX (Para RECIBIR)
-- **Host**: `@`
-- **Tipo**: `MX`
-- **Prioridad**: `1`
-- **Data**: `ASPMX.L.GOOGLE.COM`
-
-#### B. Registro SPF (Para ENVIAR)
-- **Host**: `@`
-- **Tipo**: `TXT`
-- **Data**: `v=spf1 include:_spf.google.com ~all`
-
-#### C. Registro DMARC (Seguridad)
-- **Host**: `_dmarc`
-- **Tipo**: `TXT`
-- **Data**: `v=DMARC1; p=none;`
+| Tipo | Host | Datos / Valor | Prioridad |
+| :--- | :--- | :--- | :--- |
+| **MX** | `@` | `ASPMX.L.GOOGLE.COM` | `1` |
+| **TXT** | `@` | `v=spf1 include:_spf.google.com ~all` | N/A |
+| **TXT** | `_dmarc` | `v=DMARC1; p=none;` | N/A |
 
 ### 🔍 Cómo verificar el estado
 
-Existen 3 formas de saber si el proceso ha terminado:
-
-1.  **Consola de Firebase**: En la pestaña de Dominios, verás un estado que dice **"Pending"** (Pendiente), **"Provisioning"** (Generando certificados) o **"Active"** (Activo en verde). Si está en verde, ya terminaste.
-2.  **DNS Checker (Externo)**: Entra en [dnschecker.org](https://dnschecker.org) e ingresa `pcgmantenimiento.com`. Selecciona el tipo **A**. Deberías ver la IP `35.219.200.7` con checks verdes en todo el mundo.
-3.  **Prueba de Navegador Incógnito**: Abre una ventana de incógnito e intenta entrar a `https://pcgmantenimiento.com`. Si carga la página y tiene el candado, la propagación ha terminado.
+1.  **DNS Checker (Externo)**: Entra en [dnschecker.org](https://dnschecker.org).
+    - Ingresa `pcgmantenimiento.com`.
+    - Selecciona tipo **A**. Deberías ver la IP `35.219.200.7` con checks verdes.
+2.  **Consola de Firebase**: Verás el estado como **"Active"** en verde cuando la propagación termine.
+3.  **Prueba de Navegador**: Entra a `https://pcgmantenimiento.com`. Si ves el candado, está listo.
 
 ### 🛠️ Solución de Problemas (FAQ)
 
-**¿Por qué Firebase me pide borrar registros que no veo?**
-- **Presets ocultos:** Squarespace a veces mantiene registros internos de "Parking". Asegúrate de haber borrado el bloque "Email Security" con el basurero rojo si aparece.
-- **Propagación:** Si acabas de borrar un registro, Firebase puede tardar horas en dejar de verlo. Ten paciencia.
-- **Registros CNAME conflictivos:** Si intentas poner un registro A en `@`, asegúrate de que no haya un CNAME en `@` (Squarespace no suele permitir ambos).
+**¿Por qué DNSChecker muestra todo con XXX?**
+- Revisa si escribiste el nombre del dominio en el campo HOST. Si ves algo como `pcgmantenimiento.com` en la columna Host de Squarespace, bórralo y pon `@`.
 
-**¿Cuánto tarda en aparecer el candado (SSL)?**
-- Una vez que los registros DNS están correctos (en verde en Firebase), el certificado puede tardar desde **1 a 24 horas** en generarse. No intentes forzarlo, es un proceso automático de Google.
+**¿Por qué Firebase me pide borrar registros que no veo?**
+- **Presets ocultos:** Squarespace a veces mantiene registros internos. Si ves un bloque llamado "Email Security", bórralo con el basurero rojo antes de agregar los tuyos.
+
+**¿Cuánto tarda el certificado SSL (Candado)?**
+- Una vez que los registros DNS están en verde, el certificado puede tardar de **1 a 24 horas**. No te desesperes, es automático.
 
 ## 🛠️ Tecnologías
 - **NextJS 15** (App Router)
