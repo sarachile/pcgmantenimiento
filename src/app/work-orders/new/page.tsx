@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
@@ -30,7 +29,8 @@ import {
   Trash2,
   Info,
   Lightbulb,
-  Camera
+  Camera,
+  ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
