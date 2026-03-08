@@ -33,7 +33,8 @@ import {
   Calendar,
   AlertCircle,
   XCircle,
-  BellRing
+  BellRing,
+  UserPlus
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -255,7 +256,6 @@ export default function DashboardPage() {
           <p className="text-muted-foreground font-medium">Resumen operativo de {company?.name}.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button asChild variant="outline" className="h-11 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50"><Link href="/clients"><Building2 className="mr-2 h-4 w-4" /> Clientes</Link></Button>
           <Button asChild className="h-11 px-6 rounded-xl shadow-lg font-black gap-2"><Link href="/work-orders/new"><Plus className="h-5 w-5" /> Nueva OT</Link></Button>
         </div>
       </div>
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                      <Cpu className="h-4 w-4" /> Alertas de Planta IoT
+                      <Cpu className="h-4 w-4 text-blue-400" /> Alertas de Planta IoT
                     </CardTitle>
                     <CardDescription className="text-[10px] font-bold text-blue-200 uppercase">Activos con parámetros fuera de rango</CardDescription>
                   </div>
@@ -328,7 +328,7 @@ export default function DashboardPage() {
                         <div className="bg-white/20 p-2 rounded-xl"><AlertTriangle className="h-4 w-4 text-amber-300" /></div>
                         <div>
                           <p className="text-xs font-black">{asset.name}</p>
-                          <p className="text-[10px] text-blue-200 line-clamp-1">{asset.maintenanceReason}</p>
+                          <p className="text-[10px] text-blue-200 line-clamp-1">{asset.maintenanceReason || 'Parámetro fuera de rango detectado.'}</p>
                         </div>
                       </div>
                       <Badge variant="outline" className="text-[8px] border-white/20 text-white uppercase">{asset.iotType}</Badge>
@@ -342,6 +342,47 @@ export default function DashboardPage() {
           </Link>
         </div>
       )}
+
+      {/* SECCIÓN DE GESTIÓN ESTRUCTURAL (NUEVA) */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Link href="/clients" className="block group">
+          <Card className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden h-full">
+            <CardContent className="p-8 flex items-start gap-6">
+              <div className="bg-primary/10 p-4 rounded-3xl text-primary group-hover:scale-110 transition-transform">
+                <Building2 className="h-8 w-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900">Gestión de Clientes</h3>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                  Administre su cartera de mandantes, configure portales de autogestión y gestione las aprobaciones digitales externas para sus servicios.
+                </p>
+                <div className="flex items-center gap-2 text-primary font-black text-[10px] uppercase tracking-widest pt-2">
+                  Ver listado <ChevronRight className="h-3 w-3" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/team" className="block group">
+          <Card className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden h-full">
+            <CardContent className="p-8 flex items-start gap-6">
+              <div className="bg-emerald-50 p-4 rounded-3xl text-emerald-600 group-hover:scale-110 transition-transform">
+                <Users className="h-8 w-8" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900">Gestión de Usuarios</h3>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                  Controle su fuerza técnica de campo, organice cuadrillas de trabajo y gestione las credenciales de acceso de sus operarios y supervisores.
+                </p>
+                <div className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-widest pt-2">
+                  Administrar personal <ChevronRight className="h-3 w-3" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       {!allStepsCompleted && (
         <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
