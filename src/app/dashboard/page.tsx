@@ -31,7 +31,9 @@ import {
   Cpu,
   Waves,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  XCircle,
+  BellRing
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -55,7 +57,7 @@ import { usePlanLimits } from "@/hooks/use-plan-limits";
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
   const limits = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
@@ -93,15 +95,26 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     const total = realWorkOrders.length;
     const completed = realWorkOrders.filter(ot => ot.status === 'aprobada').length;
+    const rejected = realWorkOrders.filter(ot => ot.status === 'rechazada');
     const active = realWorkOrders.filter(ot => ot.status !== 'aprobada').length;
-    const alert = realWorkOrders.filter(ot => {
+    
+    const delayed = realWorkOrders.filter(ot => {
       if (ot.status === 'aprobada' || !today) return false;
       const dateToUse = ot.scheduledDate || ot.createdAt;
       const endDate = dateToUse?.toDate ? dateToUse.toDate() : (typeof dateToUse === 'string' ? parseISO(dateToUse) : null);
       return endDate && isBefore(endDate, today);
-    }).length;
+    });
 
-    return { total, completed, active, alert };
+    return { 
+      total, 
+      completed, 
+      active, 
+      rejected: rejected.length,
+      rejectedList: rejected,
+      delayed: delayed.length,
+      delayedList: delayed,
+      alertCount: rejected.length + delayed.length 
+    };
   }, [realWorkOrders, today]);
 
   const recentOrders = useMemo(() => {
@@ -115,8 +128,13 @@ export default function DashboardPage() {
   const iotStats = useMemo(() => {
     const iotAssets = (assets || []).filter(a => a.isIoT);
     const activeIoT = iotAssets.filter(a => a.status === 'activo').length;
-    const maintenanceIoT = iotAssets.filter(a => a.maintenanceRequired).length;
-    return { count: iotAssets.length, active: activeIoT, maintenance: maintenanceIoT };
+    const maintenanceIoT = iotAssets.filter(a => a.maintenanceRequired);
+    return { 
+      count: iotAssets.length, 
+      active: activeIoT, 
+      maintenanceCount: maintenanceIoT.length,
+      maintenanceList: maintenanceIoT 
+    };
   }, [assets]);
 
   const onboardingSteps = useMemo(() => {
@@ -237,6 +255,83 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* SECCIÓN DE ALERTAS OPERATIVAS CONSOLIDADAS */}
+      {(stats.alertCount > 0 || iotStats.maintenanceCount > 0) && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Ventana de Alertas OT (Atrasadas/Rechazadas) */}
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden border-l-[12px] border-rose-500 animate-in slide-in-from-left-4">
+            <CardHeader className="bg-rose-50/50 p-6 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-rose-700">
+                  <BellRing className="h-4 w-4" /> Alertas Operativas OT
+                </CardTitle>
+                <Badge className="bg-rose-600 text-white font-black text-[10px]">{stats.alertCount}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 max-h-[300px] overflow-y-auto">
+              <div className="divide-y divide-rose-100">
+                {stats.rejectedList.map(ot => (
+                  <Link key={ot.id} href={`/work-orders/${ot.id}`} className="flex items-center justify-between p-4 hover:bg-rose-50/30 transition-colors group">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-rose-100 p-2 rounded-xl text-rose-600"><XCircle className="h-4 w-4" /></div>
+                      <div>
+                        <p className="text-xs font-black text-slate-900">{ot.id} - RECHAZADA</p>
+                        <p className="text-[10px] text-slate-500 line-clamp-1">{clients?.find(c => c.id === ot.clientId)?.name}</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-rose-300 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                ))}
+                {stats.delayedList.map(ot => (
+                  <Link key={ot.id} href={`/work-orders/${ot.id}`} className="flex items-center justify-between p-4 hover:bg-amber-50/30 transition-colors group">
+                    <div className="flex items-start gap-3">
+                      <div className="bg-amber-100 p-2 rounded-xl text-amber-600"><Clock className="h-4 w-4" /></div>
+                      <div>
+                        <p className="text-xs font-black text-slate-900">{ot.id} - ATRASADA</p>
+                        <p className="text-[10px] text-slate-500 line-clamp-1">{clients?.find(c => c.id === ot.clientId)?.name}</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-amber-300 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Ventana de Alertas IoT (Sensores) */}
+          <Link href="/iot-control" className="block group">
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden transition-all group-hover:scale-[1.01] border-l-[12px] border-amber-400">
+              <CardHeader className="bg-white/10 p-6 border-b border-white/10">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <Cpu className="h-4 w-4" /> Alertas de Planta IoT
+                  </CardTitle>
+                  <Badge className="bg-amber-400 text-slate-900 font-black text-[10px]">{iotStats.maintenanceCount}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[300px] overflow-y-auto">
+                <div className="divide-y divide-white/5">
+                  {iotStats.maintenanceList.length > 0 ? iotStats.maintenanceList.map(asset => (
+                    <div key={asset.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-white/20 p-2 rounded-xl"><AlertTriangle className="h-4 w-4 text-amber-300" /></div>
+                        <div>
+                          <p className="text-xs font-black">{asset.name}</p>
+                          <p className="text-[10px] text-blue-200 line-clamp-1">{asset.maintenanceReason}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-[8px] border-white/20 text-white uppercase">{asset.iotType}</Badge>
+                    </div>
+                  )) : (
+                    <div className="p-10 text-center text-blue-200/50 italic text-xs">Todos los equipos operando bajo norma.</div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
+
       {!allStepsCompleted && (
         <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
           <div className="grid md:grid-cols-3">
@@ -259,56 +354,12 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* VENTANA DE ALERTAS IOT - REDISEÑADA */}
-      {limits.features.apiAccess && (
-        <Link href="/iot-control" className="block group">
-          <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden transition-all group-hover:scale-[1.01] active:scale-[0.99] shadow-blue-200">
-            <CardContent className="p-0">
-              <div className="grid md:grid-cols-4">
-                <div className="p-8 bg-white/10 flex flex-col justify-center items-center text-center border-r border-white/10">
-                  <div className="bg-white/20 p-4 rounded-3xl mb-4"><Cpu className="h-8 w-8" /></div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70">Monitor Estratégico</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className={cn("h-2 w-2 rounded-full", iotStats.count > 0 ? "bg-emerald-400 animate-pulse" : "bg-white/30")} />
-                    <p className="text-sm font-black">{iotStats.count > 0 ? 'SISTEMA ONLINE' : 'STANDBY'}</p>
-                  </div>
-                </div>
-                <div className="md:col-span-3 p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-2xl font-black uppercase italic tracking-tighter">Centro de Alertas de Planta</h3>
-                      <div className="bg-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase">Click para gestionar</div>
-                    </div>
-                    <p className="text-sm text-blue-100 font-medium">
-                      Monitoreo activo de parámetros críticos (Solar, Temp, Vib). Detección remota de anomalías en tiempo real.
-                    </p>
-                  </div>
-                  <div className="flex gap-8 bg-black/10 p-6 rounded-[2rem] border border-white/10">
-                    <div className="text-center">
-                      <p className="text-4xl font-black italic tracking-tighter">{iotStats.active}</p>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-emerald-300">Activos Normal</p>
-                    </div>
-                    <div className="h-12 w-px bg-white/10 self-center" />
-                    <div className="text-center">
-                      <p className={cn("text-4xl font-black italic tracking-tighter", iotStats.maintenance > 0 ? "text-amber-400" : "text-white/40")}>
-                        {iotStats.maintenance}
-                      </p>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-200">Alertas Mantención</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      )}
-
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Total Órdenes", value: stats.total, icon: ClipboardList, color: "bg-blue-600" },
           { label: "En Ejecución", value: stats.active, icon: Activity, color: "bg-indigo-600" },
           { label: "Finalizadas", value: stats.completed, icon: Trophy, color: "bg-emerald-600" },
-          { label: "Alertas", value: stats.alert, icon: AlertTriangle, color: "bg-rose-600" }
+          { label: "Alertas Críticas", value: stats.alertCount, icon: AlertTriangle, color: "bg-rose-600" }
         ].map((stat, i) => (
           <Card key={i} className="border-none shadow-sm rounded-3xl overflow-hidden group hover:shadow-md transition-all">
             <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em]">{stat.label}</CardTitle><div className={cn("p-2 rounded-xl", stat.color)}><stat.icon className="h-4 w-4 text-white" /></div></CardHeader>
