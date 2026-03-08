@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -18,10 +17,9 @@ import {
   ArrowRight,
   Building2,
   HardHat,
-  Camera,
+  Smartphone,
   Users,
   Sparkles,
-  Smartphone,
   Share,
   PlusSquare,
   Timer,
@@ -31,15 +29,12 @@ import {
   Cpu,
   Waves,
   Calendar,
-  AlertCircle,
   XCircle,
-  BellRing,
-  UserPlus
+  BellRing
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
-import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { isBefore, parseISO, startOfDay, differenceInDays, format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -58,7 +53,7 @@ import { usePlanLimits } from "@/hooks/use-plan-limits";
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
   const limits = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
@@ -71,7 +66,6 @@ export default function DashboardPage() {
 
   const companyId = profile?.companyId || "";
 
-  // Consultas Reales a Firestore
   const workOrdersQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "workOrders") : null, [db, companyId]);
   const clientsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "clients") : null, [db, companyId]);
   const assetsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "assets") : null, [db, companyId]);
@@ -235,7 +229,6 @@ export default function DashboardPage() {
     );
   }
 
-  // VISTA ADMINISTRADOR / SUPERVISOR
   return (
     <div className="space-y-8 pb-10">
       {trialDaysRemaining !== null && trialDaysRemaining <= 5 && (
@@ -260,10 +253,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* SECCIÓN DE ALERTAS OPERATIVAS CONSOLIDADAS */}
+      {/* ALERTAS OPERATIVAS */}
       {(stats.alertCount > 0 || iotStats.maintenanceCount > 0) && (
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Ventana de Alertas OT (Atrasadas/Rechazadas) */}
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden border-l-[12px] border-rose-500 animate-in slide-in-from-left-4">
             <CardHeader className="bg-rose-50/50 p-6 border-b">
               <div className="flex items-center justify-between">
@@ -306,7 +298,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Ventana de Alertas IoT (Sensores) */}
           <Link href="/iot-control" className="block group">
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden transition-all group-hover:scale-[1.01] border-l-[12px] border-amber-400">
               <CardHeader className="bg-white/10 p-6 border-b border-white/10">
@@ -343,7 +334,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* SECCIÓN DE GESTIÓN ESTRUCTURAL (NUEVA) */}
+      {/* GESTIÓN DE INFRAESTRUCTURA */}
       <div className="grid gap-6 md:grid-cols-2">
         <Link href="/clients" className="block group">
           <Card className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden h-full">
@@ -498,7 +489,6 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-10">
-            {/* USO DE ADMINISTRADORES */}
             <div className="space-y-4">
               <div className="flex justify-between items-end">
                 <div className="space-y-1">
@@ -510,7 +500,6 @@ export default function DashboardPage() {
               <Progress value={(limits.adminCount / limits.maxAdmins) * 100} className="h-1.5 bg-white/10" />
             </div>
 
-            {/* USO DE TÉCNICOS */}
             <div className="space-y-4">
               <div className="flex justify-between items-end">
                 <div className="space-y-1">
@@ -522,7 +511,6 @@ export default function DashboardPage() {
               <Progress value={(limits.techCount / limits.maxTechs) * 100} className="h-1.5 bg-white/10" />
             </div>
 
-            {/* MONITOREO IOT */}
             <div className="space-y-4">
               <div className="flex justify-between items-end">
                 <div className="space-y-1">

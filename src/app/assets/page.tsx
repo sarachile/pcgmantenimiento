@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -86,7 +85,7 @@ export default function AssetsPage() {
     setMounted(true);
   }, []);
 
-  // FORCE UNLOCK BODY - Ejecutar siempre que cambie el estado del diálogo
+  // FORCE UNLOCK BODY: Restaurar interactividad al cerrar diálogo
   useEffect(() => {
     if (!isDialogOpen) {
       const timer = setTimeout(() => {
@@ -141,7 +140,8 @@ export default function AssetsPage() {
       iotType: asset.iotType || "otro",
       unit: asset.unit || ""
     });
-    setIsDialogOpen(true);
+    // Pequeño retardo para asegurar que el menú se cierre antes de abrir el diálogo
+    setTimeout(() => setIsDialogOpen(true), 50);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -343,7 +343,7 @@ export default function AssetsPage() {
         </CardContent>
       </Card>
 
-      {/* SINGLETON DIALOG - MOVIDO FUERA DEL LOOP Y CONTROLADO POR ESTADO */}
+      {/* SINGLETON DIALOG: Aislado de la jerarquía de la tabla para evitar conflictos modal */}
       <Dialog 
         open={isDialogOpen} 
         onOpenChange={(open) => {
@@ -352,11 +352,8 @@ export default function AssetsPage() {
         }}
       >
         <DialogContent 
-          className="sm:max-w-[500px]"
-          onCloseAutoFocus={(e) => {
-            e.preventDefault();
-            document.body.style.pointerEvents = 'auto';
-          }}
+          className="sm:max-w-[500px] rounded-[2.5rem]"
+          onCloseAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <DialogTitle className="text-2xl font-black italic tracking-tight">
