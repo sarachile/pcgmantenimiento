@@ -15,6 +15,7 @@
         "currentPlan": { "type": "string", "enum": ["simple", "business", "enterprise"] },
         "subscriptionStatus": { "type": "string", "enum": ["active", "past_due", "canceled"] },
         "isActive": { "type": "boolean" },
+        "apiKey": { "type": "string", "description": "Clave para integraciones externas y sensores IoT." },
         "metrics": {
           "type": "object",
           "properties": {

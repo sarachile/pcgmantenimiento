@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -9,7 +10,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Upload, Loader2, Save, Trash2, ArrowLeft, Briefcase, MapPin, AlertCircle, CheckCircle2 } from "lucide-react";
+import { 
+  Building2, 
+  Upload, 
+  Loader2, 
+  Save, 
+  Trash2, 
+  ArrowLeft, 
+  Briefcase, 
+  MapPin, 
+  AlertCircle, 
+  CheckCircle2, 
+  Cpu, 
+  KeyRound, 
+  Copy,
+  Zap,
+  Lock
+} from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
@@ -54,7 +71,7 @@ export default function CompanyProfilePage() {
   }, [company]);
 
   const isRutValid = useMemo(() => {
-    if (!formData.rut) return true; // No mostrar error si está vacío
+    if (!formData.rut) return true;
     return validateRut(formData.rut);
   }, [formData.rut]);
 
@@ -74,7 +91,7 @@ export default function CompanyProfilePage() {
     try {
       updateDocumentNonBlocking(companyRef, {
         ...formData,
-        rut: formatRut(formData.rut), // Asegurar formato estándar
+        rut: formatRut(formData.rut),
         updatedAt: serverTimestamp()
       });
       toast({
@@ -90,6 +107,21 @@ export default function CompanyProfilePage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleGenerateApiKey = () => {
+    if (!companyRef) return;
+    const newKey = `pcg_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    updateDocumentNonBlocking(companyRef, {
+      apiKey: newKey,
+      updatedAt: serverTimestamp()
+    });
+    toast({ title: "API Key Generada", description: "Su llave de integración ya está activa." });
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copiado", description: "Llave de API copiada al portapapeles." });
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,166 +177,143 @@ export default function CompanyProfilePage() {
     );
   }
 
+  const isEnterprise = company?.currentPlan === 'enterprise';
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-10">
+    <div className="max-w-4xl mx-auto space-y-6 pb-20">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/dashboard"><ArrowLeft className="h-4 w-4" /></Link>
         </Button>
         <div>
           <h2 className="text-3xl font-black tracking-tight italic">Mi Empresa</h2>
-          <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Configuración de Identidad y Facturación</p>
+          <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Identidad y Conectividad IoT</p>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card className="md:col-span-1 border-none shadow-sm rounded-3xl overflow-hidden">
-          <CardHeader className="bg-primary/5 border-b">
-            <CardTitle className="text-lg font-black uppercase tracking-tighter">Marca Corporativa</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 p-8">
-            <div className="relative h-40 w-40 rounded-[2rem] border-2 border-dashed bg-muted/20 flex items-center justify-center overflow-hidden group shadow-inner">
-              {company?.logoUrl ? (
-                <>
-                  <FirebaseImage 
-                    url={company.logoUrl} 
-                    alt="Logo Empresa" 
-                    className="h-full w-full p-4"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <Button size="icon" variant="ghost" className="text-white hover:text-rose-50" onClick={handleRemoveLogo}>
-                      <Trash2 className="h-5 w-5" />
-                    </Button>
+        <div className="md:col-span-1 space-y-6">
+          <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle className="text-lg font-black uppercase tracking-tighter">Marca Corporativa</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-4 p-8">
+              <div className="relative h-40 w-40 rounded-[2rem] border-2 border-dashed bg-muted/20 flex items-center justify-center overflow-hidden group shadow-inner">
+                {company?.logoUrl ? (
+                  <>
+                    <FirebaseImage url={company.logoUrl} alt="Logo Empresa" className="h-full w-full p-4" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <Button size="icon" variant="ghost" className="text-white hover:text-rose-50" onClick={handleRemoveLogo}><Trash2 className="h-5 w-5" /></Button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-4">
+                    <Building2 className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Sin Logo</p>
                   </div>
-                </>
+                )}
+                {isUploading && (
+                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                )}
+              </div>
+              <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleLogoUpload} />
+              <Button variant="outline" className="w-full rounded-xl h-11 font-bold" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                <Upload className="h-4 w-4 mr-2" />
+                {company?.logoUrl ? "Cambiar Marca" : "Subir Logotipo"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* SECCIÓN IOT / API */}
+          <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-slate-900 text-white">
+            <CardHeader className="bg-white/5 border-b border-white/10">
+              <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-blue-400" /> Integración IoT
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {isEnterprise ? (
+                <div className="space-y-4">
+                  <p className="text-[10px] text-slate-400 font-medium leading-relaxed">
+                    Usa esta llave para conectar tus sensores. Permite que las máquinas creen OTs automáticamente.
+                  </p>
+                  {company?.apiKey ? (
+                    <div className="space-y-2">
+                      <div className="bg-white/10 p-3 rounded-xl border border-white/10 flex items-center justify-between gap-2 overflow-hidden">
+                        <code className="text-[10px] font-mono text-blue-300 truncate">{company.apiKey}</code>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-white hover:bg-white/10" onClick={() => copyToClipboard(company.apiKey!)}>
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <Button variant="link" className="text-[9px] text-slate-500 p-0 h-auto uppercase font-black" onClick={handleGenerateApiKey}>Regenerar Llave</Button>
+                    </div>
+                  ) : (
+                    <Button onClick={handleGenerateApiKey} className="w-full bg-blue-600 hover:bg-blue-500 font-black text-[10px] uppercase tracking-widest h-10 rounded-xl">
+                      Activar Gateway API
+                    </Button>
+                  )}
+                </div>
               ) : (
-                <div className="text-center p-4">
-                  <Building2 className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                  <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Sin Logo</p>
+                <div className="space-y-4 opacity-60">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <Lock className="h-3 w-3" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Característica Enterprise</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                    La conexión a sensores IoT y acceso API no están disponibles en tu plan actual.
+                  </p>
+                  <Button asChild variant="outline" className="w-full border-white/20 text-white hover:bg-white/10 text-[9px] h-9 font-black uppercase tracking-widest">
+                    <Link href="/subscription">Mejorar Plan</Link>
+                  </Button>
                 </div>
               )}
-              {isUploading && (
-                <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              )}
-            </div>
-            
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              ref={fileInputRef}
-              onChange={handleLogoUpload}
-            />
-            <Button 
-              variant="outline" 
-              className="w-full rounded-xl h-11 font-bold" 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {company?.logoUrl ? "Cambiar Marca" : "Subir Logotipo"}
-            </Button>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card className="md:col-span-2 border-none shadow-sm rounded-3xl overflow-hidden">
           <form onSubmit={(e) => { e.preventDefault(); handleUpdateCompany(); }}>
             <CardHeader className="bg-primary/5 border-b">
               <CardTitle className="text-lg font-black uppercase tracking-tighter">Datos Legales y DTE</CardTitle>
-              <CardDescription className="font-medium">Información requerida para la emisión de facturas ante el SII.</CardDescription>
+              <CardDescription className="font-medium">Información requerida para la facturación ante el SII.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Razón Social *</Label>
                 <div className="relative">
                   <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input 
-                    className="pl-10 h-12 rounded-xl border-2 font-bold"
-                    value={formData.name} 
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    required
-                  />
+                  <Input className="pl-10 h-12 rounded-xl border-2 font-bold" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">RUT Empresa *</Label>
-                  <div className="relative">
-                    <Input 
-                      className={cn(
-                        "h-12 rounded-xl border-2 font-bold transition-colors",
-                        !isRutValid && "border-rose-500 bg-rose-50 focus-visible:ring-rose-500",
-                        isRutValid && formData.rut && "border-emerald-500"
-                      )}
-                      placeholder="76.000.000-0"
-                      value={formData.rut} 
-                      onChange={(e) => setFormData({...formData, rut: e.target.value})}
-                      required
-                    />
-                    {!isRutValid && (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-rose-600">
-                        <AlertCircle className="h-3 w-3" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">RUT Matemáticamente Incorrecto</span>
-                      </div>
-                    )}
-                    {isRutValid && formData.rut && (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-emerald-600">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">RUT Válido</span>
-                      </div>
-                    )}
-                  </div>
+                  <Input className={cn("h-12 rounded-xl border-2 font-bold transition-colors", !isRutValid && "border-rose-500 bg-rose-50", isRutValid && formData.rut && "border-emerald-500")} placeholder="76.000.000-0" value={formData.rut} onChange={(e) => setFormData({...formData, rut: e.target.value})} required />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Giro / Actividad *</Label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input 
-                      className="pl-10 h-12 rounded-xl border-2 font-bold"
-                      placeholder="Ej: Mantenimiento Industrial"
-                      value={formData.giro} 
-                      onChange={(e) => setFormData({...formData, giro: e.target.value})}
-                      required
-                    />
-                  </div>
+                  <Input className="h-12 rounded-xl border-2 font-bold" placeholder="Ej: Mantenimiento Industrial" value={formData.giro} onChange={(e) => setFormData({...formData, giro: e.target.value})} required />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Dirección Comercial *</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input 
-                      className="pl-10 h-12 rounded-xl border-2 font-bold"
-                      value={formData.address} 
-                      onChange={(e) => setFormData({...formData, address: e.target.value})}
-                      required
-                    />
-                  </div>
+                  <Input className="h-12 rounded-xl border-2 font-bold" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} required />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Comuna *</Label>
-                  <Input 
-                    className="h-12 rounded-xl border-2 font-bold"
-                    placeholder="Ej: Santiago"
-                    value={formData.comuna} 
-                    onChange={(e) => setFormData({...formData, comuna: e.target.value})}
-                    required
-                  />
+                  <Input className="h-12 rounded-xl border-2 font-bold" placeholder="Ej: Santiago" value={formData.comuna} onChange={(e) => setFormData({...formData, comuna: e.target.value})} required />
                 </div>
               </div>
             </CardContent>
             <CardFooter className="bg-slate-50 border-t p-6 flex justify-between items-center">
-              <Badge variant="outline" className="bg-white border-primary/20 text-primary font-black px-3 py-1">
-                PLAN: {company?.currentPlan?.toUpperCase() || "S/I"}
-              </Badge>
+              <Badge variant="outline" className="bg-white border-primary/20 text-primary font-black px-3 py-1 uppercase">PLAN: {company?.currentPlan}</Badge>
               <Button type="submit" disabled={isSaving || !isRutValid} className="rounded-xl h-12 px-8 font-black shadow-lg">
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Guardar Configuración
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />} Guardar Cambios
               </Button>
             </CardFooter>
           </form>
