@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useMemo } from "react";
@@ -36,7 +35,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui/tabs";
+} from "@/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,27 +50,20 @@ import {
   Search, 
   UserPlus, 
   Loader2,
-  UserCheck,
-  UserMinus,
   ArrowLeft,
   Contact,
   Trash2,
-  Zap,
   Users2,
   FileUp,
-  Download,
-  AlertTriangle,
   Edit,
   MessageCircle,
-  Lock,
   MoreVertical,
   Link2,
   Smartphone,
   CheckCircle2,
   Clock,
   Plus,
-  Shield,
-  Send
+  Shield
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -116,7 +108,10 @@ export default function TeamPage() {
   const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
   const { data: teams, isLoading: isTeamsLoading } = useCollection<Team>(teamsQuery);
 
-  const filteredStaff = (staffMembers || []).filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.identification?.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredStaff = (staffMembers || []).filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    s.identification?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const isAtLimit = !canAddTech && !editingStaff;
 
@@ -124,7 +119,10 @@ export default function TeamPage() {
   const handleStaffSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !profile?.companyId) return;
-    if (isAtLimit) { toast({ title: "Plan Completo", description: `Has alcanzado el límite de ${maxTechs} técnicos.`, variant: "destructive" }); return; }
+    if (isAtLimit) { 
+      toast({ title: "Plan Completo", description: `Has alcanzado el límite de ${maxTechs} técnicos de tu plan.`, variant: "destructive" }); 
+      return; 
+    }
 
     const dataToSave = { ...formData, companyId: profile.companyId, active: true, createdAt: serverTimestamp() };
     if (editingStaff) {
@@ -141,7 +139,13 @@ export default function TeamPage() {
 
   const handleEditStaff = (staff: StaffMember) => {
     setEditingStaff(staff);
-    setFormData({ name: staff.name, role: staff.role, identification: staff.identification || "", phone: staff.phone || "", email: staff.email || "" });
+    setFormData({ 
+      name: staff.name, 
+      role: staff.role, 
+      identification: staff.identification || "", 
+      phone: staff.phone || "", 
+      email: staff.email || "" 
+    });
     setIsCreateOpen(true);
   };
 
@@ -149,6 +153,45 @@ export default function TeamPage() {
     if (!db || !profile?.companyId) return;
     deleteDocumentNonBlocking(doc(db, "companies", profile.companyId, "staff", staff.id));
     toast({ title: "Técnico eliminado" });
+  };
+
+  // --- TEAM HANDLERS ---
+  const handleTeamSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !profile?.companyId) return;
+
+    const dataToSave = { 
+      ...teamFormData, 
+      companyId: profile.companyId, 
+      createdAt: serverTimestamp() 
+    };
+
+    if (editingTeam) {
+      updateDocumentNonBlocking(doc(db, "companies", profile.companyId, "teams", editingTeam.id), { ...dataToSave, updatedAt: serverTimestamp() });
+      toast({ title: "Cuadrilla actualizada" });
+    } else {
+      addDocumentNonBlocking(collection(db, "companies", profile.companyId, "teams"), dataToSave);
+      toast({ title: "Cuadrilla activada", description: "El equipo ya está disponible para asignación de OTs." });
+    }
+    setIsTeamOpen(false);
+    setEditingTeam(null);
+    setTeamFormData({ name: "", leaderId: "", memberIds: [] });
+  };
+
+  const handleEditTeam = (team: Team) => {
+    setEditingTeam(team);
+    setTeamFormData({
+      name: team.name,
+      leaderId: team.leaderId || "",
+      memberIds: team.memberIds || []
+    });
+    setIsTeamOpen(true);
+  };
+
+  const handleDeleteTeam = (team: Team) => {
+    if (!db || !profile?.companyId) return;
+    deleteDocumentNonBlocking(doc(db, "companies", profile.companyId, "teams", team.id));
+    toast({ title: "Cuadrilla eliminada" });
   };
 
   // --- UTILS ---
@@ -190,12 +233,21 @@ export default function TeamPage() {
         let count = 0;
         for (const row of data as any[]) {
           if (techCount + count >= maxTechs) break;
-          await addDocumentNonBlocking(colRef, { name: row.Nombre || "Sin Nombre", role: row.Rol || "Técnico", identification: String(row.RUT || ""), phone: String(row.Telefono || ""), email: row.Email || "", companyId: profile.companyId, active: true, createdAt: serverTimestamp() });
+          await addDocumentNonBlocking(colRef, { 
+            name: row.Nombre || "Sin Nombre", 
+            role: row.Rol || "Técnico", 
+            identification: String(row.RUT || ""), 
+            phone: String(row.Telefono || ""), 
+            email: row.Email || "", 
+            companyId: profile.companyId, 
+            active: true, 
+            createdAt: serverTimestamp() 
+          });
           count++;
         }
-        toast({ title: "Importación Exitosa", description: `Se cargaron ${count} registros.` });
+        toast({ title: "Importación Exitosa", description: `Se cargaron ${count} registros técnicos.` });
         setIsBulkOpen(false);
-      } catch (e) { toast({ title: "Error Excel", variant: "destructive" }); } finally { setIsProcessingBulk(false); }
+      } catch (e) { toast({ title: "Error al procesar Excel", variant: "destructive" }); } finally { setIsProcessingBulk(false); }
     };
     reader.readAsBinaryString(file);
   };
@@ -246,10 +298,10 @@ export default function TeamPage() {
             {activeTab === 'staff' ? (
               <>
                 <Button variant="outline" className="rounded-xl h-12 border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 font-bold" onClick={() => setIsBulkOpen(true)}><FileUp className="h-4 w-4 mr-2" /> Carga Excel</Button>
-                <Button className="rounded-xl h-12 px-6 font-black gap-2 shadow-lg" onClick={() => setIsCreateOpen(true)} disabled={isAtLimit}><UserPlus className="h-5 w-5" /> Nuevo Registro</Button>
+                <Button className="rounded-xl h-12 px-6 font-black gap-2 shadow-lg" onClick={() => { setEditingStaff(null); setIsCreateOpen(true); }} disabled={isAtLimit}><UserPlus className="h-5 w-5" /> Nuevo Registro</Button>
               </>
             ) : (
-              <Button className="rounded-xl h-12 px-6 font-black gap-2 shadow-lg" onClick={() => setIsTeamOpen(true)}><Plus className="h-5 w-5" /> Nueva Cuadrilla</Button>
+              <Button className="rounded-xl h-12 px-6 font-black gap-2 shadow-lg" onClick={() => { setEditingTeam(null); setIsTeamOpen(true); }}><Plus className="h-5 w-5" /> Nueva Cuadrilla</Button>
             )}
           </div>
         </div>
@@ -365,9 +417,9 @@ export default function TeamPage() {
                 <TableHeader className="bg-slate-50/50">
                   <TableRow className="border-none">
                     <TableHead className="pl-10 h-14 font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Nombre de Cuadrilla</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Miembros</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Líder Asignado</TableHead>
-                    <TableHead className="text-right pr-10 font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Acciones</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Miembros</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Líder Asignado</TableHead>
+                    <TableHead className="text-right pr-10 font-black uppercase text-[10px] tracking-[0.2em]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -420,18 +472,46 @@ export default function TeamPage() {
       {/* DIÁLOGO REGISTRO TÉCNICO */}
       <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); if(!open) setEditingStaff(null); }}>
         <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
-          <DialogHeader><DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">{editingStaff ? "Editar Técnico" : "Registrar Personal"}</DialogTitle><DialogDescription className="font-medium">Defina los datos básicos para generar el acceso técnico.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">{editingStaff ? "Editar Técnico" : "Registrar Personal"}</DialogTitle>
+            <DialogDescription className="font-medium">Defina los datos básicos para generar el acceso técnico.</DialogDescription>
+          </DialogHeader>
           <form onSubmit={handleStaffSubmit} className="space-y-6 py-4">
-            <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre Completo</Label><Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required /></div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">RUT (Solo números)</Label><Input value={formData.identification} onChange={(e) => setFormData({...formData, identification: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono" placeholder="123456789" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Rol</Label><Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}><SelectTrigger className="h-12 border-2 rounded-xl font-bold uppercase text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Técnico">Técnico</SelectItem><SelectItem value="Supervisor">Supervisor</SelectItem></SelectContent></Select></div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre Completo</Label>
+              <Input value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Teléfono (WhatsApp)</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="h-12 border-2 rounded-xl font-bold" placeholder="56912345678" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-12 border-2 rounded-xl" placeholder="personal@gmail.com" /></div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">RUT (Solo números)</Label>
+                <Input value={formData.identification} onChange={(e) => setFormData({...formData, identification: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono" placeholder="123456789" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Rol</Label>
+                <Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}>
+                  <SelectTrigger className="h-12 border-2 rounded-xl font-bold uppercase text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Técnico">Técnico</SelectItem>
+                    <SelectItem value="Supervisor">Supervisor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">Guardar y Preparar Invitación</Button></DialogFooter>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Teléfono (WhatsApp)</Label>
+                <Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="h-12 border-2 rounded-xl font-bold" placeholder="56912345678" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email</Label>
+                <Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-12 border-2 rounded-xl" placeholder="personal@gmail.com" />
+              </div>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">Guardar y Preparar Invitación</Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -486,7 +566,9 @@ export default function TeamPage() {
                             setTeamFormData({...teamFormData, memberIds: next});
                           }}
                         />
-                        <label htmlFor={`member-${s.id}`} className="text-xs font-bold text-slate-700 cursor-pointer">{s.name} <span className="text-[9px] font-black text-slate-400 uppercase">({s.role})</span></label>
+                        <label htmlFor={`member-${s.id}`} className="text-xs font-bold text-slate-700 cursor-pointer">
+                          {s.name} <span className="text-[9px] font-black text-slate-400 uppercase">({s.role})</span>
+                        </label>
                       </div>
                     ))}
                     {(!staffMembers || staffMembers.length === 0) && (
@@ -509,14 +591,19 @@ export default function TeamPage() {
       {/* DIÁLOGO EXCEL */}
       <Dialog open={isBulkOpen} onOpenChange={setIsBulkOpen}>
         <DialogContent className="sm:max-w-[400px] rounded-[2.5rem]">
-          <DialogHeader><DialogTitle className="text-2xl font-black italic">Carga Masiva</DialogTitle><DialogDescription>Importe su flota técnica desde un archivo Excel (.xlsx).</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black italic">Carga Masiva</DialogTitle>
+            <DialogDescription>Importe su flota técnica desde un archivo Excel (.xlsx).</DialogDescription>
+          </DialogHeader>
           <div className="py-6 space-y-6">
             <div className="bg-slate-50 p-6 rounded-3xl border-2 border-dashed space-y-4">
               <p className="text-xs font-bold text-slate-500 leading-relaxed">Asegúrese de usar las columnas obligatorias: **Nombre, Rol, RUT, Telefono, Email**.</p>
               <Button variant="outline" className="w-full rounded-xl font-black text-[10px] uppercase h-10 bg-white" onClick={() => XLSX.writeFile(XLSX.utils.book_new(), "Plantilla_Tecnicos.xlsx")}>Descargar Plantilla</Button>
             </div>
             <input type="file" className="hidden" ref={fileInputRef} onChange={handleBulkUpload} accept=".xlsx,.xls" />
-            <Button className="w-full h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-500 font-black uppercase tracking-widest text-lg shadow-xl" onClick={() => fileInputRef.current?.click()} disabled={isProcessingBulk}>{isProcessingBulk ? <Loader2 className="animate-spin h-6 w-6" /> : <><FileUp className="h-6 w-6 mr-2" /> Subir Archivo</>}</Button>
+            <Button className="w-full h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-500 font-black uppercase tracking-widest text-lg shadow-xl" onClick={() => fileInputRef.current?.click()} disabled={isProcessingBulk}>
+              {isProcessingBulk ? <Loader2 className="animate-spin h-6 w-6" /> : <><FileUp className="h-6 w-6 mr-2" /> Subir Archivo</>}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
