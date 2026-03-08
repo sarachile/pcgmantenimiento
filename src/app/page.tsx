@@ -82,7 +82,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
       <style jsx global>{`
         @keyframes marquee {
-          0% { transform: translateX(0); }
+          0 { transform: translateX(0); }
           100% { transform: translateX(-50%); }
         }
         .animate-marquee {
@@ -315,7 +315,7 @@ export default function HomePage() {
                 <span className="text-amber-400">solar realmente usará.</span>
               </h2>
               <p className="text-slate-400 text-lg leading-relaxed">
-                Sabemos que en la instalación de paneles, la foto del inversor y la placa es ley. Nuestra plataforma obliga al cumplimiento de protocolos para que cada visita sea facturable y sin reclamos.
+                Sabemos que en la energía solar, la continuidad operativa es dinero. Nuestra plataforma utiliza sensores inteligentes para monitorear cada panel e inversor, detectando remotamente fallas, suciedad o caídas de tensión antes de que afecten el ahorro del cliente.
               </p>
               
               <div className="grid sm:grid-cols-2 gap-6">
@@ -367,10 +367,10 @@ export default function HomePage() {
               <div className="space-y-4">
                 {[
                   { label: "Generación Hoy", value: "Lectura Real-Time", highlight: true },
+                  { label: "Ahorro Mensual", value: "$ USD en vivo", highlight: true },
+                  { label: "Diagnóstico Remoto", value: "Vía Sensores IoT", highlight: true },
                   { label: "Necesidad Mantención", value: "Alerta Automática", highlight: true },
                   { label: "Evidencia de Inversores", value: "Fotos Obligatorias" },
-                  { label: "Ubicación GPS", value: "Validación por Mapa" },
-                  { label: "Certificado de Exp.", value: "Generación Instantánea" },
                   { label: "Sincronización API", value: "Listo para tu CRM" }
                 ].map((row, i) => (
                   <div key={i} className={cn(
