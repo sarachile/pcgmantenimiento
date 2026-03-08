@@ -1,9 +1,8 @@
-
 {
   "name": "PCGMANTENIMIENTO ERP",
   "short_name": "PCG ERP",
-  "description": "Plataforma de gestión industrial con trazabilidad inalterable.",
-  "start_url": "/dashboard",
+  "description": "Gestión Industrial con Trazabilidad Inalterable e IoT",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1e3a8a",

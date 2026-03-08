@@ -38,7 +38,9 @@ import {
   Share,
   PlusSquare,
   Zap,
-  Check
+  Check,
+  Monitor,
+  Download
 } from "lucide-react";
 import {
   Dialog,
@@ -255,34 +257,70 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="outline" className="bg-white/5 border-white/10 text-white rounded-2xl h-14 px-6 gap-3 hover:bg-white/10">
-                <Smartphone className="h-6 w-6 text-blue-400" />
+                <Monitor className="h-6 w-6 text-blue-400" />
                 <div className="text-left">
-                  <p className="text-[10px] font-black uppercase tracking-widest leading-none">Instalar App</p>
-                  <p className="text-[8px] font-bold text-slate-400 uppercase">Acceso Directo Celular</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest leading-none">Instalar Acceso</p>
+                  <p className="text-[8px] font-bold text-slate-400 uppercase">PC o Celular</p>
                 </div>
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]">
+            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-black italic tracking-tighter uppercase text-primary">Portal en tu Pantalla</DialogTitle>
-                <DialogDescription className="font-bold text-slate-500">Agrega este portal a tu celular para reportar fallas en segundos.</DialogDescription>
+                <DialogTitle className="text-2xl font-black italic tracking-tighter uppercase text-primary">Portal en tu Escritorio</DialogTitle>
+                <DialogDescription className="font-bold text-slate-500">Agrega un acceso directo para reportar fallas en segundos.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-6 py-4">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3"><div className="bg-blue-100 p-2 rounded-lg text-blue-600 font-bold text-xs uppercase">iPhone</div><p className="text-sm font-bold text-slate-700">En Safari:</p></div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border space-y-3">
-                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Share className="h-3 w-3 text-slate-400" /></div><span>1. Pulsa el botón <strong>"Compartir"</strong>.</span></div>
-                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><PlusSquare className="h-3 w-3 text-slate-400" /></div><span>2. Selecciona <strong>"Agregar a Inicio"</strong>.</span></div>
+              <Tabs defaultValue="pc" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 mb-6 h-12 bg-slate-100 p-1 rounded-xl">
+                  <TabsTrigger value="pc" className="rounded-lg font-black uppercase text-[10px] tracking-widest gap-2">
+                    <Monitor className="h-3 w-3" /> Computador
+                  </TabsTrigger>
+                  <TabsTrigger value="mobile" className="rounded-lg font-black uppercase text-[10px] tracking-widest gap-2">
+                    <Smartphone className="h-3 w-3" /> Celular
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="pc" className="space-y-6 animate-in fade-in slide-in-from-left-2">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-blue-100 p-2 rounded-lg text-blue-600 font-bold text-xs uppercase">Chrome / Edge</div>
+                      <p className="text-sm font-bold text-slate-700">En tu navegador:</p>
+                    </div>
+                    <div className="bg-slate-50 p-6 rounded-2xl border-2 border-dashed space-y-4">
+                      <div className="flex items-start gap-4 text-xs">
+                        <div className="h-8 w-8 bg-white border rounded-lg flex items-center justify-center shadow-sm shrink-0"><Download className="h-4 w-4 text-blue-600" /></div>
+                        <div className="space-y-1">
+                          <p className="font-black text-slate-900 uppercase tracking-tight">1. Busca el icono de instalar</p>
+                          <p className="text-slate-500">En la derecha de la barra de direcciones (URL), verás una pequeña pantalla con una flecha.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-4 text-xs">
+                        <div className="h-8 w-8 bg-white border rounded-lg flex items-center justify-center shadow-sm shrink-0"><Check className="h-4 w-4 text-emerald-600" /></div>
+                        <div className="space-y-1">
+                          <p className="font-black text-slate-900 uppercase tracking-tight">2. Confirma la instalación</p>
+                          <p className="text-slate-500">Pulsa "Instalar" y la App se creará en tu escritorio y barra de tareas automáticamente.</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-4 pt-2">
-                  <div className="flex items-center gap-3"><div className="bg-emerald-100 p-2 rounded-lg text-emerald-600 font-bold text-xs uppercase">Android</div><p className="text-sm font-bold text-slate-700">En Chrome:</p></div>
-                  <div className="bg-slate-50 p-4 rounded-2xl border space-y-3">
-                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm font-black text-slate-400">⋮</div><span>1. Pulsa los <strong>tres puntos</strong> arriba a la derecha.</span></div>
-                    <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Smartphone className="h-3 w-3 text-slate-400" /></div><span>2. Selecciona <strong>"Instalar aplicación"</strong>.</span></div>
+                </TabsContent>
+
+                <TabsContent value="mobile" className="space-y-6 animate-in fade-in slide-in-from-right-2">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3"><div className="bg-blue-100 p-2 rounded-lg text-blue-600 font-bold text-xs uppercase">iPhone</div><p className="text-sm font-bold text-slate-700">En Safari:</p></div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border space-y-3">
+                      <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Share className="h-3 w-3 text-slate-400" /></div><span>1. Pulsa el botón <strong>"Compartir"</strong>.</span></div>
+                      <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><PlusSquare className="h-3 w-3 text-slate-400" /></div><span>2. Selecciona <strong>"Agregar a Inicio"</strong>.</span></div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center gap-3"><div className="bg-emerald-100 p-2 rounded-lg text-emerald-600 font-bold text-xs uppercase">Android</div><p className="text-sm font-bold text-slate-700">En Chrome:</p></div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border space-y-3">
+                      <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm font-black text-slate-400">⋮</div><span>1. Pulsa los <strong>tres puntos</strong> arriba a la derecha.</span></div>
+                      <div className="flex items-center gap-3 text-xs"><div className="h-6 w-6 bg-white border rounded-md flex items-center justify-center shadow-sm"><Smartphone className="h-3 w-3 text-slate-400" /></div><span>2. Selecciona <strong>"Instalar aplicación"</strong>.</span></div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </DialogContent>
           </Dialog>
         </div>
