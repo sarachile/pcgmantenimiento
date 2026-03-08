@@ -3,7 +3,7 @@ import { PlanType } from "./types";
 /**
  * @fileOverview Definición maestra de límites y funcionalidades por plan.
  * Se implementa la estrategia de "Valor por Rol": Administradores (Gestión) vs Técnicos (Ejecución).
- * ACTUALIZACIÓN: Se habilita apiAccess limitado para el Plan Business para potenciar a PYMEs especializadas (Ej: Solar).
+ * ACTUALIZACIÓN: Se añade límite de Activos IoT para control de infraestructura.
  */
 
 export interface PlanConfig {
@@ -12,6 +12,7 @@ export interface PlanConfig {
   maxAdmins: number;      // Administradores / Supervisores
   maxTechnicians: number; // Personal en terreno
   maxClients: number;
+  maxIoTAssets: number;   // Límite de activos con sensores conectados
   maxMonthlyOrders: number;
   storageLimitMb: number;
   features: {
@@ -32,6 +33,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     maxAdmins: 1,
     maxTechnicians: 2,
     maxClients: 5,
+    maxIoTAssets: 0,
     maxMonthlyOrders: 30,
     storageLimitMb: 500,
     features: {
@@ -50,6 +52,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     maxAdmins: 3,
     maxTechnicians: 15,
     maxClients: 50,
+    maxIoTAssets: 10,
     maxMonthlyOrders: 200,
     storageLimitMb: 5000,
     features: {
@@ -59,7 +62,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
       multiBranch: false,
       customChecklists: true,
       electronicBilling: true,
-      apiAccess: true, // AHORA DISPONIBLE PARA PYMES
+      apiAccess: true,
     }
   },
   enterprise: {
@@ -68,6 +71,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     maxAdmins: 10,
     maxTechnicians: 50,
     maxClients: 200,
+    maxIoTAssets: 100,
     maxMonthlyOrders: 5000,
     storageLimitMb: 50000,
     features: {

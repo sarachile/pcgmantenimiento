@@ -3,11 +3,11 @@
 import { useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc } from 'firebase/firestore';
-import { Company, StaffMember, Client, User } from '@/lib/types';
+import { Company, StaffMember, Client, User, Asset } from '@/lib/types';
 import { PLAN_CONFIGS, PlanConfig } from '@/lib/plan-configs';
 
 /**
- * Hook para validar límites de plan basados en roles (Admins vs Técnicos).
+ * Hook para validar límites de plan basados en roles (Admins vs Técnicos) e IoT.
  */
 export function usePlanLimits() {
   const { profile } = useUser();
@@ -19,7 +19,6 @@ export function usePlanLimits() {
   );
   const { data: company } = useDoc<Company>(companyRef);
 
-  // Consultamos tanto el staff (técnicos registrados) como los usuarios de la plataforma
   const staffQuery = useMemoFirebase(() => 
     db && profile?.companyId ? collection(db, 'companies', profile.companyId, 'staff') : null, 
     [db, profile?.companyId]
@@ -38,6 +37,12 @@ export function usePlanLimits() {
   );
   const { data: clients } = useCollection<Client>(clientsQuery);
 
+  const assetsQuery = useMemoFirebase(() => 
+    db && profile?.companyId ? collection(db, 'companies', profile.companyId, 'assets') : null, 
+    [db, profile?.companyId]
+  );
+  const { data: assets } = useCollection<Asset>(assetsQuery);
+
   const config = useMemo((): PlanConfig => {
     const planId = company?.currentPlan || 'simple';
     return PLAN_CONFIGS[planId as keyof typeof PLAN_CONFIGS] || PLAN_CONFIGS.simple;
@@ -49,29 +54,35 @@ export function usePlanLimits() {
     // Conteo de Administradores (Oficina)
     const adminCount = companyUsers.filter(u => u.role === 'companyAdmin' || u.role === 'supervisor').length;
     
-    // Conteo de Técnicos (Terreno) - Contamos los que están en la ficha de staff
+    // Conteo de Técnicos (Terreno)
     const techCount = (staff || []).length;
     
     const clientsCount = (clients || []).length;
+
+    // Conteo de Activos IoT
+    const iotAssetsCount = (assets || []).filter(a => a.isIoT).length;
 
     return {
       canAddAdmin: adminCount < config.maxAdmins,
       canAddTech: techCount < config.maxTechnicians,
       canAddClient: clientsCount < config.maxClients,
+      canAddIoT: iotAssetsCount < config.maxIoTAssets,
       canBill: config.features.electronicBilling,
       canUseAI: config.features.genkitAI,
       canUseSignature: config.features.digitalSignature,
       adminCount,
       techCount,
       clientsCount,
+      iotAssetsCount,
       maxAdmins: config.maxAdmins,
       maxTechs: config.maxTechnicians,
       maxClients: config.maxClients,
+      maxIoT: config.maxIoTAssets,
       features: config.features,
       planName: config.name,
       currentPlanId: config.id
     };
-  }, [staff, allUsers, clients, config, profile?.companyId]);
+  }, [staff, allUsers, clients, assets, config, profile?.companyId]);
 
   return limits;
 }

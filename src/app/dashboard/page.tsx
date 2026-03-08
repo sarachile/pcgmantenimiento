@@ -103,10 +103,6 @@ export default function DashboardPage() {
     return { total, completed, active, alert };
   }, [realWorkOrders, today]);
 
-  const iotAssetsCount = useMemo(() => {
-    return (assets || []).filter(a => a.isIoT).length;
-  }, [assets]);
-
   const recentOrders = useMemo(() => {
     return [...realWorkOrders].sort((a, b) => {
       const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt) : new Date(0));
@@ -263,26 +259,26 @@ export default function DashboardPage() {
               <div className="p-6 bg-white/10 flex flex-col justify-center items-center text-center border-r border-white/10">
                 <div className="bg-white/20 p-3 rounded-2xl mb-3"><Cpu className="h-6 w-6" /></div>
                 <p className="text-[10px] font-black uppercase tracking-widest">Gateway IoT</p>
-                <p className="text-sm font-bold">{iotAssetsCount > 0 ? 'ONLINE' : 'IDLE'}</p>
+                <p className="text-sm font-bold">{limits.iotAssetsCount > 0 ? 'ONLINE' : 'IDLE'}</p>
               </div>
               <div className="md:col-span-3 p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div className="flex-1">
                   <h3 className="text-lg font-black uppercase italic tracking-tighter mb-1">Monitoreo de Energía en Tiempo Real</h3>
                   <p className="text-xs text-blue-100 font-medium">
-                    {iotAssetsCount > 0 
-                      ? `Tus ${iotAssetsCount} sensores están enviando datos. Las OTs se crearán automáticamente ante fallas.` 
+                    {limits.iotAssetsCount > 0 
+                      ? `Tus ${limits.iotAssetsCount} sensores están enviando datos. Las OTs se crearán automáticamente ante fallas.` 
                       : "No hay sensores vinculados actualmente. Conecta tus activos para activar el monitoreo automático."}
                   </p>
                 </div>
                 <div className="flex gap-4">
                   <div className="text-center">
-                    <p className="text-3xl font-black italic">{iotAssetsCount}</p>
+                    <p className="text-3xl font-black italic">{limits.iotAssetsCount}</p>
                     <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Activos IoT</p>
                   </div>
                   <div className="h-10 w-px bg-white/20 self-center" />
                   <div className="text-center">
-                    <Waves className={cn("h-8 w-8", iotAssetsCount > 0 ? "text-emerald-300 animate-pulse" : "text-white/20")} />
-                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">{iotAssetsCount > 0 ? 'Señal' : 'Sin Señal'}</p>
+                    <Waves className={cn("h-8 w-8", limits.iotAssetsCount > 0 ? "text-emerald-300 animate-pulse" : "text-white/20")} />
+                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">{limits.iotAssetsCount > 0 ? 'Señal' : 'Sin Señal'}</p>
                   </div>
                 </div>
               </div>
@@ -396,10 +392,22 @@ export default function DashboardPage() {
               <Progress value={(limits.techCount / limits.maxTechs) * 100} className="h-1.5 bg-white/10" />
             </div>
 
+            {/* MONITOREO IOT */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-end">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Cpu className="h-3 w-3 text-amber-400" /> Monitoreo de Planta</p>
+                  <p className="text-3xl font-black italic tracking-tighter">{limits.iotAssetsCount} / {limits.maxIoT}</p>
+                </div>
+                <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest">Activos IoT</span>
+              </div>
+              <Progress value={limits.maxIoT > 0 ? (limits.iotAssetsCount / limits.maxIoT) * 100 : 0} className="h-1.5 bg-white/10" />
+            </div>
+
             <div className="pt-6 border-t border-white/5">
               <div className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-4">
                 <p className="text-[11px] text-slate-400 leading-relaxed font-medium">
-                  Este modelo separa el valor estratégico de la oficina del valor operativo en campo. Escala tu flota de técnicos sin perder el control central.
+                  Este modelo separa el valor estratégico de la oficina del valor operativo en campo. Escala tu flota de técnicos y sensores sin perder el control central.
                 </p>
                 <Button asChild variant="outline" className="w-full h-11 rounded-xl border-white/10 bg-transparent text-white hover:bg-white/10 font-bold uppercase text-[10px] tracking-widest">
                   <Link href="/subscription">Gestionar Suscripción</Link>
