@@ -42,6 +42,14 @@ Para recibir y enviar correos sin bloqueos, agrega estos registros:
 - **Tipo**: `TXT`
 - **Data**: `v=DMARC1; p=none;`
 
+### 🔍 Cómo verificar el estado
+
+Existen 3 formas de saber si el proceso ha terminado:
+
+1.  **Consola de Firebase**: En la pestaña de Dominios, verás un estado que dice **"Pending"** (Pendiente), **"Provisioning"** (Generando certificados) o **"Active"** (Activo en verde). Si está en verde, ya terminaste.
+2.  **DNS Checker (Externo)**: Entra en [dnschecker.org](https://dnschecker.org) e ingresa `pcgmantenimiento.com`. Selecciona el tipo **A**. Deberías ver la IP `35.219.200.7` con checks verdes en todo el mundo.
+3.  **Prueba de Navegador Incógnito**: Abre una ventana de incógnito e intenta entrar a `https://pcgmantenimiento.com`. Si carga la página y tiene el candado, la propagación ha terminado.
+
 ### 🛠️ Solución de Problemas (FAQ)
 
 **¿Por qué Firebase me pide borrar registros que no veo?**
