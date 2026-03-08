@@ -30,7 +30,8 @@ import {
   Briefcase,
   Cpu,
   Waves,
-  Calendar
+  Calendar,
+  AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -110,6 +111,13 @@ export default function DashboardPage() {
       return dateB.getTime() - dateA.getTime();
     }).slice(0, 5);
   }, [realWorkOrders]);
+
+  const iotStats = useMemo(() => {
+    const iotAssets = (assets || []).filter(a => a.isIoT);
+    const activeIoT = iotAssets.filter(a => a.status === 'activo').length;
+    const maintenanceIoT = iotAssets.filter(a => a.maintenanceRequired).length;
+    return { count: iotAssets.length, active: activeIoT, maintenance: maintenanceIoT };
+  }, [assets]);
 
   const onboardingSteps = useMemo(() => {
     if (!company || isTechnician) return [];
@@ -251,40 +259,48 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* MONITOR IOT EXCLUSIVO BUSINESS/ENTERPRISE */}
+      {/* VENTANA DE ALERTAS IOT - REDISEÑADA */}
       {limits.features.apiAccess && (
-        <Card className="rounded-[2rem] border-none shadow-lg bg-blue-600 text-white overflow-hidden animate-in fade-in duration-700">
-          <CardContent className="p-0">
-            <div className="grid md:grid-cols-4">
-              <div className="p-6 bg-white/10 flex flex-col justify-center items-center text-center border-r border-white/10">
-                <div className="bg-white/20 p-3 rounded-2xl mb-3"><Cpu className="h-6 w-6" /></div>
-                <p className="text-[10px] font-black uppercase tracking-widest">Gateway IoT</p>
-                <p className="text-sm font-bold">{limits.iotAssetsCount > 0 ? 'ONLINE' : 'IDLE'}</p>
-              </div>
-              <div className="md:col-span-3 p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="flex-1">
-                  <h3 className="text-lg font-black uppercase italic tracking-tighter mb-1">Monitoreo de Energía en Tiempo Real</h3>
-                  <p className="text-xs text-blue-100 font-medium">
-                    {limits.iotAssetsCount > 0 
-                      ? `Tus ${limits.iotAssetsCount} sensores están enviando datos. Las OTs se crearán automáticamente ante fallas.` 
-                      : "No hay sensores vinculados actualmente. Conecta tus activos para activar el monitoreo automático."}
-                  </p>
-                </div>
-                <div className="flex gap-4">
-                  <div className="text-center">
-                    <p className="text-3xl font-black italic">{limits.iotAssetsCount}</p>
-                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">Activos IoT</p>
-                  </div>
-                  <div className="h-10 w-px bg-white/20 self-center" />
-                  <div className="text-center">
-                    <Waves className={cn("h-8 w-8", limits.iotAssetsCount > 0 ? "text-emerald-300 animate-pulse" : "text-white/20")} />
-                    <p className="text-[8px] font-black uppercase tracking-widest opacity-60">{limits.iotAssetsCount > 0 ? 'Señal' : 'Sin Señal'}</p>
+        <Link href="/iot-control" className="block group">
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden transition-all group-hover:scale-[1.01] active:scale-[0.99] shadow-blue-200">
+            <CardContent className="p-0">
+              <div className="grid md:grid-cols-4">
+                <div className="p-8 bg-white/10 flex flex-col justify-center items-center text-center border-r border-white/10">
+                  <div className="bg-white/20 p-4 rounded-3xl mb-4"><Cpu className="h-8 w-8" /></div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70">Monitor Estratégico</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className={cn("h-2 w-2 rounded-full", iotStats.count > 0 ? "bg-emerald-400 animate-pulse" : "bg-white/30")} />
+                    <p className="text-sm font-black">{iotStats.count > 0 ? 'SISTEMA ONLINE' : 'STANDBY'}</p>
                   </div>
                 </div>
+                <div className="md:col-span-3 p-8 flex flex-col sm:flex-row items-center justify-between gap-8">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-2xl font-black uppercase italic tracking-tighter">Centro de Alertas de Planta</h3>
+                      <div className="bg-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase">Click para gestionar</div>
+                    </div>
+                    <p className="text-sm text-blue-100 font-medium">
+                      Monitoreo activo de parámetros críticos (Solar, Temp, Vib). Detección remota de anomalías en tiempo real.
+                    </p>
+                  </div>
+                  <div className="flex gap-8 bg-black/10 p-6 rounded-[2rem] border border-white/10">
+                    <div className="text-center">
+                      <p className="text-4xl font-black italic tracking-tighter">{iotStats.active}</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-emerald-300">Activos Normal</p>
+                    </div>
+                    <div className="h-12 w-px bg-white/10 self-center" />
+                    <div className="text-center">
+                      <p className={cn("text-4xl font-black italic tracking-tighter", iotStats.maintenance > 0 ? "text-amber-400" : "text-white/40")}>
+                        {iotStats.maintenance}
+                      </p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-blue-200">Alertas Mantención</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
       )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

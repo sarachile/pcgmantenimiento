@@ -23,7 +23,8 @@ import {
   Receipt,
   Layers,
   Sparkles,
-  Lock
+  Lock,
+  Cpu
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -60,7 +61,8 @@ const operationalItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", href: "/calendar", icon: CalendarDays },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
-  { title: "Captura Terreno", href: "/field/capture", icon: Camera, highlight: true },
+  { title: "Monitor IoT Alertas", href: "/iot-control", icon: Cpu, highlight: true },
+  { title: "Captura Terreno", href: "/field/capture", icon: Camera },
 ];
 
 const inventoryItems: NavItem[] = [

@@ -5,6 +5,8 @@ export type OTStatus = 'solicitada' | 'creada' | 'asignada' | 'ejecutada' | 'en 
 
 export type AssetStatus = 'activo' | 'inactivo' | 'en mantenimiento';
 
+export type IoTType = 'solar' | 'temperatura' | 'vibracion' | 'presion' | 'otro';
+
 export type DTEStatus = 'pendiente' | 'emitido' | 'anulado' | 'error' | 'aceptado_sii';
 
 export type BillingDocumentType = 'factura' | 'boleta' | 'guia_despacho' | 'nota_credito';
@@ -92,7 +94,12 @@ export interface Asset {
   code: string;
   location: string;
   status: AssetStatus;
-  isIoT?: boolean; // Flag para activos con sensores
+  isIoT?: boolean;
+  iotType?: IoTType;
+  lastValue?: number;
+  unit?: string;
+  maintenanceRequired?: boolean;
+  maintenanceReason?: string;
   lastMaintenanceAt?: string | any;
   createdAt: string | any;
 }
