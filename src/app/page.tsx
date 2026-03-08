@@ -24,7 +24,8 @@ import {
   MessageSquareShare,
   Sun,
   Waves,
-  Database
+  Database,
+  Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -337,7 +338,7 @@ export default function HomePage() {
               <span className="text-[10px] font-black uppercase">Cloud Native</span>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <Search className="h-8 w-8" />
+              <Search className="text-[10px] h-8 w-8" />
               <span className="text-[10px] font-black uppercase">Auditable 100%</span>
             </div>
             <div className="flex flex-col items-center gap-2">
