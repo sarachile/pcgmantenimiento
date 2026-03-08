@@ -54,7 +54,7 @@ interface NavItem {
   roles?: Role[];
   badge?: string;
   highlight?: boolean;
-  featureFlag?: string; // Nuevo: para controlar visibilidad por plan
+  featureFlag?: string;
 }
 
 const operationalItems: NavItem[] = [
@@ -123,23 +123,17 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
     <Sidebar className="border-r border-border/50 bg-slate-950 text-slate-300">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          {isSuperAdmin ? (
-            <div className="bg-primary p-2 rounded-xl shadow-lg shadow-primary/20">
-              <ShieldCheck className="text-white h-6 w-6" />
-            </div>
-          ) : company?.logoUrl ? (
-            <div className="h-10 w-10 relative overflow-hidden rounded-xl border border-white/10 bg-white flex items-center justify-center shadow-inner">
+          <div className="h-10 w-10 relative overflow-hidden rounded-xl border border-white/10 bg-white flex items-center justify-center shadow-inner shrink-0">
+            {company?.logoUrl ? (
               <FirebaseImage 
                 url={company.logoUrl} 
                 alt={company.name} 
                 className="h-full w-full"
               />
-            </div>
-          ) : (
-            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-900/40">
-              <Sparkles className="text-white h-6 w-6" />
-            </div>
-          )}
+            ) : (
+              <img src="/logo.png" alt="PCG" className="h-7 w-7 object-contain" onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=PCG")} />
+            )}
+          </div>
           <div className="flex flex-col min-w-0">
             <span className="font-black text-sm tracking-tighter text-white uppercase truncate">
               {isSuperAdmin ? "CORE INFRA" : (company?.name || "PCGMANT")}
