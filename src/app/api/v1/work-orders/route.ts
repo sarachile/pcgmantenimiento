@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       updatedAt: serverTimestamp(),
     });
 
-    // Registrar en Bitácora
+    // Registrar en Bitácora con identificación del autor
     const logCol = collection(firestore, "companies", companyId, "workOrders", shortId, "digitalLogbookEntries");
     await setDoc(doc(logCol), {
       workOrderId: shortId,
@@ -66,7 +66,8 @@ export async function POST(request: Request) {
       timestamp: serverTimestamp(),
       eventType: 'system_alert',
       eventDetails: `Orden creada automáticamente vía API externa. Origen: ${urgency === 'high' ? 'Alerta de Sensor' : 'Sistema Integrado'}.`,
-      actor: "API_GATEWAY"
+      actor: "API_GATEWAY",
+      actorName: "Sistema API"
     });
 
     return NextResponse.json({

@@ -178,6 +178,7 @@ export interface DigitalLogbookEntry {
   eventType: 'status_change' | 'action_taken' | 'comment' | 'system_alert';
   eventDetails: string;
   actor: string;
+  actorName?: string; // Nombre del autor para trazabilidad inalterable
 }
 
 export interface BillingDocument {

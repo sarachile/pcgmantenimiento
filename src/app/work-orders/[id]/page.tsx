@@ -466,7 +466,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <>
                   <input type="file" className="hidden" ref={fileInputRef} onChange={handleUploadPhoto} accept="image/*" />
                   <Button size="sm" variant="outline" className="rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                    {isUploading ? <Loader2 className="animate-spin h-4 w-4" /> : <><Plus className="h-4 w-4 mr-2" /> Añadir Foto</>}
+                    {isUploading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <><} Añadir Foto</>}
                   </Button>
                 </>
               )}
@@ -505,7 +505,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <Button size="icon" className="shrink-0 h-auto bg-blue-600 hover:bg-blue-500 rounded-xl" onClick={() => {
                     if (!manualComment.trim() || !profile) return;
                     addDoc(collection(db!, "companies", companyId, "workOrders", ot.id, "digitalLogbookEntries"), {
-                      workOrderId: ot.id, companyId: companyId, timestamp: serverTimestamp(), eventType: 'comment', eventDetails: manualComment, actor: profile.id
+                      workOrderId: ot.id, 
+                      companyId: companyId, 
+                      timestamp: serverTimestamp(), 
+                      eventType: 'comment', 
+                      eventDetails: manualComment, 
+                      actor: profile.id,
+                      actorName: profile.name // Persistiendo el nombre del autor
                     });
                     setManualComment("");
                     toast({ title: "Bitácora actualizada" });
@@ -516,7 +522,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 {logbook && logbook.length > 0 ? logbook.map(e => (
                   <div key={e.id} className="relative pl-6 border-l-2 border-white/10 pb-2 last:pb-0">
                     <div className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">{e.eventType.replace('_', ' ')}</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{e.eventType.replace('_', ' ')}</p>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-tighter bg-white/5 px-2 py-0.5 rounded">
+                        {e.actorName || 'SISTEMA'}
+                      </p>
+                    </div>
                     <p className="text-xs text-slate-300 leading-relaxed font-medium mb-1">{e.eventDetails}</p>
                     <p className="text-[9px] text-slate-500 italic font-bold">{formatDateLabel(e.timestamp)}</p>
                   </div>

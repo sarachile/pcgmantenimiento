@@ -93,7 +93,7 @@ export default function FieldCapturePage() {
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
   const handleManualSave = async () => {
-    if (!selectedOT || !db || !profile?.companyId) return;
+    if (!selectedOT || !db || !profile?.companyId || !profile) return;
     
     setIsSaving(true);
     // Si hay un comentario, lo guardamos en la bitácora
@@ -104,7 +104,8 @@ export default function FieldCapturePage() {
         timestamp: serverTimestamp(),
         eventType: 'comment',
         eventDetails: logComment,
-        actor: profile.id
+        actor: profile.id,
+        actorName: profile.name
       });
       setLogComment("");
     }
@@ -120,7 +121,7 @@ export default function FieldCapturePage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedOT || !profile?.companyId || !storage || !db) return;
+    if (!file || !selectedOT || !profile?.companyId || !storage || !db || !profile) return;
 
     setIsUploading(true);
     try {
@@ -157,7 +158,8 @@ export default function FieldCapturePage() {
         timestamp: serverTimestamp(),
         eventType: 'action_taken',
         eventDetails: logComment || "Evidencia fotográfica cargada desde terreno.",
-        actor: profile.id
+        actor: profile.id,
+        actorName: profile.name
       });
 
       toast({ title: "Evidencia Guardada", description: "El avance se ha registrado con éxito." });
@@ -173,7 +175,7 @@ export default function FieldCapturePage() {
   };
 
   const handleFinalizeWork = async () => {
-    if (!selectedOT || !db || !profile?.companyId) return;
+    if (!selectedOT || !db || !profile?.companyId || !profile) return;
     
     setIsFinalizing(true);
     try {
@@ -195,7 +197,8 @@ export default function FieldCapturePage() {
         timestamp: serverTimestamp(),
         eventType: 'status_change',
         eventDetails: `El técnico ${profile.name} ha finalizado los trabajos y enviado la orden a revisión técnica.`,
-        actor: profile.id
+        actor: profile.id,
+        actorName: profile.name
       });
 
       toast({ title: "Trabajo Finalizado", description: "La orden ha pasado a revisión técnica." });
@@ -329,6 +332,10 @@ export default function FieldCapturePage() {
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-blue-500" /> Nota de Bitácora
                   </Label>
+                  <div className="flex items-center gap-2 bg-blue-50 p-3 rounded-xl border border-blue-100 mb-2">
+                    <User className="h-3 w-3 text-blue-600" />
+                    <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest">Registrando como: {profile?.name}</span>
+                  </div>
                   <Textarea 
                     placeholder={selectedChecklistItemId ? "Añade una nota para esta tarea específica..." : "Detalles generales del hallazgo o acción..."} 
                     className="rounded-2xl min-h-[80px] border-2 bg-slate-50/50 text-sm"
