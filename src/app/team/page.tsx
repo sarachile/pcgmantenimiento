@@ -70,14 +70,15 @@ import {
   CheckCircle2,
   Clock,
   Plus,
-  Shield
+  Shield,
+  Send
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { StaffMember, Team } from "@/lib/types";
+import { StaffMember, Team, Company } from "@/lib/types";
 import * as XLSX from "xlsx";
 import { usePlanLimits } from "@/hooks/use-plan-limits";
 
@@ -106,6 +107,9 @@ export default function TeamPage() {
   const [teamFormData, setTeamFormData] = useState({ name: "", leaderId: "", memberIds: [] as string[] });
 
   // Queries
+  const companyRef = useMemoFirebase(() => db && profile?.companyId ? doc(db, "companies", profile.companyId) : null, [db, profile?.companyId]);
+  const { data: company } = useDoc<Company>(companyRef);
+
   const staffQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "staff") : null, [db, profile?.companyId]);
   const teamsQuery = useMemoFirebase(() => db && profile?.companyId ? collection(db, "companies", profile.companyId, "teams") : null, [db, profile?.companyId]);
 
@@ -128,10 +132,11 @@ export default function TeamPage() {
       toast({ title: "Técnico actualizado" });
     } else {
       addDocumentNonBlocking(collection(db, "companies", profile.companyId, "staff"), dataToSave);
-      toast({ title: "Técnico registrado" });
+      toast({ title: "Técnico registrado", description: "Recuerde enviarle su link de activación por WhatsApp." });
     }
     setIsCreateOpen(false);
     setEditingStaff(null);
+    setFormData({ name: "", role: "Técnico", identification: "", phone: "", email: "" });
   };
 
   const handleEditStaff = (staff: StaffMember) => {
@@ -146,45 +151,6 @@ export default function TeamPage() {
     toast({ title: "Técnico eliminado" });
   };
 
-  // --- TEAM HANDLERS ---
-  const handleTeamSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!db || !profile?.companyId) return;
-
-    const dataToSave = {
-      ...teamFormData,
-      companyId: profile.companyId,
-      createdAt: serverTimestamp()
-    };
-
-    if (editingTeam) {
-      updateDocumentNonBlocking(doc(db, "companies", profile.companyId, "teams", editingTeam.id), { ...dataToSave, updatedAt: serverTimestamp() });
-      toast({ title: "Cuadrilla actualizada" });
-    } else {
-      addDocumentNonBlocking(collection(db, "companies", profile.companyId, "teams"), dataToSave);
-      toast({ title: "Cuadrilla creada" });
-    }
-    setIsTeamOpen(false);
-    setEditingTeam(null);
-    setTeamFormData({ name: "", leaderId: "", memberIds: [] });
-  };
-
-  const handleEditTeam = (team: Team) => {
-    setEditingTeam(team);
-    setTeamFormData({
-      name: team.name,
-      leaderId: team.leaderId || "",
-      memberIds: team.memberIds || []
-    });
-    setIsTeamOpen(true);
-  };
-
-  const handleDeleteTeam = (team: Team) => {
-    if (!db || !profile?.companyId) return;
-    deleteDocumentNonBlocking(doc(db, "companies", profile.companyId, "teams", team.id));
-    toast({ title: "Cuadrilla eliminada" });
-  };
-
   // --- UTILS ---
   const getInvitationLink = (staffId: string) => {
     if (typeof window === "undefined" || !profile?.companyId) return "";
@@ -194,7 +160,21 @@ export default function TeamPage() {
   const handleCopyLink = (staffId: string) => {
     const link = getInvitationLink(staffId);
     navigator.clipboard.writeText(link);
-    toast({ title: "Link Copiado", description: "Envía este link al técnico por WhatsApp." });
+    toast({ title: "Link Copiado", description: "Listo para pegar en WhatsApp." });
+  };
+
+  const handleSendWhatsApp = (staff: StaffMember) => {
+    if (!staff.phone) {
+      toast({ title: "Sin teléfono", description: "Debe registrar un número para enviar WhatsApp.", variant: "destructive" });
+      return;
+    }
+
+    const cleanPhone = staff.phone.replace(/\D/g, "");
+    const link = getInvitationLink(staff.id);
+    const message = `Hola *${staff.name}*, te damos la bienvenida a *${company?.name || 'PCGMANTENIMIENTO'}*. Para activar tu cuenta de técnico y acceder a tus órdenes de trabajo, por favor ingresa a este enlace y configura tu PIN: ${link}`;
+    
+    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(waUrl, "_blank");
   };
 
   const handleBulkUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -239,9 +219,9 @@ export default function TeamPage() {
           <div className="absolute right-0 top-0 p-10 opacity-10 group-hover:scale-110 transition-transform"><Smartphone className="h-40 w-40 text-blue-400" /></div>
           <div className="relative z-10 space-y-4">
             <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1">Workflow WhatsApp</Badge>
-            <h3 className="text-2xl font-black italic uppercase leading-none">Invitación Digital</h3>
+            <h3 className="text-2xl font-black italic uppercase leading-none">Invitación Directa</h3>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Crea el registro del técnico y copia su **Link de Activación**. Envíalo por WhatsApp para que él mismo configure su PIN de acceso personal.
+              Registra a tu personal y envía sus instrucciones de acceso directamente a su WhatsApp. Sin correos perdidos ni procesos complejos.
             </p>
           </div>
         </Card>
@@ -319,9 +299,19 @@ export default function TeamPage() {
                               <span className="text-[10px] font-black uppercase tracking-widest">Acceso Activo</span>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2 text-amber-500">
-                              <Clock className="h-4 w-4" />
-                              <span className="text-[10px] font-black uppercase tracking-widest">Activación Pendiente</span>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 text-amber-500">
+                                <Clock className="h-4 w-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Activación Pendiente</span>
+                              </div>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-7 px-2 text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg gap-1.5"
+                                onClick={() => handleSendWhatsApp(s)}
+                              >
+                                <MessageCircle className="h-3 w-3" /> Invitar por WA
+                              </Button>
                             </div>
                           )}
                         </TableCell>
@@ -332,11 +322,15 @@ export default function TeamPage() {
                                 <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-100"><MoreVertical className="h-5 w-5 text-slate-400" /></Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
-                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones Técnico</DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Comunicación</DropdownMenuLabel>
+                                <DropdownMenuItem className="rounded-xl p-3 focus:bg-emerald-50 font-bold gap-3 text-emerald-700" onClick={() => handleSendWhatsApp(s)}>
+                                  <MessageCircle className="h-4 w-4" /> Enviar por WhatsApp
+                                </DropdownMenuItem>
                                 <DropdownMenuItem className="rounded-xl p-3 focus:bg-blue-50 font-bold gap-3 text-blue-700" onClick={() => handleCopyLink(s.id)}>
                                   <Link2 className="h-4 w-4" /> Copiar Link Invitación
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-slate-50" />
+                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones</DropdownMenuLabel>
                                 <DropdownMenuItem className="rounded-xl p-3 focus:bg-slate-50 font-bold gap-3" onClick={() => handleEditStaff(s)}>
                                   <Edit className="h-4 w-4 text-slate-400" /> Editar Datos
                                 </DropdownMenuItem>
@@ -434,10 +428,10 @@ export default function TeamPage() {
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Rol</Label><Select value={formData.role} onValueChange={(v) => setFormData({...formData, role: v})}><SelectTrigger className="h-12 border-2 rounded-xl font-bold uppercase text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Técnico">Técnico</SelectItem><SelectItem value="Supervisor">Supervisor</SelectItem></SelectContent></Select></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Teléfono</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="h-12 border-2 rounded-xl" placeholder="+569..." /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Teléfono (WhatsApp)</Label><Input value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="h-12 border-2 rounded-xl font-bold" placeholder="56912345678" /></div>
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email</Label><Input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="h-12 border-2 rounded-xl" placeholder="personal@gmail.com" /></div>
             </div>
-            <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">Guardar en Base de Datos</Button></DialogFooter>
+            <DialogFooter className="pt-4"><Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">Guardar y Preparar Invitación</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
