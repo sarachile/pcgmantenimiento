@@ -43,7 +43,8 @@ import {
   Info,
   Clock,
   History,
-  MousePointer2
+  MousePointer2,
+  ShieldCheck
 } from "lucide-react";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
