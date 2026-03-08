@@ -86,21 +86,13 @@ export default function AssetsPage() {
     setMounted(true);
   }, []);
 
-  /**
-   * CRITICAL FAILSAFE: 
-   * Radix UI a veces deja el body con pointer-events: none al cerrar diálogos 
-   * disparados desde menús. Este efecto fuerza la restauración de la interactividad.
-   */
+  // FORCE UNLOCK BODY - Ejecutar siempre que cambie el estado del diálogo
   useEffect(() => {
     if (!isDialogOpen) {
-      const unlockInterface = () => {
+      const timer = setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
         document.body.style.overflow = 'auto';
-      };
-      
-      // Ejecutar inmediatamente y con un leve retardo para asegurar que la limpieza de Radix no nos sobreescriba
-      unlockInterface();
-      const timer = setTimeout(unlockInterface, 100);
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, [isDialogOpen]);
@@ -149,8 +141,7 @@ export default function AssetsPage() {
       iotType: asset.iotType || "otro",
       unit: asset.unit || ""
     });
-    // Pequeño retardo para asegurar que el Dropdown se cierre y desmonte antes que el Dialog abra
-    setTimeout(() => setIsDialogOpen(true), 150);
+    setIsDialogOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -311,7 +302,7 @@ export default function AssetsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right pr-6">
-                      <DropdownMenu>
+                      <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="rounded-xl">
                             <MoreVertical className="h-4 w-4" />
@@ -320,16 +311,10 @@ export default function AssetsPage() {
                         <DropdownMenuContent 
                           align="end" 
                           className="w-48 rounded-xl shadow-xl border-none"
-                          onCloseAutoFocus={(e) => {
-                            // Prevenir que el foco regrese al trigger si el cuerpo está bloqueado
-                            if (document.body.style.pointerEvents === 'none') {
-                              e.preventDefault();
-                            }
-                          }}
                         >
                           <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400">Gestión Activo</DropdownMenuLabel>
                           <DropdownMenuItem 
-                            className="font-bold gap-2" 
+                            className="font-bold gap-2 cursor-pointer" 
                             onSelect={(e) => {
                               e.preventDefault();
                               handleEdit(asset);
@@ -339,7 +324,7 @@ export default function AssetsPage() {
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem 
-                            className="font-bold gap-2 text-rose-600" 
+                            className="font-bold gap-2 text-rose-600 cursor-pointer" 
                             onSelect={(e) => {
                               e.preventDefault();
                               handleDelete(asset);
@@ -358,8 +343,21 @@ export default function AssetsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+      {/* SINGLETON DIALOG - MOVIDO FUERA DEL LOOP Y CONTROLADO POR ESTADO */}
+      <Dialog 
+        open={isDialogOpen} 
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}
+      >
+        <DialogContent 
+          className="sm:max-w-[500px]"
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            document.body.style.pointerEvents = 'auto';
+          }}
+        >
           <DialogHeader>
             <DialogTitle className="text-2xl font-black italic tracking-tight">
               {editingAsset ? "Editar Activo" : "Registrar Nuevo Activo"}
