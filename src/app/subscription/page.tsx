@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { useUser, useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
-import { doc, serverTimestamp } from "firebase/firestore";
+import { doc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,19 +24,22 @@ import {
   Code2,
   Cpu,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Send
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { PLAN_CONFIGS } from "@/lib/plan-configs";
+import { sendSystemEmail } from "@/actions/email";
 
 export default function SubscriptionPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const [isRequestingKit, setIsRequestingKit] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [rut, setRut] = useState("");
 
@@ -104,17 +107,101 @@ export default function SubscriptionPage() {
     setIsUpgrading(true);
   };
 
+  const handleRequestKit = async () => {
+    if (!db || !profile || !company) return;
+    
+    setIsRequestingKit(true);
+    try {
+      const subject = `SOLICITUD DE KIT SENSORES - ${company.name}`;
+      const description = `El usuario ${profile.name} ha solicitado información y presupuesto para el Kit de Sensores IoT Pre-configurados.`;
+
+      // 1. Crear Ticket de Soporte
+      await addDoc(collection(db, "supportTickets"), {
+        userId: profile.id,
+        userName: profile.name,
+        companyId: profile.companyId,
+        companyName: company.name,
+        subject: "Interés en Kit de Sensores IoT",
+        description: description,
+        status: "open",
+        category: "technical",
+        priority: "high",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // 2. Enviar Email a Super Admin
+      await sendSystemEmail({
+        to: "control@pcgoperacion.com",
+        subject: subject,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+            <h2 style="color: #1e3a8a;">Nueva Solicitud de Hardware IoT</h2>
+            <p><strong>Empresa:</strong> ${company.name}</p>
+            <p><strong>Contacto:</strong> ${profile.name} (${profile.email})</p>
+            <p><strong>Requerimiento:</strong> Kit de Sensores Solar Pro</p>
+            <hr />
+            <p>Por favor, contactar a la brevedad para coordinar envío y facturación del hardware.</p>
+          </div>
+        `
+      });
+
+      toast({
+        title: "Solicitud Enviada",
+        description: "Un ejecutivo comercial te contactará para coordinar el envío de tu Kit.",
+      });
+    } catch (error) {
+      toast({ title: "Error al procesar", variant: "destructive" });
+    } finally {
+      setIsRequestingKit(false);
+    }
+  };
+
   const confirmUpgrade = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyRef || !rut.trim()) return;
+    if (!companyRef || !rut.trim() || !profile || !company) return;
 
     try {
+      // 1. Actualizar Documento de Empresa
       updateDocumentNonBlocking(companyRef, {
         rut: rut.trim(),
         requestedPlan: selectedPlan.id,
         subscriptionStatus: 'active',
         currentPlan: selectedPlan.id,
         updatedAt: serverTimestamp()
+      });
+
+      // 2. Crear Ticket de Soporte Comercial
+      const upgradeMsg = `El usuario ${profile.name} ha realizado un aumento de plan a ${selectedPlan.config.name}. RUT Facturación: ${rut.trim()}.`;
+      await addDoc(collection(db!, "supportTickets"), {
+        userId: profile.id,
+        userName: profile.name,
+        companyId: profile.companyId,
+        companyName: company.name,
+        subject: `Actualización de Plan: ${selectedPlan.config.name}`,
+        description: upgradeMsg,
+        status: "open",
+        category: "billing",
+        priority: "high",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // 3. Notificar a Administración
+      await sendSystemEmail({
+        to: "control@pcgoperacion.com",
+        subject: `NUEVA SUSCRIPCIÓN ACTIVADA - ${company.name}`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px;">
+            <h2 style="color: #1e3a8a;">Aumento de Plan Detectado</h2>
+            <p><strong>Empresa:</strong> ${company.name}</p>
+            <p><strong>RUT:</strong> ${rut.trim()}</p>
+            <p><strong>Nuevo Plan:</strong> ${selectedPlan.config.name}</p>
+            <p><strong>Usuario:</strong> ${profile.name}</p>
+            <hr />
+            <p>Se ha generado un ticket automático en el panel de control para seguimiento de facturación.</p>
+          </div>
+        `
       });
 
       toast({
@@ -228,8 +315,13 @@ export default function SubscriptionPage() {
                 ¿Instalas paneles? Obtén nuestro kit de sensores pre-configurados. Convierte tu servicio técnico en un centro de monitoreo 24/7 para tus clientes.
               </p>
             </div>
-            <Button variant="outline" className="h-16 px-10 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-xs tracking-[0.2em] shadow-2xl">
-              Pedir Kit de Sensores
+            <Button 
+              variant="outline" 
+              className="h-16 px-10 rounded-2xl bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-xs tracking-[0.2em] shadow-2xl gap-2"
+              onClick={handleRequestKit}
+              disabled={isRequestingKit}
+            >
+              {isRequestingKit ? <Loader2 className="animate-spin h-4 w-4" /> : <><Send className="h-4 w-4" /> Pedir Kit de Sensores</>}
             </Button>
           </div>
         </Card>
