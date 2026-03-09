@@ -20,6 +20,14 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { 
   Camera, 
   Search, 
   Loader2, 
@@ -36,7 +44,10 @@ import {
   Save,
   MapPin,
   Compass,
-  ExternalLink
+  ExternalLink,
+  QrCode,
+  Lock,
+  Smartphone
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +70,7 @@ export default function FieldCapturePage() {
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [isQrOpen, setIsQrOpen] = useState(false);
 
   // Captura de ubicación al montar o seleccionar OT
   const getPosition = () => {
@@ -248,6 +260,18 @@ export default function FieldCapturePage() {
     }
   };
 
+  const getApprovalUrl = () => {
+    if (!selectedOT || !profile?.companyId) return "";
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/portal/approve/${selectedOT.id}?c=${profile.companyId}`;
+  };
+
+  const qrImageUrl = useMemo(() => {
+    const url = getApprovalUrl();
+    if (!url) return "";
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+  }, [selectedOT, profile?.companyId]);
+
   if (isUserLoading || isOrdersLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
@@ -287,8 +311,6 @@ export default function FieldCapturePage() {
               ) : (
                 filtered.map(ot => {
                   const client = clients?.find(c => c.id === ot.clientId);
-                  const completedCount = ot.checklist?.filter(i => i.completed).length || 0;
-                  const totalCount = ot.checklist?.length || 0;
                   
                   return (
                     <button 
@@ -425,14 +447,53 @@ export default function FieldCapturePage() {
                 </div>
 
                 <div className="pt-8 border-t-2 border-dashed space-y-4">
-                  <Button 
-                    variant="outline"
-                    className="w-full h-16 rounded-2xl border-2 border-slate-200 font-black uppercase text-xs tracking-widest gap-2 bg-white"
-                    onClick={handleManualSave}
-                    disabled={isSaving || isUploading || isFinalizing}
-                  >
-                    {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <><Save className="h-4 w-4" /> Guardar Avance y GPS</>}
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button 
+                      variant="outline"
+                      className="h-16 rounded-2xl border-2 border-slate-200 font-black uppercase text-[10px] tracking-widest gap-2 bg-white"
+                      onClick={handleManualSave}
+                      disabled={isSaving || isUploading || isFinalizing}
+                    >
+                      {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <><Save className="h-4 w-4" /> Guardar Avance</>}
+                    </Button>
+
+                    <Dialog open={isQrOpen} onOpenChange={setIsQrOpen}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="outline"
+                          className="h-16 rounded-2xl border-2 border-indigo-200 text-indigo-700 font-black uppercase text-[10px] tracking-widest gap-2 bg-indigo-50"
+                        >
+                          <QrCode className="h-4 w-4" /> Validación QR
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px] rounded-[3rem]">
+                        <DialogHeader>
+                          <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-center">Aprobación del Cliente</DialogTitle>
+                          <DialogDescription className="text-center font-bold">Pida al cliente que escanee el código para validar el servicio.</DialogDescription>
+                        </DialogHeader>
+                        <div className="flex flex-col items-center justify-center p-6 space-y-8">
+                          <div className="bg-white p-4 rounded-3xl shadow-2xl border-2 border-slate-50 relative overflow-hidden">
+                            <img src={qrImageUrl} alt="QR de Aprobación" className="w-64 h-64" />
+                            <div className="absolute inset-0 bg-indigo-600/5 pointer-events-none" />
+                          </div>
+                          
+                          <div className="w-full space-y-4">
+                            <div className="bg-slate-900 text-white p-6 rounded-3xl space-y-2 text-center relative overflow-hidden">
+                              <div className="absolute left-0 top-0 p-4 opacity-10"><Lock className="h-12 w-12" /></div>
+                              <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.3em]">PIN de Verificación</p>
+                              <p className="text-4xl font-black italic tracking-[0.5em]">{selectedOT.approvalPin || '------'}</p>
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase text-center leading-relaxed">
+                              El cliente deberá ingresar este PIN en su celular <br />para emitir el sello digital.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex justify-center pb-4">
+                          <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest" onClick={() => setIsQrOpen(false)}>Cerrar Ventana</Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
 
                   <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex gap-3">
                     <Fingerprint className="h-6 w-6 text-blue-600 shrink-0" />
