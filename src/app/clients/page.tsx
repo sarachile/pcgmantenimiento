@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -25,6 +24,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { 
   Search, 
   Plus, 
   Mail, 
@@ -45,7 +51,8 @@ import {
   History,
   MousePointer2,
   ShieldCheck,
-  User
+  User,
+  Globe
 } from "lucide-react";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -57,6 +64,7 @@ import { usePlanLimits } from "@/hooks/use-plan-limits";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { CHILE_REGIONS } from "@/lib/chile-data";
 
 export default function ClientsPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -75,10 +83,17 @@ export default function ClientsPage() {
   const [formData, setFormData] = useState({
     name: "",
     rut: "",
-    address: "",
+    region: "",
+    city: "",
+    commune: "",
+    street: "",
+    streetNumber: "",
+    complement: "",
     contactName: "",
     contactEmail: ""
   });
+
+  const selectedRegion = useMemo(() => CHILE_REGIONS.find(r => r.name === formData.region), [formData.region]);
 
   const companyRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -110,21 +125,21 @@ export default function ClientsPage() {
     if (isAtLimit) {
       toast({
         title: "Límite alcanzado",
-        description: `Tu ${planName} permite hasta ${maxClients} clientes. Mejora tu plan para añadir más.`,
+        description: `Tu ${planName} permite hasta ${maxClients} clientes.`,
         variant: "destructive"
       });
       setIsCreateOpen(false);
       return;
     }
 
+    const fullAddress = `${formData.street} ${formData.streetNumber}${formData.complement ? ', ' + formData.complement : ''}, ${formData.commune}, ${formData.region}`;
+
     const dataToSave = {
       ...formData,
-      name: formData.name || "Nombre por definir",
-      rut: formData.rut || "RUT por definir",
-      address: formData.address || "Dirección por definir",
+      address: fullAddress,
       companyId: profile.companyId,
       evaluationEnabled: true,
-      createdAt: new Date().toISOString()
+      createdAt: editingClient ? editingClient.createdAt : new Date().toISOString()
     };
 
     if (editingClient) {
@@ -140,8 +155,16 @@ export default function ClientsPage() {
       toast({ title: "Cliente registrado" });
     }
 
-    setFormData({ name: "", rut: "", address: "", contactName: "", contactEmail: "" });
+    resetForm();
     setIsCreateOpen(false);
+  };
+
+  const resetForm = () => {
+    setFormData({ 
+      name: "", rut: "", region: "", city: "", commune: "", 
+      street: "", streetNumber: "", complement: "", 
+      contactName: "", contactEmail: "" 
+    });
     setEditingClient(null);
   };
 
@@ -150,7 +173,12 @@ export default function ClientsPage() {
     setFormData({
       name: client.name,
       rut: client.rut,
-      address: client.address,
+      region: client.region || "",
+      city: client.city || "",
+      commune: client.commune || "",
+      street: client.street || "",
+      streetNumber: client.streetNumber || "",
+      complement: client.complement || "",
       contactName: client.contactName || "",
       contactEmail: client.contactEmail || ""
     });
@@ -214,20 +242,18 @@ export default function ClientsPage() {
               <a href="${url}" style="background-color: #1e3a8a; color: #ffffff; padding: 20px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);">
                 ACCEDER AL PORTAL TÉCNICO
               </a>
-              <p style="color: #94a3b8; font-size: 11px; margin-top: 16px;">* Le recomendamos guardar este link en sus marcadores o favoritos.</p>
             </div>
             
             <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
-            <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">Este es un servicio automatizado de gestión industrial vía PCGMANTENIMIENTO ERP.</p>
+            <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">Servicio automatizado vía PCGMANTENIMIENTO ERP.</p>
           </div>
         `
       });
 
       if (result.success) {
-        // Actualizar fecha de envío en Firestore
         const clientRef = doc(db!, "companies", profile!.companyId, "clients", client.id);
         updateDocumentNonBlocking(clientRef, { portalLastSentAt: serverTimestamp() });
-        toast({ title: "Portal Enviado", description: "El cliente ha sido notificado." });
+        toast({ title: "Portal Enviado" });
       } else {
         throw new Error(result.error);
       }
@@ -243,7 +269,7 @@ export default function ClientsPage() {
     try {
       const d = date.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
       return format(d, "dd MMM, HH:mm", { locale: es });
-    } catch (e) { return "Error fecha"; }
+    } catch (e) { return "Error"; }
   };
 
   if (isAuthLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -255,7 +281,7 @@ export default function ClientsPage() {
           <Button variant="ghost" size="icon" asChild className="rounded-full h-12 w-12"><Link href="/dashboard"><ArrowLeft className="h-5 w-5" /></Link></Button>
           <div>
             <h2 className="text-4xl font-black tracking-tighter italic uppercase text-slate-900">Cartera de Clientes</h2>
-            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">Administración de Mandantes y Portales Externos</p>
+            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">Direccionamiento Granular y Portales Externos</p>
           </div>
         </div>
         
@@ -267,35 +293,80 @@ export default function ClientsPage() {
           )}
           <Dialog open={isCreateOpen} onOpenChange={(open) => {
             if (open && isAtLimit) {
-              toast({ title: "Upgrade Requerido", description: `Has alcanzado el máximo de ${maxClients} clientes de tu plan.` });
+              toast({ title: "Upgrade Requerido", description: `Máximo de ${maxClients} clientes alcanzado.` });
               return;
             }
             setIsCreateOpen(open);
-            if (!open) { setEditingClient(null); setFormData({ name: "", rut: "", address: "", contactName: "", contactEmail: "" }); }
+            if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button disabled={isAtLimit} className="rounded-xl h-12 px-6 font-black shadow-xl shadow-primary/20 gap-2">
+              <Button disabled={isAtLimit} className="rounded-xl h-12 px-6 font-black shadow-xl gap-2">
                 <Plus className="h-5 w-5" /> Nuevo Mandante
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
-              <DialogHeader><DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">{editingClient ? "Editar Cliente" : "Registrar Mandante"}</DialogTitle></DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[2.5rem]">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">{editingClient ? "Editar Cliente" : "Registrar Mandante"}</DialogTitle>
+                <DialogDescription>Defina la ubicación matriz para el direccionamiento de servicios.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-6 py-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 col-span-2 sm:col-span-1">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">RUT Empresa</Label>
-                    <Input placeholder="76.000.000-0" value={formData.rut} onChange={(e) => setFormData({...formData, rut: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">RUT Empresa *</Label>
+                    <Input placeholder="76.000.000-0" value={formData.rut} onChange={(e) => setFormData({...formData, rut: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
                   </div>
-                  <div className="space-y-2 col-span-2 sm:col-span-1">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">Razón Social</Label>
-                    <Input placeholder="Nombre Empresa" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Razón Social *</Label>
+                    <Input placeholder="Nombre Empresa" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Dirección Operativa</Label>
-                  <Input placeholder="Calle, Número, Ciudad" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="h-12 border-2 rounded-xl font-medium" />
+
+                <div className="space-y-4 border-t pt-6">
+                  <p className="text-[10px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-2"><Globe className="h-4 w-4" /> Dirección Matriz Obligatoria</p>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Región *</Label>
+                      <Select value={formData.region} onValueChange={(v) => setFormData({...formData, region: v, commune: ""})}>
+                        <SelectTrigger className="h-12 border-2 rounded-xl">
+                          <SelectValue placeholder="Seleccione Región" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Comuna *</Label>
+                      <Select value={formData.commune} onValueChange={(v) => setFormData({...formData, commune: v})} disabled={!formData.region}>
+                        <SelectTrigger className="h-12 border-2 rounded-xl">
+                          <SelectValue placeholder="Seleccione Comuna" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2 col-span-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Calle / Avenida *</Label>
+                      <Input placeholder="Ej: Av. Providencia" value={formData.street} onChange={(e) => setFormData({...formData, street: e.target.value})} className="h-12 border-2 rounded-xl" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Número *</Label>
+                      <Input placeholder="1234" value={formData.streetNumber} onChange={(e) => setFormData({...formData, streetNumber: e.target.value})} className="h-12 border-2 rounded-xl" required />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Depto / Casa / Oficina (Opcional)</Label>
+                    <Input placeholder="Ej: Depto 502" value={formData.complement} onChange={(e) => setFormData({...formData, complement: e.target.value})} className="h-12 border-2 rounded-xl" />
+                  </div>
                 </div>
-                <div className="border-t pt-6 mt-2 space-y-4">
+
+                <div className="border-t pt-6 space-y-4">
                   <p className="text-[10px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-2"><Smartphone className="h-4 w-4" /> Responsable Portal Autogestión</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -308,67 +379,35 @@ export default function ClientsPage() {
                     </div>
                   </div>
                 </div>
-                <DialogFooter className="pt-6"><Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">Guardar en Cartera</Button></DialogFooter>
+                <DialogFooter className="pt-6">
+                  <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl">Guardar en Cartera</Button>
+                </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      {/* BANNER ESTRATÉGICO DE AUTOGESTIÓN */}
-      <Card className="border-none shadow-2xl bg-slate-900 text-white rounded-[2.5rem] overflow-hidden relative group">
-        <div className="absolute -right-10 -bottom-10 opacity-10 group-hover:scale-110 transition-transform duration-700"><Zap className="h-64 w-64 text-blue-400" /></div>
-        <CardContent className="p-10 flex flex-col md:flex-row items-center gap-10 relative z-10">
-          <div className="bg-blue-600/20 p-6 rounded-[2rem] border border-blue-500/30 shrink-0">
-            <Smartphone className="h-16 w-16 text-blue-400" />
-          </div>
-          <div className="space-y-4 flex-1">
-            <div className="flex items-center gap-2"><Badge className="bg-blue-600 text-white font-black px-3 py-1 uppercase tracking-widest text-[9px]">Valor Agregado</Badge><Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 uppercase text-[9px] font-black">24/7 Activo</Badge></div>
-            <h3 className="text-3xl font-black italic uppercase tracking-tighter leading-none">Potencia tus contratos con <br /><span className="text-blue-400">Autogestión de Servicios</span></h3>
-            <p className="text-slate-400 text-sm leading-relaxed max-w-2xl font-medium">
-              Elimina la burocracia de los llamados telefónicos. Dale a tus clientes un portal exclusivo para reportar fallas e incidencias. Cada solicitud se convierte en una **Orden de Trabajo automática**, con trazabilidad inalterable desde el primer segundo.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-4 w-full md:w-auto">
-            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center"><p className="text-xl font-black text-blue-400 leading-none">0%</p><p className="text-[8px] font-black uppercase text-slate-500 tracking-widest mt-1">Llamadas Perdidas</p></div>
-            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center"><p className="text-xl font-black text-emerald-400 leading-none">100%</p><p className="text-[8px] font-black uppercase text-slate-500 tracking-widest mt-1">Trazabilidad</p></div>
-          </div>
-        </CardContent>
-      </Card>
-
       <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
         <CardHeader className="pb-6 bg-slate-50/50 border-b p-8">
           <div className="flex items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input placeholder="Buscar por Razón Social o RUT..." className="pl-12 h-14 border-none bg-white shadow-inner rounded-2xl font-medium text-lg" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
-            <div className="text-right hidden sm:block">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Capacidad de Cartera</p>
-              <p className="text-2xl font-black text-slate-900 tracking-tighter">{clients.length} <span className="text-slate-300 text-sm">/ {maxClients}</span></p>
+              <Input placeholder="Buscar por Razón Social o RUT..." className="pl-12 h-14 border-none bg-white shadow-inner rounded-2xl font-medium" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {isClientsLoading ? (
-            <div className="py-32 text-center space-y-4">
-              <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary/20" />
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Sincronizando Base de Mandantes...</p>
-            </div>
-          ) : clients.length === 0 ? (
-            <div className="py-32 text-center border-2 border-dashed m-10 rounded-[3rem] bg-slate-50/50 space-y-4">
-              <Building2 className="h-16 w-16 mx-auto text-slate-200" />
-              <p className="font-black italic uppercase text-slate-400">Sin clientes registrados aún.</p>
-              <Button onClick={() => setIsCreateOpen(true)} variant="outline" className="rounded-xl font-black">Crear mi primer cliente</Button>
-            </div>
+            <div className="py-32 text-center"><Loader2 className="h-12 w-12 animate-spin mx-auto text-primary/20" /></div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-slate-50">
                   <TableRow className="border-none">
                     <TableHead className="pl-10 h-14 font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Razón Social / Identidad</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Ecosistema Digital & Autogestión</TableHead>
-                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Ubicación & Contacto</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Ubicación Matriz</TableHead>
+                    <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Autogestión</TableHead>
                     <TableHead className="text-right pr-10 font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -385,48 +424,29 @@ export default function ClientsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "h-2 w-2 rounded-full",
-                              client.portalLastSentAt ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-200"
-                            )} />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              Último Envío: <span className={client.portalLastSentAt ? "text-slate-900" : ""}>{formatDateLabel(client.portalLastSentAt)}</span>
-                            </span>
+                        <div className="flex flex-col gap-1 max-w-[250px]">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                            <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                            <span className="truncate">{client.street} {client.streetNumber}</span>
                           </div>
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-1 group-hover:translate-y-0">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 bg-white border-2 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700" 
-                              disabled={isSendingLink === client.id}
-                              onClick={() => handleSendPortalEmail(client)}
-                            >
-                              {isSendingLink === client.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Send className="h-3 w-3" /> Enviar Link Acceso</>}
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest gap-2 bg-white border-2" 
-                              onClick={() => handleCopyLink(client)}
-                            >
-                              <Copy className="h-3 w-3" /> Copiar Link
-                            </Button>
-                          </div>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-5">{client.commune}, {client.region}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                            <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="truncate max-w-[200px]">{client.address}</span>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className={cn("h-2 w-2 rounded-full", client.portalLastSentAt ? "bg-emerald-500" : "bg-slate-200")} />
+                            <span className="text-[9px] font-black uppercase text-slate-500">Último: {formatDateLabel(client.portalLastSentAt)}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            <User className="h-3 w-3" /> {client.contactName || 'S/I'} 
-                            <span className="opacity-20 mx-1">|</span>
-                            <Mail className="h-3 w-3" /> {client.contactEmail || 'S/I'}
-                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-8 px-3 rounded-lg text-[9px] font-black uppercase tracking-widest gap-2 bg-white border-2 opacity-0 group-hover:opacity-100 transition-opacity" 
+                            disabled={isSendingLink === client.id}
+                            onClick={() => handleSendPortalEmail(client)}
+                          >
+                            {isSendingLink === client.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Enviar Link
+                          </Button>
                         </div>
                       </TableCell>
                       <TableCell className="text-right pr-10">
@@ -443,30 +463,6 @@ export default function ClientsPage() {
           )}
         </CardContent>
       </Card>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-50/50 p-8 space-y-4">
-          <div className="bg-white p-3 rounded-2xl w-fit shadow-sm text-blue-600"><History className="h-6 w-6" /></div>
-          <h4 className="font-black uppercase italic tracking-tighter text-blue-900">Histórico por Cliente</h4>
-          <p className="text-xs text-blue-800/70 font-medium leading-relaxed">
-            Habilitar el portal le permite a su cliente ver su propio historial de mantenciones, aumentando la confianza en sus servicios recurrentes.
-          </p>
-        </Card>
-        <Card className="rounded-[2.5rem] border-none shadow-xl bg-emerald-50/50 p-8 space-y-4">
-          <div className="bg-white p-3 rounded-2xl w-fit shadow-sm text-emerald-600"><ShieldCheck className="h-6 w-6" /></div>
-          <h4 className="font-black uppercase italic tracking-tighter text-emerald-900">Firma en Terreno</h4>
-          <p className="text-xs text-emerald-800/70 font-medium leading-relaxed">
-            Recuerde que el portal de autogestión es también el medio por el cual sus clientes firman digitalmente la recepción conforme de cada O.T.
-          </p>
-        </Card>
-        <Card className="rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white p-8 space-y-4">
-          <div className="bg-white/10 p-3 rounded-2xl w-fit border border-white/10 text-blue-400"><MousePointer2 className="h-6 w-6" /></div>
-          <h4 className="font-black uppercase italic tracking-tighter">Captura de Leads</h4>
-          <p className="text-xs text-slate-400 font-medium leading-relaxed">
-            Cada solicitud desde el portal ingresa con prioridad personalizada y trazabilidad GPS opcional del punto de falla.
-          </p>
-        </Card>
-      </div>
     </div>
   );
 }

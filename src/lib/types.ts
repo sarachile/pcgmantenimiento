@@ -1,4 +1,3 @@
-
 export type Role = 'companyAdmin' | 'supervisor' | 'tecnico' | 'reviewer' | 'superadmin';
 
 export type OTStatus = 'solicitada' | 'creada' | 'asignada' | 'ejecutada' | 'en revision' | 'pendiente cliente' | 'aprobada' | 'rechazada';
@@ -20,13 +19,16 @@ export interface Company {
   name: string;
   rut: string;
   address: string;
+  region?: string;
+  city?: string;
+  commune?: string;
   giro?: string;
   comuna?: string;
   logoUrl?: string;
   currentPlan: PlanType;
   subscriptionStatus: SubscriptionStatus;
   isActive: boolean;
-  apiKey?: string; // Llave para integraciones externas
+  apiKey?: string; 
   createdAt: string | any;
   updatedAt?: string | any;
   trialEndsAt?: string | any;
@@ -44,12 +46,18 @@ export interface Client {
   name: string;
   rut: string;
   address: string;
+  region?: string;
+  city?: string;
+  commune?: string;
+  street?: string;
+  streetNumber?: string;
+  complement?: string; // Depto / Casa / Of
   giro?: string;
   comuna?: string;
   contactName?: string;
   contactEmail?: string;
   evaluationEnabled: boolean;
-  portalLastSentAt?: string | any; // Nueva traza de envío
+  portalLastSentAt?: string | any; 
   createdAt: string;
 }
 
@@ -142,6 +150,13 @@ export interface WorkOrder {
   assetId?: string | null;
   description: string;
   serviceLocation?: string;
+  region?: string;
+  city?: string;
+  commune?: string;
+  street?: string;
+  streetNumber?: string;
+  complement?: string;
+  locationComment?: string; // Recepción, auditorio, etc.
   requestedByName?: string;
   status: OTStatus;
   assignedToStaffIds?: string[];
@@ -168,7 +183,7 @@ export interface WorkOrder {
   evidenceUrls?: string[];
   aiSummary?: string;
   evaluationId?: string;
-  source?: 'internal' | 'external' | 'api' | 'sensor'; // Tracking de origen
+  source?: 'internal' | 'external' | 'api' | 'sensor';
   requestedByEmail?: string;
   urgency?: 'low' | 'medium' | 'high';
   latitude?: number;
@@ -183,7 +198,7 @@ export interface DigitalLogbookEntry {
   eventType: 'status_change' | 'action_taken' | 'comment' | 'system_alert';
   eventDetails: string;
   actor: string;
-  actorName?: string; // Nombre del autor para trazabilidad inalterable
+  actorName?: string;
   latitude?: number;
   longitude?: number;
 }
