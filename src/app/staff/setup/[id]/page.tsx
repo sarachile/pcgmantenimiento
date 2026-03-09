@@ -45,7 +45,6 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
   const [pinInput, setPinInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Usar hooks en lugar de inicialización directa para mayor estabilidad
   const firestore = useFirestore();
   const auth = useAuth();
 
@@ -107,7 +106,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       const userCredential = await createUserWithEmailAndPassword(auth, syntheticEmail, pinInput);
       const userId = userCredential.user.uid;
 
-      // 3. Crear documento de usuario
+      // 3. Crear documento de usuario (Perfil Firestore)
       const userRef = doc(firestore, "users", userId);
       const userData = {
         id: userId,
@@ -121,28 +120,14 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         createdAt: new Date().toISOString(),
       };
 
-      await setDoc(userRef, userData).catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'create',
-          requestResourceData: userData
-        }));
-      });
+      await setDoc(userRef, userData);
 
       // 4. Vincular el staff con el usuario de auth
       const staffRef = doc(firestore, "companies", company.id, "staff", staff.id);
-      const staffUpdate = {
+      await updateDoc(staffRef, {
         userId: userId,
         hasAccount: true,
         updatedAt: serverTimestamp()
-      };
-
-      await updateDoc(staffRef, staffUpdate).catch(async (err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: staffRef.path,
-          operation: 'update',
-          requestResourceData: staffUpdate
-        }));
       });
 
       setStep(3);
@@ -152,7 +137,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         toast({ title: "Ya activado", description: "Este usuario ya tiene acceso configurado. Inicie sesión directamente.", variant: "destructive" });
         router.push('/staff/login');
       } else {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ title: "Error de permisos", description: "Hubo un problema al crear tu perfil. Contacta a soporte.", variant: "destructive" });
       }
     } finally {
       setIsSubmitting(false);

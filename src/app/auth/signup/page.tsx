@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,7 +56,7 @@ export default function SignupPage() {
       let targetCompanyId = "";
       let role = "";
 
-      // 1. Validaciones previas a Auth
+      // 1. Validaciones previas
       if (signupMode === 'new') {
         if (!companyName.trim()) throw new Error("Debe ingresar el nombre de su empresa.");
         targetCompanyId = `comp-${Math.random().toString(36).substr(2, 8)}`;
@@ -76,11 +76,27 @@ export default function SignupPage() {
         role = 'superadmin';
       }
 
-      // 2. Crear usuario en Auth (esto nos da el UID y nos autentica)
+      // 2. Crear usuario en Auth
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       const uid = userCredential.user.uid;
 
-      // 3. Crear empresa si es nueva (Non-blocking)
+      // 3. Crear perfil de usuario PRIMERO
+      // Esto es CRÍTICO: Las reglas de seguridad de Firestore necesitan que el usuario 
+      // tenga su rol definido para permitirle crear/editar la empresa.
+      const userData = {
+        id: uid,
+        email: cleanEmail,
+        name: name,
+        role: role,
+        companyId: targetCompanyId,
+        active: true,
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Usamos setDoc directo para esperar la confirmación de identidad antes de crear la empresa
+      await setDoc(doc(db!, 'users', uid), userData);
+
+      // 4. Crear empresa si es nueva
       if (signupMode === 'new' || isSuperAdminAccount) {
         const trialEndDate = addDays(new Date(), 14).toISOString();
         const companyData = {
@@ -93,27 +109,13 @@ export default function SignupPage() {
           createdAt: new Date().toISOString(),
           trialEndsAt: trialEndDate
         };
-        setDocumentNonBlocking(doc(db!, 'companies', targetCompanyId), companyData, { merge: true });
+        await setDoc(doc(db!, 'companies', targetCompanyId), companyData, { merge: true });
       }
 
-      // 4. Crear perfil de usuario (Non-blocking)
-      const userData = {
-        id: uid,
-        email: cleanEmail,
-        name: name,
-        role: role,
-        companyId: targetCompanyId,
-        active: true,
-        createdAt: new Date().toISOString(),
-      };
-      setDocumentNonBlocking(doc(db!, 'users', uid), userData, { merge: true });
-
       toast({ title: "Registro Completo", description: "Bienvenido a la plataforma." });
-      
-      // Proceder inmediatamente al dashboard (Firestore local cache manejará la consistencia)
       router.push('/dashboard');
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error de Registro", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }

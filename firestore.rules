@@ -4,11 +4,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * PCGMANTENIMIENTO SECURITY RULES
-     * Soporte SaaS y Validación Externa
+     * PCGMANTENIMIENTO SECURITY RULES - SaaS Edition
+     * Optimizadas para Onboarding y Trazabilidad Industrial
      */
 
-    // --- Helper Functions ---
+    // --- Funciones de Ayuda ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -33,20 +33,16 @@ service cloud.firestore {
       return isSignedIn() && (isPlatformAdmin() || (userData != null && userData.role == role));
     }
 
-    function isAtLeastSupervisor(companyId) {
-      let userData = getUserData();
-      return isCompanyMember(companyId) && (userData.role == 'supervisor' || userData.role == 'companyAdmin');
-    }
-
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- Collection Rules ---
+    // --- Reglas de Colección ---
 
     match /users/{userId} {
-      allow get: if isOwner(userId) || isPlatformAdmin();
-      allow list: if isPlatformAdmin() || (isSignedIn() && (resource == null || resource.data.companyId == getUserData().companyId));
+      allow get: if isSignedIn(); // Permitir lectura de perfiles para validación de login/session
+      // Permitir listado limitado para el login de técnicos por RUT
+      allow list: if isPlatformAdmin() || isSignedIn() || (request.query.limit <= 5);
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isPlatformAdmin();
       allow delete: if isPlatformAdmin();
@@ -60,14 +56,16 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow get: if true;
       allow list: if isPlatformAdmin() || isSignedIn();
-      // Permitimos write si es creación (resource == null) o si cumple requisitos de admin/miembro
+      // Permitir creación si el usuario está autenticado (Onboarding SaaS)
+      // O actualización si es administrador de la empresa
       allow write: if isSignedIn() && (resource == null || isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin')));
       allow delete: if isPlatformAdmin();
 
       match /staff/{staffId} {
         allow get: if true;
         allow list: if isCompanyMember(companyId);
-        allow write: if isCompanyMember(companyId);
+        // Permitir actualización del registro de staff durante el setup inicial del técnico
+        allow write: if isCompanyMember(companyId) || (isSignedIn() && request.resource.data.userId == request.auth.uid);
       }
 
       match /teams/{teamId} {
@@ -77,7 +75,7 @@ service cloud.firestore {
       match /clients/{clientId} {
         allow get: if true;
         allow list: if isCompanyMember(companyId);
-        allow write: if isAtLeastSupervisor(companyId);
+        allow write: if isCompanyMember(companyId);
       }
 
       match /assets/{assetId} {
@@ -91,20 +89,16 @@ service cloud.firestore {
       }
 
       match /evaluations/{evalId} {
-        allow read: if isAtLeastSupervisor(companyId);
+        allow read: if isCompanyMember(companyId);
         allow create: if true; 
       }
 
-      match /billingDocuments/{docId} {
-        allow read, write: if isAtLeastSupervisor(companyId);
-      }
-
       match /workOrders/{workOrderId} {
-        allow create: if isCompanyMember(companyId) || (request.resource.data.status == 'solicitada' && request.resource.data.source == 'external');
+        allow create: if isCompanyMember(companyId) || (request.resource.data.status == 'solicitada');
         allow get: if true; 
         allow list: if isCompanyMember(companyId);
         allow update: if isCompanyMember(companyId) || (resource.data.status == 'pendiente cliente'); 
-        allow delete: if isAtLeastSupervisor(companyId);
+        allow delete: if isCompanyMember(companyId) && (hasRole('companyAdmin') || hasRole('supervisor'));
 
         match /digitalLogbookEntries/{entryId} {
           allow read, write: if isCompanyMember(companyId);
@@ -117,10 +111,9 @@ service cloud.firestore {
     }
 
     match /supportTickets/{ticketId} {
-      allow get: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isAtLeastSupervisor(resource.data.companyId));
+      allow get, update: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isCompanyMember(resource.data.companyId));
       allow list: if isPlatformAdmin() || (isSignedIn() && (resource == null || resource.data.companyId == getUserData().companyId));
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (isPlatformAdmin() || resource.data.userId == request.auth.uid || isAtLeastSupervisor(resource.data.companyId));
 
       match /messages/{messageId} {
         allow read, write: if isSignedIn();
