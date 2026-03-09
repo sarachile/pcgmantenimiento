@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth, useFirestore, setDocumentNonBlocking } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -80,9 +80,7 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       const uid = userCredential.user.uid;
 
-      // 3. Crear perfil de usuario PRIMERO
-      // Esto es CRÍTICO: Las reglas de seguridad de Firestore necesitan que el usuario 
-      // tenga su rol definido para permitirle crear/editar la empresa.
+      // 3. Crear perfil de usuario
       const userData = {
         id: uid,
         email: cleanEmail,
@@ -93,7 +91,6 @@ export default function SignupPage() {
         createdAt: new Date().toISOString(),
       };
       
-      // Usamos setDoc directo para esperar la confirmación de identidad antes de crear la empresa
       await setDoc(doc(db!, 'users', uid), userData);
 
       // 4. Crear empresa si es nueva
@@ -115,7 +112,18 @@ export default function SignupPage() {
       toast({ title: "Registro Completo", description: "Bienvenido a la plataforma." });
       router.push('/dashboard');
     } catch (error: any) {
-      toast({ title: "Error de Registro", description: error.message, variant: "destructive" });
+      console.error("Signup error:", error);
+      let friendlyMessage = error.message;
+
+      if (error.code === 'auth/email-already-in-use') {
+        friendlyMessage = "Este correo ya está registrado. Por favor, inicie sesión.";
+      } else if (error.code === 'auth/weak-password') {
+        friendlyMessage = "La contraseña debe tener al menos 6 caracteres.";
+      } else if (error.code === 'auth/invalid-email') {
+        friendlyMessage = "El formato del correo no es válido.";
+      }
+
+      toast({ title: "Error de Registro", description: friendlyMessage, variant: "destructive" });
     } finally {
       setLoading(false);
     }

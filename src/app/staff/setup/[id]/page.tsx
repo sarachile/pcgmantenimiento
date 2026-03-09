@@ -92,7 +92,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     if (!staff || !company || !auth || !firestore || isSubmitting) return;
 
     if (pinInput.length < 6) {
-      toast({ title: "PIN muy corto", description: "Use al menos 6 números (requerido por seguridad).", variant: "destructive" });
+      toast({ title: "Seguridad insuficiente", description: "El PIN debe tener exactamente 6 números.", variant: "destructive" });
       return;
     }
 
@@ -131,17 +131,29 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       });
 
       setStep(3);
-      toast({ title: "¡Acceso Activado!", description: "Ya puede usar la plataforma." });
+      toast({ title: "¡Acceso Activado!", description: "Bienvenido al equipo digital." });
     } catch (error: any) {
       console.error("Setup Error:", error);
+      
+      // MANEJO DE ERRORES AMIGABLE PARA PRODUCCIÓN
+      let errorTitle = "Fallo en registro";
+      let errorDesc = "No se pudo crear el acceso en este momento.";
+
       if (error.code === 'auth/email-already-in-use') {
-        toast({ title: "Ya activado", description: "Este usuario ya tiene acceso configurado. Inicie sesión directamente.", variant: "destructive" });
-        router.push('/staff/login');
+        errorTitle = "Cuenta ya activa";
+        errorDesc = "Este técnico ya tiene su acceso configurado. Vamos a iniciar sesión.";
+        toast({ title: errorTitle, description: errorDesc });
+        setTimeout(() => router.push('/staff/login'), 2000);
+        return;
+      } else if (error.code === 'auth/weak-password') {
+        errorTitle = "PIN Débil";
+        errorDesc = "Por favor elija una combinación numérica más segura.";
       } else if (error.code === 'permission-denied') {
-        toast({ title: "Error de permisos", description: "Sincronización en curso. Por favor intente en 10 segundos.", variant: "destructive" });
-      } else {
-        toast({ title: "Fallo de registro", description: error.message || "No se pudo crear el acceso. Contacte a soporte.", variant: "destructive" });
+        errorTitle = "Error de Sincronización";
+        errorDesc = "Estamos actualizando los permisos de tu empresa. Reintenta en unos segundos.";
       }
+
+      toast({ title: errorTitle, description: errorDesc, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
