@@ -131,6 +131,8 @@ export interface ChecklistItem {
   completed: boolean;
   completedAt?: string | any;
   evidenceUrl?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface WorkOrder {
@@ -169,6 +171,8 @@ export interface WorkOrder {
   source?: 'internal' | 'external' | 'api' | 'sensor'; // Tracking de origen
   requestedByEmail?: string;
   urgency?: 'low' | 'medium' | 'high';
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface DigitalLogbookEntry {
@@ -180,6 +184,8 @@ export interface DigitalLogbookEntry {
   eventDetails: string;
   actor: string;
   actorName?: string; // Nombre del autor para trazabilidad inalterable
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface BillingDocument {

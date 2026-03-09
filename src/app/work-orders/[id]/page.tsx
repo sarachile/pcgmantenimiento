@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -39,7 +40,9 @@ import {
   SendHorizontal,
   CheckCircle2,
   AlertTriangle,
-  Save
+  Save,
+  Compass,
+  Map as MapIcon
 } from "lucide-react";
 import {
   Dialog,
@@ -142,6 +145,16 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { return "N/A"; }
   };
 
+  const openNavigation = (app: 'waze' | 'google') => {
+    const address = ot?.serviceLocation || client?.address || "";
+    if (!address) return;
+    const encoded = encodeURIComponent(address);
+    const url = app === 'waze' 
+      ? `https://waze.com/ul?q=${encoded}&navigate=yes` 
+      : `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+    window.open(url, "_blank");
+  };
+
   const qrUrl = useMemo(() => currentUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}` : "", [currentUrl]);
 
   const handleManualSave = () => {
@@ -234,30 +247,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (error: any) { toast({ title: "Error de IA", variant: "destructive" }); } finally { setIsGeneratingSummary(false); }
   };
 
-  const handleRequestCertification = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!tempClientEmail || !tempClientName || !ot || !clientRef) return;
-    setIsUpdating(true);
-    try {
-      const updateData: any = { updatedAt: serverTimestamp() };
-      if (tempClientEmail !== client?.contactEmail) updateData.contactEmail = tempClientEmail;
-      if (tempClientName !== client?.contactName) updateData.contactName = tempClientName;
-      if (Object.keys(updateData).length > 1) updateDocumentNonBlocking(clientRef, updateData);
-      await handleResendEmail(tempClientEmail);
-      setIsRequestCertDialogOpen(false);
-    } catch (e: any) { toast({ title: "Error al procesar", variant: "destructive" }); } finally { setIsUpdating(false); }
-  };
-
-  const handleRequestClientApproval = async () => {
-    if (!otRef) return;
-    setIsUpdating(true);
-    try {
-      updateDocumentNonBlocking(otRef, { status: 'pendiente cliente', updatedAt: serverTimestamp(), rejectedReason: null });
-      await handleResendEmail();
-      toast({ title: "Enviado al cliente" });
-    } catch (e: any) { toast({ title: "Error", variant: "destructive" }); } finally { setIsUpdating(false); }
-  };
-
   const handleDirectApproval = async () => {
     if (!otRef || !profile) return;
     setIsUpdating(true);
@@ -322,17 +311,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           )}
 
           {isAdminOrSupervisor && ot.status !== 'aprobada' && (
-            <div className="flex gap-2 mr-4 border-r pr-4 border-slate-200">
-              {ot.reviewerRequired ? (
-                <Button onClick={handleRequestClientApproval} disabled={isUpdating} className="rounded-xl h-11 bg-indigo-600 hover:bg-indigo-700 font-black uppercase text-[10px] tracking-widest gap-2 shadow-lg shadow-indigo-200">
-                  {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <><SendHorizontal className="h-4 w-4" /> Solicitar Validación Cliente</>}
-                </Button>
-              ) : (
-                <Button onClick={handleDirectApproval} disabled={isUpdating} className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 font-black uppercase text-[10px] tracking-widest gap-2 shadow-lg shadow-emerald-200">
-                  {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <><CheckCircle2 className="h-4 w-4" /> Visar y Finalizar</>}
-                </Button>
-              )}
-            </div>
+            <Button onClick={handleDirectApproval} disabled={isUpdating} className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 font-black uppercase text-[10px] tracking-widest gap-2 shadow-lg shadow-emerald-200">
+              {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <><CheckCircle2 className="h-4 w-4" /> Visar y Finalizar</>}
+            </Button>
           )}
           {isAdminOrSupervisor && (
             <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-amber-200 text-amber-700 hover:bg-amber-50 font-bold" disabled={ot.status === 'aprobada'}>
@@ -352,43 +333,53 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {ot.status !== 'aprobada' && (
-            <Card className="rounded-3xl border-none shadow-sm bg-blue-50/50 border-blue-100 overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <HardHat className="h-5 w-5 text-blue-600" />
-                    <span className="text-sm font-black text-blue-900 uppercase tracking-tighter">Progreso de Ejecución</span>
-                  </div>
-                  <span className="text-xs font-bold text-blue-600">{Math.round(checklistProgress)}%</span>
-                </div>
-                <div className="w-full h-2 bg-blue-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-blue-600 transition-all duration-500" style={{ width: `${checklistProgress}%` }} />
-                </div>
-                {ot.technicianApprovalCode && (
-                  <div className="mt-4 flex items-center gap-2 bg-white/60 p-3 rounded-xl border border-blue-200 animate-in fade-in">
-                    <Fingerprint className="h-4 w-4 text-emerald-600" />
-                    <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Trabajo Visado por Técnico: {ot.technicianApprovalName}</p>
-                  </div>
+          
+          {/* TARJETA DE GPS Y NAVEGACIÓN */}
+          <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-slate-50 border-slate-200">
+            <CardHeader className="bg-white border-b p-6">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-black uppercase flex items-center gap-2"><MapIcon className="h-5 w-5 text-primary" /> Georeferencia & Ruta</CardTitle>
+                {ot.latitude && (
+                  <Badge className="bg-emerald-500 text-white font-black text-[8px] uppercase tracking-widest">Localización Certificada</Badge>
                 )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1 space-y-1">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Dirección del Servicio</p>
+                  <p className="text-sm font-bold text-slate-700">{ot.serviceLocation || client?.address || "Sin dirección registrada"}</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2 border-slate-200" onClick={() => openNavigation('google')}>
+                    <img src="https://www.google.com/images/branding/product/2x/maps_96in128dp.png" className="h-4 w-4" alt="Maps" /> Google
+                  </Button>
+                  <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2 border-slate-200" onClick={() => openNavigation('waze')}>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Waze_icon.svg/1200px-Waze_icon.svg.png" className="h-4 w-4" alt="Waze" /> Waze
+                  </Button>
+                </div>
+              </div>
 
-          {ot.status === 'rechazada' && (
-            <Card className="border-none shadow-lg bg-rose-50 border-rose-200 rounded-3xl overflow-hidden animate-in slide-in-from-top-4">
-              <CardHeader className="bg-rose-100 flex flex-row items-center gap-3 p-6">
-                <AlertTriangle className="h-6 w-6 text-rose-600" />
-                <CardTitle className="text-lg font-black text-rose-900 uppercase italic">Orden Rechazada por Cliente</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <p className="text-sm font-bold text-rose-800 mb-2">Observación: "{ot.rejectedReason}"</p>
-                <p className="text-xs text-rose-600 font-medium">Por favor, corrija los hallazgos y vuelva a solicitar aprobación.</p>
-              </CardContent>
-            </Card>
-          )}
+              {ot.latitude && (
+                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-start gap-3">
+                  <Fingerprint className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Prueba de Presencia GPS</p>
+                    <p className="text-xs text-emerald-900 font-medium">Coordenadas: {ot.latitude.toFixed(6)}, {ot.longitude?.toFixed(6)}</p>
+                    <Link 
+                      href={`https://www.google.com/maps/search/?api=1&query=${ot.latitude},${ot.longitude}`}
+                      target="_blank"
+                      className="text-[10px] font-bold text-emerald-600 underline uppercase mt-1 block"
+                    >
+                      Ver punto exacto en el mapa
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          <Card className="rounded-[2rem] border-none shadow-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white overflow-hidden relative group">
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white overflow-hidden relative group">
             <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-32 w-32" /></div>
             <CardHeader className="p-8 pb-4">
               <div className="flex items-center justify-between">
@@ -432,7 +423,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-3">
-              {ot.checklist && ot.checklist.length > 0 ? ot.checklist.map((item) => (
+              {ot.checklist && ot.checklist.length > 0 ? (ot.checklist.map((item) => (
                 <div key={item.id} className="flex flex-col p-4 bg-white border-2 rounded-2xl hover:border-primary/20 transition-colors gap-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -440,7 +431,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                         const nextStatus = !item.completed;
                         const newChecklist = ot.checklist?.map(i => i.id === item.id ? { ...i, completed: nextStatus, completedAt: nextStatus ? new Date().toISOString() : null } : i);
                         updateDocumentNonBlocking(otRef!, { checklist: newChecklist });
-                        toast({ title: nextStatus ? "Punto Marcado" : "Punto Desmarcado", description: "Cambio guardado automáticamente." });
+                        toast({ title: nextStatus ? "Punto Marcado" : "Punto Desmarcado" });
                       }} disabled={ot.status === 'aprobada'} className="h-6 w-6 rounded-lg" />
                       <div className="flex flex-col">
                         <span className={cn("text-sm font-bold", item.completed ? "text-slate-400" : "text-slate-700")}>{item.task}</span>
@@ -454,42 +445,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   </div>
                   {item.evidenceUrl && <div className="pl-10"><div className="w-32 aspect-video rounded-xl overflow-hidden border-2 border-slate-100 bg-slate-50"><FirebaseImage url={item.evidenceUrl} className="w-full h-full object-cover" /></div></div>}
                 </div>
-              )) : <p className="text-center py-6 text-xs text-slate-400 italic">Sin protocolos definidos.</p>}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl border-none shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between p-6">
-              <CardTitle className="text-lg font-black flex items-center gap-2 uppercase tracking-tight"><Camera className="h-5 w-5 text-primary" /> Evidencias Adicionales</CardTitle>
-              {ot.status !== 'aprobada' && (
-                <>
-                  <input type="file" className="hidden" ref={fileInputRef} onChange={handleUploadPhoto} accept="image/*" />
-                  <Button size="sm" variant="outline" className="rounded-xl" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                    {isUploading ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <><Camera className="h-4 w-4 mr-2" /> Añadir Foto</>}
-                  </Button>
-                </>
-              )}
-            </CardHeader>
-            <CardContent className="px-6 pb-6">
-              {ot.evidenceUrls && ot.evidenceUrls.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {ot.evidenceUrls.map((u, i) => (
-                    <div key={i} className="group relative aspect-video rounded-2xl overflow-hidden border bg-slate-50">
-                      <FirebaseImage url={u} className="w-full h-full object-cover" />
-                      {ot.status !== 'aprobada' && (
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <Button size="icon" variant="destructive" className="h-10 w-10 rounded-full" onClick={() => {
-                            updateDocumentNonBlocking(otRef!, { evidenceUrls: arrayRemove(u) });
-                            toast({ title: "Evidencia eliminada" });
-                          }}>
-                            <Trash2 className="h-5 w-5" />
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : <div className="text-center py-12 border-2 border-dashed rounded-3xl bg-slate-50 opacity-40"><ImageOff className="h-8 w-8 mx-auto mb-2 text-slate-400" /><p className="text-xs font-bold uppercase">Sin evidencias generales</p></div>}
+              ))) : <p className="text-center py-6 text-xs text-slate-400 italic">Sin protocolos definidos.</p>}
             </CardContent>
           </Card>
         </div>
@@ -518,7 +474,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {logbook && logbook.length > 0 ? logbook.map(e => (
+                {logbook && logbook.length > 0 ? (logbook.map(e => (
                   <div key={e.id} className="relative pl-6 border-l-2 border-white/10 pb-2 last:pb-0">
                     <div className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
                     <div className="flex items-center justify-between mb-1">
@@ -528,9 +484,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       </p>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed font-medium mb-1">{e.eventDetails}</p>
-                    <p className="text-[9px] text-slate-500 italic font-bold">{formatDateLabel(e.timestamp)}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[9px] text-slate-500 italic font-bold">{formatDateLabel(e.timestamp)}</p>
+                      {e.latitude && (
+                        <Badge variant="outline" className="text-[7px] border-white/10 text-white/40 font-black h-4 px-1.5 uppercase">GPS TRACE</Badge>
+                      )}
+                    </div>
                   </div>
-                )) : <div className="h-full flex items-center justify-center opacity-20 italic text-xs py-20">Bitácora vacía</div>}
+                ))) : <div className="h-full flex items-center justify-center opacity-20 italic text-xs py-20">Bitácora vacía</div>}
               </div>
             </CardContent>
           </Card>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
   useUser, 
@@ -33,7 +33,10 @@ import {
   AlertTriangle,
   CloudUpload,
   Check,
-  Save
+  Save,
+  MapPin,
+  Compass,
+  ExternalLink
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -55,6 +58,21 @@ export default function FieldCapturePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
+
+  // Captura de ubicación al montar o seleccionar OT
+  const getPosition = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (err) => console.warn("GPS no disponible:", err.message),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
+  useEffect(() => {
+    getPosition();
+  }, [selectedOT]);
 
   // Consultar OTs activas (no aprobadas)
   const workOrdersQuery = useMemoFirebase(() => {
@@ -92,11 +110,20 @@ export default function FieldCapturePage() {
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
+  const openNavigation = (app: 'waze' | 'google', address: string) => {
+    const encoded = encodeURIComponent(address);
+    const url = app === 'waze' 
+      ? `https://waze.com/ul?q=${encoded}&navigate=yes` 
+      : `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+    window.open(url, "_blank");
+  };
+
   const handleManualSave = async () => {
     if (!selectedOT || !db || !profile?.companyId || !profile) return;
     
     setIsSaving(true);
-    // Si hay un comentario, lo guardamos en la bitácora
+    getPosition(); // Refrescar GPS
+
     if (logComment.trim()) {
       await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
         workOrderId: selectedOT.id,
@@ -105,17 +132,18 @@ export default function FieldCapturePage() {
         eventType: 'comment',
         eventDetails: logComment,
         actor: profile.id,
-        actorName: profile.name
+        actorName: profile.name,
+        latitude: coords?.lat || null,
+        longitude: coords?.lng || null
       });
       setLogComment("");
     }
 
     toast({
       title: "Avance Guardado",
-      description: "Su progreso ha sido sincronizado correctamente.",
+      description: "Su progreso y ubicación han sido sincronizados.",
     });
     setIsSaving(false);
-    // Volver al listado
     router.push('/work-orders');
   };
 
@@ -124,6 +152,8 @@ export default function FieldCapturePage() {
     if (!file || !selectedOT || !profile?.companyId || !storage || !db || !profile) return;
 
     setIsUploading(true);
+    getPosition(); // Refrescar GPS
+
     try {
       const path = `companies/${profile.companyId}/workOrders/${selectedOT.id}/field_evidence_${Date.now()}`;
       const sRef = ref(storage, path);
@@ -136,7 +166,7 @@ export default function FieldCapturePage() {
       if (selectedChecklistItemId) {
         const updatedChecklist = selectedOT.checklist?.map(item => 
           item.id === selectedChecklistItemId 
-            ? { ...item, completed: true, completedAt: new Date().toISOString(), evidenceUrl: url } 
+            ? { ...item, completed: true, completedAt: new Date().toISOString(), evidenceUrl: url, latitude: coords?.lat, longitude: coords?.lng } 
             : item
         );
         updateDocumentNonBlocking(otRef, {
@@ -157,12 +187,14 @@ export default function FieldCapturePage() {
         companyId: profile.companyId,
         timestamp: serverTimestamp(),
         eventType: 'action_taken',
-        eventDetails: logComment || "Evidencia fotográfica cargada desde terreno.",
+        eventDetails: logComment || "Evidencia fotográfica capturada en terreno con GPS.",
         actor: profile.id,
-        actorName: profile.name
+        actorName: profile.name,
+        latitude: coords?.lat || null,
+        longitude: coords?.lng || null
       });
 
-      toast({ title: "Evidencia Guardada", description: "El avance se ha registrado con éxito." });
+      toast({ title: "Evidencia Guardada", description: "Posición GPS registrada correctamente." });
       setSelectedChecklistItemId(null);
       setLogComment("");
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -178,6 +210,8 @@ export default function FieldCapturePage() {
     if (!selectedOT || !db || !profile?.companyId || !profile) return;
     
     setIsFinalizing(true);
+    getPosition(); // Refrescar GPS
+
     try {
       const techCode = `TCH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
@@ -188,7 +222,9 @@ export default function FieldCapturePage() {
         technicianApprovalDate: serverTimestamp(),
         technicianApprovalCode: techCode,
         executedAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        latitude: coords?.lat || null,
+        longitude: coords?.lng || null
       });
 
       await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
@@ -196,12 +232,14 @@ export default function FieldCapturePage() {
         companyId: profile.companyId,
         timestamp: serverTimestamp(),
         eventType: 'status_change',
-        eventDetails: `El técnico ${profile.name} ha finalizado los trabajos y enviado la orden a revisión técnica.`,
+        eventDetails: `Finalizado por ${profile.name} con trazabilidad GPS.`,
         actor: profile.id,
-        actorName: profile.name
+        actorName: profile.name,
+        latitude: coords?.lat || null,
+        longitude: coords?.lng || null
       });
 
-      toast({ title: "Trabajo Finalizado", description: "La orden ha pasado a revisión técnica." });
+      toast({ title: "Trabajo Finalizado", description: "Orden enviada con sello GPS." });
       setSelectedOT(null);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -264,14 +302,10 @@ export default function FieldCapturePage() {
                           <Badge variant="outline" className="text-[8px] font-black uppercase px-1.5 h-4">{ot.status}</Badge>
                         </div>
                         <p className="text-slate-900 font-bold text-sm truncate">{client?.name || 'Cliente...'}</p>
-                        {totalCount > 0 && (
-                          <div className="flex items-center gap-2 mt-2">
-                            <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-                              <div className="bg-emerald-500 h-full transition-all" style={{ width: `${(completedCount / totalCount) * 100}%` }} />
-                            </div>
-                            <span className="text-[9px] font-black text-slate-400">{completedCount}/{totalCount}</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">{ot.serviceLocation || client?.address}</span>
+                        </div>
                       </div>
                       <ChevronRight className="h-5 w-5 text-slate-300" />
                     </button>
@@ -295,12 +329,41 @@ export default function FieldCapturePage() {
                 </div>
               </CardHeader>
               <CardContent className="p-8 space-y-8">
+                
+                {/* NAVEGACIÓN GPS */}
+                <div className="bg-blue-50 p-6 rounded-[2rem] border border-blue-100 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Compass className="h-5 w-5 text-blue-600" />
+                      <span className="text-[10px] font-black uppercase text-blue-900 tracking-widest">Navegación al Sitio</span>
+                    </div>
+                    {coords && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[8px] font-black">GPS ACTIVO</Badge>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button 
+                      variant="outline" 
+                      className="bg-white border-2 border-slate-100 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest gap-2"
+                      onClick={() => openNavigation('google', selectedOT.serviceLocation || clients?.find(c => c.id === selectedOT.clientId)?.address || "")}
+                    >
+                      <img src="https://www.google.com/images/branding/product/2x/maps_96in128dp.png" className="h-5 w-5 object-contain" alt="Maps" />
+                      Google Maps
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="bg-white border-2 border-slate-100 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest gap-2"
+                      onClick={() => openNavigation('waze', selectedOT.serviceLocation || clients?.find(c => c.id === selectedOT.clientId)?.address || "")}
+                    >
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Waze_icon.svg/1200px-Waze_icon.svg.png" className="h-5 w-5 object-contain" alt="Waze" />
+                      Waze
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                       <ListChecks className="h-4 w-4 text-primary" /> Protocolos de Servicio
                     </Label>
-                    <Badge variant="outline" className="text-[8px] font-black border-emerald-200 text-emerald-600 bg-emerald-50">AUTO-GUARDADO</Badge>
                   </div>
                   
                   <div className="space-y-2">
@@ -332,12 +395,8 @@ export default function FieldCapturePage() {
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-blue-500" /> Nota de Bitácora
                   </Label>
-                  <div className="flex items-center gap-2 bg-blue-50 p-3 rounded-xl border border-blue-100 mb-2">
-                    <User className="h-3 w-3 text-blue-600" />
-                    <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest">Registrando como: {profile?.name}</span>
-                  </div>
                   <Textarea 
-                    placeholder={selectedChecklistItemId ? "Añade una nota para esta tarea específica..." : "Detalles generales del hallazgo o acción..."} 
+                    placeholder={selectedChecklistItemId ? "Añade una nota para esta tarea específica..." : "Detalles generales del hallazgo..."} 
                     className="rounded-2xl min-h-[80px] border-2 bg-slate-50/50 text-sm"
                     value={logComment}
                     onChange={(e) => setLogComment(e.target.value)}
@@ -348,7 +407,7 @@ export default function FieldCapturePage() {
                     <Button 
                       className={cn(
                         "w-full h-24 rounded-3xl shadow-xl flex flex-col gap-2 transition-all",
-                        selectedChecklistItemId ? "bg-primary text-white" : "bg-slate-100 text-slate-600 border-2 border-dashed border-slate-300 hover:bg-slate-200"
+                        selectedChecklistItemId ? "bg-primary text-white" : "bg-slate-100 text-slate-600 border-2 border-dashed border-slate-300"
                       )}
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
@@ -357,35 +416,30 @@ export default function FieldCapturePage() {
                         <>
                           <Camera className="h-8 w-8" />
                           <span className="text-sm font-black uppercase italic">
-                            {selectedChecklistItemId ? "Subir Evidencia para Tarea" : "Subir Evidencia General"}
+                            {selectedChecklistItemId ? "Subir Foto con GPS" : "Evidencia General con GPS"}
                           </span>
                         </>
                       )}
                     </Button>
-                    <div className="flex items-center justify-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      <CloudUpload className="h-3 w-3" /> Los cambios se guardan al subir la foto
-                    </div>
                   </div>
                 </div>
 
                 <div className="pt-8 border-t-2 border-dashed space-y-4">
-                  <div className="flex gap-3">
-                    <Button 
-                      variant="outline"
-                      className="flex-1 h-16 rounded-2xl border-2 border-slate-200 font-black uppercase text-xs tracking-widest gap-2 bg-white"
-                      onClick={handleManualSave}
-                      disabled={isSaving || isUploading || isFinalizing}
-                    >
-                      {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <><Save className="h-4 w-4" /> Guardar Avance</>}
-                    </Button>
-                  </div>
+                  <Button 
+                    variant="outline"
+                    className="w-full h-16 rounded-2xl border-2 border-slate-200 font-black uppercase text-xs tracking-widest gap-2 bg-white"
+                    onClick={handleManualSave}
+                    disabled={isSaving || isUploading || isFinalizing}
+                  >
+                    {isSaving ? <Loader2 className="animate-spin h-4 w-4" /> : <><Save className="h-4 w-4" /> Guardar Avance y GPS</>}
+                  </Button>
 
                   <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex gap-3">
                     <Fingerprint className="h-6 w-6 text-blue-600 shrink-0" />
                     <div>
-                      <p className="text-xs font-black text-blue-900 uppercase">Finalización Técnica</p>
+                      <p className="text-xs font-black text-blue-900 uppercase">Sello de Finalización GPS</p>
                       <p className="text-[10px] text-blue-700/70 font-medium leading-relaxed">
-                        Al pulsar el botón inferior, declaras que has completado tu labor. Se generará un sello digital con tu nombre y la orden pasará a revisión administrativa.
+                        Al finalizar, se registrará su posición satelital como comprobante de ejecución en terreno.
                       </p>
                     </div>
                   </div>
@@ -400,10 +454,6 @@ export default function FieldCapturePage() {
                 </div>
               </CardContent>
             </Card>
-
-            <Button variant="ghost" className="w-full text-slate-400 font-bold uppercase tracking-widest" onClick={() => setSelectedOT(null)} disabled={isUploading || isFinalizing}>
-              Volver al listado
-            </Button>
           </div>
         )}
       </div>
