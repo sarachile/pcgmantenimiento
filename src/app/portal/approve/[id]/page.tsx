@@ -1,6 +1,7 @@
+
 "use client";
 
-import { use, useState, useEffect, useMemo, Suspense } from "react";
+import { use, useState, useEffect, Suspense } from "react";
 import { 
   Card, 
   CardContent, 
@@ -16,14 +17,12 @@ import {
   Check, 
   Loader2, 
   ArrowLeft,
-  Send,
   Building2,
   HardHat,
   Camera,
   XCircle,
   AlertTriangle,
   Fingerprint,
-  KeyRound,
   Lock,
   ArrowRight
 } from "lucide-react";
@@ -31,7 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { initializeFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { useFirestore, updateDocumentNonBlocking } from "@/firebase";
 import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { WorkOrder, Client, Company, Asset } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -45,6 +44,7 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
   const searchParams = useSearchParams();
   const companyId = searchParams.get('c');
   const { toast } = useToast();
+  const firestore = useFirestore();
   
   const [ot, setOt] = useState<WorkOrder | null>(null);
   const [client, setClient] = useState<Client | null>(null);
@@ -62,11 +62,9 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
   const [ratings, setRatings] = useState({ quality: 0, timing: 0, safety: 0, documentation: 0 });
   const [comment, setComment] = useState("");
 
-  const { firestore } = useMemo(() => initializeFirebase(), []);
-
   useEffect(() => {
     async function loadData() {
-      if (!companyId) {
+      if (!companyId || !firestore) {
         setLoading(false);
         return;
       }
@@ -90,7 +88,7 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
           }
         }
       } catch (e) {
-        console.error(e);
+        console.error("Error cargando portal:", e);
       } finally {
         setLoading(false);
       }

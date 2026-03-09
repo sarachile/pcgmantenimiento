@@ -1,7 +1,7 @@
 
 "use client";
 
-import { use, useState, useEffect, useMemo, Suspense } from "react";
+import { use, useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Card, 
@@ -23,7 +23,7 @@ import {
   Lock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { initializeFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, useAuth, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { StaffMember, Company } from "@/lib/types";
@@ -45,11 +45,13 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
   const [pinInput, setPinInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { firestore, auth } = useMemo(() => initializeFirebase(), []);
+  // Usar hooks en lugar de inicialización directa para mayor estabilidad
+  const firestore = useFirestore();
+  const auth = useAuth();
 
   useEffect(() => {
     async function loadData() {
-      if (!companyId) {
+      if (!companyId || !firestore) {
         setLoading(false);
         return;
       }
@@ -88,7 +90,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
 
   const handleCreateAccess = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staff || !company || isSubmitting) return;
+    if (!staff || !company || !auth || !firestore || isSubmitting) return;
 
     if (pinInput.length < 6) {
       toast({ title: "PIN muy corto", description: "Use al menos 6 números (requerido por seguridad).", variant: "destructive" });

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -11,33 +12,32 @@ import {
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
+/**
+ * Inicializa Firebase de forma robusta.
+ * Maneja fallos de persistencia (comunes en navegadores de WhatsApp o Modo Incógnito).
+ */
 export function initializeFirebase() {
-  if (!getApps().length) {
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
-  }
-  return getSdks(getApp());
-}
-
-export function getSdks(firebaseApp: FirebaseApp) {
-  // Inicializamos Firestore con persistencia local habilitada.
-  // Esto permite que las OTs y Checklists funcionen sin internet,
-  // sincronizando los cambios automáticamente al recuperar señal.
+  const apps = getApps();
+  const app = apps.length ? apps[0] : initializeApp(firebaseConfig);
+  
   let firestore;
   try {
-    firestore = initializeFirestore(firebaseApp, {
+    // Intentamos inicializar con persistencia para soporte offline.
+    // Si ya está inicializado o el entorno es restringido, esto lanzará una excepción.
+    firestore = initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     });
-  } catch (e) {
-    // Si ya está inicializado (por hot reload en desarrollo), usamos la instancia existente
-    firestore = getFirestore(firebaseApp);
+  } catch (e: any) {
+    // Fallback: Si falla la persistencia, usamos la instancia estándar (memoria).
+    // Esto previene el error "a client-side exception has occurred" en móviles.
+    firestore = getFirestore(app);
   }
 
   return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
+    firebaseApp: app,
+    auth: getAuth(app),
     firestore,
-    storage: getStorage(firebaseApp)
+    storage: getStorage(app)
   };
 }
 

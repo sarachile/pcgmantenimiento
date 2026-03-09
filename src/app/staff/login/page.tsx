@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Card, 
@@ -17,13 +17,11 @@ import { Label } from "@/components/ui/label";
 import { 
   Loader2, 
   HardHat, 
-  ArrowRight,
   ShieldCheck,
-  Building2,
   AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { initializeFirebase } from "@/firebase";
+import { useFirestore, useAuth } from "@/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import Link from "next/link";
@@ -31,16 +29,16 @@ import Link from "next/link";
 export default function StaffLoginPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const firestore = useFirestore();
+  const auth = useAuth();
   
   const [rutInput, setRutInput] = useState("");
   const [pinInput, setPinInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { firestore, auth } = useMemo(() => initializeFirebase(), []);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || !firestore || !auth) return;
 
     const cleanRut = rutInput.replace(/\D/g, '').toLowerCase();
     if (!cleanRut || pinInput.length < 6) {

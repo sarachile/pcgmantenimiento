@@ -1,13 +1,13 @@
+
 "use client";
 
-import { use, useState, useEffect, useMemo, Suspense, useRef } from "react";
+import { use, useState, useEffect, Suspense, useRef } from "react";
 import { 
   Card, 
   CardContent, 
   CardHeader, 
   CardTitle, 
-  CardDescription,
-  CardFooter
+  CardDescription
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,6 @@ import {
   ClipboardPlus, 
   Loader2, 
   CheckCircle2, 
-  AlertTriangle, 
   Mail, 
   Building2,
   Clock,
@@ -32,8 +31,6 @@ import {
   Trash2,
   Hash,
   History,
-  Search,
-  ExternalLink,
   ChevronRight,
   Share,
   PlusSquare,
@@ -51,8 +48,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { initializeFirebase, useStorage } from "@/firebase";
-import { doc, getDoc, collection, setDoc, serverTimestamp, query, where, getDocs, orderBy } from "firebase/firestore";
+import { useFirestore, useStorage } from "@/firebase";
+import { doc, getDoc, setDoc, serverTimestamp, query, where, getDocs, orderBy } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Client, Company, WorkOrder } from "@/lib/types";
 import { useSearchParams } from "next/navigation";
@@ -67,6 +64,7 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
   const companyId = searchParams.get('c');
   const { toast } = useToast();
   const storage = useStorage();
+  const firestore = useFirestore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [client, setClient] = useState<Client | null>(null);
@@ -115,11 +113,9 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
   const [evidenceUrls, setEvidenceUrls] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  const { firestore } = useMemo(() => initializeFirebase(), []);
-
   useEffect(() => {
     async function loadData() {
-      if (!companyId) {
+      if (!companyId || !firestore) {
         setLoading(false);
         return;
       }
@@ -145,7 +141,7 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
   }, [firestore, clientId, companyId]);
 
   const loadHistory = async () => {
-    if (!companyId || !clientId) return;
+    if (!companyId || !clientId || !firestore) return;
     setIsHistoryLoading(true);
     try {
       const q = query(
@@ -196,7 +192,7 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
 
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId || !clientId || !description.trim()) return;
+    if (!companyId || !clientId || !description.trim() || !firestore) return;
 
     setIsSubmitting(true);
     try {
@@ -530,39 +526,42 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
                       </div>
                     ) : (
                       <div className="divide-y">
-                        {history.map((ot) => (
-                          <div key={ot.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between group">
-                            <div className="flex-1 min-w-0 mr-4">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className="text-sm font-black text-primary italic tracking-tight">{ot.id}</span>
-                                <Badge className={cn(
-                                  "text-[8px] font-black uppercase tracking-widest h-5",
-                                  ot.status === 'aprobada' ? "bg-emerald-100 text-emerald-700" :
-                                  ot.status === 'solicitada' ? "bg-blue-100 text-blue-700" :
-                                  ot.status === 'pendiente cliente' ? "bg-indigo-600 text-white animate-pulse" :
-                                  "bg-slate-100 text-slate-600"
-                                )}>
-                                  {ot.status.replace('_', ' ')}
-                                </Badge>
+                        {history.map((ot) => {
+                          const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
+                          return (
+                            <div key={ot.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between group">
+                              <div className="flex-1 min-w-0 mr-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span className="text-sm font-black text-primary italic tracking-tight">{ot.id}</span>
+                                  <Badge className={cn(
+                                    "text-[8px] font-black uppercase tracking-widest h-5",
+                                    ot.status === 'aprobada' ? "bg-emerald-100 text-emerald-700" :
+                                    ot.status === 'solicitada' ? "bg-blue-100 text-blue-700" :
+                                    ot.status === 'pendiente cliente' ? "bg-indigo-600 text-white animate-pulse" :
+                                    "bg-slate-100 text-slate-600"
+                                  )}>
+                                    {ot.status.replace('_', ' ')}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm font-bold text-slate-900 truncate leading-none mb-2">{ot.description}</p>
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                  <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" /> {format(date, "dd/MM/yyyy")}</span>
+                                  {ot.serviceLocation && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {ot.serviceLocation}</span>}
+                                </div>
                               </div>
-                              <p className="text-sm font-bold text-slate-900 truncate leading-none mb-2">{ot.description}</p>
-                              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                                <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" /> {ot.createdAt ? format(ot.createdAt.toDate ? ot.createdAt.toDate() : parseISO(ot.createdAt), "dd/MM/yyyy") : '---'}</span>
-                                {ot.serviceLocation && <span className="flex items-center gap-1.5"><MapPin className="h-3 w-3" /> {ot.serviceLocation}</span>}
+                              <div className="shrink-0 flex items-center gap-3">
+                                {ot.status === 'pendiente cliente' && (
+                                  <Button asChild size="sm" className="bg-indigo-600 hover:bg-indigo-700 rounded-xl h-10 px-4 font-black text-[9px] uppercase tracking-widest gap-2 shadow-lg shadow-indigo-200">
+                                    <Link href={`/portal/approve/${ot.id}?c=${companyId}`}>Validar Ahora <ArrowRight className="h-3 w-3" /></Link>
+                                  </Button>
+                                )}
+                                <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
+                                  <ChevronRight className="h-4 w-4" />
+                                </div>
                               </div>
                             </div>
-                            <div className="shrink-0 flex items-center gap-3">
-                              {ot.status === 'pendiente cliente' && (
-                                <Button asChild size="sm" className="bg-indigo-600 hover:bg-indigo-700 rounded-xl h-10 px-4 font-black text-[9px] uppercase tracking-widest gap-2 shadow-lg shadow-indigo-200">
-                                  <Link href={`/portal/approve/${ot.id}?c=${companyId}`}>Validar Ahora <ArrowRight className="h-3 w-3" /></Link>
-                                </Button>
-                              )}
-                              <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-primary group-hover:text-white transition-all">
-                                <ChevronRight className="h-4 w-4" />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
