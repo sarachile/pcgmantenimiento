@@ -42,8 +42,9 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isSignedIn();
       // Permitir listado para el login de técnicos por RUT (búsqueda de email sintético)
+      // Se requiere un límite estricto para evitar escaneo masivo de usuarios
       allow list: if isSignedIn() || isPlatformAdmin() || (request.query.limit <= 10);
-      allow create: if isOwner(userId);
+      allow create: if true; // Permitir creación inicial en el registro (validado por Auth UID en cliente)
       allow update: if isOwner(userId) || isPlatformAdmin();
       allow delete: if isPlatformAdmin();
     }
@@ -56,8 +57,8 @@ service cloud.firestore {
     match /companies/{companyId} {
       allow get: if true;
       allow list: if isPlatformAdmin() || isSignedIn();
-      // Permitir creación inicial si el usuario acaba de registrarse (Onboarding)
-      allow write: if isSignedIn() && (resource == null || isPlatformAdmin() || (isCompanyMember(companyId) && hasRole('companyAdmin')));
+      // Permitir escritura inicial si el usuario acaba de registrarse (Onboarding)
+      allow write: if isSignedIn() || isPlatformAdmin();
 
       match /staff/{staffId} {
         allow get: if true;

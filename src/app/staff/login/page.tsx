@@ -23,7 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useAuth } from "@/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import Link from "next/link";
 
 export default function StaffLoginPage() {
@@ -40,41 +40,70 @@ export default function StaffLoginPage() {
     e.preventDefault();
     if (isSubmitting || !firestore || !auth) return;
 
-    const cleanRut = rutInput.replace(/\D/g, '').toLowerCase();
+    // Limpiar RUT: solo números y K
+    const cleanRut = rutInput.replace(/[^0-9kK]/g, '').toLowerCase();
+    
     if (!cleanRut || pinInput.length < 6) {
-      toast({ title: "Datos incompletos", description: "Verifique su RUT y que el PIN tenga 6 dígitos.", variant: "destructive" });
+      toast({ 
+        title: "Datos incompletos", 
+        description: "Verifique su RUT y que el PIN tenga al menos 6 dígitos.", 
+        variant: "destructive" 
+      });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // 1. Encontrar la empresa del técnico
-      const staffQuery = query(collection(firestore, "users"), where("email", ">=", cleanRut), where("email", "<=", cleanRut + "\uf8ff"));
+      // 1. Buscar el email sintético asociado al RUT en la colección global de usuarios
+      // IMPORTANTE: Se añade limit(1) para cumplir con las reglas de seguridad de Firestore
+      const staffQuery = query(
+        collection(firestore, "users"), 
+        where("email", ">=", cleanRut), 
+        where("email", "<=", cleanRut + "\uf8ff"),
+        limit(1)
+      );
+      
       const staffSnap = await getDocs(staffQuery);
       
       if (staffSnap.empty) {
-        throw new Error("No se encontró una cuenta activa para este RUT. ¿Ya activaste tu acceso?");
+        throw new Error("No se encontró una cuenta activa para este RUT. ¿Ya activaste tu acceso mediante el link enviado a tu WhatsApp?");
       }
 
-      // Encontramos el usuario que coincide exactamente con el formato [rut]@[id].staff.pcg
-      const targetUser = staffSnap.docs.find(d => d.data().email.startsWith(`${cleanRut}@`));
-      
-      if (!targetUser) {
-        throw new Error("RUT no registrado.");
+      // Encontramos el usuario que coincide con el formato [rut]@[id].staff.pcg
+      const targetUser = staffSnap.docs[0].data();
+      const email = targetUser.email;
+
+      if (!email || !email.includes("@")) {
+        throw new Error("Error de configuración de cuenta. Contacte a su supervisor.");
       }
 
-      const email = targetUser.data().email;
-
-      // 2. Iniciar sesión
+      // 2. Iniciar sesión con Firebase Auth
       await signInWithEmailAndPassword(auth, email, pinInput);
       
-      toast({ title: "Acceso Concedido", description: "Cargando tu hoja de ruta..." });
+      toast({ 
+        title: "Acceso Concedido", 
+        description: "Bienvenido al equipo de terreno. Cargando tu hoja de ruta..." 
+      });
+      
       router.push('/dashboard');
     } catch (error: any) {
-      console.error(error);
+      console.error("Login Error:", error);
+      
+      let friendlyMessage = "Credenciales incorrectas o error de conexión.";
+      
+      if (error.message.includes("permission")) {
+        friendlyMessage = "Error de sincronización de seguridad. Por favor, intente en un momento.";
+      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        friendlyMessage = "RUT o PIN incorrectos. Verifique sus datos.";
+      } else if (error.code === 'auth/too-many-requests') {
+        friendlyMessage = "Demasiados intentos fallidos. Cuenta bloqueada temporalmente por seguridad.";
+      } else {
+        friendlyMessage = error.message;
+      }
+
       toast({ 
         title: "Fallo de Acceso", 
-        description: error.message || "Credenciales incorrectas.", 
+        description: friendlyMessage, 
         variant: "destructive" 
       });
     } finally {
