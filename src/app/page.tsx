@@ -61,7 +61,7 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-pulse">
-          <img src="/logo.png" alt="Cargando..." className="h-12 w-12 object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
+          <img src="/logoweb.png" alt="Cargando..." className="h-12 w-auto object-contain" onError={(e) => (e.currentTarget.style.display = 'none')} />
         </div>
       </div>
     );
@@ -87,12 +87,9 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-3">
-              <div className="bg-slate-100 p-1.5 rounded-xl border border-slate-200">
-                <img src="/logo.png" alt="PCG" className="h-8 w-8 object-contain" />
+              <div className="bg-transparent p-1.5">
+                <img src="/logoweb.png" alt="PCGMANTENIMIENTO" className="h-10 w-auto object-contain" />
               </div>
-              <span className="font-black text-xl tracking-tighter text-primary uppercase">
-                PCGMANTENIMIENTO
-              </span>
             </div>
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
@@ -270,7 +267,7 @@ export default function HomePage() {
 
               <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-5">
-                  <img src="/logo.png" alt="PCG" className="h-24 w-24 object-contain grayscale" />
+                  <img src="/logoweb.png" alt="PCG" className="h-24 w-auto object-contain grayscale" />
                 </div>
                 <h3 className="text-2xl font-black italic mb-2 text-slate-900">"Lo que no se registra, no existe"</h3>
                 <p className="text-slate-500 font-medium mb-8">Centraliza toda tu operación en una herramienta diseñada para el rigor del terreno y la confianza del cliente.</p>
@@ -447,7 +444,7 @@ export default function HomePage() {
 
           <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-40 grayscale">
             <div className="flex flex-col items-center gap-2">
-              <img src="/logo.png" alt="Seguridad" className="h-10 w-10 object-contain" />
+              <img src="/logoweb.png" alt="Seguridad" className="h-10 w-auto object-contain" />
               <span className="text-[10px] font-black uppercase">Seguridad SSL</span>
             </div>
             <div className="flex flex-col items-center gap-2">
@@ -469,8 +466,7 @@ export default function HomePage() {
       <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-3 opacity-50">
-            <img src="/logo.png" alt="Logo" className="h-6 w-6 object-contain" />
-            <span className="font-black text-sm uppercase tracking-tighter text-slate-900">PCGMANTENIMIENTO ERP</span>
+            <img src="/logoweb.png" alt="Logo" className="h-6 w-auto object-contain" />
           </div>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
             © {new Date().getFullYear()} - Todos los derechos reservados.
