@@ -1,16 +1,15 @@
-
 {
   "placeholderImages": [
     {
       "id": "hero-industrial",
       "description": "Entorno de mantenimiento industrial profesional",
-      "imageUrl": "/imagen1.png",
+      "imageUrl": "/imagen3.png",
       "imageHint": "industrial maintenance"
     },
     {
       "id": "dashboard-preview",
       "description": "Previsualización del Dashboard PCGMANTENIMIENTO",
-      "imageUrl": "/imagen1.png",
+      "imageUrl": "/imagen3.png",
       "imageHint": "software dashboard"
     },
     {

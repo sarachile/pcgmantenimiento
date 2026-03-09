@@ -230,7 +230,7 @@ export default function HomePage() {
             <div className="relative aspect-square md:aspect-video lg:aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200 bg-white p-2">
               <div className="relative w-full h-full rounded-[2rem] overflow-hidden">
                 <Image 
-                  src="/imagen1.png" 
+                  src="/imagen3.png" 
                   alt="Gestión Operativa PCGMANTENIMIENTO" 
                   fill 
                   className="object-cover"
