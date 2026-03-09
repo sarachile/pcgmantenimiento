@@ -8,7 +8,8 @@ import {
   initializeFirestore, 
   persistentLocalCache, 
   persistentMultipleTabManager, 
-  getFirestore 
+  getFirestore,
+  Firestore
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -20,16 +21,16 @@ export function initializeFirebase() {
   const apps = getApps();
   const app = apps.length ? apps[0] : initializeApp(firebaseConfig);
   
-  let firestore;
+  let firestore: Firestore;
   try {
     // Intentamos inicializar con persistencia para soporte offline.
-    // Si ya está inicializado o el entorno es restringido, esto lanzará una excepción.
+    // Solo si no ha sido inicializado antes por otra llamada.
     firestore = initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     });
   } catch (e: any) {
-    // Fallback: Si falla la persistencia, usamos la instancia estándar (memoria).
-    // Esto previene el error "a client-side exception has occurred" en móviles.
+    // Si ya existe o si el entorno (WhatsApp/Incognito) bloquea IndexedDB, 
+    // obtenemos la instancia existente o una nueva sin persistencia.
     firestore = getFirestore(app);
   }
 

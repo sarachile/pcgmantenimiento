@@ -23,7 +23,7 @@ import {
   Lock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore, useAuth, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, useAuth } from "@/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { StaffMember, Company } from "@/lib/types";
@@ -133,11 +133,14 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       setStep(3);
       toast({ title: "¡Acceso Activado!", description: "Ya puede usar la plataforma." });
     } catch (error: any) {
+      console.error("Setup Error:", error);
       if (error.code === 'auth/email-already-in-use') {
         toast({ title: "Ya activado", description: "Este usuario ya tiene acceso configurado. Inicie sesión directamente.", variant: "destructive" });
         router.push('/staff/login');
+      } else if (error.code === 'permission-denied') {
+        toast({ title: "Error de permisos", description: "Sincronización en curso. Por favor intente en 10 segundos.", variant: "destructive" });
       } else {
-        toast({ title: "Error de permisos", description: "Hubo un problema al crear tu perfil. Contacta a soporte.", variant: "destructive" });
+        toast({ title: "Fallo de registro", description: error.message || "No se pudo crear el acceso. Contacte a soporte.", variant: "destructive" });
       }
     } finally {
       setIsSubmitting(false);
