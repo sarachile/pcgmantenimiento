@@ -10,24 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Company } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-function SidebarAutoCollapse() {
-  const { setOpen } = useSidebar();
-  const isMobile = useIsMobile();
-
-  useEffect(() => {
-    if (isMobile) {
-      const timer = setTimeout(() => {
-        setOpen(false);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [isMobile, setOpen]);
-
-  return null;
-}
 
 export default function DashboardLayout({
   children,
@@ -63,23 +47,22 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <SidebarAutoCollapse />
       <SidebarNav userRole={profile?.role || 'tecnico'} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 px-6 border-b border-border/50 sticky top-0 bg-background/80 backdrop-blur-md z-10">
-          <SidebarTrigger className="-ml-1" />
+          <SidebarTrigger className="-ml-1 h-10 w-10 bg-slate-900 text-white rounded-xl shadow-lg md:bg-transparent md:text-slate-900 md:shadow-none" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex-1">
-            <h1 className="text-sm font-medium text-muted-foreground truncate max-w-[300px]">
+            <h1 className="text-sm font-black text-slate-900 uppercase italic truncate max-w-[200px] sm:max-w-[300px]">
               {company?.name || "PCGMANTENIMIENTO ERP"}
             </h1>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold">{profile?.name || "Usuario"}</p>
-              <p className="text-xs text-muted-foreground uppercase">{profile?.role || "Personal"}</p>
+              <p className="text-xs font-black uppercase text-slate-900">{profile?.name || "Usuario"}</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold">{profile?.role || "Personal"}</p>
             </div>
-            <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-xs">
+            <div className="h-9 w-9 rounded-xl bg-primary text-white flex items-center justify-center font-black text-xs shadow-md">
               {profile?.name?.split(' ').map(n => n[0]).join('') || "U"}
             </div>
           </div>

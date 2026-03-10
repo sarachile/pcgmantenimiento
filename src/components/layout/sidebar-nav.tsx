@@ -36,7 +36,8 @@ import {
   SidebarMenuItem,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel
+  SidebarGroupLabel,
+  useSidebar
 } from "@/components/ui/sidebar";
 import { Role, Company } from "@/lib/types";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
@@ -95,6 +96,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
   const pathname = usePathname();
   const { profile, isSuperAdmin } = useUser();
   const { features } = usePlanLimits();
+  const { setOpenMobile } = useSidebar();
   const db = useFirestore();
   const auth = useAuth();
   const router = useRouter();
@@ -118,6 +120,10 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
   const filteredInv = filterByRole(inventoryItems);
   const filteredBus = filterByRole(businessItems);
   const filteredSet = filterByRole(settingsItems);
+
+  const handleNavClick = () => {
+    setOpenMobile(false);
+  };
 
   return (
     <Sidebar className="border-r border-border/50 bg-slate-950 text-slate-300">
@@ -155,6 +161,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
                       <SidebarMenuButton 
                         asChild 
                         isActive={pathname === item.href}
+                        onClick={handleNavClick}
                         className={cn(
                           "rounded-xl px-4 h-11 transition-all",
                           item.highlight && "bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 font-bold",
@@ -178,7 +185,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
                 <SidebarMenu>
                   {filteredInv.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
+                      <SidebarMenuButton asChild isActive={pathname === item.href} onClick={handleNavClick} className="rounded-xl px-4 h-11 hover:bg-white/5">
                         <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -198,6 +205,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
                         <SidebarMenuButton 
                           asChild 
                           isActive={pathname === item.href} 
+                          onClick={handleNavClick}
                           className={cn(
                             "rounded-xl px-4 h-11 transition-all",
                             isLocked ? "opacity-50 grayscale hover:bg-transparent" : "hover:bg-white/5"
@@ -222,7 +230,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
                 <SidebarMenu>
                   {filteredSet.map((item) => (
                     <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-white/5">
+                      <SidebarMenuButton asChild isActive={pathname === item.href} onClick={handleNavClick} className="rounded-xl px-4 h-11 hover:bg-white/5">
                         <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -237,7 +245,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
             <SidebarMenu>
               {filterByRole(adminItems).map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href} className="rounded-xl px-4 h-11 hover:bg-blue-600/10 text-blue-100">
+                  <SidebarMenuButton asChild isActive={pathname === item.href} onClick={handleNavClick} className="rounded-xl px-4 h-11 hover:bg-blue-600/10 text-blue-100">
                     <Link href={item.href}><item.icon className="h-4 w-4" /><span>{item.title}</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
