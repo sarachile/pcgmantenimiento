@@ -24,7 +24,12 @@ import {
   AlertTriangle,
   Fingerprint,
   Lock,
-  ArrowRight
+  ArrowRight,
+  Layers,
+  ListChecks,
+  MapPin,
+  Users,
+  ClipboardList
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +37,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, updateDocumentNonBlocking } from "@/firebase";
 import { doc, getDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { WorkOrder, Client, Company, Asset } from "@/lib/types";
+import { WorkOrder, Client, Company, Asset, StaffMember } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { FirebaseImage } from "@/components/FirebaseImage";
 import { useSearchParams } from "next/navigation";
@@ -50,6 +55,7 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
   const [client, setClient] = useState<Client | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [asset, setAsset] = useState<Asset | null>(null);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -84,6 +90,18 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
             if (otData.assetId) {
               const assetDoc = await getDoc(doc(firestore, "companies", companyId, "assets", otData.assetId));
               if (assetDoc.exists()) setAsset(assetDoc.data() as Asset);
+            }
+
+            // Cargar Personal Asignado
+            if (otData.assignedToStaffIds && otData.assignedToStaffIds.length > 0) {
+              const staffPromises = otData.assignedToStaffIds.map(id => 
+                getDoc(doc(firestore, "companies", companyId, "staff", id))
+              );
+              const staffSnaps = await Promise.all(staffPromises);
+              const staffList = staffSnaps
+                .filter(s => s.exists())
+                .map(s => ({ ...s.data(), id: s.id } as StaffMember));
+              setStaff(staffList);
             }
           }
         }
@@ -247,7 +265,7 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
     <div className="min-h-screen bg-slate-50 pb-20">
       <div className="bg-slate-900 text-white p-8 pt-12 rounded-b-[3.5rem] shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-10 opacity-10"><ShieldCheck className="h-40 w-40" /></div>
-        <div className="max-w-2xl mx-auto relative z-10">
+        <div className="max-w-3xl mx-auto relative z-10">
           <Badge className="bg-white/10 text-white mb-4 backdrop-blur-md border-white/20 uppercase tracking-[0.2em] font-black text-[9px]">Portal de Aprobación Externo</Badge>
           <h1 className="text-3xl font-black tracking-tight mb-2 uppercase leading-none italic">{company?.name}</h1>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-400 font-bold text-sm">
@@ -255,12 +273,12 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
             <span className="opacity-20">|</span>
             <span className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> {client?.name}</span>
             <span className="opacity-20">|</span>
-            <span>EJECUCIÓN: {formatDateLabel(ot.executedAt)}</span>
+            <span>EJECUCIÓN: {formatDateLabel(ot.executedAt || ot.createdAt)}</span>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 -mt-10">
+      <div className="max-w-3xl mx-auto px-6 -mt-10">
         {step < 4 && (
           <div className="bg-white rounded-[2rem] shadow-xl p-1.5 mb-8 flex gap-1 border">
             {[1, 2, 3].map(s => (
@@ -278,29 +296,99 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
               <CardHeader className="bg-slate-50 border-b p-8">
                 <CardTitle className="text-xl font-black flex items-center gap-3 uppercase tracking-tighter"><HardHat className="h-6 w-6 text-indigo-600" /> Resumen de Intervención</CardTitle>
               </CardHeader>
-              <CardContent className="p-8 space-y-8">
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-inner">
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Activo / Equipo</p>
-                    <p className="text-base font-black text-slate-900">{asset?.name || "S/I"}</p>
-                    <p className="text-[10px] font-bold text-indigo-600 mt-1 uppercase">Código: {asset?.code || "S/I"}</p>
+              <CardContent className="p-8 space-y-10">
+                
+                {/* SECCIÓN 1: IDENTIFICACIÓN TÉCNICA */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 shadow-inner space-y-4">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                      <Layers className="h-3 w-3 text-indigo-600" /> Activo / Equipo
+                    </p>
+                    <div>
+                      <p className="text-lg font-black text-slate-900">{asset?.name || "Sin Activo Específico"}</p>
+                      <p className="text-[10px] font-bold text-indigo-600 mt-1 uppercase">Código: {asset?.code || "S/I"}</p>
+                    </div>
                   </div>
-                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 shadow-inner">
-                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1 tracking-widest">Ubicación</p>
-                    <p className="text-sm font-bold text-slate-700">{asset?.location || "Planta Central"}</p>
+                  <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 shadow-inner space-y-4">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                      <MapPin className="h-3 w-3 text-indigo-600" /> Ubicación del Servicio
+                    </p>
+                    <div>
+                      <p className="text-sm font-bold text-slate-700">{ot.street} {ot.streetNumber}</p>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ot.commune}, {ot.city}</p>
+                      {ot.locationComment && <p className="text-[9px] font-bold text-indigo-500 mt-1 italic">"{ot.locationComment}"</p>}
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest pl-1">Trabajos Realizados</Label>
-                  <div className="text-sm text-slate-700 leading-relaxed bg-indigo-50/30 p-6 rounded-[2rem] border-2 border-indigo-100 italic font-medium shadow-inner">
+                {/* SECCIÓN 2: ALCANCE TÉCNICO */}
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
+                    <ClipboardList className="h-4 w-4" /> Alcance del Trabajo Realizado
+                  </Label>
+                  <div className="text-sm text-slate-700 leading-relaxed bg-indigo-50/20 p-8 rounded-[2.5rem] border-2 border-indigo-100 italic font-medium shadow-inner">
                     "{ot.description}"
                   </div>
                 </div>
 
-                {ot.evidenceUrls && ot.evidenceUrls.length > 0 && (
+                {/* SECCIÓN 3: PARTIDAS Y MAGNITUDES (NUEVO) */}
+                {ot.serviceItems && ot.serviceItems.length > 0 && (
                   <div className="space-y-4">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1"><Camera className="h-4 w-4" /> Evidencia Fotográfica</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
+                      <Layers className="h-4 w-4" /> Detalle de Partidas y Mediciones
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {ot.serviceItems.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center p-4 bg-white border-2 rounded-2xl shadow-sm">
+                          <span className="text-xs font-bold text-slate-600">{item.description}</span>
+                          <Badge className="bg-slate-900 text-white font-black text-[10px] uppercase">{item.quantity} {item.unit}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SECCIÓN 4: PROTOCOLO TÉCNICO (NUEVO) */}
+                {ot.checklist && ot.checklist.length > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-dashed">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
+                      <ListChecks className="h-4 w-4" /> Protocolos de Verificación Conformes
+                    </Label>
+                    <div className="space-y-2">
+                      {ot.checklist.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-3 p-4 bg-emerald-50/30 border-2 border-emerald-100 rounded-2xl">
+                          <div className="h-6 w-6 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-sm">
+                            <Check className="h-4 w-4" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-700">{item.task}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SECCIÓN 5: PERSONAL TÉCNICO (NUEVO) */}
+                {staff.length > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-dashed">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
+                      <Users className="h-4 w-4" /> Personal Responsable en Terreno
+                    </Label>
+                    <div className="flex flex-wrap gap-2">
+                      {staff.map(s => (
+                        <Badge key={s.id} variant="outline" className="bg-white px-4 py-2 border-slate-200 rounded-xl gap-2 font-bold text-xs text-slate-600">
+                          <HardHat className="h-3 w-3 text-indigo-600" /> {s.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* SECCIÓN 6: EVIDENCIAS */}
+                {ot.evidenceUrls && ot.evidenceUrls.length > 0 && (
+                  <div className="space-y-4 pt-4 border-t border-dashed">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
+                      <Camera className="h-4 w-4" /> Registro Fotográfico de Respaldo
+                    </Label>
                     <div className="grid grid-cols-2 gap-4">
                       {ot.evidenceUrls.map((url, i) => (
                         <div key={i} className="aspect-video rounded-2xl overflow-hidden border-2 border-slate-100 bg-muted shadow-sm group">
@@ -314,9 +402,9 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
             </Card>
             
             <div className="flex flex-col gap-4">
-              <Button className="w-full h-16 rounded-2xl bg-indigo-600 text-white text-lg font-black shadow-xl shadow-indigo-200 uppercase tracking-widest" onClick={handleNextFromReview}>
-                {ot.evaluationRequired ? "Siguiente: Evaluar Servicio" : "Siguiente: Confirmar Aprobación"}
-                <ArrowLeft className="ml-2 h-5 w-5 rotate-180" />
+              <Button className="w-full h-20 rounded-[2rem] bg-indigo-600 text-white text-lg font-black shadow-xl shadow-indigo-200 uppercase tracking-widest gap-3" onClick={handleNextFromReview}>
+                Continuar con la Aprobación
+                <ArrowRight className="h-6 w-6" />
               </Button>
               <Button variant="ghost" className="text-rose-500 font-black h-12 uppercase tracking-widest hover:bg-rose-50" onClick={() => setStep(6)}>
                 <AlertTriangle className="h-4 w-4 mr-2" /> Reportar Disconformidad
