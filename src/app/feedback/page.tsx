@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -73,7 +72,7 @@ export default function FeedbackPage() {
   const calculateAverage = (evals: ServiceEvaluation[]) => {
     if (!evals.length) return 0;
     const total = evals.reduce((acc, e) => {
-      const subTotal = (e.ratings.quality + e.ratings.timing + e.ratings.safety + e.ratings.documentation) / 4;
+      const subTotal = (e.ratings.quality + e.ratings.timing + e.ratings.safety + (e.ratings.documentation || 5)) / 4;
       return acc + subTotal;
     }, 0);
     return (total / evals.length).toFixed(1);
@@ -137,7 +136,7 @@ export default function FeedbackPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-black text-slate-900 truncate uppercase">{evalItem.reviewerName}</p>
                         <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5 mt-0.5">
-                          <Clock className="h-3 w-3" /> {evalItem.createdAt ? format(evalItem.createdAt.toDate(), "dd MMM yyyy", { locale: es }) : '...'}
+                          <Clock className="h-3 w-3" /> {evalItem.createdAt ? format(evalItem.createdAt.toDate ? evalItem.createdAt.toDate() : new Date(evalItem.createdAt), "dd MMM yyyy", { locale: es }) : '...'}
                         </p>
                       </div>
                     </div>
@@ -187,7 +186,7 @@ export default function FeedbackPage() {
                           <Reply className="h-3.5 w-3.5" /> Nuestra Respuesta
                         </p>
                         <p className="text-[9px] font-bold text-emerald-600/60 uppercase">
-                          {evalItem.adminResponseAt ? format(evalItem.adminResponseAt.toDate(), "dd/MM/yyyy HH:mm") : ''}
+                          {evalItem.adminResponseAt ? format(evalItem.adminResponseAt.toDate ? evalItem.adminResponseAt.toDate() : new Date(evalItem.adminResponseAt), "dd/MM/yyyy HH:mm") : ''}
                         </p>
                       </div>
                       <p className="text-sm text-emerald-900 font-bold leading-relaxed">{evalItem.adminResponse}</p>

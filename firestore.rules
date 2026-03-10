@@ -2,9 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * PCGMANTENIMIENTO SECURITY RULES - Secure Edition
-     * Solo permite lectura y escritura a usuarios que han iniciado sesión.
-     * Esto protege contra bots y curiosos externos mientras mantiene la fluidez para el equipo.
+     * PCGMANTENIMIENTO SECURITY RULES - Secure Production Edition
+     * Permite lectura y escritura a usuarios autenticados para mantener la fluidez operativa.
+     * El portal de aprobación del cliente requiere acceso para usuarios logueados.
      */
     match /{document=**} {
       allow read, write: if request.auth != null;

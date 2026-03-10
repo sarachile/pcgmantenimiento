@@ -2,9 +2,9 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     /**
-     * PCGMANTENIMIENTO STORAGE RULES
-     * Permite a cualquier usuario autenticado subir y leer evidencias.
-     * Esto soluciona los errores de "Permission Denied" para el técnico y admin.
+     * PCGMANTENIMIENTO STORAGE RULES - Secure Production Edition
+     * Permite a cualquier usuario autenticado (Técnicos y Admins) subir y leer evidencias.
+     * Esto soluciona los errores de subida manteniendo una barrera básica contra el público general.
      */
     match /{allPaths=**} {
       allow read, write: if request.auth != null;

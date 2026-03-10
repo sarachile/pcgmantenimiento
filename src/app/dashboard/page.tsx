@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -320,7 +319,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ALERTAS OPERATIVAS - REDISEÑADAS */}
+      {/* ALERTAS OPERATIVAS */}
       {(stats.alertCount > 0 || iotStats.maintenanceCount > 0 || stats.reviewPending > 0) && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {stats.reviewPending > 0 && isAdminOrSupervisor && (
@@ -423,7 +422,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* GUÍA DE ACTIVACIÓN - AHORA ANTES DE LOS ACCESOS DIRECTOS */}
+      {/* GUÍA DE ACTIVACIÓN */}
       {!allStepsCompleted && (
         <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
           <div className="grid md:grid-cols-3">

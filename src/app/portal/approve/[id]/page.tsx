@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, Suspense } from "react";
@@ -391,14 +390,14 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
             <Card className="rounded-[2rem] md:rounded-[2.5rem] border-none shadow-xl">
-              <CardHeader className="p-8 md:p-10 pb-4 text-center">
+              <CardHeader className="p-6 md:p-10 pb-4 text-center">
                 <div className="bg-amber-100 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
                   <Star className="h-8 w-8 md:h-10 md:w-10 text-amber-600 fill-amber-600" />
                 </div>
                 <CardTitle className="text-xl md:text-2xl font-black italic tracking-tighter">Evaluación</CardTitle>
                 <CardDescription className="text-sm font-medium">Califique la calidad de la intervención.</CardDescription>
               </CardHeader>
-              <CardContent className="p-6 md:p-10 pt-4 space-y-4 md:space-y-6">
+              <CardContent className="p-4 md:p-10 pt-4 space-y-4 md:space-y-6">
                 {[
                   { key: 'quality', label: 'Calidad Ejecución' },
                   { key: 'timing', label: 'Cumplimiento Plazos' },
@@ -406,11 +405,11 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
                 ].map(c => (
                   <div key={c.key} className="flex flex-col gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100 shadow-inner">
                     <div className="flex justify-between items-center">
-                      <p className="font-black text-slate-900 text-sm tracking-tight">{c.label}</p>
+                      <p className="font-black text-slate-900 text-xs md:text-sm tracking-tight">{c.label}</p>
                       <div className="flex gap-1">
                         {[1, 2, 3, 4, 5].map(s => (
-                          <button key={s} onClick={() => setRatings({...ratings, [c.key]: s})} className="p-1 transition-transform active:scale-125">
-                            <Star className={cn("h-6 w-6 md:h-7 md:w-7 transition-all", (ratings as any)[c.key] >= s ? "fill-amber-500 text-amber-500" : "text-slate-200")} />
+                          <button key={s} onClick={() => setRatings({...ratings, [c.key as keyof typeof ratings]: s})} className="p-1 transition-transform active:scale-125">
+                            <Star className={cn("h-5 w-5 md:h-7 md:w-7 transition-all", (ratings as any)[c.key] >= s ? "fill-amber-500 text-amber-500" : "text-slate-200")} />
                           </button>
                         ))}
                       </div>
@@ -425,7 +424,7 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
             </Card>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 h-14 md:h-16 rounded-2xl font-black text-slate-400 uppercase text-[10px]" onClick={() => setStep(1)}>Atrás</Button>
-              <Button className="flex-[2] h-14 md:h-16 rounded-2xl bg-indigo-600 text-white font-black shadow-xl uppercase text-[10px] tracking-widest" disabled={!Object.values(ratings).every(r => r > 0)} onClick={() => setStep(3)}>Confirmar</Button>
+              <Button className="flex-[2] h-14 md:h-16 rounded-2xl bg-indigo-600 text-white font-black shadow-xl uppercase text-[10px] tracking-widest" disabled={!ratings.quality || !ratings.timing || !ratings.safety} onClick={() => setStep(3)}>Confirmar</Button>
             </div>
           </div>
         )}

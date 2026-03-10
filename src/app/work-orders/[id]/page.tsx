@@ -116,7 +116,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   useEffect(() => {
     if (profile?.companyId) {
-      const baseUrl = window.location.origin;
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : "";
       setCurrentUrl(`${baseUrl}/portal/approve/${otId}?c=${profile.companyId}`);
     }
   }, [otId, profile?.companyId]);
@@ -485,10 +485,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-white/90 p-6 rounded-[2rem] border shadow-sm sticky top-4 z-20 backdrop-blur-md">
-        <Button variant="ghost" size="icon" asChild className="rounded-full">
-          <Link href={isTechnician ? "/dashboard" : "/work-orders"}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button variant="ghost" size="icon" onClick={() => isTechnician ? router.push('/dashboard') : router.push('/work-orders')} className="rounded-full">
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">

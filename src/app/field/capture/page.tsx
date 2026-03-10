@@ -350,7 +350,7 @@ function FieldCaptureContent() {
 
   const portalUrl = useMemo(() => {
     if (!selectedOT || !profile?.companyId) return "";
-    const baseUrl = window.location.origin;
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : "";
     return `${baseUrl}/portal/approve/${selectedOT.id}?c=${profile.companyId}`;
   }, [selectedOT, profile?.companyId]);
 
@@ -651,7 +651,7 @@ function FieldCaptureContent() {
               <div className="bg-slate-900 text-white p-8 rounded-[2rem] shadow-xl space-y-2 relative overflow-hidden">
                 <div className="absolute right-4 top-4 opacity-10"><ShieldCheck className="h-12 w-12" /></div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">PIN de Aprobación</p>
-                <p className="text-5xl font-black italic tracking-[0.2em]">{selectedOT.approvalPin}</p>
+                <p className="text-5xl font-black italic tracking-[0.2em]">{selectedOT?.approvalPin}</p>
                 <p className="text-[9px] font-bold text-slate-400 uppercase pt-2">Válido únicamente para esta operación técnica</p>
               </div>
 
