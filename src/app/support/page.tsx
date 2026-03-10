@@ -58,45 +58,38 @@ export default function SupportPage() {
     priority: "medium" as any
   });
 
-  // Referencia a la empresa para el contexto del ticket
   const companyRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return doc(db, "companies", profile.companyId);
   }, [db, profile?.companyId]);
   const { data: company } = useDoc<Company>(companyRef);
 
-  // Consulta de tickets blindada contra errores de permisos prematuros
+  // Consulta de tickets simplificada para evitar fallos de reglas
   const ticketsQuery = useMemoFirebase(() => {
-    // CRÍTICO: No intentar la consulta hasta que Firebase y el perfil estén listos
     if (!db || !profile?.id) return null;
     
-    try {
-      const ticketsCol = collection(db, "supportTickets");
+    const ticketsCol = collection(db, "supportTickets");
 
-      // Caso 1: Superadministrador ve todo el sistema
-      if (isSuperAdmin) {
-        return query(ticketsCol, orderBy("createdAt", "desc"));
-      }
+    // Superadministrador ve todo
+    if (isSuperAdmin) {
+      return query(ticketsCol, orderBy("createdAt", "desc"));
+    }
 
-      // Caso 2: Administrador/Supervisor ve los de su empresa
-      if ((isCompanyAdmin || isSupervisor) && profile.companyId) {
-        return query(
-          ticketsCol,
-          where("companyId", "==", profile.companyId),
-          orderBy("createdAt", "desc")
-        );
-      }
-
-      // Caso 3: Técnico ve solo sus propios tickets
+    // Administrador/Supervisor ve los de su empresa
+    if ((isCompanyAdmin || isSupervisor) && profile.companyId) {
       return query(
         ticketsCol,
-        where("userId", "==", profile.id),
+        where("companyId", "==", profile.companyId),
         orderBy("createdAt", "desc")
       );
-    } catch (e) {
-      console.error("Error construyendo consulta de soporte:", e);
-      return null;
     }
+
+    // Técnico ve solo los suyos
+    return query(
+      ticketsCol,
+      where("userId", "==", profile.id),
+      orderBy("createdAt", "desc")
+    );
   }, [db, profile?.id, profile?.companyId, isSuperAdmin, isCompanyAdmin, isSupervisor]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection<SupportTicket>(ticketsQuery);
@@ -104,7 +97,7 @@ export default function SupportPage() {
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !profile || !company) {
-      toast({ title: "Error de sesión", description: "No se pudieron cargar los datos de usuario.", variant: "destructive" });
+      toast({ title: "Falta información", description: "Cargando datos de sesión...", variant: "destructive" });
       return;
     }
 
@@ -126,7 +119,6 @@ export default function SupportPage() {
 
       const docRef = await addDoc(collection(db, "supportTickets"), ticketData);
 
-      // Notificar al equipo central por email
       await sendSystemEmail({
         to: "control@pcgoperacion.com",
         subject: `[FEEDBACK] ${formData.subject} - ${company.name}`,
@@ -148,14 +140,11 @@ export default function SupportPage() {
         `
       });
 
-      toast({
-        title: "Ticket Enviado",
-        description: "Su feedback ha sido recibido por el equipo de ingeniería.",
-      });
+      toast({ title: "Ticket Enviado", description: "Hemos recibido tu requerimiento." });
       setIsCreateOpen(false);
       setFormData({ subject: "", description: "", category: "technical", priority: "medium" });
     } catch (error: any) {
-      toast({ title: "Falla en envío", description: "No se pudo conectar con el servidor de soporte.", variant: "destructive" });
+      toast({ title: "Falla en envío", description: error.message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }

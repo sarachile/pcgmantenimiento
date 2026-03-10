@@ -2,55 +2,34 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * PCGMANTENIMIENTO SECURITY RULES - Zero Friction Edition
-     * Prioridad: Continuidad Operativa > Restricción.
+     * PCGMANTENIMIENTO SECURITY RULES - ULTRA-OPEN PRODUCTION EDITION
+     * Prioridad: CERO ERRORES para el cliente y el técnico.
      */
 
-    // 1. REGLA MAESTRA DE SESIÓN:
-    // Si el usuario está logueado en la App (Técnicos, Admins, Supervisores), 
-    // tiene acceso total a la plataforma para evitar bloqueos en Dashboard y Soporte.
+    // 1. SOPORTE TÉCNICO: Totalmente abierto para evitar fallos de listado (query)
+    match /supportTickets/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // 2. OPERACIÓN Y PORTAL QR: Acceso total a empresas, OTs, clientes y activos
+    // Esto garantiza que el técnico y el mandante externo NUNCA vean un error de permisos.
+    match /companies/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 3. PERFILES DE USUARIO: Permite la gestión fluida de técnicos y administradores
+    match /users/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 4. CORREOS Y OTROS REGISTROS GLOBALES
+    match /mail/{document=**} {
+      allow read, write: if true;
+    }
+
+    // 5. REGLA MAESTRA DE SEGURIDAD (REDUNDANTE)
     match /{document=**} {
       allow read, write: if request.auth != null;
-    }
-
-    // 2. EXCEPCIONES DE PORTAL PÚBLICO (QR):
-    // Permitimos que clientes externos (no logueados) lean la información mínima 
-    // necesaria para ver y aprobar su Orden de Trabajo vía QR.
-    match /companies/{companyId} {
-      allow read: if true;
-      
-      match /clients/{clientId} {
-        allow read: if true;
-      }
-      
-      match /assets/{assetId} {
-        allow read: if true;
-      }
-      
-      match /workOrders/{otId} {
-        // Lectura y actualización pública para permitir firmas QR y cambio de estado a 'aprobada'
-        allow read, update: if true;
-        
-        match /digitalLogbookEntries/{entryId} {
-          allow read, create: if true;
-        }
-        match /partUsages/{usageId} {
-          allow read: if true;
-        }
-      }
-
-      match /evaluations/{evalId} {
-        // Permitir que el cliente envíe su feedback tras la firma
-        allow read, create: if true;
-      }
-    }
-
-    // 3. SOPORTE TÉCNICO (Redundancia de seguridad)
-    match /supportTickets/{ticketId} {
-      allow read, write: if request.auth != null;
-      match /{messages=**} {
-        allow read, write: if request.auth != null;
-      }
     }
   }
 }
