@@ -5,8 +5,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar, User, Building2, Globe, Layers, History, ClipboardList } from "lucide-react";
-import { FirebaseImage } from "@/components/FirebaseImage";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Check, Hash, Calendar, User, Building2, Globe, Layers, History, ClipboardList } from "lucide-react";
 
 interface WorkOrderReportProps {
   company: Company | null;
@@ -109,34 +108,24 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
           </div>
         )}
 
-        {/* Protocolos y Evidencias (Checklist) */}
+        {/* Protocolos (Checklist) - Sin Fotos */}
         <div className="space-y-4">
           <h3 className="text-[9px] font-black uppercase text-slate-400 border-b pb-2 mb-4 tracking-widest flex items-center gap-2">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Protocolos de Verificación & Evidencias
+            <CheckCircle2 className="h-3.5 w-3.5" /> Protocolos de Verificación Ténica
           </h3>
-          <div className="space-y-4">
+          <div className="space-y-2">
             {workOrder.checklist?.map(item => {
-              const photos = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
               return (
-                <div key={item.id} className="flex flex-col gap-3 p-4 bg-white rounded-xl border border-slate-100 shadow-sm page-break-inside-avoid">
+                <div key={item.id} className="flex flex-col gap-1 p-3 bg-white rounded-xl border border-slate-100 shadow-sm page-break-inside-avoid">
                   <div className="flex items-center gap-3">
-                    <div className={`h-5 w-5 rounded-full border flex items-center justify-center shrink-0 ${item.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
-                      {item.completed && <Check className="h-3 w-3" />}
+                    <div className={`h-4 w-4 rounded-full border flex items-center justify-center shrink-0 ${item.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
+                      {item.completed && <Check className="h-2.5 w-2.5" />}
                     </div>
                     <div className="flex flex-col">
-                      <span className={`text-xs font-bold ${item.completed ? 'text-slate-900' : 'text-slate-400'}`}>{item.task}</span>
-                      {item.completed && <span className="text-[8px] font-black text-slate-400 uppercase">Ejecutado: {formatDateLabel(item.completedAt)}</span>}
+                      <span className={`text-[11px] font-bold ${item.completed ? 'text-slate-900' : 'text-slate-400'}`}>{item.task}</span>
+                      {item.completed && <span className="text-[7px] font-black text-slate-400 uppercase">Ejecutado: {formatDateLabel(item.completedAt)}</span>}
                     </div>
                   </div>
-                  {photos.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mt-1">
-                      {photos.map((url, i) => (
-                        <div key={i} className="aspect-video rounded-lg overflow-hidden border border-slate-100 bg-slate-50">
-                          <FirebaseImage url={url} className="w-full h-full object-cover" forceCORS={true} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               );
             })}
