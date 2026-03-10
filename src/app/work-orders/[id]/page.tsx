@@ -241,35 +241,35 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !ot || !activeTaskId || !storage || !otRef) return;
+    if (!!file && ot && activeTaskId && storage && otRef) {
+      setIsUploading(true);
+      try {
+        const path = `companies/${companyId}/workOrders/${otId}/admin_evidence_${Date.now()}`;
+        const sRef = ref(storage, path);
+        await uploadBytes(sRef, file);
+        const url = await getDownloadURL(sRef);
 
-    setIsUploading(true);
-    try {
-      const path = `companies/${companyId}/workOrders/${otId}/admin_evidence_${Date.now()}`;
-      const sRef = ref(storage, path);
-      await uploadBytes(sRef, file);
-      const url = await getDownloadURL(sRef);
+        const updatedChecklist = ot.checklist?.map(item => {
+          if (item.id === activeTaskId) {
+            const currentUrls = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
+            return { 
+              ...item, 
+              completed: true, 
+              completedAt: new Date().toISOString(), 
+              evidenceUrls: [...currentUrls, url] 
+            };
+          }
+          return item;
+        });
 
-      const updatedChecklist = ot.checklist?.map(item => {
-        if (item.id === activeTaskId) {
-          const currentUrls = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
-          return { 
-            ...item, 
-            completed: true, 
-            completedAt: new Date().toISOString(), 
-            evidenceUrls: [...currentUrls, url] 
-          };
-        }
-        return item;
-      });
-
-      updateDocumentNonBlocking(otRef, { checklist: updatedChecklist, updatedAt: serverTimestamp() });
-      toast({ title: "Evidencia adjunta con éxito" });
-    } catch (error) {
-      toast({ title: "Error al subir", variant: "destructive" });
-    } finally {
-      setIsUploading(false);
-      setActiveTaskId(null);
+        updateDocumentNonBlocking(otRef, { checklist: updatedChecklist, updatedAt: serverTimestamp() });
+        toast({ title: "Evidencia adjunta con éxito" });
+      } catch (error) {
+        toast({ title: "Error al subir", variant: "destructive" });
+      } finally {
+        setIsUploading(false);
+        setActiveTaskId(null);
+      }
     }
   };
 
@@ -285,20 +285,37 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         to: client.contactEmail,
         subject: `APROBACIÓN DE SERVICIO - ${company?.name || 'PCGMANTENIMIENTO'}`,
         html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 40px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff;">
-            <h1 style="color: #1e3a8a; text-align: center;">${company?.name}</h1>
-            <h2 style="text-align: center;">Solicitud de Aprobación Digital</h2>
-            <p>Estimados <strong>${client.name}</strong>,</p>
-            <p>Los trabajos correspondientes a la Orden de Trabajo <strong>${ot.id}</strong> han sido finalizados técnicamente.</p>
-            <p>Para cerrar el ciclo y generar su certificado de recepción, por favor ingrese al siguiente portal y valide el servicio con su PIN de seguridad:</p>
-            <div style="text-align: center; margin: 40px 0;">
-              <a href="${currentUrl}" style="background-color: #1e3a8a; color: #ffffff; padding: 20px 40px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">
-                REVISAR Y APROBAR TRABAJOS
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 40px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; color: #1e293b;">
+            <div style="text-align: center; margin-bottom: 32px;">
+              <h1 style="color: #1e3a8a; margin: 0; text-transform: uppercase; letter-spacing: -1px;">${company?.name || 'PCGMANTENIMIENTO'}</h1>
+              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Servicios Industriales Avanzados</p>
+            </div>
+            
+            <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; font-weight: 800;">Solicitud de Aprobación Digital</h2>
+            
+            <p style="font-size: 15px; line-height: 1.6;">Estimados <strong>${client.name}</strong>,</p>
+            <p style="font-size: 15px; line-height: 1.6;">Los trabajos correspondientes a la Orden de Trabajo <strong>${ot.id}</strong> han sido finalizados técnicamente.</p>
+            
+            <p style="font-size: 15px; line-height: 1.6;">Para cerrar el ciclo y generar su certificado de recepción conforme, por favor ingrese al siguiente portal:</p>
+            
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${currentUrl}" style="background-color: #1e3a8a; color: #ffffff; padding: 20px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);">
+                REVISAR Y APROBAR SERVICIO
               </a>
             </div>
-            <p style="font-size: 12px; color: #64748b;">Su PIN de seguridad le ha sido enviado en una comunicación previa. Si no lo tiene, solicítelo al técnico a cargo.</p>
+
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px; margin-bottom: 24px; text-align: center;">
+              <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px;">Código PIN de Verificación</p>
+              <div style="font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px; background: #ffffff; border: 2px dashed #cbd5e1; padding: 12px; display: inline-block; border-radius: 8px;">
+                ${ot.approvalPin}
+              </div>
+              <p style="color: #64748b; font-size: 11px; margin-top: 12px; font-weight: 600;">
+                * Utilice este código único para firmar digitalmente su conformidad técnica.
+              </p>
+            </div>
+            
             <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
-            <p style="font-size: 11px; color: #94a3b8; text-align: center;">Servicio automatizado vía PCGMANTENIMIENTO ERP.</p>
+            <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">Este es un mensaje automatizado enviado vía PCGMANTENIMIENTO ERP.</p>
           </div>
         `
       });
