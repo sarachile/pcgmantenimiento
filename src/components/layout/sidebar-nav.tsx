@@ -17,7 +17,6 @@ import {
   CalendarDays,
   Settings,
   MessageCircleHeart,
-  LifeBuoy,
   Camera,
   Receipt,
   Layers,
@@ -81,13 +80,11 @@ const businessItems: NavItem[] = [
 const settingsItems: NavItem[] = [
   { title: "Mi Empresa", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor'] },
   { title: "Equipo Técnico", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
-  { title: "Centro de Soporte", href: "/support", icon: LifeBuoy },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
 ];
 
 const adminItems: NavItem[] = [
   { title: "Control Maestro", href: "/admin", icon: Globe, roles: ['superadmin'] },
-  { title: "Soporte Global", href: "/admin/support", icon: LifeBuoy, roles: ['superadmin'] },
   { title: "Empresas SaaS", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
   { title: "Estadísticas Infra", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
 ];

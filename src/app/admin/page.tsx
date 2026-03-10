@@ -12,8 +12,7 @@ import {
   ArrowLeft,
   Loader2,
   Clock,
-  ChevronRight,
-  LifeBuoy
+  ChevronRight
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, limit, orderBy, collectionGroup, where } from "firebase/firestore";
@@ -22,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Company, User, WorkOrder, SupportTicket } from "@/lib/types";
+import { Company, User, WorkOrder } from "@/lib/types";
 import { differenceInDays, parseISO } from "date-fns";
 
 export default function SuperadminDashboardPage() {
@@ -38,18 +37,15 @@ export default function SuperadminDashboardPage() {
   const companiesQuery = useMemoFirebase(() => db ? collection(db, "companies") : null, [db]);
   const usersQuery = useMemoFirebase(() => db ? collection(db, "users") : null, [db]);
   const globalOrdersQuery = useMemoFirebase(() => db ? query(collectionGroup(db, "workOrders"), limit(100)) : null, [db]);
-  const openTicketsQuery = useMemoFirebase(() => db ? query(collection(db, "supportTickets"), where("status", "==", "open")) : null, [db]);
 
   const { data: companies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
   const { data: users, isLoading: isUsersLoading } = useCollection<User>(usersQuery);
   const { data: globalOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(globalOrdersQuery);
-  const { data: openTickets, isLoading: isTicketsLoading } = useCollection<SupportTicket>(openTicketsQuery);
 
   const stats = useMemo(() => {
     const totalCompanies = companies?.length || 0;
     const totalUsers = users?.length || 0;
     const totalOrders = globalOrders?.length || 0;
-    const pendingTickets = openTickets?.length || 0;
     
     const expiringSoon = (companies || []).filter(c => {
       if (!c.trialEndsAt) return false;
@@ -58,10 +54,10 @@ export default function SuperadminDashboardPage() {
       return diff >= 0 && diff <= 5;
     }).length;
 
-    return { totalCompanies, totalUsers, totalOrders, expiringSoon, pendingTickets };
-  }, [companies, users, globalOrders, openTickets]);
+    return { totalCompanies, totalUsers, totalOrders, expiringSoon };
+  }, [companies, users, globalOrders]);
 
-  const isLoading = isAuthLoading || isCompaniesLoading || isUsersLoading || isOrdersLoading || isTicketsLoading;
+  const isLoading = isAuthLoading || isCompaniesLoading || isUsersLoading || isOrdersLoading;
 
   if (isLoading) {
     return (
@@ -74,8 +70,8 @@ export default function SuperadminDashboardPage() {
   const platformStats = [
     { label: "Empresas Totales", value: stats.totalCompanies, icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Usuarios Globales", value: stats.totalUsers, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Tickets Abiertos", value: stats.pendingTickets, icon: LifeBuoy, color: "text-rose-600", bg: "bg-rose-50" },
     { label: "Trials por Vencer", value: stats.expiringSoon, icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Órdenes Totales", value: stats.totalOrders, icon: FileCheck, color: "text-indigo-600", bg: "bg-indigo-50" },
   ];
 
   return (
@@ -95,9 +91,6 @@ export default function SuperadminDashboardPage() {
         <div className="flex gap-2">
           <Button asChild variant="outline" className="rounded-xl font-bold">
             <Link href="/admin/companies">Gestionar Empresas</Link>
-          </Button>
-          <Button asChild className="rounded-xl font-black shadow-lg">
-            <Link href="/admin/support">Centro de Soporte</Link>
           </Button>
         </div>
       </div>
@@ -169,7 +162,7 @@ export default function SuperadminDashboardPage() {
                 <div key={c.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-black uppercase truncate max-w-[150px]">{c.name}</p>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">ID: {c.id}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-tighter text-slate-500">ID: {c.id}</p>
                   </div>
                   <Badge className={cn(
                     "text-[9px] font-black uppercase",

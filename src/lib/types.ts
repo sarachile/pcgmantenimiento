@@ -266,27 +266,3 @@ export interface ServiceEvaluation {
   adminResponseAt?: string | any;
   createdAt: string | any;
 }
-
-export interface TicketMessage {
-  id: string;
-  senderId: string;
-  senderName: string;
-  senderRole: 'admin' | 'user';
-  text: string;
-  timestamp: string | any;
-}
-
-export interface SupportTicket {
-  id: string;
-  userId: string;
-  userName: string;
-  companyId: string;
-  companyName: string;
-  subject: string;
-  description: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
-  category: 'technical' | 'billing' | 'feature' | 'other';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  createdAt: string | any;
-  updatedAt: string | any;
-}
