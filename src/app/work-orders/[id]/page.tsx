@@ -42,7 +42,8 @@ import {
   Save,
   Compass,
   Map as MapIcon,
-  Globe
+  Globe,
+  Layers
 } from "lucide-react";
 import {
   Dialog,
@@ -64,7 +65,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useUser, useFirestore, useStorage, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { doc, collection, addDoc, serverTimestamp, query, orderBy, where, arrayUnion, arrayRemove } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, StaffMember } from "@/lib/types";
+import { WorkOrder, DigitalLogbookEntry, Company, PartUsage, Client, Asset, StaffMember, ServiceItem } from "@/lib/types";
 import { WorkOrderReport } from "@/components/WorkOrderReport";
 import { ExperienceCertificate } from "@/components/ExperienceCertificate";
 import { FirebaseImage } from "@/components/FirebaseImage";
@@ -73,7 +74,6 @@ import { jsPDF } from "jspdf";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
-import { generateWorkOrderSummary } from "@/ai/flows/generate-work-order-summary";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -91,9 +91,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGeneratingCert, setIsGeneratingCert] = useState(false);
-  const [isResendingEmail, setIsResendingEmail] = useState(false);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [manualComment, setManualComment] = useState("");
   const [currentUrl, setCurrentUrl] = useState("");
 
   useEffect(() => {
@@ -232,6 +229,28 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ot.commune}, {ot.city}, {ot.region}</p>
                 {ot.locationComment && <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-100 text-[9px] font-black uppercase italic">{ot.locationComment}</Badge>}
               </div>
+            </CardContent>
+          </Card>
+
+          {/* MAGNITUDES DEL SERVICIO */}
+          <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
+            <CardHeader className="bg-indigo-50 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Magnitudes Registradas</CardTitle></CardHeader>
+            <CardContent className="p-6">
+              {ot.serviceItems && ot.serviceItems.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {ot.serviceItems.map(item => (
+                    <div key={item.id} className="p-4 bg-slate-50 rounded-2xl border flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-slate-400">{item.description || 'Partida sin descripción'}</p>
+                        <p className="text-lg font-black text-slate-900">{item.quantity} <span className="text-xs font-bold text-indigo-600">{item.unit}</span></p>
+                      </div>
+                      <Layers className="h-5 w-5 text-indigo-200" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm italic text-slate-400 text-center py-4">No se registraron magnitudes específicas.</p>
+              )}
             </CardContent>
           </Card>
 

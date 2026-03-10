@@ -4,8 +4,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, Award, Calendar, Hash, CheckCircle2, Fingerprint } from "lucide-react";
-import { FirebaseImage } from "@/components/FirebaseImage";
+import { ShieldCheck, Award, Calendar, Hash, CheckCircle2, Fingerprint, Layers } from "lucide-react";
 
 interface ExperienceCertificateProps {
   company: Company | null;
@@ -91,12 +90,24 @@ export const ExperienceCertificate: React.FC<ExperienceCertificateProps> = ({
             </table>
           </div>
 
-          <div className="grid grid-cols-3 gap-6">
-            <div className="bg-slate-900 text-white p-6 rounded-2xl text-center space-y-2">
-              <Hash className="h-5 w-5 mx-auto opacity-50" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Magnitud</p>
-              <p className="text-2xl font-black">{workOrder.serviceQuantity || '0'} {workOrder.serviceUnit || ''}</p>
+          {/* Magnitudes y Partidas en Certificado */}
+          {workOrder.serviceItems && workOrder.serviceItems.length > 0 && (
+            <div className="bg-white border-2 border-slate-100 rounded-3xl p-8">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+                <Layers className="h-4 w-4 text-indigo-600" /> Desglose de Magnitudes y Cubicaciones
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {workOrder.serviceItems.map(item => (
+                  <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-0 border-slate-50">
+                    <span className="text-xs font-bold text-slate-600">{item.description}</span>
+                    <span className="text-sm font-black text-slate-900">{item.quantity} {item.unit}</span>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-6">
             <div className="bg-white border-2 border-slate-100 p-6 rounded-2xl text-center space-y-2">
               <Calendar className="h-5 w-5 mx-auto text-slate-400" />
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fecha Operativa</p>

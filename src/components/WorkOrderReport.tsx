@@ -4,7 +4,7 @@ import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar, User, Building2, Globe } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar, User, Building2, Globe, Layers } from "lucide-react";
 import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface WorkOrderReportProps {
@@ -52,14 +52,30 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
             <div className="space-y-1">
               <p className="text-sm font-bold text-slate-900">{workOrder.street} {workOrder.streetNumber}{workOrder.complement ? ', ' + workOrder.complement : ''}</p>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{workOrder.commune}, {workOrder.region}</p>
-              {workOrder.locationComment && <p className="text-[10px] font-bold text-primary uppercase mt-1 italic">Ubicación exacta: {workOrder.locationComment}</p>}
             </div>
           </div>
         </div>
       </div>
 
+      {/* Magnitudes en el Reporte */}
+      {workOrder.serviceItems && workOrder.serviceItems.length > 0 && (
+        <div className="mb-10">
+          <h3 className="text-[10px] font-black uppercase text-slate-400 border-b-2 pb-2 mb-4 flex items-center gap-2">
+            <Layers className="h-4 w-4" /> DESGLOSE DE MAGNITUDES Y CUBICACIONES
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            {workOrder.serviceItems.map(item => (
+              <div key={item.id} className="p-4 bg-white border-2 rounded-xl flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-600">{item.description}</span>
+                <span className="text-sm font-black text-slate-900">{item.quantity} {item.unit}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mb-10">
-        <h3 className="text-[10px] font-black uppercase text-slate-400 border-b-2 pb-2 mb-4">DETALLE TÉCNICO</h3>
+        <h3 className="text-[10px] font-black uppercase text-slate-400 border-b-2 pb-2 mb-4">DETALLE TÉCNICO GENERAL</h3>
         <div className="p-6 border-2 rounded-2xl min-h-[100px] italic text-sm leading-relaxed">"{workOrder.description}"</div>
       </div>
 

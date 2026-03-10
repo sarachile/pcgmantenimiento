@@ -26,15 +26,33 @@ import {
   ShieldCheck,
   Globe,
   QrCode,
-  Star
+  Star,
+  Layers,
+  LayoutList
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Client, Asset, StaffMember, Team } from "@/lib/types";
+import { Client, Asset, StaffMember, Team, ServiceItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CHILE_REGIONS } from "@/lib/chile-data";
 
 export const dynamic = 'force-dynamic';
+
+const PREDEFINED_UNITS = [
+  "Unidades (un)", 
+  "Metros (m)", 
+  "Metros Cuadrados (m2)", 
+  "Metros Cúbicos (m3)", 
+  "Kilogramos (kg)", 
+  "Litros (lt)", 
+  "Horas (hr)", 
+  "Jornadas", 
+  "Visitas", 
+  "Puntos", 
+  "Global (gl)",
+  "Pulgadas (in)",
+  "Milímetros (mm)"
+];
 
 function NewWorkOrderContent() {
   const { profile, isLoading: isUserLoading } = useUser();
@@ -56,7 +74,6 @@ function NewWorkOrderContent() {
   const [assignmentMode, setAssignmentMode] = useState<'team' | 'individual'>('individual');
   const [status, setStatus] = useState<any>("creada");
   
-  // Direccionamiento Estructurado
   const [region, setRegion] = useState("");
   const [city, setCity] = useState(""); 
   const [commune, setCommune] = useState("");
@@ -71,8 +88,7 @@ function NewWorkOrderContent() {
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [scheduledDate, setScheduledDate] = useState("");
   const [durationDays, setDurationDays] = useState(1);
-  const [serviceQuantity, setServiceQuantity] = useState("");
-  const [serviceUnit, setServiceUnit] = useState("Unidades");
+  const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
 
   const selectedRegion = useMemo(() => CHILE_REGIONS.find(r => r.name === region), [region]);
@@ -86,17 +102,14 @@ function NewWorkOrderContent() {
   const clientsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "clients") : null, [db, companyId]);
   const assetsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "assets") : null, [db, companyId]);
   const staffQuery = useMemoFirebase(() => db && companyId ? query(collection(db, "companies", companyId, "staff"), where("active", "==", true)) : null, [db, companyId]);
-  const teamsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "teams") : null, [db, companyId]);
-
+  
   const { data: rawClients } = useCollection<Client>(clientsQuery);
   const { data: rawAssets } = useCollection<Asset>(assetsQuery);
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
-  const { data: teams } = useCollection<Team>(teamsQuery);
 
   const clients = useMemo(() => (rawClients || []).filter(c => !c.isDeleted), [rawClients]);
   const assets = useMemo(() => (rawAssets || []).filter(a => !a.isDeleted), [rawAssets]);
 
-  // Auto-fill client defaults
   useEffect(() => {
     if (!isEditing && !duplicateFrom && clientId && clients) {
       const selectedClient = clients.find(c => c.id === clientId);
@@ -108,10 +121,9 @@ function NewWorkOrderContent() {
         setStreetNumber(selectedClient.streetNumber || "");
         setComplement(selectedClient.complement || "");
         setRequestedByName(selectedClient.contactName || "");
-        toast({ title: "Dirección cargada", description: "Datos heredados de la ficha del cliente." });
       }
     }
-  }, [clientId, clients, isEditing, duplicateFrom, toast]);
+  }, [clientId, clients, isEditing, duplicateFrom]);
 
   useEffect(() => {
     const sourceId = editId || duplicateFrom;
@@ -135,12 +147,9 @@ function NewWorkOrderContent() {
             setLocationComment(data.locationComment || "");
             setRequestedByName(data.requestedByName || "");
             setAssignedToStaffIds(data.assignedToStaffIds || []);
-            setAssignmentMode(data.assignedTeamId ? 'team' : 'individual');
-            setAssignedTeamId(data.assignedTeamId || null);
             setReviewerRequired(data.reviewerRequired ?? false);
             setEvaluationRequired(data.evaluationRequired ?? false);
-            setServiceQuantity(data.serviceQuantity?.toString() || "");
-            setServiceUnit(data.serviceUnit || "Unidades");
+            setServiceItems(data.serviceItems || []);
             setStatus(data.status || "creada");
             if (data.scheduledDate) {
               const d = data.scheduledDate.toDate ? data.scheduledDate.toDate() : new Date(data.scheduledDate);
@@ -154,6 +163,24 @@ function NewWorkOrderContent() {
       fetchData();
     }
   }, [editId, duplicateFrom, db, companyId]);
+
+  const handleAddServiceItem = () => {
+    const newItem: ServiceItem = {
+      id: `item-${Date.now()}`,
+      description: "",
+      quantity: 1,
+      unit: "Unidades (un)"
+    };
+    setServiceItems([...serviceItems, newItem]);
+  };
+
+  const handleUpdateServiceItem = (id: string, field: keyof ServiceItem, value: any) => {
+    setServiceItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const handleRemoveServiceItem = (id: string) => {
+    setServiceItems(prev => prev.filter(item => item.id !== id));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,13 +215,11 @@ function NewWorkOrderContent() {
         region, city, commune, street, streetNumber, complement, locationComment,
         requestedByName: requestedByName.trim(),
         assignedToStaffIds,
-        assignedTeamId: assignmentMode === 'team' ? assignedTeamId : null,
         reviewerRequired,
         evaluationRequired,
         scheduledDate: scheduledDate ? new Date(scheduledDate).toISOString() : null,
         durationDays: Number(durationDays),
-        serviceQuantity: serviceQuantity ? Number(serviceQuantity) : null,
-        serviceUnit: serviceUnit || null,
+        serviceItems,
         checklist: checklist.map((item, idx) => ({ 
           id: `task-${idx}-${Date.now()}`, 
           task: item.task, 
@@ -224,16 +249,17 @@ function NewWorkOrderContent() {
   if (isUserLoading || isLoadingData) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 px-4 py-8 pb-32">
+    <div className="max-w-4xl mx-auto space-y-6 px-4 py-8 pb-32">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild><Link href={isEditing ? `/work-orders/${editId}` : "/work-orders"}><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div>
           <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">{isEditing ? "Editar Orden" : "Generar Orden"}</h2>
-          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Direccionamiento Granular y Ubicación de Servicio</p>
+          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Gestión de Partidas y Trazabilidad Geográfica</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-10">
+        {/* 1. DATOS DEL SERVICIO */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className={cn("text-white p-8", isEditing ? "bg-amber-600" : "bg-slate-900")}>
             <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
@@ -267,7 +293,7 @@ function NewWorkOrderContent() {
                 <p className="text-[10px] font-black uppercase text-primary tracking-widest">Ubicación del Servicio Técnico</p>
               </div>
               
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Región *</Label>
                   <Select value={region} onValueChange={(v) => { setRegion(v); setCity(""); setCommune(""); }}>
@@ -291,8 +317,8 @@ function NewWorkOrderContent() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="col-span-2 space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2 space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Calle / Avenida *</Label>
                   <Input value={street} onChange={e => setStreet(e.target.value)} className="h-12 rounded-xl border-2 bg-white" required />
                 </div>
@@ -301,56 +327,84 @@ function NewWorkOrderContent() {
                   <Input value={streetNumber} onChange={e => setStreetNumber(e.target.value)} className="h-12 rounded-xl border-2 bg-white" required />
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Depto / Casa / Of</Label>
-                  <Input value={complement} onChange={e => setComplement(e.target.value)} className="h-12 rounded-xl border-2 bg-white" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Punto Específico (Recepción, Piso...)</Label>
-                  <Input value={locationComment} onChange={e => setLocationComment(e.target.value)} className="h-12 rounded-xl border-2 bg-white" placeholder="Ej: Sala 402" />
-                </div>
-              </div>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Descripción Técnica del Servicio *</Label>
-              <Textarea placeholder="Detalle el alcance de los trabajos..." className="min-h-[100px] rounded-2xl border-2 p-4 text-sm bg-slate-50/50" value={description} onChange={e => setDescription(e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Magnitud del Servicio</Label>
-                <Input type="number" value={serviceQuantity} onChange={e => setServiceQuantity(e.target.value)} className="h-12 rounded-xl border-2 font-bold" placeholder="Cant." />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Unidad de Medida</Label>
-                <Select value={serviceUnit} onValueChange={setServiceUnit}>
-                  <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {[
-                      "Unidades", 
-                      "Metros (m)", 
-                      "Metros Cuadrados (m2)", 
-                      "Metros Cúbicos (m3)", 
-                      "Kilogramos (kg)", 
-                      "Litros (lt)", 
-                      "Horas (hr)", 
-                      "Jornadas", 
-                      "Visitas", 
-                      "Puntos", 
-                      "Global (gl)"
-                    ].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Descripción General del Problema *</Label>
+              <Textarea placeholder="Describa el requerimiento o falla detectada..." className="min-h-[100px] rounded-2xl border-2 p-4 text-sm bg-slate-50/50" value={description} onChange={e => setDescription(e.target.value)} />
             </div>
           </CardContent>
         </Card>
 
+        {/* 2. MAGNITUDES Y PARTIDAS */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="bg-primary p-8"><CardTitle className="flex items-center gap-3 text-xl font-black text-white uppercase tracking-tighter italic"><Users className="h-6 w-6" /> 2. Personal Técnico *</CardTitle></CardHeader>
+          <CardHeader className="bg-indigo-600 text-white p-8">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
+                <Layers className="h-6 w-6" /> 2. Magnitudes y Partidas
+              </CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddServiceItem} className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-black text-[10px] uppercase h-10 rounded-xl px-4 gap-2">
+                <Plus className="h-4 w-4" /> Añadir Partida
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 space-y-4">
+            {serviceItems.length === 0 ? (
+              <div className="py-10 text-center border-2 border-dashed rounded-3xl opacity-40 italic text-sm">
+                No hay magnitudes registradas. Use el botón superior para añadir ítems de medición (m2, m3, visitas, etc).
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {serviceItems.map((item) => (
+                  <div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 bg-slate-50 rounded-2xl border-2 animate-in fade-in slide-in-from-top-2">
+                    <div className="md:col-span-5 space-y-1">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Descripción Partida</Label>
+                      <Input 
+                        placeholder="Ej: Pintura de muros, Instalación puntos..." 
+                        value={item.description} 
+                        onChange={(e) => handleUpdateServiceItem(item.id, 'description', e.target.value)}
+                        className="h-10 border-2 rounded-xl bg-white text-xs font-bold"
+                      />
+                    </div>
+                    <div className="md:col-span-2 space-y-1">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Cant.</Label>
+                      <Input 
+                        type="number" 
+                        value={item.quantity} 
+                        onChange={(e) => handleUpdateServiceItem(item.id, 'quantity', Number(e.target.value))}
+                        className="h-10 border-2 rounded-xl bg-white text-xs font-bold text-center"
+                      />
+                    </div>
+                    <div className="md:col-span-4 space-y-1">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Unidad</Label>
+                      <Select value={item.unit} onValueChange={(v) => handleUpdateServiceItem(item.id, 'unit', v)}>
+                        <SelectTrigger className="h-10 border-2 rounded-xl bg-white text-xs font-bold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PREDEFINED_UNITS.map(u => <SelectItem key={u} value={u} className="text-xs">{u}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-1 flex items-end justify-end pb-1">
+                      <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveServiceItem(item.id)} className="h-10 w-10 text-rose-500 hover:bg-rose-50 rounded-xl">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 3. PERSONAL TÉCNICO */}
+        <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
+          <CardHeader className="bg-primary p-8">
+            <CardTitle className="flex items-center gap-3 text-xl font-black text-white uppercase tracking-tighter italic">
+              <Users className="h-6 w-6" /> 3. Personal Técnico *
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[250px] overflow-y-auto">
               {staffMembers?.map(s => (
@@ -363,21 +417,45 @@ function NewWorkOrderContent() {
           </CardContent>
         </Card>
 
+        {/* 4. PROTOCOLOS */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="bg-slate-900 text-white p-8"><CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic"><Camera className="h-6 w-6 text-amber-400" /> 3. Protocolos Técnicos</CardTitle></CardHeader>
+          <CardHeader className="bg-slate-900 text-white p-8">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
+                <LayoutList className="h-6 w-6 text-amber-400" /> 4. Protocolos Técnicos
+              </CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={() => setChecklist([...checklist, { task: "" }])} className="h-10 rounded-xl font-black text-[10px] uppercase gap-2 border-white/20 text-white bg-white/10"><Plus className="h-4 w-4" /> Añadir Punto</Button>
+            </div>
+          </CardHeader>
           <CardContent className="p-8 space-y-4">
-            <div className="flex items-center justify-between"><Label className="text-[10px] font-black uppercase text-slate-400">Items de Inspección Obligatoria</Label><Button type="button" variant="outline" size="sm" onClick={() => setChecklist([...checklist, { task: "" }])} className="h-10 rounded-xl font-black text-[10px] uppercase gap-2 border-primary/20 text-primary"><Plus className="h-4 w-4" /> Añadir Punto</Button></div>
-            {checklist.map((item, idx) => (
-              <div key={idx} className="flex gap-2"><Input value={item.task} onChange={e => { const n = [...checklist]; n[idx].task = e.target.value; setChecklist(n); }} className="h-12 rounded-xl border-2 font-bold" placeholder="Describa la tarea o punto de control..." /><Button type="button" variant="ghost" size="icon" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} className="h-12 w-12 text-rose-500 rounded-xl"><Trash2 className="h-5 w-5" /></Button></div>
-            ))}
+            {checklist.length === 0 ? (
+              <div className="py-10 text-center border-2 border-dashed rounded-3xl opacity-40 italic text-sm">
+                No hay puntos de control registrados.
+              </div>
+            ) : (
+              checklist.map((item, idx) => (
+                <div key={idx} className="flex gap-2 animate-in fade-in slide-in-from-left-2">
+                  <Input 
+                    value={item.task} 
+                    onChange={e => { const n = [...checklist]; n[idx].task = e.target.value; setChecklist(n); }} 
+                    className="h-12 rounded-xl border-2 font-bold" 
+                    placeholder="Describa la tarea o punto de control técnico..." 
+                  />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} className="h-12 w-12 text-rose-500 rounded-xl">
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
 
+        {/* 5. CIERRE Y VALIDACIÓN */}
         <Card className={cn("border-none shadow-xl rounded-[2.5rem] overflow-hidden transition-all", (reviewerRequired || evaluationRequired) ? "bg-indigo-50/50" : "bg-slate-50")}>
           <CardHeader className="p-8 pb-4">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3 text-slate-900"><ShieldCheck className="h-6 w-6 text-emerald-600" /> 4. Cierre y Validación</CardTitle>
-            </div>
+            <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3 text-slate-900">
+              <ShieldCheck className="h-6 w-6 text-emerald-600" /> 5. Cierre y Validación
+            </CardTitle>
           </CardHeader>
           <CardContent className="p-8 pt-0 space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">

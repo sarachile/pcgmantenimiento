@@ -149,6 +149,13 @@ export interface ChecklistItem {
   longitude?: number;
 }
 
+export interface ServiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface WorkOrder {
   id: string;
   companyId: string;
@@ -162,7 +169,7 @@ export interface WorkOrder {
   street?: string;
   streetNumber?: string;
   complement?: string;
-  locationComment?: string; // Recepción, auditorio, etc.
+  locationComment?: string; 
   requestedByName?: string;
   status: OTStatus;
   assignedToStaffIds?: string[];
@@ -174,8 +181,9 @@ export interface WorkOrder {
   scheduledDate?: string | any;
   durationDays?: number;
   estimatedEndDate?: string | any;
-  serviceQuantity?: number | null;
-  serviceUnit?: string | null;
+  serviceQuantity?: number | null; // Deprecated but kept for compat
+  serviceUnit?: string | null; // Deprecated but kept for compat
+  serviceItems?: ServiceItem[];
   checklist?: ChecklistItem[];
   clientApprovalName?: string;
   clientApprovalDate?: string | any;
