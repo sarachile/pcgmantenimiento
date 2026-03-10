@@ -92,10 +92,13 @@ function NewWorkOrderContent() {
   const staffQuery = useMemoFirebase(() => db && companyId ? query(collection(db, "companies", companyId, "staff"), where("active", "==", true)) : null, [db, companyId]);
   const teamsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "teams") : null, [db, companyId]);
 
-  const { data: clients } = useCollection<Client>(clientsQuery);
-  const { data: assets } = useCollection<Asset>(assetsQuery);
+  const { data: rawClients } = useCollection<Client>(clientsQuery);
+  const { data: rawAssets } = useCollection<Asset>(assetsQuery);
   const { data: staffMembers } = useCollection<StaffMember>(staffQuery);
   const { data: teams } = useCollection<Team>(teamsQuery);
+
+  const clients = useMemo(() => (rawClients || []).filter(c => !c.isDeleted), [rawClients]);
+  const assets = useMemo(() => (rawAssets || []).filter(a => !a.isDeleted), [rawAssets]);
 
   // Auto-fill client defaults
   useEffect(() => {

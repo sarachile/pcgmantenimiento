@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Table, 
   TableBody, 
@@ -52,7 +52,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -103,7 +103,7 @@ export default function AssetsPage() {
 
   const { data: assets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
 
-  const realAssets = assets || [];
+  const realAssets = useMemo(() => (assets || []).filter(a => !a.isDeleted), [assets]);
 
   const filtered = realAssets.filter(a => 
     a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -176,8 +176,9 @@ export default function AssetsPage() {
   const handleDelete = (asset: Asset) => {
     if (!db || !profile?.companyId) return;
     const assetRef = doc(db, "companies", profile.companyId, "assets", asset.id);
-    deleteDocumentNonBlocking(assetRef);
-    toast({ title: "Activo eliminado" });
+    // SOFT DELETE
+    updateDocumentNonBlocking(assetRef, { isDeleted: true, updatedAt: serverTimestamp() });
+    toast({ title: "Activo archivado" });
   };
 
   const formatDate = (date: any) => {
@@ -333,7 +334,7 @@ export default function AssetsPage() {
                                 handleDelete(asset);
                               }}
                             >
-                              <Trash2 className="h-4 w-4" /> Eliminar Activo
+                              <Trash2 className="h-4 w-4" /> Archivar Activo
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

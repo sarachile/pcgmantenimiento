@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -56,8 +55,8 @@ import {
   AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
-import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -96,20 +95,23 @@ export default function WorkOrdersPage() {
 
   const handleDelete = (id: string) => {
     if (!profile?.companyId) return;
-    const docRef = doc(db, "companies", profile.companyId, "workOrders", id);
-    deleteDocumentNonBlocking(docRef);
-    toast({ title: "Orden eliminada", description: "La orden de trabajo ha sido removida." });
+    const docRef = doc(db!, "companies", profile.companyId, "workOrders", id);
+    // SOFT DELETE para mantener trazabilidad
+    updateDocumentNonBlocking(docRef, { isDeleted: true, updatedAt: serverTimestamp() });
+    toast({ title: "Orden archivada", description: "La orden ha sido movida al histórico por seguridad." });
   };
 
   const workOrders = useMemo(() => {
     if (!rawWorkOrders) return [];
+    let list = rawWorkOrders.filter(ot => !ot.isDeleted); // Filtrar borrados lógicamente
+    
     if (isTechnician && profile) {
-      return rawWorkOrders.filter(ot => 
+      return list.filter(ot => 
         ot.assignedToStaffIds?.includes(profile.id) || 
         ot.assignedToStaffIds?.includes(profile.staffId || '')
       );
     }
-    return rawWorkOrders;
+    return list;
   }, [rawWorkOrders, isTechnician, profile]);
 
   const filteredOTs = useMemo(() => {
@@ -268,7 +270,7 @@ export default function WorkOrdersPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Todos los clientes</SelectItem>
-                      {clients?.map(c => (
+                      {clients?.filter(c => !c.isDeleted).map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -431,7 +433,7 @@ export default function WorkOrdersPage() {
                                             className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
                                             onClick={() => handleDelete(ot.id)}
                                           >
-                                            <Trash2 className="h-4 w-4" /> Eliminar Registro
+                                            <Trash2 className="h-4 w-4" /> Archivar Orden
                                           </DropdownMenuItem>
                                         </DropdownMenuContent>
                                       </DropdownMenu>

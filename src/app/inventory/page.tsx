@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Table, 
   TableBody, 
@@ -53,11 +52,12 @@ import {
   Edit,
   Trash2
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { collection, serverTimestamp, addDoc, doc, increment } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { SparePart } from "@/lib/types";
 
 export default function InventoryPage() {
   const { profile, isLoading: isAuthLoading, isTechnician, isSupervisor, isCompanyAdmin } = useUser();
@@ -89,9 +89,9 @@ export default function InventoryPage() {
     return collection(db, "companies", profile.companyId, "spareParts");
   }, [db, profile?.companyId]);
 
-  const { data: realParts, isLoading: isPartsLoading } = useCollection(inventoryQuery);
+  const { data: realPartsData, isLoading: isPartsLoading } = useCollection<SparePart>(inventoryQuery);
 
-  const parts = realParts || [];
+  const parts = useMemo(() => (realPartsData || []).filter(p => !p.isDeleted), [realPartsData]);
 
   const filtered = parts.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -162,12 +162,13 @@ export default function InventoryPage() {
     setIsAdjustOpen(true);
   };
 
-  const handleDeleteItem = (item: any) => {
+  const handleDeleteItem = (item: SparePart) => {
     if (!db || !profile?.companyId) return;
 
     const partRef = doc(db, "companies", profile.companyId, "spareParts", item.id);
-    deleteDocumentNonBlocking(partRef);
-    toast({ title: "Ítem eliminado", description: `${item.name} ha sido removido del catálogo.` });
+    // SOFT DELETE
+    updateDocumentNonBlocking(partRef, { isDeleted: true, updatedAt: serverTimestamp() });
+    toast({ title: "Ítem archivado", description: `${item.name} ha sido removido del catálogo activo.` });
   };
 
   if (isAuthLoading) {
@@ -456,7 +457,7 @@ export default function InventoryPage() {
                                 className="text-rose-600"
                                 onClick={() => handleDeleteItem(part)}
                               >
-                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar del Catálogo
+                                <Trash2 className="mr-2 h-4 w-4" /> Archivar Ítem
                               </DropdownMenuItem>
                             </>
                           )}

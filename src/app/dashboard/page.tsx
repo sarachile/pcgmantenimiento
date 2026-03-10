@@ -75,10 +75,14 @@ export default function DashboardPage() {
   const assetsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "assets") : null, [db, companyId]);
   const companyRef = useMemoFirebase(() => db && companyId ? doc(db, "companies", companyId) : null, [db, companyId]);
 
-  const { data: workOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
-  const { data: clients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
-  const { data: assets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
+  const { data: rawWorkOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
+  const { data: rawClients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
+  const { data: rawAssets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
   const { data: company, isLoading: isCompanyLoading } = useDoc<Company>(companyRef);
+
+  const workOrders = useMemo(() => (rawWorkOrders || []).filter(o => !o.isDeleted), [rawWorkOrders]);
+  const clients = useMemo(() => (rawClients || []).filter(c => !c.isDeleted), [rawClients]);
+  const assets = useMemo(() => (rawAssets || []).filter(a => !a.isDeleted), [rawAssets]);
 
   const realWorkOrders = useMemo(() => {
     if (!workOrders) return [];
@@ -277,7 +281,7 @@ export default function DashboardPage() {
     <div className="space-y-8 pb-10">
       {trialDaysRemaining !== null && trialDaysRemaining <= 5 && (
         <Card className="rounded-[2.5rem] border-none bg-rose-600 text-white shadow-xl overflow-hidden animate-in slide-in-from-top-4 duration-500">
-          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <CardContent className="p-6 flex flex-col sm:row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="bg-white/20 p-3 rounded-2xl"><Timer className="h-6 w-6" /></div>
               <div><h3 className="font-black uppercase italic tracking-tight">Periodo de Prueba Finalizando</h3><p className="text-sm font-medium text-rose-100">Te quedan {trialDaysRemaining} días de prueba gratuita.</p></div>

@@ -59,6 +59,7 @@ export interface Client {
   evaluationEnabled: boolean;
   portalLastSentAt?: string | any; 
   createdAt: string;
+  isDeleted?: boolean;
 }
 
 export interface User {
@@ -85,6 +86,7 @@ export interface StaffMember {
   createdAt: string | any;
   hasAccount?: boolean;
   userId?: string;
+  isDeleted?: boolean;
 }
 
 export interface Team {
@@ -94,6 +96,7 @@ export interface Team {
   memberIds: string[];
   leaderId?: string;
   createdAt: string | any;
+  isDeleted?: boolean;
 }
 
 export interface Asset {
@@ -111,6 +114,7 @@ export interface Asset {
   maintenanceReason?: string;
   lastMaintenanceAt?: string | any;
   createdAt: string | any;
+  isDeleted?: boolean;
 }
 
 export interface SparePart {
@@ -121,6 +125,7 @@ export interface SparePart {
   stockActual: number;
   stockMinimo: number;
   unitPrice: number;
+  isDeleted?: boolean;
 }
 
 export interface PartUsage {
@@ -188,6 +193,7 @@ export interface WorkOrder {
   urgency?: 'low' | 'medium' | 'high';
   latitude?: number;
   longitude?: number;
+  isDeleted?: boolean;
 }
 
 export interface DigitalLogbookEntry {

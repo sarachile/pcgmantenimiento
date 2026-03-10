@@ -54,7 +54,7 @@ import {
   User,
   Globe
 } from "lucide-react";
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -109,7 +109,7 @@ export default function ClientsPage() {
 
   const { data: clientsData, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
 
-  const clients = clientsData || [];
+  const clients = useMemo(() => (clientsData || []).filter(c => !c.isDeleted), [clientsData]);
 
   const isAtLimit = !canAddClient && !editingClient;
 
@@ -188,8 +188,9 @@ export default function ClientsPage() {
   const handleDelete = (client: Client) => {
     if (!db || !profile?.companyId) return;
     const clientRef = doc(db, "companies", profile.companyId, "clients", client.id);
-    deleteDocumentNonBlocking(clientRef);
-    toast({ title: "Cliente eliminado" });
+    // SOFT DELETE
+    updateDocumentNonBlocking(clientRef, { isDeleted: true, updatedAt: serverTimestamp() });
+    toast({ title: "Cliente archivado", description: "El cliente ha sido removido de la vista principal." });
   };
 
   const getPortalUrl = (client: Client) => {
@@ -322,7 +323,7 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="space-y-4 border-t pt-6">
-                  <p className="text-[10px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-2"><Globe className="h-4 w-4" /> Dirección Matriz Obligatoria</p>
+                  <p className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2"><Globe className="h-4 w-4" /> Dirección Matriz Obligatoria</p>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -367,7 +368,7 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="border-t pt-6 space-y-4">
-                  <p className="text-[10px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-2"><Smartphone className="h-4 w-4" /> Responsable Portal Autogestión</p>
+                  <p className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2"><Smartphone className="h-4 w-4" /> Responsable Portal Autogestión</p>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-[9px] font-black text-slate-400 uppercase">Nombre Responsable</Label>
