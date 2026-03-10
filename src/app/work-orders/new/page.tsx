@@ -101,7 +101,10 @@ function NewWorkOrderContent() {
     if (!isEditing && !duplicateFrom && clientId && clients) {
       const selectedClient = clients.find(c => c.id === clientId);
       if (selectedClient) {
+        // Establecer región primero para habilitar el resto de la cascada
         setRegion(selectedClient.region || "");
+        
+        // Timeout breve para asegurar que los selectores de ciudad y comuna se habiliten
         setTimeout(() => {
           setCity(selectedClient.city || "");
           setCommune(selectedClient.commune || "");
@@ -109,8 +112,8 @@ function NewWorkOrderContent() {
           setStreetNumber(selectedClient.streetNumber || "");
           setComplement(selectedClient.complement || "");
           setRequestedByName(selectedClient.contactName || "");
-        }, 50);
-        toast({ title: "Dirección de cliente cargada" });
+          toast({ title: "Dirección cargada", description: "Datos heredados de la ficha del cliente." });
+        }, 150);
       }
     }
   }, [clientId, clients, isEditing, duplicateFrom, toast]);
@@ -159,7 +162,7 @@ function NewWorkOrderContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // VALIDACIÓN GRANULAR
+    // VALIDACIÓN GRANULAR EXHAUSTIVA
     const missingFields = [];
     if (!description.trim()) missingFields.push("Descripción técnica");
     if (!clientId) missingFields.push("Cliente");
@@ -167,9 +170,8 @@ function NewWorkOrderContent() {
     if (!city) missingFields.push("Ciudad");
     if (!commune) missingFields.push("Comuna");
     if (!street) missingFields.push("Calle");
-    if (!streetNumber) missingFields.push("Número de calle");
+    if (!streetNumber) missingFields.push("Número");
     if (assignedToStaffIds.length === 0) missingFields.push("Técnico asignado");
-    if (!profile) missingFields.push("Sesión de usuario");
 
     if (missingFields.length > 0) {
       toast({ 
@@ -214,7 +216,7 @@ function NewWorkOrderContent() {
       } else {
         const shortId = `OT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         const docRef = doc(db!, "companies", companyId, "workOrders", shortId);
-        await setDoc(docRef, { ...commonData, id: shortId, companyId, status: "creada", createdByUserId: profile.id, approvalPin: Math.floor(100000 + Math.random() * 900000).toString(), createdAt: serverTimestamp() });
+        await setDoc(docRef, { ...commonData, id: shortId, companyId, status: "creada", createdByUserId: profile!.id, approvalPin: Math.floor(100000 + Math.random() * 900000).toString(), createdAt: serverTimestamp() });
         toast({ title: "Orden Generada" });
         router.push(`/work-orders/${shortId}`);
       }
@@ -231,7 +233,7 @@ function NewWorkOrderContent() {
         <Button variant="ghost" size="icon" asChild><Link href={isEditing ? `/work-orders/${editId}` : "/work-orders"}><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div>
           <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">{isEditing ? "Editar Orden" : "Generar Orden"}</h2>
-          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Direccionamiento Granular Obligatorio</p>
+          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Direccionamiento Granular y Ubicación de Servicio</p>
         </div>
       </div>
 
@@ -264,7 +266,11 @@ function NewWorkOrderContent() {
             </div>
 
             <div className="space-y-6 bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
-              <div className="flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /><p className="text-[10px] font-black uppercase text-primary tracking-widest">Direccionamiento Estructurado</p></div>
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" />
+                <p className="text-[10px] font-black uppercase text-primary tracking-widest">Ubicación del Servicio Técnico</p>
+              </div>
+              
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Región *</Label>
@@ -288,6 +294,7 @@ function NewWorkOrderContent() {
                   </Select>
                 </div>
               </div>
+
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-2 space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Calle / Avenida *</Label>
@@ -298,27 +305,31 @@ function NewWorkOrderContent() {
                   <Input value={streetNumber} onChange={e => setStreetNumber(e.target.value)} className="h-12 rounded-xl border-2 bg-white" required />
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Depto / Casa / Of</Label>
                   <Input value={complement} onChange={e => setComplement(e.target.value)} className="h-12 rounded-xl border-2 bg-white" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Punto Específico (Recepción, Auditorio...)</Label>
-                  <Input value={locationComment} onChange={e => setLocationComment(e.target.value)} className="h-12 rounded-xl border-2 bg-white" />
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Punto Específico (Recepción, Piso...)</Label>
+                  <Input value={locationComment} onChange={e => setLocationComment(e.target.value)} className="h-12 rounded-xl border-2 bg-white" placeholder="Ej: Sala 402" />
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Descripción Técnica del Servicio *</Label>
-              <Textarea placeholder="Detalle el alcance..." className="min-h-[100px] rounded-2xl border-2 p-4 text-sm bg-slate-50/50" value={description} onChange={e => setDescription(e.target.value)} />
+              <Textarea placeholder="Detalle el alcance de los trabajos..." className="min-h-[100px] rounded-2xl border-2 p-4 text-sm bg-slate-50/50" value={description} onChange={e => setDescription(e.target.value)} />
             </div>
 
             <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Magnitud</Label><Input type="number" value={serviceQuantity} onChange={e => setServiceQuantity(e.target.value)} className="h-12 rounded-xl border-2 font-bold" /></div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Unidad</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400">Magnitud del Servicio</Label>
+                <Input type="number" value={serviceQuantity} onChange={e => setServiceQuantity(e.target.value)} className="h-12 rounded-xl border-2 font-bold" placeholder="Cant." />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Unidad de Medida</Label>
                 <Select value={serviceUnit} onValueChange={setServiceUnit}>
                   <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -347,9 +358,9 @@ function NewWorkOrderContent() {
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className="bg-slate-900 text-white p-8"><CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic"><Camera className="h-6 w-6 text-amber-400" /> 3. Protocolos Técnicos</CardTitle></CardHeader>
           <CardContent className="p-8 space-y-4">
-            <div className="flex items-center justify-between"><Label className="text-[10px] font-black uppercase text-slate-400">Items de Inspección</Label><Button type="button" variant="outline" size="sm" onClick={() => setChecklist([...checklist, { task: "" }])} className="h-10 rounded-xl font-black text-[10px] uppercase gap-2 border-primary/20 text-primary"><Plus className="h-4 w-4" /> Añadir Punto</Button></div>
+            <div className="flex items-center justify-between"><Label className="text-[10px] font-black uppercase text-slate-400">Items de Inspección Obligatoria</Label><Button type="button" variant="outline" size="sm" onClick={() => setChecklist([...checklist, { task: "" }])} className="h-10 rounded-xl font-black text-[10px] uppercase gap-2 border-primary/20 text-primary"><Plus className="h-4 w-4" /> Añadir Punto</Button></div>
             {checklist.map((item, idx) => (
-              <div key={idx} className="flex gap-2"><Input value={item.task} onChange={e => { const n = [...checklist]; n[idx].task = e.target.value; setChecklist(n); }} className="h-12 rounded-xl border-2 font-bold" /><Button type="button" variant="ghost" size="icon" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} className="h-12 w-12 text-rose-500 rounded-xl"><Trash2 className="h-5 w-5" /></Button></div>
+              <div key={idx} className="flex gap-2"><Input value={item.task} onChange={e => { const n = [...checklist]; n[idx].task = e.target.value; setChecklist(n); }} className="h-12 rounded-xl border-2 font-bold" placeholder="Describa la tarea o punto de control..." /><Button type="button" variant="ghost" size="icon" onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} className="h-12 w-12 text-rose-500 rounded-xl"><Trash2 className="h-5 w-5" /></Button></div>
             ))}
           </CardContent>
         </Card>
@@ -358,21 +369,16 @@ function NewWorkOrderContent() {
           <CardHeader className="p-8 pb-4">
             <div className="flex justify-between items-center">
               <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3 text-slate-900"><ShieldCheck className="h-6 w-6 text-emerald-600" /> 4. Cierre y Validación</CardTitle>
-              <div className="flex gap-2">
-                {(reviewerRequired || evaluationRequired) && (
-                  <Badge className="bg-indigo-600 text-white font-black text-[8px] uppercase tracking-[0.2em] animate-pulse">Interacción con Cliente Activa</Badge>
-                )}
-              </div>
             </div>
           </CardHeader>
           <CardContent className="p-8 pt-0 space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="p-6 rounded-3xl border-2 flex items-center justify-between bg-white"><div className="space-y-1"><Label className="font-black text-xs uppercase tracking-tighter flex items-center gap-2"><QrCode className="h-4 w-4" /> Validación Externa</Label></div><Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} /></div>
-              <div className="p-6 rounded-3xl border-2 flex items-center justify-between bg-white"><div className="space-y-1"><Label className="font-black text-xs uppercase tracking-tighter flex items-center gap-2"><Star className="h-4 w-4" /> Evaluación</Label></div><Switch checked={evaluationRequired} onCheckedChange={setEvaluationRequired} /></div>
+              <div className="p-6 rounded-3xl border-2 flex items-center justify-between bg-white shadow-sm"><div className="space-y-1"><Label className="font-black text-xs uppercase tracking-tighter flex items-center gap-2"><QrCode className="h-4 w-4 text-indigo-600" /> Validación QR Externa</Label><p className="text-[9px] text-slate-400 font-bold uppercase">Sello digital del cliente</p></div><Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} /></div>
+              <div className="p-6 rounded-3xl border-2 flex items-center justify-between bg-white shadow-sm"><div className="space-y-1"><Label className="font-black text-xs uppercase tracking-tighter flex items-center gap-2"><Star className="h-4 w-4 text-amber-500" /> Encuesta Satisfacción</Label><p className="text-[9px] text-slate-400 font-bold uppercase">Feedback nota 1 a 5</p></div><Switch checked={evaluationRequired} onCheckedChange={setEvaluationRequired} /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Inicio Programado</Label><Input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="h-12 border-2 rounded-xl font-bold" /></div>
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Plazo (Días)</Label><Input type="number" min="1" value={durationDays} onChange={e => setDurationDays(Number(e.target.value) || 1)} className="h-12 border-2 rounded-xl font-bold" /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Plazo Estimado (Días)</Label><Input type="number" min="1" value={durationDays} onChange={e => setDurationDays(Number(e.target.value) || 1)} className="h-12 border-2 rounded-xl font-bold" /></div>
             </div>
           </CardContent>
           <CardFooter className="p-8 pt-0">

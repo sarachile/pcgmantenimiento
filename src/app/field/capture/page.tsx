@@ -122,10 +122,15 @@ export default function FieldCapturePage() {
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
-  // AUTO-SELECCIÓN INTELIGENTE: Si hay una sola OT después de cargar, entrar directo
+  // AUTO-SELECCIÓN INTELIGENTE (SALTO DE LISTA)
+  // Si solo hay una OT cargada y no hay búsqueda, entramos directo
   useEffect(() => {
     if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
-      setSelectedOT(filtered[0]);
+      // Pequeño timeout para asegurar que el estado de carga ha terminado visualmente
+      const timer = setTimeout(() => {
+        setSelectedOT(filtered[0]);
+      }, 300);
+      return () => clearTimeout(timer);
     }
   }, [filtered, isOrdersLoading, selectedOT, searchTerm]);
 
