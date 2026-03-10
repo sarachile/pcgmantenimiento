@@ -6,16 +6,24 @@ service cloud.firestore {
      * Reglas optimizadas para flujo administrativo, técnico y portal de clientes.
      */
 
-    // 1. REGLA MAESTRA: Usuarios logueados pueden operar en el sistema
-    match /{document=**} {
+    // 1. SOPORTE Y COMUNICACIÓN (Prioridad Alta)
+    // Permite que cualquier usuario autenticado gestione sus tickets y vea los del sistema
+    match /supportTickets/{ticketId} {
       allow read, write: if request.auth != null;
+      
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
     }
 
     // 2. EXCEPCIÓN PORTAL CLIENTE: Lectura pública de OTs y datos vinculados para aprobación
     // Esto permite que el portal QR funcione para mandantes externos no logueados.
     match /companies/{companyId}/workOrders/{otId} {
-      allow read: if true;
-      allow update: if true; // Permitir que el portal actualice el estado a 'aprobada' o 'rechazada'
+      allow read, update: if true;
+      
+      match /digitalLogbookEntries/{entryId} {
+        allow read, create: if true;
+      }
     }
     
     match /companies/{companyId}/clients/{clientId} {
@@ -26,25 +34,17 @@ service cloud.firestore {
       allow read: if true;
     }
 
-    match /companies/{companyId}/workOrders/{otId}/digitalLogbookEntries/{entryId} {
-      allow read: if true;
-      allow create: if true; // Permitir registrar eventos desde el portal
-    }
-
     match /companies/{companyId}/evaluations/{evalId} {
-      allow create: if true; // Permitir que el cliente guarde su encuesta
+      allow create: if true;
     }
 
     match /companies/{companyId}/staff/{staffId} {
-      allow read: if true; // Permitir al portal ver quién es el técnico
+      allow read: if true;
     }
 
-    // 3. CENTRO DE SOPORTE GLOBAL
-    match /supportTickets/{ticketId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /supportTickets/{ticketId}/messages/{messageId} {
+    // 3. REGLA MAESTRA DE SEGURIDAD
+    // Para el resto del sistema (empresas, usuarios, inventario), se requiere estar logueado.
+    match /{document=**} {
       allow read, write: if request.auth != null;
     }
   }

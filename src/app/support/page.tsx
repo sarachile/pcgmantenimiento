@@ -65,31 +65,36 @@ export default function SupportPage() {
   const { data: company } = useDoc<Company>(companyRef);
 
   const ticketsQuery = useMemoFirebase(() => {
+    // CRÍTICO: No ejecutar la consulta hasta que el perfil esté cargado para evitar error de permisos
     if (!db || !profile?.id) return null;
     
-    // Si es superadmin, ve todos los tickets del sistema
-    if (isSuperAdmin) {
+    try {
+      const ticketsCol = collection(db, "supportTickets");
+
+      // Si es superadmin, ve todos los tickets del sistema
+      if (isSuperAdmin) {
+        return query(ticketsCol, orderBy("createdAt", "desc"));
+      }
+
+      // Si es admin de empresa o supervisor, ve los tickets vinculados a su empresa
+      if ((isCompanyAdmin || isSupervisor) && profile.companyId) {
+        return query(
+          ticketsCol,
+          where("companyId", "==", profile.companyId),
+          orderBy("createdAt", "desc")
+        );
+      }
+
+      // Los técnicos ven solo sus propios requerimientos
       return query(
-        collection(db, "supportTickets"),
+        ticketsCol,
+        where("userId", "==", profile.id),
         orderBy("createdAt", "desc")
       );
+    } catch (e) {
+      console.error("Error al construir query de soporte:", e);
+      return null;
     }
-
-    // Si es admin de empresa o supervisor, ve los tickets vinculados a su empresa
-    if ((isCompanyAdmin || isSupervisor) && profile.companyId) {
-      return query(
-        collection(db, "supportTickets"),
-        where("companyId", "==", profile.companyId),
-        orderBy("createdAt", "desc")
-      );
-    }
-
-    // Los técnicos ven solo sus propios requerimientos
-    return query(
-      collection(db, "supportTickets"),
-      where("userId", "==", profile.id),
-      orderBy("createdAt", "desc")
-    );
   }, [db, profile?.id, profile?.companyId, isSuperAdmin, isCompanyAdmin, isSupervisor]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection<SupportTicket>(ticketsQuery);
@@ -145,7 +150,7 @@ export default function SupportPage() {
       setIsCreateOpen(false);
       setFormData({ subject: "", description: "", category: "technical", priority: "medium" });
     } catch (error: any) {
-      toast({ title: "Error de permisos", description: "No se pudo crear el ticket. Verifique su conexión.", variant: "destructive" });
+      toast({ title: "Error", description: "No se pudo crear el ticket. Verifique su conexión.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -161,7 +166,7 @@ export default function SupportPage() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild><Link href="/dashboard"><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
-            <h2 className="text-3xl font-black tracking-tight uppercase italic">Centro de Soporte</h2>
+            <h2 className="text-3xl font-black tracking-tight uppercase italic text-slate-900">Centro de Soporte</h2>
             <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Feedback y Requerimientos</p>
           </div>
         </div>
