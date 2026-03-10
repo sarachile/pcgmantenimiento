@@ -152,8 +152,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!reportRef.current || !ot) return;
     setIsGeneratingPdf(true);
     try {
-      // Pequeño retardo para asegurar renderizado final de imágenes
-      await new Promise(r => setTimeout(r, 1500));
+      // Pequeño retardo para asegurar que las imágenes con CORS se rendericen bien antes de capturar
+      await new Promise(r => setTimeout(r, 2000));
       
       const element = reportRef.current;
       const canvas = await html2canvas(element, { 
@@ -162,7 +162,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         backgroundColor: "#ffffff",
         logging: false,
         height: element.scrollHeight,
-        width: element.scrollWidth
+        width: element.scrollWidth,
+        windowWidth: 1000 // Asegura un ancho estable para el renderizado
       });
       
       const imgData = canvas.toDataURL("image/png");
@@ -380,7 +381,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
-      {/* Contenedor invisible para captura de Reporte */}
+      {/* Contenedor oculto pero con dimensiones para captura de Reporte */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport forwardedRef={reportRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} logbook={logbook || []} assignedStaff={assignedStaff || []} partUsages={partUsages || []} qrCodeUrl={qrUrl} />
         <ExperienceCertificate forwardedRef={certRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} />

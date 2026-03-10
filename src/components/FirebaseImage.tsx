@@ -8,13 +8,14 @@ interface FirebaseImageProps {
   url?: string | null;
   alt?: string;
   className?: string;
+  forceCORS?: boolean;
 }
 
 /**
  * Componente optimizado para reportes PDF y visualización web.
- * Usa etiqueta img estándar para asegurar compatibilidad total con html2canvas y CORS.
+ * Por defecto carga sin CORS para máxima compatibilidad en el Dashboard.
  */
-export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: FirebaseImageProps) {
+export function FirebaseImage({ url, alt = "Imagen de Terreno", className, forceCORS = false }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -53,16 +54,18 @@ export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: Fir
       )}
       
       <img
+        key={url} // Forzar re-render si cambia la URL
         src={url}
         alt={alt}
         className={cn(
           "w-full h-full object-cover transition-opacity duration-500", 
           loading ? "opacity-0" : "opacity-100"
         )}
-        crossOrigin="anonymous"
+        // Solo usamos anonymous si es estrictamente necesario (ej: generación de PDF)
+        crossOrigin={forceCORS ? "anonymous" : undefined}
         onLoad={() => setLoading(false)}
         onError={() => {
-          console.error("Error cargando imagen:", url);
+          // No logueamos console.error para evitar el overlay de NextJS
           setLoading(false);
           setError(true);
         }}
