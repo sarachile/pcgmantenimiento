@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -39,6 +40,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Search, 
   Filter, 
@@ -63,10 +65,12 @@ import {
   Timer,
   History,
   RefreshCcw,
-  Archive
+  Archive,
+  CheckSquare,
+  Square
 } from "lucide-react";
 import Link from "next/link";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -88,8 +92,15 @@ export default function WorkOrdersPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState("active"); // 'active' | 'archived'
   const [mounted, setMounted] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Limpiar selección al cambiar de pestaña
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [activeTab]);
 
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -117,6 +128,35 @@ export default function WorkOrdersPage() {
     const docRef = doc(db!, "companies", profile.companyId, "workOrders", id);
     updateDocumentNonBlocking(docRef, { isDeleted: false, updatedAt: serverTimestamp() });
     toast({ title: "Orden restaurada", description: "La orden ha vuelto al panel de operaciones activas." });
+  };
+
+  const handlePermanentDelete = (id: string) => {
+    if (!profile?.companyId) return;
+    const docRef = doc(db!, "companies", profile.companyId, "workOrders", id);
+    deleteDocumentNonBlocking(docRef);
+    toast({ title: "Orden Eliminada", description: "El registro ha sido borrado definitivamente." });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!profile?.companyId || selectedIds.length === 0) return;
+    
+    setIsBulkDeleting(true);
+    try {
+      selectedIds.forEach(id => {
+        const docRef = doc(db!, "companies", profile!.companyId, "workOrders", id);
+        deleteDocumentNonBlocking(docRef);
+      });
+      
+      toast({ 
+        title: "Eliminación Masiva", 
+        description: `Se han eliminado ${selectedIds.length} órdenes del histórico.` 
+      });
+      setSelectedIds([]);
+    } catch (e) {
+      toast({ title: "Error", description: "No se pudieron eliminar todos los registros.", variant: "destructive" });
+    } finally {
+      setIsBulkDeleting(false);
+    }
   };
 
   const workOrders = useMemo(() => {
@@ -175,6 +215,24 @@ export default function WorkOrdersPage() {
     setStatusFilter("all");
     setClientFilter("all");
     setUrgencyFilter("all");
+    setSelectedIds([]);
+  };
+
+  const handleSelectOT = (id: string, checked: boolean) => {
+    if (checked) {
+      setSelectedIds(prev => [...prev, id]);
+    } else {
+      setSelectedIds(prev => prev.filter(item => item !== id));
+    }
+  };
+
+  const handleSelectGroup = (orders: WorkOrder[], checked: boolean) => {
+    const orderIds = orders.map(o => o.id);
+    if (checked) {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...orderIds])));
+    } else {
+      setSelectedIds(prev => prev.filter(id => !orderIds.includes(id)));
+    }
   };
 
   const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || clientFilter !== "all" || urgencyFilter !== "all";
@@ -205,6 +263,37 @@ export default function WorkOrdersPage() {
 
   return (
     <div className="space-y-8 pb-10">
+      {/* BARRA DE ACCIONES MASIVAS (Solo histórico) */}
+      {selectedIds.length > 0 && activeTab === 'archived' && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10">
+          <Card className="bg-slate-900 text-white px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-6 border-white/10 border">
+            <div className="flex items-center gap-3 pr-6 border-r border-white/10">
+              <div className="bg-blue-600 h-8 w-8 rounded-full flex items-center justify-center font-black text-xs">
+                {selectedIds.length}
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-widest">Seleccionadas</p>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="ghost" 
+                className="text-white hover:bg-white/10 text-[10px] font-black uppercase"
+                onClick={() => setSelectedIds([])}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                className="bg-rose-600 hover:bg-rose-700 text-white h-10 rounded-xl text-[10px] font-black uppercase gap-2"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+              >
+                {isBulkDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+                Eliminar Definitivamente
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="rounded-full h-12 w-12 hover:bg-slate-100 transition-colors"><Link href="/dashboard"><ArrowLeft className="h-5 w-5" /></Link></Button>
@@ -360,137 +449,173 @@ export default function WorkOrdersPage() {
               </div>
             ) : (
               <Accordion type="multiple" defaultValue={[groupedOTs[0]?.[0]]} className="w-full">
-                {groupedOTs.map(([monthKey, group]) => (
-                  <AccordionItem key={monthKey} value={monthKey} className="border-b last:border-0">
-                    <AccordionTrigger className="hover:no-underline py-6 px-8 group bg-slate-50/30">
-                      <div className="flex items-center gap-4">
-                        <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 group-data-[state=open]:bg-primary group-data-[state=open]:text-white transition-all">
-                          <CalendarDays className="h-5 w-5" />
+                {groupedOTs.map(([monthKey, group]) => {
+                  const allSelectedInGroup = group.orders.every(o => selectedIds.includes(o.id));
+                  const someSelectedInGroup = group.orders.some(o => selectedIds.includes(o.id)) && !allSelectedInGroup;
+
+                  return (
+                    <AccordionItem key={monthKey} value={monthKey} className="border-b last:border-0">
+                      <AccordionTrigger className="hover:no-underline py-6 px-8 group bg-slate-50/30">
+                        <div className="flex items-center gap-4">
+                          <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 group-data-[state=open]:bg-primary group-data-[state=open]:text-white transition-all">
+                            <CalendarDays className="h-5 w-5" />
+                          </div>
+                          <div className="text-left">
+                            <span className="text-lg font-black uppercase tracking-tighter text-slate-900 italic leading-none block">{group.label}</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.orders.length} Servicios procesados</span>
+                          </div>
                         </div>
-                        <div className="text-left">
-                          <span className="text-lg font-black uppercase tracking-tighter text-slate-900 italic leading-none block">{group.label}</span>
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.orders.length} Servicios procesados</span>
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="p-0">
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader className="bg-slate-50/50">
-                            <TableRow className="border-none">
-                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] pl-8 h-12">ID / Operativo</TableHead>
-                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Mandante / Entidad</TableHead>
-                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Descripción Alcance</TableHead>
-                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-center">Prioridad</TableHead>
-                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Estado</TableHead>
-                              <TableHead className="text-right font-black uppercase text-[10px] tracking-[0.2em] pr-8">Acción</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {group.orders.map((ot) => {
-                              const client = clients?.find(c => c.id === ot.clientId);
-                              const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
-                              return (
-                                <TableRow key={ot.id} className="hover:bg-slate-50 transition-colors border-slate-100 group">
-                                  <TableCell className="pl-8 py-6">
-                                    <div className="flex flex-col">
-                                      <span className="font-black text-primary text-base tracking-tighter italic leading-none">{ot.id}</span>
-                                      <span className="text-[10px] font-bold text-slate-400 mt-1">{format(date, "dd MMM, yyyy", { locale: es })}</span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center gap-3">
-                                      <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-white transition-colors"><Building2 className="h-4 w-4 text-slate-500" /></div>
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="font-bold text-slate-900 text-sm truncate max-w-[180px]">{client?.name || '...' }</span>
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{client?.rut || '-'}</span>
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="max-w-[250px]">
-                                    <p className="text-xs font-medium text-slate-600 line-clamp-2 italic leading-relaxed">"{ot.description}"</p>
-                                  </TableCell>
-                                  <TableCell className="text-center">
-                                    {ot.urgency === 'high' ? (
-                                      <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[8px] font-black uppercase gap-1 px-2">
-                                        <AlertTriangle className="h-2 w-2" /> Urgente
-                                      </Badge>
-                                    ) : ot.urgency === 'medium' ? (
-                                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[8px] font-black uppercase px-2">
-                                        Media
-                                      </Badge>
-                                    ) : (
-                                      <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[8px] font-black uppercase px-2">
-                                        Baja
-                                      </Badge>
+                      </AccordionTrigger>
+                      <AccordionContent className="p-0">
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader className="bg-slate-50/50">
+                              <TableRow className="border-none">
+                                {activeTab === 'archived' && (
+                                  <TableHead className="w-12 pl-8">
+                                    <Checkbox 
+                                      checked={allSelectedInGroup}
+                                      onCheckedChange={(checked) => handleSelectGroup(group.orders, checked as boolean)}
+                                      className={cn(someSelectedInGroup && "opacity-50")}
+                                    />
+                                  </TableHead>
+                                )}
+                                <TableHead className={cn("font-black uppercase text-[10px] tracking-[0.2em] h-12", activeTab !== 'archived' && "pl-8")}>ID / Operativo</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Mandante / Entidad</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Descripción Alcance</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-center">Prioridad</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Estado</TableHead>
+                                <TableHead className="text-right font-black uppercase text-[10px] tracking-[0.2em] pr-8">Acción</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {group.orders.map((ot) => {
+                                const client = clients?.find(c => c.id === ot.clientId);
+                                const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
+                                const isSelected = selectedIds.includes(ot.id);
+
+                                return (
+                                  <TableRow key={ot.id} className={cn(
+                                    "hover:bg-slate-50 transition-colors border-slate-100 group",
+                                    isSelected && "bg-blue-50/50"
+                                  )}>
+                                    {activeTab === 'archived' && (
+                                      <TableCell className="w-12 pl-8">
+                                        <Checkbox 
+                                          checked={isSelected}
+                                          onCheckedChange={(checked) => handleSelectOT(ot.id, checked as boolean)}
+                                        />
+                                      </TableCell>
                                     )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {getStatusBadge(ot.status)}
-                                  </TableCell>
-                                  <TableCell className="text-right pr-8">
-                                    <div className="flex justify-end gap-2">
-                                      <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10 hover:bg-primary hover:text-white transition-all shadow-sm">
-                                        <Link href={`/work-orders/${ot.id}`}><ArrowRight className="h-4 w-4" /></Link>
-                                      </Button>
-                                      {!isTechnician && (
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-4 w-4 text-slate-400" /></Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
-                                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Orden</DropdownMenuLabel>
-                                            <DropdownMenuSeparator className="bg-slate-50" />
-                                            <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
-                                              <Link href={`/work-orders/${ot.id}`} className="font-bold flex items-center gap-2">
-                                                <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
-                                              </Link>
-                                            </DropdownMenuItem>
-                                            
-                                            {activeTab === 'active' ? (
-                                              <>
-                                                {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+                                    <TableCell className={cn("py-6", activeTab !== 'archived' && "pl-8")}>
+                                      <div className="flex flex-col">
+                                        <span className="font-black text-primary text-base tracking-tighter italic leading-none">{ot.id}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 mt-1">{format(date, "dd MMM, yyyy", { locale: es })}</span>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex items-center gap-3">
+                                        <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-white transition-colors"><Building2 className="h-4 w-4 text-slate-500" /></div>
+                                        <div className="flex flex-col min-w-0">
+                                          <span className="font-bold text-slate-900 text-sm truncate max-w-[180px]">{client?.name || '...' }</span>
+                                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{client?.rut || '-'}</span>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="max-w-[250px]">
+                                      <p className="text-xs font-medium text-slate-600 line-clamp-2 italic leading-relaxed">"{ot.description}"</p>
+                                    </TableCell>
+                                    <TableCell className="text-center">
+                                      {ot.urgency === 'high' ? (
+                                        <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[8px] font-black uppercase gap-1 px-2">
+                                          <AlertTriangle className="h-2 w-2" /> Urgente
+                                        </Badge>
+                                      ) : ot.urgency === 'medium' ? (
+                                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[8px] font-black uppercase px-2">
+                                          Media
+                                        </Badge>
+                                      ) : (
+                                        <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[8px] font-black uppercase px-2">
+                                          Baja
+                                        </Badge>
+                                      )}
+                                    </TableCell>
+                                    <TableCell>
+                                      {getStatusBadge(ot.status)}
+                                    </TableCell>
+                                    <TableCell className="text-right pr-8">
+                                      <div className="flex justify-end gap-2">
+                                        <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10 hover:bg-primary hover:text-white transition-all shadow-sm">
+                                          <Link href={`/work-orders/${ot.id}`}><ArrowRight className="h-4 w-4" /></Link>
+                                        </Button>
+                                        {!isTechnician && (
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-4 w-4 text-slate-400" /></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
+                                              <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Orden</DropdownMenuLabel>
+                                              <DropdownMenuSeparator className="bg-slate-50" />
+                                              <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
+                                                <Link href={`/work-orders/${ot.id}`} className="font-bold flex items-center gap-2">
+                                                  <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
+                                                </Link>
+                                              </DropdownMenuItem>
+                                              
+                                              {activeTab === 'active' ? (
+                                                <>
+                                                  {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+                                                    <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
+                                                      <Link href={`/work-orders/new?editId=${ot.id}`} className="font-bold flex items-center gap-2 text-amber-600">
+                                                        <Edit2 className="h-4 w-4" /> Editar Orden
+                                                      </Link>
+                                                    </DropdownMenuItem>
+                                                  )}
                                                   <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
-                                                    <Link href={`/work-orders/new?editId=${ot.id}`} className="font-bold flex items-center gap-2 text-amber-600">
-                                                      <Edit2 className="h-4 w-4" /> Editar Orden
+                                                    <Link href={`/work-orders/new?duplicateFrom=${ot.id}`} className="font-bold flex items-center gap-2 text-blue-600">
+                                                      <Copy className="h-4 w-4" /> Duplicar OT (Plantilla)
                                                     </Link>
                                                   </DropdownMenuItem>
-                                                )}
-                                                <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
-                                                  <Link href={`/work-orders/new?duplicateFrom=${ot.id}`} className="font-bold flex items-center gap-2 text-blue-600">
-                                                    <Copy className="h-4 w-4" /> Duplicar OT (Plantilla)
-                                                  </Link>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator className="bg-slate-50" />
-                                                <DropdownMenuItem 
-                                                  className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
-                                                  onClick={() => handleDelete(ot.id)}
-                                                >
-                                                  <Trash2 className="h-4 w-4" /> Archivar Orden
-                                                </DropdownMenuItem>
-                                              </>
-                                            ) : (
-                                              <DropdownMenuItem 
-                                                className="text-emerald-600 font-bold rounded-xl p-3 focus:bg-emerald-50 flex items-center gap-2" 
-                                                onClick={() => handleRestore(ot.id)}
-                                              >
-                                                <RefreshCcw className="h-4 w-4" /> Restaurar Orden
-                                              </DropdownMenuItem>
-                                            )}
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
+                                                  <DropdownMenuSeparator className="bg-slate-50" />
+                                                  <DropdownMenuItem 
+                                                    className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
+                                                    onClick={() => handleDelete(ot.id)}
+                                                  >
+                                                    <Trash2 className="h-4 w-4" /> Archivar Orden
+                                                  </DropdownMenuItem>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <DropdownMenuItem 
+                                                    className="text-emerald-600 font-bold rounded-xl p-3 focus:bg-emerald-50 flex items-center gap-2" 
+                                                    onClick={() => handleRestore(ot.id)}
+                                                  >
+                                                    <RefreshCcw className="h-4 w-4" /> Restaurar Orden
+                                                  </DropdownMenuItem>
+                                                  <DropdownMenuSeparator className="bg-slate-50" />
+                                                  <DropdownMenuItem 
+                                                    className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
+                                                    onClick={() => handlePermanentDelete(ot.id)}
+                                                  >
+                                                    <Trash2 className="h-4 w-4" /> Borrar Definitivamente
+                                                  </DropdownMenuItem>
+                                                </>
+                                              )}
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
               </Accordion>
             )}
           </CardContent>
