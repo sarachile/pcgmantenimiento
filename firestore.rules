@@ -20,19 +20,12 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
     }
 
-    function getUserData() {
-      // Retorno seguro si no hay sesión para evitar errores 401 en la evaluación de reglas
-      if (!isSignedIn()) {
-        return null;
-      }
-      let path = /databases/$(database)/documents/users/$(request.auth.uid);
-      return exists(path) ? get(path).data : null;
-    }
-
     function isCompanyMember(companyId) {
-      if (isPlatformAdmin()) { return true; }
-      let userData = getUserData();
-      return isSignedIn() && userData != null && userData.companyId == companyId;
+      return isPlatformAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId
+      );
     }
 
     // --- REGLAS DE ACCESO PÚBLICO (PARA INVITACIONES Y PORTALES) ---
@@ -45,7 +38,7 @@ service cloud.firestore {
       match /staff/{staffId} {
         // FLEXIBILIZADO AL MÁXIMO: Permitir que el técnico lea su invitación y actualice su estado al registrarse
         allow get, write: if true; 
-        allow list: if isCompanyMember(companyId) || true; // Permitir listado limitado para validación de login
+        allow list: if true; // Permitir listado para validación de login por RUT
       }
 
       match /clients/{clientId} {
