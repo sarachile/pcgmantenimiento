@@ -2,12 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * PCGMANTENIMIENTO SECURITY RULES - Release Edition
-     * Reglas optimizadas para flujo administrativo, técnico y portal de clientes.
+     * PCGMANTENIMIENTO SECURITY RULES - Production Stability Edition
+     * Prioridad: Soporte -> Portal Público -> Resto del Sistema.
      */
 
-    // 1. SOPORTE Y COMUNICACIÓN (Prioridad Alta)
-    // Permite que cualquier usuario autenticado gestione sus tickets y vea los del sistema
+    // 1. SOPORTE Y COMUNICACIÓN (Prioridad Máxima)
+    // Permite que cualquier usuario autenticado (Técnico, Admin o Superadmin)
+    // gestione sus tickets y vea los del sistema.
     match /supportTickets/{ticketId} {
       allow read, write: if request.auth != null;
       
@@ -16,13 +17,16 @@ service cloud.firestore {
       }
     }
 
-    // 2. EXCEPCIÓN PORTAL CLIENTE: Lectura pública de OTs y datos vinculados para aprobación
-    // Esto permite que el portal QR funcione para mandantes externos no logueados.
+    // 2. EXCEPCIÓN PORTAL CLIENTE: Lectura pública para aprobación QR
+    // Esto permite que el portal funcione para mandantes externos no logueados.
     match /companies/{companyId}/workOrders/{otId} {
       allow read, update: if true;
       
       match /digitalLogbookEntries/{entryId} {
         allow read, create: if true;
+      }
+      match /partUsages/{usageId} {
+        allow read: if true;
       }
     }
     

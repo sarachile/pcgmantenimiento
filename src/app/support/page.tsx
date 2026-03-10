@@ -58,25 +58,27 @@ export default function SupportPage() {
     priority: "medium" as any
   });
 
+  // Referencia a la empresa para el contexto del ticket
   const companyRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return doc(db, "companies", profile.companyId);
   }, [db, profile?.companyId]);
   const { data: company } = useDoc<Company>(companyRef);
 
+  // Consulta de tickets blindada contra errores de permisos prematuros
   const ticketsQuery = useMemoFirebase(() => {
-    // CRÍTICO: No ejecutar la consulta hasta que el perfil esté cargado para evitar error de permisos
+    // CRÍTICO: No intentar la consulta hasta que Firebase y el perfil estén listos
     if (!db || !profile?.id) return null;
     
     try {
       const ticketsCol = collection(db, "supportTickets");
 
-      // Si es superadmin, ve todos los tickets del sistema
+      // Caso 1: Superadministrador ve todo el sistema
       if (isSuperAdmin) {
         return query(ticketsCol, orderBy("createdAt", "desc"));
       }
 
-      // Si es admin de empresa o supervisor, ve los tickets vinculados a su empresa
+      // Caso 2: Administrador/Supervisor ve los de su empresa
       if ((isCompanyAdmin || isSupervisor) && profile.companyId) {
         return query(
           ticketsCol,
@@ -85,14 +87,14 @@ export default function SupportPage() {
         );
       }
 
-      // Los técnicos ven solo sus propios requerimientos
+      // Caso 3: Técnico ve solo sus propios tickets
       return query(
         ticketsCol,
         where("userId", "==", profile.id),
         orderBy("createdAt", "desc")
       );
     } catch (e) {
-      console.error("Error al construir query de soporte:", e);
+      console.error("Error construyendo consulta de soporte:", e);
       return null;
     }
   }, [db, profile?.id, profile?.companyId, isSuperAdmin, isCompanyAdmin, isSupervisor]);
@@ -101,7 +103,10 @@ export default function SupportPage() {
 
   const handleCreateTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !profile || !company) return;
+    if (!db || !profile || !company) {
+      toast({ title: "Error de sesión", description: "No se pudieron cargar los datos de usuario.", variant: "destructive" });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -121,53 +126,58 @@ export default function SupportPage() {
 
       const docRef = await addDoc(collection(db, "supportTickets"), ticketData);
 
-      // Notificar al Super Administrador por Email
+      // Notificar al equipo central por email
       await sendSystemEmail({
         to: "control@pcgoperacion.com",
-        subject: `NUEVO TICKET DE SOPORTE - ${company.name}`,
+        subject: `[FEEDBACK] ${formData.subject} - ${company.name}`,
         html: `
-          <div style="font-family: sans-serif; padding: 20px;">
-            <h2>Nuevo Requerimiento de Soporte / Feedback</h2>
+          <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #1e3a8a;">Nuevo Requerimiento de Soporte</h2>
             <p><strong>Empresa:</strong> ${company.name}</p>
             <p><strong>Usuario:</strong> ${profile.name} (${profile.email})</p>
-            <p><strong>Asunto:</strong> ${formData.subject}</p>
+            <p><strong>Categoría:</strong> ${formData.category}</p>
             <p><strong>Prioridad:</strong> ${formData.priority.toUpperCase()}</p>
             <hr />
             <p><strong>Descripción:</strong></p>
-            <p>${formData.description}</p>
+            <p style="background: #f9fafb; padding: 15px; border-radius: 5px;">${formData.description}</p>
             <br />
-            <a href="https://www.pcgmantenimiento.com/admin/support/${docRef.id}" style="background: #1e3a8a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-              Ver Ticket y Responder
+            <a href="https://www.pcgmantenimiento.com/admin/support/${docRef.id}" style="background: #1e3a8a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+              Responder Ticket
             </a>
           </div>
         `
       });
 
       toast({
-        title: "Ticket Creado",
-        description: "Su requerimiento ha sido recibido. Lo contactaremos a la brevedad.",
+        title: "Ticket Enviado",
+        description: "Su feedback ha sido recibido por el equipo de ingeniería.",
       });
       setIsCreateOpen(false);
       setFormData({ subject: "", description: "", category: "technical", priority: "medium" });
     } catch (error: any) {
-      toast({ title: "Error", description: "No se pudo crear el ticket. Verifique su conexión.", variant: "destructive" });
+      toast({ title: "Falla en envío", description: "No se pudo conectar con el servidor de soporte.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (isAuthLoading) {
-    return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    return (
+      <div className="flex flex-col h-[400px] items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-xs font-black uppercase tracking-widest text-slate-400">Verificando Credenciales...</p>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild><Link href="/dashboard"><ArrowLeft className="h-4 w-4" /></Link></Button>
+          <Button variant="ghost" size="icon" asChild className="rounded-full"><Link href="/dashboard"><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
             <h2 className="text-3xl font-black tracking-tight uppercase italic text-slate-900">Centro de Soporte</h2>
-            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Feedback y Requerimientos</p>
+            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Canal Directo de Feedback y Mejoras</p>
           </div>
         </div>
         
@@ -177,16 +187,16 @@ export default function SupportPage() {
               <Plus className="h-5 w-5" /> Nuevo Requerimiento
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] rounded-[2rem]">
+          <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Crear Ticket</DialogTitle>
-              <DialogDescription className="font-bold text-slate-500">¿En qué podemos ayudarte a mejorar tu operación?</DialogDescription>
+              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Enviar Feedback</DialogTitle>
+              <DialogDescription className="font-bold text-slate-500">¿Tienes una idea de mejora o necesitas ayuda técnica?</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateTicket} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Asunto del Ticket *</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Asunto *</Label>
                 <Input 
-                  placeholder="Ej: Propuesta de mejora en reportes..." 
+                  placeholder="Ej: Sugerencia para el visor de fotos..." 
                   className="h-12 rounded-xl border-2 font-bold"
                   value={formData.subject}
                   onChange={(e) => setFormData({...formData, subject: e.target.value})}
@@ -195,47 +205,47 @@ export default function SupportPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Categoría</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Categoría</Label>
                   <Select value={formData.category} onValueChange={(val) => setFormData({...formData, category: val})}>
                     <SelectTrigger className="h-12 rounded-xl border-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="technical">Problema Técnico</SelectItem>
-                      <SelectItem value="billing">Facturación</SelectItem>
-                      <SelectItem value="feature">Sugerencia / Mejora</SelectItem>
-                      <SelectItem value="other">Otro</SelectItem>
+                      <SelectItem value="feature">Propuesta de Mejora</SelectItem>
+                      <SelectItem value="billing">Suscripción / Plan</SelectItem>
+                      <SelectItem value="other">Otros</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Prioridad</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Urgencia</Label>
                   <Select value={formData.priority} onValueChange={(val) => setFormData({...formData, priority: val})}>
                     <SelectTrigger className="h-12 rounded-xl border-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">Baja</SelectItem>
+                      <SelectItem value="low">Consulta General</SelectItem>
                       <SelectItem value="medium">Media</SelectItem>
                       <SelectItem value="high">Alta</SelectItem>
-                      <SelectItem value="urgent">Urgente</SelectItem>
+                      <SelectItem value="urgent">Crítica (Bloqueo)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Descripción Detallada *</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Descripción del Requerimiento *</Label>
                 <Textarea 
-                  placeholder="Explique qué necesita o qué mejora propone..." 
-                  className="min-h-[120px] rounded-xl border-2 p-4 text-sm font-medium"
+                  placeholder="Por favor, sea lo más detallado posible..." 
+                  className="min-h-[150px] rounded-2xl border-2 p-4 text-sm font-medium bg-slate-50/50"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   required
                 />
               </div>
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Enviar a Soporte Central"}
+                <Button type="submit" className="w-full h-16 rounded-[2rem] bg-slate-900 text-white font-black uppercase tracking-widest shadow-xl" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Enviar a Soporte Central"}
                 </Button>
               </DialogFooter>
             </form>
@@ -245,100 +255,87 @@ export default function SupportPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 ml-2">
-            Mis Requerimientos Activos
-          </h3>
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 ml-2">Historial de Comunicaciones</h3>
           
           {isTicketsLoading ? (
-            <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" /></div>
+            <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary/20" /></div>
           ) : !tickets || tickets.length === 0 ? (
             <Card className="border-2 border-dashed p-12 text-center rounded-[2.5rem] bg-slate-50/50">
-              <LifeBuoy className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-              <p className="font-black uppercase italic text-slate-400 tracking-tighter">Sin tickets registrados</p>
-              <p className="text-xs text-slate-400 mt-2 font-medium">Si tienes dudas o propuestas de mejora, estamos para escucharte.</p>
+              <LifeBuoy className="h-16 w-16 mx-auto mb-4 text-slate-200" />
+              <p className="font-black uppercase italic text-slate-400 tracking-tighter text-lg">Sin tickets registrados</p>
+              <p className="text-xs text-slate-400 mt-2 font-medium">Usa este canal para ayudarnos a construir el mejor ERP para tu equipo.</p>
             </Card>
           ) : (
-            tickets.map((ticket) => (
-              <Link key={ticket.id} href={`/support/${ticket.id}`}>
-                <Card className="group border-none shadow-sm hover:shadow-md transition-all rounded-[1.5rem] overflow-hidden mb-3 bg-white">
-                  <div className="flex items-center p-5 gap-4">
-                    <div className={cn(
-                      "h-12 w-12 rounded-xl flex items-center justify-center shrink-0",
-                      ticket.status === 'open' ? "bg-blue-50 text-blue-600" :
-                      ticket.status === 'in_progress' ? "bg-amber-50 text-amber-600" :
-                      "bg-emerald-50 text-emerald-600"
-                    )}>
-                      {ticket.status === 'open' ? <Clock className="h-6 w-6" /> : 
-                       ticket.status === 'in_progress' ? <AlertCircle className="h-6 w-6" /> : 
-                       <CheckCircle2 className="h-6 w-6" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4">
-                          {ticket.category}
-                        </Badge>
-                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-                          #{ticket.id.slice(-6).toUpperCase()}
-                        </span>
-                      </div>
-                      <h4 className="font-black text-slate-900 truncate group-hover:text-primary transition-colors text-sm uppercase italic">
-                        {ticket.subject}
-                      </h4>
-                      <p className="text-[9px] text-slate-400 mt-1 font-bold uppercase">
-                        Actualizado: {ticket.updatedAt ? format(ticket.updatedAt.toDate ? ticket.updatedAt.toDate() : new Date(ticket.updatedAt), "dd MMM HH:mm", { locale: es }) : ''}
-                      </p>
-                    </div>
-                    <div className="text-right flex flex-col items-end gap-2">
-                      <Badge className={cn(
-                        "text-[8px] font-black uppercase tracking-widest px-2 h-5",
-                        ticket.priority === 'urgent' ? "bg-rose-500 text-white" :
-                        ticket.priority === 'high' ? "bg-amber-500 text-white" : "bg-slate-500 text-white"
+            <div className="space-y-3">
+              {tickets.map((ticket) => (
+                <Link key={ticket.id} href={`/support/${ticket.id}`} className="block group">
+                  <Card className="border-none shadow-sm hover:shadow-md transition-all rounded-2xl overflow-hidden bg-white group-active:scale-[0.98]">
+                    <div className="flex items-center p-5 gap-4">
+                      <div className={cn(
+                        "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-inner",
+                        ticket.status === 'open' ? "bg-blue-50 text-blue-600" :
+                        ticket.status === 'in_progress' ? "bg-amber-50 text-amber-600" :
+                        "bg-emerald-50 text-emerald-600"
                       )}>
-                        {ticket.priority}
-                      </Badge>
-                      <ChevronRight className="h-4 w-4 text-slate-300 group-hover:translate-x-1 transition-transform" />
+                        {ticket.status === 'open' ? <Clock className="h-6 w-6" /> : 
+                         ticket.status === 'in_progress' ? <AlertCircle className="h-6 w-6" /> : 
+                         <CheckCircle2 className="h-6 w-6" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest h-4 px-1.5 border-slate-200">
+                            {ticket.category}
+                          </Badge>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                            ID: {ticket.id.slice(-6).toUpperCase()}
+                          </span>
+                        </div>
+                        <h4 className="font-black text-slate-900 truncate text-sm uppercase italic leading-none">
+                          {ticket.subject}
+                        </h4>
+                        <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tighter">
+                          {ticket.updatedAt ? format(ticket.updatedAt.toDate ? ticket.updatedAt.toDate() : new Date(ticket.updatedAt), "dd MMM, HH:mm", { locale: es }) : 'Procesando...'}
+                        </p>
+                      </div>
+                      <div className="text-right flex flex-col items-end gap-2">
+                        <Badge className={cn(
+                          "text-[8px] font-black uppercase tracking-widest px-2 h-5",
+                          ticket.priority === 'urgent' ? "bg-rose-600 text-white" :
+                          ticket.priority === 'high' ? "bg-amber-500 text-white" : "bg-slate-500 text-white"
+                        )}>
+                          {ticket.priority}
+                        </Badge>
+                        <ChevronRight className="h-5 w-5 text-slate-200 group-hover:text-primary transition-colors" />
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              </Link>
-            ))
+                  </Card>
+                </Link>
+              ))}
+            </div>
           )}
         </div>
 
         <div className="space-y-6">
-          <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] overflow-hidden relative">
-            <div className="absolute -top-10 -right-10 opacity-10"><LifeBuoy className="h-40 w-40" /></div>
-            <CardHeader className="p-8">
-              <CardTitle className="text-xl font-black italic uppercase tracking-tighter">Ayuda Directa</CardTitle>
-              <CardDescription className="text-blue-400 font-bold uppercase text-[10px] tracking-widest mt-1">Soporte centralizado PCGMANTENIMIENTO</CardDescription>
+          <Card className="border-none shadow-2xl bg-slate-900 text-white rounded-[2.5rem] overflow-hidden relative">
+            <div className="absolute -top-10 -right-10 opacity-10"><LifeBuoy className="h-48 w-48 text-blue-400" /></div>
+            <CardHeader className="p-8 border-b border-white/5">
+              <CardTitle className="text-xl font-black italic uppercase tracking-tighter">Ingeniería PCG</CardTitle>
+              <CardDescription className="text-blue-400 font-bold uppercase text-[10px] tracking-[0.2em] mt-1">Soporte Estratégico 24/7</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-0 p-8">
-              <div className="bg-white/5 p-5 rounded-2xl space-y-2 backdrop-blur-sm border border-white/10">
-                <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">Horario de Atención</p>
-                <p className="text-sm font-bold">Lun - Vie: 09:00 a 18:30 hrs</p>
-              </div>
-              <div className="bg-white/5 p-5 rounded-2xl space-y-2 backdrop-blur-sm border border-white/10">
-                <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">Correo Directo</p>
-                <p className="text-sm font-bold">soporte@pcgoperacion.com</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-sm rounded-[2rem] bg-white">
-            <CardHeader className="p-6 pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Preguntas Frecuentes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 p-6 pt-2">
-              {[
-                "¿Cómo cambiar mi plan?",
-                "¿Configuración de firmas QR?",
-                "¿Límites de técnicos?"
-              ].map((q, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors group">
-                  <span className="text-[10px] font-bold text-slate-600 uppercase">{q}</span>
-                  <ChevronRight className="h-3 w-3 text-slate-300 group-hover:text-primary" />
+            <CardContent className="p-8 space-y-6">
+              <p className="text-xs text-slate-400 leading-relaxed font-medium italic">
+                "Este canal llega directamente a nuestros desarrolladores. Cada sugerencia de mejora es evaluada para la próxima actualización global."
+              </p>
+              <div className="space-y-3">
+                <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                  <p className="text-[9px] font-black uppercase text-blue-400 mb-1">Horario de Prioridad</p>
+                  <p className="text-xs font-bold">Lunes a Viernes: 09:00 - 18:30</p>
                 </div>
-              ))}
+                <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                  <p className="text-[9px] font-black uppercase text-blue-400 mb-1">Emergencias</p>
+                  <p className="text-xs font-bold">soporte@pcgoperacion.com</p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
