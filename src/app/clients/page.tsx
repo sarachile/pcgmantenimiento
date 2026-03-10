@@ -65,6 +65,7 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { CHILE_REGIONS } from "@/lib/chile-data";
+import { ClientsHelp } from "@/components/ClientsHelp";
 
 export default function ClientsPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -282,6 +283,7 @@ export default function ClientsPage() {
         </div>
         
         <div className="flex items-center gap-2">
+          <ClientsHelp />
           {isAtLimit && (
             <Badge variant="outline" className="text-amber-600 bg-amber-50 border-amber-200 gap-1 px-3 py-1.5 font-black uppercase text-[10px]">
               <Lock className="h-3 w-3" /> Plan Completo
