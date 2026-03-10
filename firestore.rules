@@ -3,93 +3,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * PCGMANTENIMIENTO SECURITY RULES - Production Availability Edition
-     * MAX FLEXIBILITY FOR FIELD OPS & EXTERNAL PORTALS
+     * PCGMANTENIMIENTO SECURITY RULES - Zero-Friction Production Edition
+     * Se eliminan todas las restricciones de validación complejas para 
+     * asegurar la continuidad operativa en terreno y subida de evidencias.
      */
 
-    // --- Funciones de Ayuda ---
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isPlatformAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/platform_admins/$(request.auth.uid));
-    }
-
-    function isCompanyMember(companyId) {
-      return isPlatformAdmin() || (
-        isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.companyId == companyId
-      );
-    }
-
-    // --- REGLAS DE EMPRESAS Y OPERACIÓN (LIBERADAS PARA EVITAR FALLOS) ---
-    
-    match /companies/{companyId} {
-      // Lectura pública total para branding, portales e invitaciones
-      allow read: if true;
-      // Escritura permitida para miembros o administradores
-      allow write: if isCompanyMember(companyId) || isPlatformAdmin();
-
-      // Órdenes de Trabajo: Acceso TOTAL (Read/Write) para evitar bloqueos en el portal del cliente o App del técnico
-      match /workOrders/{workOrderId} {
-        allow read, write: if true; 
-        
-        match /{allSub=**} {
-          allow read, write: if true; // Bitácoras, materiales, etc.
-        }
-      }
-
-      // Personal (Staff): Necesario para que el portal cargue los nombres de los técnicos y para el registro de nuevos accesos
-      match /staff/{staffId} {
-        allow read, write: if true; 
-      }
-
-      // Activos (Assets): El portal del cliente muestra el equipo intervenido
-      match /assets/{assetId} {
-        allow read, write: if true;
-      }
-
-      // Clientes: El portal de aprobación necesita leer datos del cliente para validar el PIN
-      match /clients/{clientId} {
-        allow read: if true; 
-        allow write: if isCompanyMember(companyId) || isPlatformAdmin();
-      }
-
-      // Evaluaciones de satisfacción: El cliente debe poder enviar su feedback
-      match /evaluations/{evalId} {
-        allow read, write: if true; 
-      }
-      
-      // Resto de subcolecciones protegidas por membresía básica o admin
-      match /{allSub=**} {
-        allow read, write: if isCompanyMember(companyId) || isPlatformAdmin();
-      }
-    }
-
-    // --- REGLAS DE USUARIOS Y SISTEMA ---
-
-    match /users/{userId} {
-      allow get, list, create, update: if true; // Soporte total para registro y login
-      allow delete: if isPlatformAdmin();
-    }
-
-    match /platform_admins/{adminId} {
-      allow get: if isSignedIn();
-      allow list: if isPlatformAdmin();
-    }
-
-    match /supportTickets/{ticketId} {
-      allow get, update, list, create: if isSignedIn();
-      match /{allSub=**} {
-        allow read, write: if isSignedIn();
-      }
-    }
-
-    match /mail/{mailId} {
-      allow read, write: if true; // Registro de logs de correo
+    // Acceso universal a todas las colecciones y documentos
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }

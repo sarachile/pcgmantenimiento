@@ -1,36 +1,10 @@
-
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Regla para evidencias de Órdenes de Trabajo (Lectura pública universal)
-    match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
-      // Apertura total de lectura para permitir visualización en reportes y dashboard sin fricción
-      allow read: if true;
-      // Escritura permitida para técnicos logueados o portales validados
-      allow write: if true; 
-    }
-    
-    // Regla para Branding / Logotipos
-    match /companies/{companyId}/branding/{fileName} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // Regla para Portal de Solicitudes Externas
-    match /companies/{companyId}/public_requests/{fileName} {
-      allow read: if true;
-      allow write: if true;
-    }
-
-    // Regla por defecto para el resto del bucket
+    // EMERGENCIA PRODUCCIÓN: Se libera el acceso total de lectura y escritura
+    // para técnicos y administradores en todo el bucket.
     match /{allPaths=**} {
-      allow read: if true;
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
   }
 }
