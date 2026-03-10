@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, Suspense } from "react";
@@ -24,7 +25,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useAuth } from "@/firebase";
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { StaffMember, Company } from "@/lib/types";
 import { cleanRut } from "@/lib/utils-rut";
@@ -85,9 +86,9 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         const staffData = { ...staffSnap.data() as StaffMember, id: staffId };
         setStaff(staffData);
 
-        // 3. Verificación de cuenta existente en Firestore
-        if (staffData.hasAccount && staffData.userId) {
-          setStep(3); // Ya está activado
+        // Si ya tiene cuenta y no es un flujo de reset, enviarlo al login
+        if (staffData.hasAccount && staffData.userId && !searchParams.get('reset')) {
+          setStep(3); 
           setLoading(false);
           return;
         }
@@ -100,7 +101,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       }
     }
     loadData();
-  }, [firestore, staffId, companyId]);
+  }, [firestore, staffId, companyId, searchParams]);
 
   const handleVerifyIdentity = (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,35 +129,34 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     setIsSubmitting(true);
     try {
       const cleanRutStr = cleanRut(staff.identification || "");
-      // Usar accountVersion para evitar conflictos con emails antiguos borrados
       const version = staff.accountVersion || 0;
-      const email = `${cleanRutStr}_v${version}@${company.id}.staff.pcg`;
+      // Usar un email virtual que incluya la versión para evitar conflictos de cuentas borradas
+      const virtualEmail = `${cleanRutStr}_v${version}@${company.id}.staff.pcg`;
       
       let uid = "";
 
       try {
         // Intentar crear el usuario en Auth
-        const userCredential = await createUserWithEmailAndPassword(auth, email, pinInput);
+        const userCredential = await createUserWithEmailAndPassword(auth, virtualEmail, pinInput);
         uid = userCredential.user.uid;
       } catch (authError: any) {
-        // Si el usuario ya existe en Auth (por un reseteo previo), lo vinculamos
+        // Si el usuario ya existe en Auth (por un reseteo previo o error de red)
         if (authError.code === 'auth/email-already-in-use') {
-          // Intentamos entrar para validar que el PIN funciona o simplemente avisar
           try {
-            const loginCred = await signInWithEmailAndPassword(auth, email, pinInput);
+            const loginCred = await signInWithEmailAndPassword(auth, virtualEmail, pinInput);
             uid = loginCred.user.uid;
           } catch (loginError) {
-            throw new Error("Este RUT ya tiene un PIN asignado. Si no lo recuerda, pida a su administrador que 'Reseteé su Acceso' en el panel de equipo.");
+            throw new Error("Este RUT ya tiene un PIN asignado. Si no lo recuerda, pida a su administrador que 'Reseteé su Acceso' en el panel de equipo para crear uno nuevo.");
           }
         } else {
           throw authError;
         }
       }
 
-      // Crear o Actualizar Perfil de Usuario en Firestore
+      // Crear o Actualizar Perfil de Usuario en Firestore (Permisos liberados en firestore.rules)
       await setDoc(doc(firestore, "users", uid), {
         id: uid,
-        email,
+        email: virtualEmail,
         name: staff.name,
         role: "tecnico",
         companyId: company.id,
@@ -173,6 +173,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         updatedAt: serverTimestamp()
       });
 
+      toast({ title: "Acceso Configurado", description: "Ya puedes usar tu nuevo PIN." });
       setStep(3);
     } catch (error: any) {
       toast({ title: "Error en registro", description: error.message || "No se pudo completar la activación.", variant: "destructive" });
@@ -197,10 +198,10 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
           <CardHeader className="bg-rose-50 p-10 space-y-4">
             <AlertTriangle className="h-12 w-12 text-rose-600 mx-auto" />
             <CardTitle className="text-xl font-black uppercase italic text-rose-900">Invitación Caducada</CardTitle>
-            <CardDescription className="font-bold text-rose-700">El link no es válido o la empresa fue reseteada.</CardDescription>
+            <CardDescription className="font-bold text-rose-700">El link no es válido o los datos fueron reseteados.</CardDescription>
           </CardHeader>
           <CardContent className="p-10 space-y-4">
-            <p className="text-sm text-slate-500 italic">Por favor, pida a su supervisor que genere un nuevo link de invitación desde el panel administrativo.</p>
+            <p className="text-sm text-slate-500 italic">Pida a su supervisor que genere un nuevo link de invitación desde el panel de gestión de equipo.</p>
             <Button className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase" asChild><Link href="/staff/login">Ir al Inicio de Sesión</Link></Button>
           </CardContent>
         </Card>
