@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -45,7 +44,8 @@ import {
   Map as MapIcon,
   Globe,
   Layers,
-  Images
+  Images,
+  Quote
 } from "lucide-react";
 import {
   Dialog,
@@ -223,6 +223,21 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
+          {/* ALCANCE DEL REQUERIMIENTO - PRIORIDAD ALTA */}
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden animate-in fade-in slide-in-from-top-4">
+            <CardHeader className="bg-white/5 p-8 border-b border-white/10">
+              <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3">
+                <Quote className="h-6 w-6 text-blue-400" /> Alcance del Requerimiento
+              </CardTitle>
+              <CardDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Instrucción oficial de servicio</CardDescription>
+            </CardHeader>
+            <CardContent className="p-8">
+              <p className="text-lg font-medium leading-relaxed italic text-blue-50">
+                "{ot.description}"
+              </p>
+            </CardContent>
+          </Card>
+
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
             <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><MapIcon className="h-5 w-5 text-primary" /> Ubicación del Servicio</CardTitle></CardHeader>
             <CardContent className="p-6">

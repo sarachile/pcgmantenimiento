@@ -35,7 +35,8 @@ import {
   ArrowRight,
   PlusCircle,
   AlertTriangle,
-  Save
+  Save,
+  ClipboardList
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -106,17 +107,15 @@ export default function FieldCapturePage() {
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
-  // Validar si el técnico tiene exactamente 1 OT activa para saltar el listado
   useEffect(() => {
     if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
       setSelectedOT(filtered[0]);
     }
   }, [filtered, isOrdersLoading, selectedOT, searchTerm]);
 
-  // Lógica de Validación Estricta para Cierre
   const isChecklistComplete = useMemo(() => {
     if (!selectedOT || !selectedOT.checklist) return false;
-    if (selectedOT.checklist.length === 0) return true; // Si no hay tareas, se considera completable
+    if (selectedOT.checklist.length === 0) return true;
     
     return selectedOT.checklist.every(item => {
       const hasPhotos = (item.evidenceUrls && item.evidenceUrls.length > 0) || (item.evidenceUrl);
@@ -239,8 +238,6 @@ export default function FieldCapturePage() {
   };
 
   const handleSaveProgress = () => {
-    // El progreso se guarda automáticamente en cada foto, 
-    // esta función solo sirve para salir de la vista de la OT actual.
     setSelectedOT(null);
     toast({ title: "Progreso Guardado" });
   };
@@ -323,7 +320,17 @@ export default function FieldCapturePage() {
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-8">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400">
+                {/* SECCIÓN CRÍTICA: REQUERIMIENTO DEL CLIENTE */}
+                <div className="space-y-3 bg-indigo-50/50 p-6 rounded-[2rem] border-2 border-indigo-100 shadow-inner">
+                  <Label className="text-[10px] font-black uppercase text-indigo-600 tracking-widest flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4" /> Requerimiento del Cliente
+                  </Label>
+                  <p className="text-sm text-slate-700 leading-relaxed font-medium italic">
+                    "{selectedOT.description}"
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 px-2">
                   <MapPin className="h-3.5 w-3.5 text-primary" /> {selectedOT.serviceLocation || 'Ubicación no especificada'}
                 </div>
                 
