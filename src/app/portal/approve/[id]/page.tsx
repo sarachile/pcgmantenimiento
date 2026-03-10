@@ -130,6 +130,7 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
     setIsSubmitting(true);
     try {
       const verificationCode = `PCG-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+      const clientName = client?.contactName || "Responsable Mandante";
       
       let evaluationId = null;
       if (ot.evaluationRequired) {
@@ -139,7 +140,7 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
           clientId: ot.clientId,
           companyId: company.id,
           reviewerId: "external_client",
-          reviewerName: client?.contactName || "Responsable Cliente",
+          reviewerName: clientName,
           ratings,
           comment,
           createdAt: serverTimestamp()
@@ -147,14 +148,26 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
         evaluationId = evalDoc.id;
       }
 
+      // 1. Actualizar Orden de Trabajo
       const otRef = doc(firestore, "companies", company.id, "workOrders", ot.id);
       updateDocumentNonBlocking(otRef, {
-        clientApprovalName: client?.contactName || "Responsable Cliente",
+        clientApprovalName: clientName,
         clientApprovalDate: serverTimestamp(),
         clientApprovalCode: verificationCode,
         evaluationId: evaluationId,
         status: 'aprobada',
         updatedAt: serverTimestamp()
+      });
+
+      // 2. Registrar en Bitácora Técnica
+      const logCol = collection(firestore, "companies", company.id, "workOrders", ot.id, "digitalLogbookEntries");
+      await addDoc(logCol, {
+        workOrderId: ot.id,
+        companyId: company.id,
+        timestamp: serverTimestamp(),
+        eventType: 'status_change',
+        eventDetails: `Servicio aprobado digitalmente por el cliente: ${clientName}. Sello: ${verificationCode}.`,
+        actor: "EXTERNAL_PORTAL"
       });
 
       setStep(4);
@@ -183,6 +196,17 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
         status: 'rechazada',
         rejectedReason: rejectionReason.trim(),
         updatedAt: serverTimestamp()
+      });
+
+      // Registrar rechazo en bitácora
+      const logCol = collection(firestore, "companies", company.id, "workOrders", ot.id, "digitalLogbookEntries");
+      await addDoc(logCol, {
+        workOrderId: ot.id,
+        companyId: company.id,
+        timestamp: serverTimestamp(),
+        eventType: 'status_change',
+        eventDetails: `El cliente rechazó el servicio mediante el portal. Motivo: ${rejectionReason.trim()}`,
+        actor: "EXTERNAL_PORTAL"
       });
 
       setStep(5);
@@ -298,7 +322,6 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
               </CardHeader>
               <CardContent className="p-8 space-y-10">
                 
-                {/* SECCIÓN 1: IDENTIFICACIÓN TÉCNICA */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 shadow-inner space-y-4">
                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -321,7 +344,6 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
                   </div>
                 </div>
 
-                {/* SECCIÓN 2: ALCANCE TÉCNICO */}
                 <div className="space-y-4">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
                     <ClipboardList className="h-4 w-4" /> Alcance del Trabajo Realizado
@@ -331,7 +353,6 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
                   </div>
                 </div>
 
-                {/* SECCIÓN 3: PARTIDAS Y MAGNITUDES (NUEVO) */}
                 {ot.serviceItems && ot.serviceItems.length > 0 && (
                   <div className="space-y-4">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
@@ -348,7 +369,6 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
                   </div>
                 )}
 
-                {/* SECCIÓN 4: PROTOCOLO TÉCNICO (NUEVO) */}
                 {ot.checklist && ot.checklist.length > 0 && (
                   <div className="space-y-4 pt-4 border-t border-dashed">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
@@ -367,7 +387,6 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
                   </div>
                 )}
 
-                {/* SECCIÓN 5: PERSONAL TÉCNICO (NUEVO) */}
                 {staff.length > 0 && (
                   <div className="space-y-4 pt-4 border-t border-dashed">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">
@@ -383,7 +402,6 @@ function ExternalApprovalContent({ params }: { params: { id: string } }) {
                   </div>
                 )}
 
-                {/* SECCIÓN 6: EVIDENCIAS */}
                 {ot.evidenceUrls && ot.evidenceUrls.length > 0 && (
                   <div className="space-y-4 pt-4 border-t border-dashed">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2 pl-1">

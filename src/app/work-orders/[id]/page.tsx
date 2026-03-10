@@ -49,7 +49,8 @@ import {
   Quote,
   ExternalLink,
   Mail,
-  QrCode
+  QrCode,
+  ShieldCheck
 } from "lucide-react";
 import {
   Dialog,
@@ -181,7 +182,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     setIsUpdating(true);
     try {
       if (ot.reviewerRequired) {
-        // Pasar a validación externa
         updateDocumentNonBlocking(otRef, { 
           status: 'pendiente cliente', 
           updatedAt: serverTimestamp() 
@@ -199,7 +199,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
         toast({ title: "Orden Visada", description: "Estado: Pendiente Cliente. Link de aprobación habilitado." });
       } else {
-        // Aprobación interna inmediata
         const verificationCode = `ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
         updateDocumentNonBlocking(otRef, { 
           status: 'aprobada', 
@@ -409,13 +408,49 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {/* PANEL DE VALIDACIÓN EXTERNA (SI ESTÁ HABILITADO) */}
-          {ot.reviewerRequired && (ot.status === 'pendiente cliente' || ot.status === 'aprobada' || ot.status === 'en revision') && (
+          {/* PANEL DE CERTIFICACIÓN DIGITAL (SI EXISTEN FIRMAS) */}
+          {(ot.technicianApprovalCode || ot.clientApprovalCode) && (
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden animate-in fade-in duration-700">
+              <CardHeader className="bg-emerald-50 border-b border-emerald-100 p-8">
+                <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3 text-emerald-900">
+                  <ShieldCheck className="h-6 w-6 text-emerald-600" /> Sello de Certificación Digital
+                </CardTitle>
+                <CardDescription className="text-emerald-700 font-medium">Validación inalterable de los servicios realizados.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {ot.technicianApprovalCode && (
+                  <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-slate-100 relative overflow-hidden">
+                    <div className="absolute right-4 top-4 opacity-5"><HardHat className="h-12 w-12" /></div>
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-4">Validación Técnica</p>
+                    <p className="text-sm font-black text-slate-900 mb-1">{ot.technicianApprovalName}</p>
+                    <div className="bg-white px-3 py-1.5 rounded-lg border-2 border-dashed inline-block mb-3">
+                      <code className="text-xs font-mono font-black text-emerald-600">{ot.technicianApprovalCode}</code>
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase">{formatDateLabel(ot.technicianApprovalDate || ot.executedAt)}</p>
+                  </div>
+                )}
+                {ot.clientApprovalCode && (
+                  <div className="bg-indigo-50/30 p-6 rounded-[2rem] border-2 border-indigo-100 relative overflow-hidden">
+                    <div className="absolute right-4 top-4 opacity-5"><Fingerprint className="h-12 w-12" /></div>
+                    <p className="text-[10px] font-black uppercase text-indigo-400 tracking-widest mb-4">Aprobación Mandante</p>
+                    <p className="text-sm font-black text-slate-900 mb-1">{ot.clientApprovalName}</p>
+                    <div className="bg-white px-3 py-1.5 rounded-lg border-2 border-dashed inline-block mb-3">
+                      <code className="text-xs font-mono font-black text-indigo-600">{ot.clientApprovalCode}</code>
+                    </div>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase">{formatDateLabel(ot.clientApprovalDate)}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* PANEL DE VALIDACIÓN EXTERNA (SI ESTÁ HABILITADO Y PENDIENTE) */}
+          {ot.reviewerRequired && ot.status === 'pendiente cliente' && (
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-indigo-600 text-white overflow-hidden animate-in zoom-in-95 duration-500">
               <CardHeader className="bg-white/10 p-8 border-b border-white/10">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3">
-                    <Fingerprint className="h-6 w-6 text-indigo-300" /> Validación Mandante
+                    <Fingerprint className="h-6 w-6 text-indigo-300" /> Solicitud de Aprobación
                   </CardTitle>
                   <Badge className="bg-white text-indigo-600 font-black text-[10px] uppercase">Portal Digital Activo</Badge>
                 </div>
@@ -424,7 +459,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                 <div className="grid md:grid-cols-2 gap-10 items-center">
                   <div className="space-y-6">
                     <div className="space-y-2">
-                      <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Link de Aprobación</p>
+                      <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Link de Acceso para Cliente</p>
                       <div className="flex gap-2">
                         <Input value={currentUrl} readOnly className="bg-white/10 border-white/20 text-white h-11 rounded-xl text-xs font-mono" />
                         <Button size="icon" variant="ghost" className="h-11 w-11 rounded-xl bg-white/10 hover:bg-white/20" onClick={() => { navigator.clipboard.writeText(currentUrl); toast({ title: "Link Copiado" }); }}>
