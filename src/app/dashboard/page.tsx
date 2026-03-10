@@ -315,6 +315,7 @@ export default function DashboardPage() {
           <p className="text-muted-foreground font-medium">Resumen operativo de {company?.name}.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button asChild variant="outline" className="h-11 px-6 rounded-xl shadow-sm font-black gap-2 bg-white"><Link href="/work-orders"><ClipboardList className="h-5 w-5" /> Ver Órdenes</Link></Button>
           <Button asChild className="h-11 px-6 rounded-xl shadow-lg font-black gap-2"><Link href="/work-orders/new"><Plus className="h-5 w-5" /> Nueva OT</Link></Button>
         </div>
       </div>
