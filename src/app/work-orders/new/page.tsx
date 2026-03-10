@@ -329,7 +329,19 @@ function NewWorkOrderContent() {
                 <Select value={serviceUnit} onValueChange={setServiceUnit}>
                   <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {["Unidades", "Metros", "Kg", "Lt", "Hr"].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                    {[
+                      "Unidades", 
+                      "Metros (m)", 
+                      "Metros Cuadrados (m2)", 
+                      "Metros Cúbicos (m3)", 
+                      "Kilogramos (kg)", 
+                      "Litros (lt)", 
+                      "Horas (hr)", 
+                      "Jornadas", 
+                      "Visitas", 
+                      "Puntos", 
+                      "Global (gl)"
+                    ].map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
