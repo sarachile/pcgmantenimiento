@@ -41,33 +41,50 @@ service cloud.firestore {
     }
 
     // --- REGLAS DE ACCESO PÚBLICO (PARA INVITACIONES Y PORTALES) ---
-    // Permite que un técnico sin sesión lea su invitación o que un cliente vea su portal.
     
     match /companies/{companyId} {
+      // Permitir que cualquier persona con el link vea el nombre/branding de la empresa
       allow get: if true;
       allow list: if isSignedIn();
 
       match /staff/{staffId} {
-        allow get: if true;
+        // Vital para el proceso de invitación por WhatsApp
+        allow get: if true; 
         allow list: if isCompanyMember(companyId);
         allow write: if isCompanyMember(companyId) || isSignedIn();
       }
 
       match /clients/{clientId} {
+        // Permitir que el portal de autogestión valide al cliente
         allow get: if true;
         allow list: if isCompanyMember(companyId);
         allow write: if isCompanyMember(companyId);
       }
 
       match /workOrders/{workOrderId} {
+        // El portal de aprobación y solicitud es público mediante ID largo (token)
         allow get: if true;
         allow list: if isCompanyMember(companyId);
         allow create: if isCompanyMember(companyId) || (request.resource.data.status == 'solicitada');
         allow update: if isCompanyMember(companyId) || isSignedIn() || (resource.data.status == 'pendiente cliente');
         
         match /digitalLogbookEntries/{entryId} {
-          allow read, write: if isCompanyMember(companyId) || isSignedIn();
+          allow read, write: if isCompanyMember(companyId) || isSignedIn() || true; // Permitir log desde portal
         }
+        
+        match /partUsages/{usageId} {
+          allow read, write: if isCompanyMember(companyId);
+        }
+      }
+      
+      match /assets/{assetId} {
+        allow get: if true; // Para ver equipo en portal de aprobación
+        allow list, write: if isCompanyMember(companyId);
+      }
+
+      match /evaluations/{evalId} {
+        allow create: if true; // Permitir feedback desde portal externo
+        allow read, write: if isCompanyMember(companyId);
       }
       
       // Resto de subcolecciones protegidas
@@ -79,9 +96,10 @@ service cloud.firestore {
     // --- REGLAS DE USUARIOS ---
 
     match /users/{userId} {
-      allow get: if isSignedIn();
-      // Permitir búsqueda limitada durante el login técnico
-      allow list: if isSignedIn() || (request.query.limit <= 5);
+      // Necesario para verificar perfiles durante login y registro
+      allow get: if true;
+      // Permitir búsqueda por RUT durante el login técnico sin sesión iniciada
+      allow list: if true; 
       allow create: if true; 
       allow update: if isOwner(userId) || isPlatformAdmin();
       allow delete: if isPlatformAdmin();

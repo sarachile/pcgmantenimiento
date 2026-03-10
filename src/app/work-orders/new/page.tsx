@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
@@ -13,7 +14,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowLeft, 
@@ -21,17 +21,13 @@ import {
   ClipboardPlus, 
   Plus, 
   Users, 
-  Search, 
-  QrCode, 
-  Star, 
-  MapPin, 
-  User, 
   Edit2, 
   Trash2,
-  Info,
   Camera,
   ShieldCheck,
-  Globe
+  Globe,
+  QrCode,
+  Star
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -100,18 +96,24 @@ function NewWorkOrderContent() {
   const clients = useMemo(() => (rawClients || []).filter(c => !c.isDeleted), [rawClients]);
   const assets = useMemo(() => (rawAssets || []).filter(a => !a.isDeleted), [rawAssets]);
 
-  // Auto-fill client defaults
+  // Auto-fill client defaults con lógica de sincronización para Comuna
   useEffect(() => {
     if (!isEditing && !duplicateFrom && clientId && clients) {
       const selectedClient = clients.find(c => c.id === clientId);
       if (selectedClient) {
+        // Actualizamos por etapas para permitir que los Selects reaccionen
         setRegion(selectedClient.region || "");
-        setCity(selectedClient.city || "");
-        setCommune(selectedClient.commune || "");
-        setStreet(selectedClient.street || "");
-        setStreetNumber(selectedClient.streetNumber || "");
-        setComplement(selectedClient.complement || "");
-        setRequestedByName(selectedClient.contactName || "");
+        
+        // Pequeño delay para que el Select de Ciudad/Comuna cargue sus opciones basadas en la región
+        setTimeout(() => {
+          setCity(selectedClient.city || "");
+          setCommune(selectedClient.commune || "");
+          setStreet(selectedClient.street || "");
+          setStreetNumber(selectedClient.streetNumber || "");
+          setComplement(selectedClient.complement || "");
+          setRequestedByName(selectedClient.contactName || "");
+        }, 10);
+
         toast({ title: "Dirección de cliente cargada" });
       }
     }
