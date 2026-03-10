@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, serverTimestamp, query, where, doc, getDoc, setDoc } from "firebase/firestore";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,15 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { 
   ArrowLeft, 
   Loader2, 
@@ -28,7 +37,10 @@ import {
   QrCode,
   Star,
   Layers,
-  LayoutList
+  LayoutList,
+  UserPlus,
+  Building2,
+  MapPin
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -65,15 +77,15 @@ function NewWorkOrderContent() {
   const duplicateFrom = searchParams.get('duplicateFrom');
   const isEditing = !!editId;
 
+  // OT State
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState("");
   const [assetId, setAssetId] = useState("");
   const [requestedByName, setRequestedByName] = useState("");
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
-  const [assignedTeamId, setAssignedTeamId] = useState<string | null>(null);
-  const [assignmentMode, setAssignmentMode] = useState<'team' | 'individual'>('individual');
   const [status, setStatus] = useState<any>("creada");
   
+  // Location State
   const [region, setRegion] = useState("");
   const [city, setCity] = useState(""); 
   const [commune, setCommune] = useState("");
@@ -91,7 +103,16 @@ function NewWorkOrderContent() {
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
   const [checklist, setChecklist] = useState<{task: string}[]>([]);
 
+  // New Client Dialog State
+  const [isClientDialogOpen, setIsClientOpen] = useState(false);
+  const [newClientData, setNewClientData] = useState({
+    name: "", rut: "", region: "", city: "", commune: "", 
+    street: "", streetNumber: "", complement: "", 
+    contactName: "", contactEmail: "" 
+  });
+
   const selectedRegion = useMemo(() => CHILE_REGIONS.find(r => r.name === region), [region]);
+  const newClientSelectedRegion = useMemo(() => CHILE_REGIONS.find(r => r.name === newClientData.region), [newClientData.region]);
 
   useEffect(() => {
     if (!isEditing) setScheduledDate(format(new Date(), 'yyyy-MM-dd'));
@@ -182,6 +203,39 @@ function NewWorkOrderContent() {
     setServiceItems(prev => prev.filter(item => item.id !== id));
   };
 
+  const handleCreateQuickClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !companyId) return;
+
+    const fullAddress = `${newClientData.street} ${newClientData.streetNumber}${newClientData.complement ? ', ' + newClientData.complement : ''}, ${newClientData.commune}, ${newClientData.city}, ${newClientData.region}`;
+
+    const dataToSave = {
+      ...newClientData,
+      address: fullAddress,
+      companyId: companyId,
+      evaluationEnabled: true,
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      const colRef = collection(db, "companies", companyId, "clients");
+      const clientRef = await addDocumentNonBlocking(colRef, dataToSave);
+      
+      if (clientRef) {
+        toast({ title: "Cliente Registrado", description: "El cliente ha sido guardado y seleccionado automáticamente." });
+        setClientId(clientRef.id);
+        setIsClientOpen(false);
+        setNewClientData({ 
+          name: "", rut: "", region: "", city: "", commune: "", 
+          street: "", streetNumber: "", complement: "", 
+          contactName: "", contactEmail: "" 
+        });
+      }
+    } catch (e: any) {
+      toast({ title: "Error al crear cliente", description: e.message, variant: "destructive" });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -269,7 +323,74 @@ function NewWorkOrderContent() {
           <CardContent className="p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cliente / Entidad *</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cliente / Entidad *</Label>
+                  <Dialog open={isClientDialogOpen} onOpenChange={setIsClientOpen}>
+                    <DialogTrigger asChild>
+                      <Button type="button" variant="link" className="h-auto p-0 text-[10px] font-black uppercase text-primary flex items-center gap-1">
+                        <UserPlus className="h-3 w-3" /> Nuevo Cliente
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[2.5rem]">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-black italic uppercase">Creación Rápida de Cliente</DialogTitle>
+                        <DialogDescription>El nuevo mandante quedará guardado automáticamente en su base de datos.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-6 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-400">Razón Social *</Label>
+                            <Input placeholder="Nombre Empresa / Particular" value={newClientData.name} onChange={(e) => setNewClientData({...newClientData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-400">RUT *</Label>
+                            <Input placeholder="76.000.000-0" value={newClientData.rut} onChange={(e) => setNewClientData({...newClientData, rut: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 border-t pt-6">
+                          <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2"><Globe className="h-4 w-4" /> Ubicación Matriz</p>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase text-slate-400">Región</Label>
+                              <Select value={newClientData.region} onValueChange={(v) => setNewClientData({...newClientData, region: v, city: "", commune: ""})}>
+                                <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Región" /></SelectTrigger>
+                                <SelectContent>{CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}</SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase text-slate-400">Ciudad</Label>
+                              <Select value={newClientData.city} onValueChange={(v) => setNewClientData({...newClientData, city: v})} disabled={!newClientData.region}>
+                                <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Ciudad" /></SelectTrigger>
+                                <SelectContent>{newClientSelectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase text-slate-400">Comuna</Label>
+                              <Select value={newClientData.commune} onValueChange={(v) => setNewClientData({...newClientData, commune: v})} disabled={!newClientData.region}>
+                                <SelectTrigger className="h-11 border-2 rounded-xl"><SelectValue placeholder="Comuna" /></SelectTrigger>
+                                <SelectContent>{newClientSelectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="col-span-2 space-y-2">
+                              <Label className="text-[9px] font-black uppercase text-slate-400">Calle</Label>
+                              <Input placeholder="Ej: Av. Providencia" value={newClientData.street} onChange={(e) => setNewClientData({...newClientData, street: e.target.value})} className="h-11 border-2 rounded-xl" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase text-slate-400">N°</Label>
+                              <Input placeholder="1234" value={newClientData.streetNumber} onChange={(e) => setNewClientData({...newClientData, streetNumber: e.target.value})} className="h-11 border-2 rounded-xl" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" onClick={handleCreateQuickClient}>Registrar y Seleccionar</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="Seleccione cliente..." /></SelectTrigger>
                   <SelectContent>{clients?.map(c => <SelectItem key={c.id} value={c.id} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
