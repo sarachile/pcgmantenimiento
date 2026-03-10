@@ -70,6 +70,7 @@ export default function DashboardPage() {
     setToday(startOfDay(new Date()));
   }, []);
 
+  const isAdminOrSupervisor = isCompanyAdmin || isSupervisor;
   const companyId = profile?.companyId || "";
 
   const workOrdersQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "workOrders") : null, [db, companyId]);
@@ -318,10 +319,10 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ALERTAS OPERATIVAS */}
+      {/* ALERTAS OPERATIVAS - REDISEÑADAS */}
       {(stats.alertCount > 0 || iotStats.maintenanceCount > 0 || stats.reviewPending > 0) && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {stats.reviewPending > 0 && (isAdminOrSupervisor) && (
+          {stats.reviewPending > 0 && isAdminOrSupervisor && (
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-amber-500 text-white overflow-hidden border-l-[12px] border-amber-600 animate-in slide-in-from-left-4">
               <CardHeader className="bg-amber-600/20 p-6 border-b border-amber-600/10">
                 <div className="flex items-center justify-between">
@@ -336,8 +337,8 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="p-6">
                 <p className="text-xs font-medium mb-4">Tienes trabajos terminados que requieren tu validación técnica para cerrar el ciclo.</p>
-                <Button asChild variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-[10px] tracking-widest">
-                  <Link href="/reviews">Ir a Centro de Revisiones</Link>
+                <Button asChild variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-[10px] tracking-widest h-12 rounded-xl">
+                  <Link href="/reviews">Ir a Centro de Revisiones <ArrowRight className="ml-2 h-3 w-3" /></Link>
                 </Button>
               </CardContent>
             </Card>
