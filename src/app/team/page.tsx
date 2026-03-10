@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useMemo } from "react";
@@ -35,7 +36,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/tabs";
+} from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
