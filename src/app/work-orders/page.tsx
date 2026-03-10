@@ -33,6 +33,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { 
   Search, 
   Filter, 
@@ -54,7 +60,10 @@ import {
   X,
   AlertTriangle,
   Clock,
-  Timer
+  Timer,
+  History,
+  RefreshCcw,
+  Archive
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
@@ -77,6 +86,7 @@ export default function WorkOrdersPage() {
   const [clientFilter, setClientFilter] = useState<string>("all");
   const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState("active"); // 'active' | 'archived'
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -98,14 +108,25 @@ export default function WorkOrdersPage() {
   const handleDelete = (id: string) => {
     if (!profile?.companyId) return;
     const docRef = doc(db!, "companies", profile.companyId, "workOrders", id);
-    // SOFT DELETE para mantener trazabilidad
     updateDocumentNonBlocking(docRef, { isDeleted: true, updatedAt: serverTimestamp() });
     toast({ title: "Orden archivada", description: "La orden ha sido movida al histórico por seguridad." });
   };
 
+  const handleRestore = (id: string) => {
+    if (!profile?.companyId) return;
+    const docRef = doc(db!, "companies", profile.companyId, "workOrders", id);
+    updateDocumentNonBlocking(docRef, { isDeleted: false, updatedAt: serverTimestamp() });
+    toast({ title: "Orden restaurada", description: "La orden ha vuelto al panel de operaciones activas." });
+  };
+
   const workOrders = useMemo(() => {
     if (!rawWorkOrders) return [];
-    let list = rawWorkOrders.filter(ot => !ot.isDeleted); // Filtrar borrados lógicamente
+    
+    // Filtrar según la pestaña activa (Activas vs Archivadas)
+    let list = rawWorkOrders.filter(ot => {
+      if (activeTab === 'archived') return ot.isDeleted === true;
+      return ot.isDeleted !== true;
+    });
     
     if (isTechnician && profile) {
       return list.filter(ot => 
@@ -114,7 +135,7 @@ export default function WorkOrdersPage() {
       );
     }
     return list;
-  }, [rawWorkOrders, isTechnician, profile]);
+  }, [rawWorkOrders, isTechnician, profile, activeTab]);
 
   const filteredOTs = useMemo(() => {
     return workOrders.filter(ot => {
@@ -189,285 +210,292 @@ export default function WorkOrdersPage() {
           <Button variant="ghost" size="icon" asChild className="rounded-full h-12 w-12 hover:bg-slate-100 transition-colors"><Link href="/dashboard"><ArrowLeft className="h-5 w-5" /></Link></Button>
           <div>
             <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic">
-              {isTechnician ? "Mis Servicios Asignados" : "Órdenes de Trabajo"}
+              {activeTab === 'archived' ? "Archivo Histórico" : (isTechnician ? "Mis Servicios Asignados" : "Órdenes de Trabajo")}
             </h2>
             <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">
-              {isTechnician ? "Hoja de ruta y protocolos" : "Gestión Operacional y Trazabilidad"}
+              {activeTab === 'archived' ? "Respaldo de auditoría y trabajos archivados" : (isTechnician ? "Hoja de ruta y protocolos" : "Gestión Operacional y Trazabilidad")}
             </p>
           </div>
         </div>
-        {!isTechnician && (
+        {!isTechnician && activeTab === 'active' && (
           <Button asChild className="h-12 px-8 rounded-xl shadow-xl shadow-primary/20 font-black gap-2 hover:scale-105 transition-transform">
             <Link href="/work-orders/new"><Plus className="h-5 w-5" /> Generar Nueva OT</Link>
           </Button>
         )}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card className="border-none shadow-sm rounded-3xl bg-blue-600 text-white overflow-hidden relative group">
-          <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Target className="h-20 w-20" /></div>
-          <CardContent className="p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">En Ejecución</p>
-            <p className="text-4xl font-black tracking-tighter italic">{workOrders.filter(o => o.status !== 'aprobada').length}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-sm rounded-3xl bg-emerald-600 text-white overflow-hidden relative group">
-          <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><ShieldCheck className="h-20 w-20" /></div>
-          <CardContent className="p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Finalizadas</p>
-            <p className="text-4xl font-black tracking-tighter italic">{workOrders.filter(o => o.status === 'aprobada').length}</p>
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-sm rounded-3xl bg-slate-900 text-white overflow-hidden relative group">
-          <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-20 w-20 text-amber-400" /></div>
-          <CardContent className="p-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 opacity-70">Meta de Cumplimiento</p>
-            <p className="text-4xl font-black tracking-tighter italic">94%</p>
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <TabsList className="bg-white p-1 rounded-2xl h-14 border shadow-sm w-full sm:w-auto">
+            <TabsTrigger value="active" className="rounded-xl px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">
+              <Zap className="h-4 w-4 mr-2" /> Operativas
+            </TabsTrigger>
+            <TabsTrigger value="archived" className="rounded-xl px-8 font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-slate-900 data-[state=active]:text-white">
+              <Archive className="h-4 w-4 mr-2" /> Histórico
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 bg-white px-4 py-2 rounded-xl border">
+            <Clock className="h-3 w-3 text-primary" /> Mostrando: {filteredOTs.length} resultados
+          </div>
+        </div>
 
-      <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-        <CardHeader className="p-8 pb-4 border-b border-slate-50">
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative flex-1 w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <Input 
-                  placeholder="Buscar por ID, mandante o descripción técnica..." 
-                  className="pl-12 h-14 border-none bg-slate-50 rounded-2xl text-base font-medium focus-visible:ring-primary shadow-inner"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2 w-full sm:w-auto">
-                <Button 
-                  variant={showFilters ? "default" : "outline"} 
-                  className={cn("h-14 px-6 rounded-2xl border-slate-100 flex-1 sm:flex-none", showFilters ? "bg-slate-900 text-white" : "bg-slate-50")}
-                  onClick={() => setShowFilters(!showFilters)}
-                >
-                  <Filter className={cn("h-5 w-5 mr-2", showFilters && "text-blue-400")} />
-                  {showFilters ? "Ocultar Filtros" : "Filtros Avanzados"}
-                </Button>
-                {hasActiveFilters && (
+        <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+          <CardHeader className="p-8 pb-4 border-b border-slate-50">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="relative flex-1 w-full">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input 
+                    placeholder="Buscar por ID, mandante o descripción técnica..." 
+                    className="pl-12 h-14 border-none bg-slate-50 rounded-2xl text-base font-medium focus-visible:ring-primary shadow-inner"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
                   <Button 
-                    variant="ghost" 
-                    className="h-14 w-14 rounded-2xl text-rose-500 hover:bg-rose-50 hover:text-rose-600"
-                    onClick={resetFilters}
-                    title="Limpiar Filtros"
+                    variant={showFilters ? "default" : "outline"} 
+                    className={cn("h-14 px-6 rounded-2xl border-slate-100 flex-1 sm:flex-none", showFilters ? "bg-slate-900 text-white" : "bg-slate-50")}
+                    onClick={() => setShowFilters(!showFilters)}
                   >
-                    <X className="h-6 w-6" />
+                    <Filter className={cn("h-5 w-5 mr-2", showFilters && "text-blue-400")} />
+                    {showFilters ? "Ocultar Filtros" : "Filtros Avanzados"}
                   </Button>
+                  {hasActiveFilters && (
+                    <Button 
+                      variant="ghost" 
+                      className="h-14 w-14 rounded-2xl text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                      onClick={resetFilters}
+                      title="Limpiar Filtros"
+                    >
+                      <X className="h-6 w-6" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {showFilters && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100 animate-in fade-in slide-in-from-top-2">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Estado de Orden</Label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
+                        <SelectValue placeholder="Todos los estados" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los estados</SelectItem>
+                        <SelectItem value="solicitada">Solicitada</SelectItem>
+                        <SelectItem value="creada">Creada</SelectItem>
+                        <SelectItem value="asignada">Asignada</SelectItem>
+                        <SelectItem value="en proceso">En Proceso</SelectItem>
+                        <SelectItem value="ejecutada">Ejecutada</SelectItem>
+                        <SelectItem value="en revision">En Revisión</SelectItem>
+                        <SelectItem value="pendiente cliente">Pendiente Cliente</SelectItem>
+                        <SelectItem value="aprobada">Aprobada</SelectItem>
+                        <SelectItem value="rechazada">Rechazada</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Filtrar por Cliente</Label>
+                    <Select value={clientFilter} onValueChange={setClientFilter}>
+                      <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
+                        <SelectValue placeholder="Todos los clientes" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos los clientes</SelectItem>
+                        {clients?.filter(c => !c.isDeleted).map(c => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nivel de Urgencia</Label>
+                    <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
+                      <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
+                        <SelectValue placeholder="Cualquier urgencia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Cualquier urgencia</SelectItem>
+                        <SelectItem value="low">Baja</SelectItem>
+                        <SelectItem value="medium">Media</SelectItem>
+                        <SelectItem value="high">Urgente</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {isOrdersLoading ? (
+              <div className="py-32 text-center space-y-4">
+                <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary/20" />
+                <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Sincronizando Órdenes de Trabajo</p>
+              </div>
+            ) : filteredOTs.length === 0 ? (
+              <div className="py-32 text-center max-w-sm mx-auto space-y-6">
+                <div className="bg-slate-50 p-8 rounded-full w-fit mx-auto"><AlertCircle className="h-16 w-16 text-slate-200" /></div>
+                <div>
+                  <p className="text-xl font-black italic tracking-tighter uppercase">
+                    {activeTab === 'archived' ? "Histórico Vacío" : "Sin resultados"}
+                  </p>
+                  <p className="text-sm text-slate-400 font-medium">
+                    {hasActiveFilters 
+                      ? "Ninguna orden coincide con los filtros aplicados. Intenta ajustar los parámetros." 
+                      : (activeTab === 'archived' ? "No se han encontrado órdenes en el archivo histórico." : (isTechnician ? "No tienes órdenes asignadas actualmente." : "Comienza generando tu primera Orden de Trabajo."))
+                    }
+                  </p>
+                </div>
+                {!isTechnician && !hasActiveFilters && activeTab === 'active' && (
+                  <Button asChild className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full"><Link href="/work-orders/new">Generar Primera OT</Link></Button>
+                )}
+                {hasActiveFilters && (
+                  <Button variant="outline" className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full" onClick={resetFilters}>Limpiar Filtros</Button>
                 )}
               </div>
-            </div>
-
-            {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100 animate-in fade-in slide-in-from-top-2">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Estado de Orden</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
-                      <SelectValue placeholder="Todos los estados" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos los estados</SelectItem>
-                      <SelectItem value="solicitada">Solicitada</SelectItem>
-                      <SelectItem value="creada">Creada</SelectItem>
-                      <SelectItem value="asignada">Asignada</SelectItem>
-                      <SelectItem value="en proceso">En Proceso</SelectItem>
-                      <SelectItem value="ejecutada">Ejecutada</SelectItem>
-                      <SelectItem value="en revision">En Revisión</SelectItem>
-                      <SelectItem value="pendiente cliente">Pendiente Cliente</SelectItem>
-                      <SelectItem value="aprobada">Aprobada</SelectItem>
-                      <SelectItem value="rechazada">Rechazada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Filtrar por Cliente</Label>
-                  <Select value={clientFilter} onValueChange={setClientFilter}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
-                      <SelectValue placeholder="Todos los clientes" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos los clientes</SelectItem>
-                      {clients?.filter(c => !c.isDeleted).map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nivel de Urgencia</Label>
-                  <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
-                      <SelectValue placeholder="Cualquier urgencia" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Cualquier urgencia</SelectItem>
-                      <SelectItem value="low">Baja</SelectItem>
-                      <SelectItem value="medium">Media</SelectItem>
-                      <SelectItem value="high">Urgente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isOrdersLoading ? (
-            <div className="py-32 text-center space-y-4">
-              <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary/20" />
-              <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">Sincronizando Órdenes de Trabajo</p>
-            </div>
-          ) : filteredOTs.length === 0 ? (
-            <div className="py-32 text-center max-w-sm mx-auto space-y-6">
-              <div className="bg-slate-50 p-8 rounded-full w-fit mx-auto"><AlertCircle className="h-16 w-16 text-slate-200" /></div>
-              <div>
-                <p className="text-xl font-black italic tracking-tighter uppercase">Sin resultados</p>
-                <p className="text-sm text-slate-400 font-medium">
-                  {hasActiveFilters 
-                    ? "Ninguna orden coincide con los filtros aplicados. Intenta ajustar los parámetros." 
-                    : (isTechnician ? "No tienes órdenes asignadas actualmente." : "Comienza generando tu primera Orden de Trabajo.")
-                  }
-                </p>
-              </div>
-              {!isTechnician && !hasActiveFilters && (
-                <Button asChild className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full"><Link href="/work-orders/new">Generar Primera OT</Link></Button>
-              )}
-              {hasActiveFilters && (
-                <Button variant="outline" className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full" onClick={resetFilters}>Limpiar Filtros</Button>
-              )}
-            </div>
-          ) : (
-            <Accordion type="multiple" defaultValue={[groupedOTs[0]?.[0]]} className="w-full">
-              {groupedOTs.map(([monthKey, group]) => (
-                <AccordionItem key={monthKey} value={monthKey} className="border-b last:border-0">
-                  <AccordionTrigger className="hover:no-underline py-6 px-8 group bg-slate-50/30">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 group-data-[state=open]:bg-primary group-data-[state=open]:text-white transition-all">
-                        <CalendarDays className="h-5 w-5" />
+            ) : (
+              <Accordion type="multiple" defaultValue={[groupedOTs[0]?.[0]]} className="w-full">
+                {groupedOTs.map(([monthKey, group]) => (
+                  <AccordionItem key={monthKey} value={monthKey} className="border-b last:border-0">
+                    <AccordionTrigger className="hover:no-underline py-6 px-8 group bg-slate-50/30">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 group-data-[state=open]:bg-primary group-data-[state=open]:text-white transition-all">
+                          <CalendarDays className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                          <span className="text-lg font-black uppercase tracking-tighter text-slate-900 italic leading-none block">{group.label}</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.orders.length} Servicios procesados</span>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <span className="text-lg font-black uppercase tracking-tighter text-slate-900 italic leading-none block">{group.label}</span>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.orders.length} Servicios procesados</span>
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader className="bg-slate-50/50">
-                          <TableRow className="border-none">
-                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] pl-8 h-12">ID / Operativo</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Mandante / Entidad</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Descripción Alcance</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-center">Prioridad</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Estado</TableHead>
-                            <TableHead className="text-right font-black uppercase text-[10px] tracking-[0.2em] pr-8">Acción</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {group.orders.map((ot) => {
-                            const client = clients?.find(c => c.id === ot.clientId);
-                            const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
-                            return (
-                              <TableRow key={ot.id} className="hover:bg-slate-50 transition-colors border-slate-100 group">
-                                <TableCell className="pl-8 py-6">
-                                  <div className="flex flex-col">
-                                    <span className="font-black text-primary text-base tracking-tighter italic leading-none">{ot.id}</span>
-                                    <span className="text-[10px] font-bold text-slate-400 mt-1">{format(date, "dd MMM, yyyy", { locale: es })}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-3">
-                                    <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-white transition-colors"><Building2 className="h-4 w-4 text-slate-500" /></div>
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="font-bold text-slate-900 text-sm truncate max-w-[180px]">{client?.name || '...' }</span>
-                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{client?.rut || '-'}</span>
+                    </AccordionTrigger>
+                    <AccordionContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader className="bg-slate-50/50">
+                            <TableRow className="border-none">
+                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] pl-8 h-12">ID / Operativo</TableHead>
+                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Mandante / Entidad</TableHead>
+                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Descripción Alcance</TableHead>
+                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-center">Prioridad</TableHead>
+                              <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Estado</TableHead>
+                              <TableHead className="text-right font-black uppercase text-[10px] tracking-[0.2em] pr-8">Acción</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {group.orders.map((ot) => {
+                              const client = clients?.find(c => c.id === ot.clientId);
+                              const date = ot.createdAt?.toDate ? ot.createdAt.toDate() : (typeof ot.createdAt === 'string' ? parseISO(ot.createdAt) : new Date());
+                              return (
+                                <TableRow key={ot.id} className="hover:bg-slate-50 transition-colors border-slate-100 group">
+                                  <TableCell className="pl-8 py-6">
+                                    <div className="flex flex-col">
+                                      <span className="font-black text-primary text-base tracking-tighter italic leading-none">{ot.id}</span>
+                                      <span className="text-[10px] font-bold text-slate-400 mt-1">{format(date, "dd MMM, yyyy", { locale: es })}</span>
                                     </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="max-w-[250px]">
-                                  <p className="text-xs font-medium text-slate-600 line-clamp-2 italic leading-relaxed">"{ot.description}"</p>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  {ot.urgency === 'high' ? (
-                                    <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[8px] font-black uppercase gap-1 px-2">
-                                      <AlertTriangle className="h-2 w-2" /> Urgente
-                                    </Badge>
-                                  ) : ot.urgency === 'medium' ? (
-                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[8px] font-black uppercase px-2">
-                                      Media
-                                    </Badge>
-                                  ) : (
-                                    <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[8px] font-black uppercase px-2">
-                                      Baja
-                                    </Badge>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {getStatusBadge(ot.status)}
-                                </TableCell>
-                                <TableCell className="text-right pr-8">
-                                  <div className="flex justify-end gap-2">
-                                    <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10 hover:bg-primary hover:text-white transition-all shadow-sm">
-                                      <Link href={`/work-orders/${ot.id}`}><ArrowRight className="h-4 w-4" /></Link>
-                                    </Button>
-                                    {!isTechnician && (
-                                      <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-4 w-4 text-slate-400" /></Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
-                                          <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Orden</DropdownMenuLabel>
-                                          <DropdownMenuSeparator className="bg-slate-50" />
-                                          <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
-                                            <Link href={`/work-orders/${ot.id}`} className="font-bold flex items-center gap-2">
-                                              <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
-                                            </Link>
-                                          </DropdownMenuItem>
-                                          {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-3">
+                                      <div className="bg-slate-100 p-2 rounded-xl group-hover:bg-white transition-colors"><Building2 className="h-4 w-4 text-slate-500" /></div>
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="font-bold text-slate-900 text-sm truncate max-w-[180px]">{client?.name || '...' }</span>
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{client?.rut || '-'}</span>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="max-w-[250px]">
+                                    <p className="text-xs font-medium text-slate-600 line-clamp-2 italic leading-relaxed">"{ot.description}"</p>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    {ot.urgency === 'high' ? (
+                                      <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[8px] font-black uppercase gap-1 px-2">
+                                        <AlertTriangle className="h-2 w-2" /> Urgente
+                                      </Badge>
+                                    ) : ot.urgency === 'medium' ? (
+                                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[8px] font-black uppercase px-2">
+                                        Media
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[8px] font-black uppercase px-2">
+                                        Baja
+                                      </Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {getStatusBadge(ot.status)}
+                                  </TableCell>
+                                  <TableCell className="text-right pr-8">
+                                    <div className="flex justify-end gap-2">
+                                      <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10 hover:bg-primary hover:text-white transition-all shadow-sm">
+                                        <Link href={`/work-orders/${ot.id}`}><ArrowRight className="h-4 w-4" /></Link>
+                                      </Button>
+                                      {!isTechnician && (
+                                        <DropdownMenu>
+                                          <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10"><MoreVertical className="h-4 w-4 text-slate-400" /></Button>
+                                          </DropdownMenuTrigger>
+                                          <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
+                                            <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Orden</DropdownMenuLabel>
+                                            <DropdownMenuSeparator className="bg-slate-50" />
                                             <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
-                                              <Link href={`/work-orders/new?editId=${ot.id}`} className="font-bold flex items-center gap-2 text-amber-600">
-                                                <Edit2 className="h-4 w-4" /> Editar Orden
+                                              <Link href={`/work-orders/${ot.id}`} className="font-bold flex items-center gap-2">
+                                                <Eye className="h-4 w-4 text-primary" /> Ver Dashboard OT
                                               </Link>
                                             </DropdownMenuItem>
-                                          )}
-                                          <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
-                                            <Link href={`/work-orders/new?duplicateFrom=${ot.id}`} className="font-bold flex items-center gap-2 text-blue-600">
-                                              <Copy className="h-4 w-4" /> Duplicar OT (Plantilla)
-                                            </Link>
-                                          </DropdownMenuItem>
-                                          <DropdownMenuSeparator className="bg-slate-50" />
-                                          <DropdownMenuItem 
-                                            className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
-                                            onClick={() => handleDelete(ot.id)}
-                                          >
-                                            <Trash2 className="h-4 w-4" /> Archivar Orden
-                                          </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                      </DropdownMenu>
-                                    )}
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          )}
-        </CardContent>
-      </Card>
+                                            
+                                            {activeTab === 'active' ? (
+                                              <>
+                                                {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+                                                  <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
+                                                    <Link href={`/work-orders/new?editId=${ot.id}`} className="font-bold flex items-center gap-2 text-amber-600">
+                                                      <Edit2 className="h-4 w-4" /> Editar Orden
+                                                    </Link>
+                                                  </DropdownMenuItem>
+                                                )}
+                                                <DropdownMenuItem asChild className="rounded-xl p-3 focus:bg-slate-50">
+                                                  <Link href={`/work-orders/new?duplicateFrom=${ot.id}`} className="font-bold flex items-center gap-2 text-blue-600">
+                                                    <Copy className="h-4 w-4" /> Duplicar OT (Plantilla)
+                                                  </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator className="bg-slate-50" />
+                                                <DropdownMenuItem 
+                                                  className="text-rose-600 font-bold rounded-xl p-3 focus:bg-rose-50 flex items-center gap-2" 
+                                                  onClick={() => handleDelete(ot.id)}
+                                                >
+                                                  <Trash2 className="h-4 w-4" /> Archivar Orden
+                                                </DropdownMenuItem>
+                                              </>
+                                            ) : (
+                                              <DropdownMenuItem 
+                                                className="text-emerald-600 font-bold rounded-xl p-3 focus:bg-emerald-50 flex items-center gap-2" 
+                                                onClick={() => handleRestore(ot.id)}
+                                              >
+                                                <RefreshCcw className="h-4 w-4" /> Restaurar Orden
+                                              </DropdownMenuItem>
+                                            )}
+                                          </DropdownMenuContent>
+                                        </DropdownMenu>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
+          </CardContent>
+        </Card>
+      </Tabs>
     </div>
   );
 }
