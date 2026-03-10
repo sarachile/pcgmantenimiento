@@ -32,7 +32,8 @@ import {
   MessageSquare,
   ChevronRight,
   Loader2,
-  ArrowLeft
+  ArrowLeft,
+  X
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, where, orderBy, doc } from "firebase/firestore";
@@ -64,33 +65,25 @@ export default function SupportPage() {
   }, [db, profile?.companyId]);
   const { data: company } = useDoc<Company>(companyRef);
 
-  // Consulta de tickets simplificada para evitar fallos de reglas
+  // Consulta ajustada para cumplir con las reglas de seguridad
   const ticketsQuery = useMemoFirebase(() => {
     if (!db || !profile?.id) return null;
     
     const ticketsCol = collection(db, "supportTickets");
 
-    // Superadministrador ve todo
+    // Superadministrador ve todo (debe tener el rol en Firestore)
     if (isSuperAdmin) {
       return query(ticketsCol, orderBy("createdAt", "desc"));
     }
 
-    // Administrador/Supervisor ve los de su empresa
-    if ((isCompanyAdmin || isSupervisor) && profile.companyId) {
-      return query(
-        ticketsCol,
-        where("companyId", "==", profile.companyId),
-        orderBy("createdAt", "desc")
-      );
-    }
-
-    // Técnico ve solo los suyos
+    // El usuario común (Técnico o Admin) SOLO puede pedir sus propios tickets
+    // Este filtro es obligatorio para que Firestore Rules permita la operación 'list'
     return query(
       ticketsCol,
       where("userId", "==", profile.id),
       orderBy("createdAt", "desc")
     );
-  }, [db, profile?.id, profile?.companyId, isSuperAdmin, isCompanyAdmin, isSupervisor]);
+  }, [db, profile?.id, isSuperAdmin]);
 
   const { data: tickets, isLoading: isTicketsLoading } = useCollection<SupportTicket>(ticketsQuery);
 
