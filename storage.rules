@@ -2,15 +2,15 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     /**
-     * PCGMANTENIMIENTO STORAGE RULES - Production Reliability Edition
-     * Permite lectura pública para que los reportes y portales siempre muestren las fotos.
-     * Permite escritura a cualquier usuario autenticado (Técnicos y Admins).
+     * PCGMANTENIMIENTO STORAGE RULES - Production Ready
+     * Lectura pública para que reportes PDF y portal QR muestren las fotos.
+     * Escritura para cualquier usuario de la empresa (Técnicos y Admins).
      */
     match /{allPaths=**} {
-      // Lectura abierta para evitar errores en reportes PDF y Portal QR
+      // Lectura universal para evitar fallos visuales en reportes y portal externo
       allow read: if true;
       
-      // Escritura permitida para personal de la empresa logueado
+      // Escritura permitida para personal con cuenta activa
       allow write: if request.auth != null;
     }
   }

@@ -2,38 +2,33 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * PCGMANTENIMIENTO SECURITY RULES - Zero Friction Production Edition
-     * Prioridad: Disponibilidad de Servicio > Restricción.
+     * PCGMANTENIMIENTO SECURITY RULES - Zero Friction Edition
+     * Prioridad: Continuidad Operativa > Restricción.
      */
 
-    // 1. SOPORTE Y COMUNICACIÓN (Global)
-    // Permite que cualquier usuario autenticado gestione tickets.
-    match /supportTickets/{ticketId} {
+    // 1. REGLA MAESTRA DE SESIÓN:
+    // Si el usuario está logueado en la App (Técnicos, Admins, Supervisores), 
+    // tiene acceso total a la plataforma para evitar bloqueos en Dashboard y Soporte.
+    match /{document=**} {
       allow read, write: if request.auth != null;
-      
-      match /messages/{messageId} {
-        allow read, write: if request.auth != null;
-      }
     }
 
-    // 2. PORTAL PÚBLICO (QR) Y VISUALIZACIÓN DE CLIENTE
-    // Permitimos lectura pública en rutas de solo consulta para que el QR nunca falle.
+    // 2. EXCEPCIONES DE PORTAL PÚBLICO (QR):
+    // Permitimos que clientes externos (no logueados) lean la información mínima 
+    // necesaria para ver y aprobar su Orden de Trabajo vía QR.
     match /companies/{companyId} {
       allow read: if true;
-      allow write: if request.auth != null;
       
       match /clients/{clientId} {
         allow read: if true;
-        allow write: if request.auth != null;
       }
       
       match /assets/{assetId} {
         allow read: if true;
-        allow write: if request.auth != null;
       }
       
       match /workOrders/{otId} {
-        // Lectura y actualización pública para permitir firmas QR y estados sin login forzado
+        // Lectura y actualización pública para permitir firmas QR y cambio de estado a 'aprobada'
         allow read, update: if true;
         
         match /digitalLogbookEntries/{entryId} {
@@ -45,36 +40,17 @@ service cloud.firestore {
       }
 
       match /evaluations/{evalId} {
+        // Permitir que el cliente envíe su feedback tras la firma
         allow read, create: if true;
       }
+    }
 
-      match /staff/{staffId} {
-        allow read: if true;
-        allow write: if request.auth != null;
-      }
-      
-      match /spareParts/{partId} {
+    // 3. SOPORTE TÉCNICO (Redundancia de seguridad)
+    match /supportTickets/{ticketId} {
+      allow read, write: if request.auth != null;
+      match /{messages=**} {
         allow read, write: if request.auth != null;
       }
-      
-      match /teams/{teamId} {
-        allow read, write: if request.auth != null;
-      }
-    }
-
-    // 3. PERFIL DE USUARIO Y ADMINS
-    match /users/{userId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    match /platform_admins/{adminId} {
-      allow read: if request.auth != null;
-    }
-
-    // 4. REGLA MAESTRA DE RESPALDO
-    // Para cualquier otra colección, si el usuario está logueado, tiene acceso.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
     }
   }
 }
