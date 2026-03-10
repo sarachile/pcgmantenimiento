@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useMemo, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { 
   useUser, 
   useFirestore, 
@@ -57,12 +57,13 @@ import { WorkOrder, Client } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { FirebaseImage } from "@/components/FirebaseImage";
 
-export default function FieldCapturePage() {
+function FieldCaptureContent() {
   const { profile, isLoading: isUserLoading, isTechnician } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -75,6 +76,14 @@ export default function FieldCapturePage() {
   // UI States para Cierre
   const [isFinishDialogOpen, setIsFinishDialogOpen] = useState(false);
   const [showQR, setShowQR] = useState(false);
+
+  // Cargar OT desde URL si existe
+  useEffect(() => {
+    const otFromUrl = searchParams.get('otId');
+    if (otFromUrl) {
+      setSelectedOTId(otFromUrl);
+    }
+  }, [searchParams]);
 
   const getPosition = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) return;
@@ -667,5 +676,13 @@ export default function FieldCapturePage() {
         onChange={handleFileChange} 
       />
     </div>
+  );
+}
+
+export default function FieldCapturePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+      <FieldCaptureContent />
+    </Suspense>
   );
 }
