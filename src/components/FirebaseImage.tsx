@@ -13,7 +13,7 @@ interface FirebaseImageProps {
 
 /**
  * Componente optimizado para reportes PDF y visualización web.
- * Por defecto carga sin CORS para máxima compatibilidad en el Dashboard.
+ * Soporta fondos transparentes (logotipos) y fotos de terreno.
  */
 export function FirebaseImage({ url, alt = "Imagen de Terreno", className, forceCORS = false }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
@@ -33,39 +33,37 @@ export function FirebaseImage({ url, alt = "Imagen de Terreno", className, force
   }, [url]);
 
   if (!mounted) {
-    return <div className={cn("bg-muted/10 animate-pulse rounded-xl", className)} />;
+    return <div className={cn("bg-muted/5 animate-pulse rounded-xl", className)} />;
   }
 
   if (!url || error) {
     return (
-      <div className={cn("flex flex-col items-center justify-center bg-slate-100 border border-dashed rounded-xl p-4 text-slate-300", className)}>
+      <div className={cn("flex flex-col items-center justify-center bg-slate-50 border border-dashed rounded-xl p-4 text-slate-300", className)}>
         <ImageOff className="h-6 w-6 opacity-20" />
-        <span className="text-[8px] font-black uppercase tracking-widest mt-2 opacity-40 text-center">Evidencia no disponible</span>
+        <span className="text-[8px] font-black uppercase tracking-widest mt-2 opacity-40 text-center">No disponible</span>
       </div>
     );
   }
 
   return (
-    <div className={cn("relative flex items-center justify-center overflow-hidden bg-slate-50 rounded-xl", className)}>
+    <div className={cn("relative flex items-center justify-center overflow-hidden bg-transparent rounded-xl", className)}>
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
+        <div className="absolute inset-0 flex items-center justify-center bg-transparent z-10">
           <Loader2 className="h-5 w-5 animate-spin text-primary/20" />
         </div>
       )}
       
       <img
-        key={url} // Forzar re-render si cambia la URL
+        key={url}
         src={url}
         alt={alt}
         className={cn(
-          "w-full h-full object-cover transition-opacity duration-500", 
+          "w-full h-full object-contain transition-opacity duration-500", 
           loading ? "opacity-0" : "opacity-100"
         )}
-        // Solo usamos anonymous si es estrictamente necesario (ej: generación de PDF)
         crossOrigin={forceCORS ? "anonymous" : undefined}
         onLoad={() => setLoading(false)}
         onError={() => {
-          // No logueamos console.error para evitar el overlay de NextJS
           setLoading(false);
           setError(true);
         }}

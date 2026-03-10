@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -129,7 +128,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
     <Sidebar className="border-r border-border/50 bg-slate-950 text-slate-300">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 relative overflow-hidden rounded-xl border border-white/10 bg-white flex items-center justify-center shadow-inner shrink-0">
+          <div className="h-10 w-10 relative overflow-hidden rounded-xl bg-transparent flex items-center justify-center shrink-0">
             {company?.logoUrl ? (
               <FirebaseImage 
                 url={company.logoUrl} 

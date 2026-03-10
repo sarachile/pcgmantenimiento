@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -202,7 +201,10 @@ export default function CompanyProfilePage() {
               <CardTitle className="text-lg font-black uppercase tracking-tighter">Marca Corporativa</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4 p-8">
-              <div className="relative h-40 w-40 rounded-[2rem] border-2 border-dashed bg-muted/20 flex items-center justify-center overflow-hidden group shadow-inner">
+              <div className={cn(
+                "relative h-40 w-40 rounded-[2rem] flex items-center justify-center overflow-hidden group shadow-inner transition-all",
+                !company?.logoUrl && "border-2 border-dashed bg-muted/20"
+              )}>
                 {company?.logoUrl ? (
                   <>
                     <FirebaseImage url={company.logoUrl} alt="Logo Empresa" className="h-full w-full p-4" />
@@ -230,7 +232,6 @@ export default function CompanyProfilePage() {
             </CardContent>
           </Card>
 
-          {/* SECCIÓN API GATEWAY - REDISEÑADA PARA SER INCLUSIVA */}
           <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-slate-900 text-white">
             <CardHeader className="bg-white/5 border-b border-white/10">
               <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
