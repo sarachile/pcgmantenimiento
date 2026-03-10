@@ -19,6 +19,10 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      // VALIDACIÓN CRÍTICA: Solo intentar obtener datos si hay una sesión activa
+      if (!isSignedIn()) {
+        return null;
+      }
       let path = /databases/$(database)/documents/users/$(request.auth.uid);
       return exists(path) ? get(path).data : null;
     }
@@ -44,7 +48,7 @@ service cloud.firestore {
       // Permitir listado para el login de técnicos por RUT (búsqueda de email sintético)
       // Se requiere un límite estricto para evitar escaneo masivo de usuarios
       allow list: if isSignedIn() || isPlatformAdmin() || (request.query.limit <= 10);
-      allow create: if true; // Permitir creación inicial en el registro (validado por Auth UID en cliente)
+      allow create: if true; // Permitir creación inicial en el registro
       allow update: if isOwner(userId) || isPlatformAdmin();
       allow delete: if isPlatformAdmin();
     }
@@ -55,6 +59,7 @@ service cloud.firestore {
     }
 
     match /companies/{companyId} {
+      // Acceso público para carga inicial de perfiles técnicos y portales de clientes
       allow get: if true;
       allow list: if isPlatformAdmin() || isSignedIn();
       // Permitir escritura inicial si el usuario acaba de registrarse (Onboarding)
@@ -64,7 +69,7 @@ service cloud.firestore {
         allow get: if true;
         allow list: if isCompanyMember(companyId);
         // Permitir que un técnico vincule su cuenta de Auth recién creada
-        allow write: if isCompanyMember(companyId) || (isSignedIn() && request.resource.data.userId == request.auth.uid);
+        allow write: if isCompanyMember(companyId) || (isSignedIn() && (request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid));
       }
 
       match /teams/{teamId} {

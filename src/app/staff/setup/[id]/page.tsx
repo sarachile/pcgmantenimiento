@@ -102,9 +102,23 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       const cleanRut = staff.identification?.replace(/\D/g, '').toLowerCase();
       const syntheticEmail = `${cleanRut}@${company.id}.staff.pcg`;
       
-      // 2. Crear usuario en Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, syntheticEmail, pinInput);
-      const userId = userCredential.user.uid;
+      let userId = "";
+      try {
+        // 2. Crear usuario en Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, syntheticEmail, pinInput);
+        userId = userCredential.user.uid;
+      } catch (authError: any) {
+        // Manejar caso donde el correo ya existe (el técnico ya activó su cuenta)
+        if (authError.code === 'auth/email-already-in-use') {
+          toast({ 
+            title: "Cuenta ya activa", 
+            description: "Ya tienes acceso configurado. Redirigiendo al inicio de sesión..." 
+          });
+          setTimeout(() => router.push('/staff/login'), 2500);
+          return;
+        }
+        throw authError;
+      }
 
       // 3. Crear documento de usuario (Perfil Firestore)
       const userRef = doc(firestore, "users", userId);
@@ -135,25 +149,18 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     } catch (error: any) {
       console.error("Setup Error:", error);
       
-      // MANEJO DE ERRORES AMIGABLE PARA PRODUCCIÓN
-      let errorTitle = "Fallo en registro";
-      let errorDesc = "No se pudo crear el acceso en este momento.";
-
-      if (error.code === 'auth/email-already-in-use') {
-        errorTitle = "Cuenta ya activa";
-        errorDesc = "Este técnico ya tiene su acceso configurado. Vamos a iniciar sesión.";
-        toast({ title: errorTitle, description: errorDesc });
-        setTimeout(() => router.push('/staff/login'), 2000);
-        return;
-      } else if (error.code === 'auth/weak-password') {
-        errorTitle = "PIN Débil";
-        errorDesc = "Por favor elija una combinación numérica más segura.";
+      let friendlyMessage = "No se pudo crear el acceso en este momento.";
+      if (error.code === 'auth/weak-password') {
+        friendlyMessage = "El PIN es demasiado sencillo. Use otra combinación.";
       } else if (error.code === 'permission-denied') {
-        errorTitle = "Error de Sincronización";
-        errorDesc = "Estamos actualizando los permisos de tu empresa. Reintenta en unos segundos.";
+        friendlyMessage = "Error de permisos temporales. Por favor reintente en unos segundos.";
       }
 
-      toast({ title: errorTitle, description: errorDesc, variant: "destructive" });
+      toast({ 
+        title: "Fallo en registro", 
+        description: friendlyMessage, 
+        variant: "destructive" 
+      });
     } finally {
       setIsSubmitting(false);
     }
