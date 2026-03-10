@@ -33,7 +33,9 @@ import {
   Info,
   Smartphone,
   ArrowRight,
-  PlusCircle
+  PlusCircle,
+  AlertTriangle,
+  Save
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -104,11 +106,23 @@ export default function FieldCapturePage() {
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
+  // Validar si el técnico tiene exactamente 1 OT activa para saltar el listado
   useEffect(() => {
     if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
       setSelectedOT(filtered[0]);
     }
   }, [filtered, isOrdersLoading, selectedOT, searchTerm]);
+
+  // Lógica de Validación Estricta para Cierre
+  const isChecklistComplete = useMemo(() => {
+    if (!selectedOT || !selectedOT.checklist) return false;
+    if (selectedOT.checklist.length === 0) return true; // Si no hay tareas, se considera completable
+    
+    return selectedOT.checklist.every(item => {
+      const hasPhotos = (item.evidenceUrls && item.evidenceUrls.length > 0) || (item.evidenceUrl);
+      return item.completed === true && hasPhotos;
+    });
+  }, [selectedOT]);
 
   const handleTaskClick = (taskId: string) => {
     setActiveTaskId(taskId);
@@ -165,7 +179,7 @@ export default function FieldCapturePage() {
         timestamp: serverTimestamp(),
         eventType: 'action_taken',
         eventDetails: activeTaskId 
-          ? `Nueva evidencia capturada para tarea: ${selectedOT.checklist?.find(i => i.id === activeTaskId)?.task}` 
+          ? `Evidencia capturada para tarea: ${selectedOT.checklist?.find(i => i.id === activeTaskId)?.task}` 
           : "Evidencia fotográfica general capturada.",
         actor: profile.id,
         actorName: profile.name,
@@ -186,6 +200,16 @@ export default function FieldCapturePage() {
 
   const handleFinalize = async () => {
     if (!selectedOT || !db || !profile?.companyId || !profile) return;
+    
+    if (!isChecklistComplete) {
+      toast({ 
+        title: "Protocolo Incompleto", 
+        description: "Debe completar todas las tareas y subir fotos antes de finalizar.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
     setIsFinalizing(true);
     try {
       const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
@@ -194,6 +218,17 @@ export default function FieldCapturePage() {
         executedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
+      
+      await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
+        workOrderId: selectedOT.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'status_change',
+        eventDetails: "Orden finalizada por el técnico y enviada a revisión técnica.",
+        actor: profile.id,
+        actorName: profile.name
+      });
+
       toast({ title: "Trabajo Enviado", description: "La orden pasó a revisión administrativa." });
       setSelectedOT(null);
     } catch (e) {
@@ -201,6 +236,13 @@ export default function FieldCapturePage() {
     } finally {
       setIsFinalizing(false);
     }
+  };
+
+  const handleSaveProgress = () => {
+    // El progreso se guarda automáticamente en cada foto, 
+    // esta función solo sirve para salir de la vista de la OT actual.
+    setSelectedOT(null);
+    toast({ title: "Progreso Guardado" });
   };
 
   if (isUserLoading || isOrdersLoading) {
@@ -223,14 +265,14 @@ export default function FieldCapturePage() {
               <div className="bg-white/20 p-3 rounded-2xl"><Info className="h-6 w-6" /></div>
               <div>
                 <p className="font-black uppercase italic tracking-tight">Instrucciones</p>
-                <p className="text-xs font-medium text-blue-100 leading-tight">Selecciona el trabajo que estás realizando para comenzar a capturar evidencias.</p>
+                <p className="text-xs font-medium text-blue-100 leading-tight">Toca una tarea del protocolo para abrir la cámara y registrar la evidencia.</p>
               </div>
             </div>
 
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder="Buscar trabajo..." 
+                placeholder="Buscar por ID o Mandante..." 
                 className="h-14 pl-12 rounded-2xl border-none shadow-md bg-white text-lg font-bold"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -238,7 +280,7 @@ export default function FieldCapturePage() {
             </div>
 
             <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Órdenes de Trabajo Pendientes</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Órdenes de Trabajo Asignadas</p>
               {filtered.length === 0 ? (
                 <div className="p-12 text-center bg-white rounded-[2rem] border-2 border-dashed">
                   <p className="text-slate-400 italic font-medium">No hay órdenes activas asignadas.</p>
@@ -253,7 +295,10 @@ export default function FieldCapturePage() {
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-primary font-black text-xl italic">{ot.id}</span>
-                        <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1.5">{ot.status}</Badge>
+                        <Badge variant="outline" className={cn(
+                          "text-[8px] font-black uppercase h-4 px-1.5",
+                          ot.status === 'en proceso' ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-slate-50"
+                        )}>{ot.status}</Badge>
                       </div>
                       <p className="text-slate-900 font-bold text-sm truncate">{clients?.find(c => c.id === ot.clientId)?.name || 'Cargando...'}</p>
                     </div>
@@ -297,24 +342,26 @@ export default function FieldCapturePage() {
                             disabled={isUploading}
                             className={cn(
                               "w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center justify-between group relative overflow-hidden",
-                              item.completed 
+                              item.completed && photos.length > 0
                                 ? "border-emerald-100 bg-emerald-50/20" 
+                                : item.completed 
+                                ? "border-amber-100 bg-amber-50/20"
                                 : "border-slate-100 bg-white hover:border-primary/30 shadow-sm active:bg-slate-50"
                             )}
                           >
                             <div className="flex items-center gap-4 flex-1">
                               <div className={cn(
                                 "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-active:scale-90",
-                                item.completed ? "bg-emerald-500 text-white" : "bg-primary text-white"
+                                item.completed && photos.length > 0 ? "bg-emerald-500 text-white" : "bg-primary text-white"
                               )}>
-                                {item.completed ? <PlusCircle className="h-7 w-7" /> : <Camera className="h-6 w-6" />}
+                                {item.completed && photos.length > 0 ? <Check className="h-7 w-7" /> : <Camera className="h-6 w-6" />}
                               </div>
                               <div className="flex flex-col">
                                 <span className={cn("text-sm font-black leading-none", item.completed ? "text-emerald-900" : "text-slate-900")}>
                                   {item.task}
                                 </span>
                                 <span className="text-[9px] font-bold text-primary uppercase mt-1.5 flex items-center gap-1">
-                                  {item.completed ? "Pulsa para añadir más fotos" : "Pulsa para abrir cámara"} <ArrowRight className="h-2 w-2" />
+                                  {photos.length > 0 ? "PULSAR PARA AÑADIR MÁS FOTOS" : "PULSAR PARA ABRIR CÁMARA"} <ArrowRight className="h-2 w-2" />
                                 </span>
                               </div>
                             </div>
@@ -365,16 +412,42 @@ export default function FieldCapturePage() {
                   )}
                 </div>
 
-                <div className="pt-8">
-                  <Button 
-                    className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-xl uppercase tracking-widest gap-3 shadow-2xl transition-all active:scale-95"
-                    onClick={handleFinalize}
-                    disabled={isFinalizing || isUploading}
-                  >
-                    {isFinalizing ? <Loader2 className="animate-spin h-8 w-8" /> : <><CheckCircle2 className="h-6 w-6" /> Finalizar y Enviar</>}
-                  </Button>
+                <div className="pt-8 space-y-4">
+                  {isChecklistComplete ? (
+                    <div className="space-y-4 animate-in fade-in zoom-in-95">
+                      <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 flex gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                        <p className="text-[11px] text-emerald-800 font-bold uppercase leading-tight">
+                          Protocolo Completo: Todo listo para el envío oficial.
+                        </p>
+                      </div>
+                      <Button 
+                        className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-xl uppercase tracking-widest gap-3 shadow-2xl transition-all active:scale-95"
+                        onClick={handleFinalize}
+                        disabled={isFinalizing || isUploading}
+                      >
+                        {isFinalizing ? <Loader2 className="animate-spin h-8 w-8" /> : <><CheckCircle2 className="h-6 w-6" /> Finalizar y Enviar</>}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 flex gap-3">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                        <p className="text-[11px] text-amber-800 font-bold uppercase leading-tight">
+                          Protocolo Incompleto: Debes completar todas las tareas y subir sus fotos para poder finalizar el reporte.
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline"
+                        className="w-full h-16 rounded-2xl border-2 border-slate-200 font-black uppercase text-xs tracking-widest gap-2 hover:bg-white"
+                        onClick={handleSaveProgress}
+                      >
+                        <Save className="h-4 w-4" /> Guardar Avance y Salir
+                      </Button>
+                    </div>
+                  )}
                   <p className="text-[9px] text-center text-slate-400 font-bold uppercase mt-4 tracking-widest">
-                    * El reporte se enviará a revisión técnica del supervisor.
+                    * El reporte solo puede enviarse cuando la trazabilidad es total (Checklist + Fotos).
                   </p>
                 </div>
               </CardContent>
