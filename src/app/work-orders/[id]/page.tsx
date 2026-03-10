@@ -152,9 +152,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!reportRef.current || !ot) return;
     setIsGeneratingPdf(true);
     try {
-      // Pequeño retardo para asegurar que las imágenes con CORS se rendericen bien antes de capturar
       await new Promise(r => setTimeout(r, 2000));
-      
       const element = reportRef.current;
       const canvas = await html2canvas(element, { 
         scale: 2, 
@@ -163,17 +161,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         logging: false,
         height: element.scrollHeight,
         width: element.scrollWidth,
-        windowWidth: 1000 // Asegura un ancho estable para el renderizado
+        windowWidth: 1000
       });
-      
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(`INFORME_TECNICO_${ot.id}.pdf`);
-      
       toast({ title: "Reporte Generado", description: "El PDF se ha descargado exitosamente." });
     } catch (e) { 
       console.error("Error PDF:", e);
@@ -198,7 +193,20 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   };
 
   const handleVisaOrder = async () => {
-    if (!otRef || !profile) return;
+    if (!otRef || !profile || !ot) return;
+
+    // VALIDACIÓN DE PROTOCOLO COMPLETO
+    const isChecklistComplete = !ot.checklist || ot.checklist.length === 0 || ot.checklist.every(item => item.completed);
+    
+    if (!isChecklistComplete) {
+      toast({
+        title: "Protocolo Incompleto",
+        description: "No se puede visar la orden hasta que todos los puntos del protocolo técnico estén marcados como completados.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsUpdating(true);
     try {
       if (ot.reviewerRequired) {
@@ -212,7 +220,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           companyId,
           timestamp: serverTimestamp(),
           eventType: 'status_change',
-          eventDetails: "Orden visada técnicamente por administración. Se habilita portal de aprobación para el cliente.",
+          eventDetails: "Orden visada técnicamente por administración. Protocolo validado al 100%. Se habilita portal de aprobación para el cliente.",
           actor: profile.id,
           actorName: profile.name
         });
@@ -233,7 +241,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           companyId,
           timestamp: serverTimestamp(),
           eventType: 'status_change',
-          eventDetails: "Orden aprobada internamente por administración (Cierre Directo).",
+          eventDetails: "Orden aprobada internamente por administración (Cierre Directo). Protocolo validado al 100%.",
           actor: profile.id,
           actorName: profile.name
         });
@@ -381,7 +389,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
-      {/* Contenedor oculto pero con dimensiones para captura de Reporte */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport forwardedRef={reportRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} logbook={logbook || []} assignedStaff={assignedStaff || []} partUsages={partUsages || []} qrCodeUrl={qrUrl} />
         <ExperienceCertificate forwardedRef={certRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} />
@@ -450,7 +457,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {/* PANEL DE CERTIFICACIÓN DIGITAL (SI EXISTEN FIRMAS) */}
           {(ot.technicianApprovalCode || ot.clientApprovalCode) && (
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden animate-in fade-in duration-700">
               <CardHeader className="bg-emerald-50 border-b border-emerald-100 p-8">
@@ -486,7 +492,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             </Card>
           )}
 
-          {/* PANEL DE VALIDACIÓN EXTERNA (SI ESTÁ HABILITADO Y PENDIENTE) */}
           {ot.reviewerRequired && ot.status === 'pendiente cliente' && (
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-indigo-600 text-white overflow-hidden animate-in zoom-in-95 duration-500">
               <CardHeader className="bg-white/10 p-8 border-b border-white/10">
