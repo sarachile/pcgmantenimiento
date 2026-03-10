@@ -36,7 +36,8 @@ import {
   PlusCircle,
   AlertTriangle,
   Save,
-  ClipboardList
+  ClipboardList,
+  Circle
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -113,20 +114,53 @@ export default function FieldCapturePage() {
     }
   }, [filtered, isOrdersLoading, selectedOT, searchTerm]);
 
+  // EL REQUISITO ES QUE TODOS ESTÉN COMPLETADOS (CHECK OK)
   const isChecklistComplete = useMemo(() => {
     if (!selectedOT || !selectedOT.checklist) return false;
     if (selectedOT.checklist.length === 0) return true;
     
-    return selectedOT.checklist.every(item => {
-      const hasPhotos = (item.evidenceUrls && item.evidenceUrls.length > 0) || (item.evidenceUrl);
-      return item.completed === true && hasPhotos;
-    });
+    return selectedOT.checklist.every(item => item.completed === true);
   }, [selectedOT]);
 
   const handleTaskClick = (taskId: string) => {
     setActiveTaskId(taskId);
     if (fileInputRef.current) {
       fileInputRef.current.click();
+    }
+  };
+
+  // NUEVA FUNCIÓN PARA MARCAR CHECK SIN FOTO
+  const handleToggleTask = async (taskId: string, currentState: boolean) => {
+    if (!selectedOT || !db || !profile?.companyId || !profile) return;
+
+    const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
+    const updatedChecklist = selectedOT.checklist?.map(item => {
+      if (item.id === taskId) {
+        return { 
+          ...item, 
+          completed: !currentState,
+          completedAt: !currentState ? new Date().toISOString() : null 
+        };
+      }
+      return item;
+    });
+
+    updateDocumentNonBlocking(otRef, {
+      checklist: updatedChecklist,
+      updatedAt: serverTimestamp(),
+      status: 'en proceso'
+    });
+
+    if (!currentState) {
+      await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
+        workOrderId: selectedOT.id,
+        companyId: profile.companyId,
+        timestamp: serverTimestamp(),
+        eventType: 'action_taken',
+        eventDetails: `Tarea marcada como completada: ${selectedOT.checklist?.find(i => i.id === taskId)?.task}`,
+        actor: profile.id,
+        actorName: profile.name
+      });
     }
   };
 
@@ -203,7 +237,7 @@ export default function FieldCapturePage() {
     if (!isChecklistComplete) {
       toast({ 
         title: "Protocolo Incompleto", 
-        description: "Debe completar todas las tareas y subir fotos antes de finalizar.", 
+        description: "Debe marcar todos los puntos del protocolo como realizados antes de finalizar.", 
         variant: "destructive" 
       });
       return;
@@ -262,7 +296,7 @@ export default function FieldCapturePage() {
               <div className="bg-white/20 p-3 rounded-2xl"><Info className="h-6 w-6" /></div>
               <div>
                 <p className="font-black uppercase italic tracking-tight">Instrucciones</p>
-                <p className="text-xs font-medium text-blue-100 leading-tight">Toca una tarea del protocolo para abrir la cámara y registrar la evidencia.</p>
+                <p className="text-xs font-medium text-blue-100 leading-tight">Marque los puntos realizados. Tocar una tarea abre la cámara para el respaldo recomendado.</p>
               </div>
             </div>
 
@@ -320,7 +354,6 @@ export default function FieldCapturePage() {
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-8">
-                {/* SECCIÓN CRÍTICA: REQUERIMIENTO DEL CLIENTE */}
                 <div className="space-y-3 bg-indigo-50/50 p-6 rounded-[2rem] border-2 border-indigo-100 shadow-inner">
                   <Label className="text-[10px] font-black uppercase text-indigo-600 tracking-widest flex items-center gap-2">
                     <ClipboardList className="h-4 w-4" /> Requerimiento del Cliente
@@ -344,43 +377,43 @@ export default function FieldCapturePage() {
                       const photos = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
                       return (
                         <div key={item.id} className="space-y-3">
-                          <button
-                            onClick={() => handleTaskClick(item.id)}
-                            disabled={isUploading}
-                            className={cn(
-                              "w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center justify-between group relative overflow-hidden",
-                              item.completed && photos.length > 0
-                                ? "border-emerald-100 bg-emerald-50/20" 
-                                : item.completed 
-                                ? "border-amber-100 bg-amber-50/20"
-                                : "border-slate-100 bg-white hover:border-primary/30 shadow-sm active:bg-slate-50"
-                            )}
-                          >
-                            <div className="flex items-center gap-4 flex-1">
-                              <div className={cn(
-                                "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-active:scale-90",
-                                item.completed && photos.length > 0 ? "bg-emerald-500 text-white" : "bg-primary text-white"
-                              )}>
-                                {item.completed && photos.length > 0 ? <Check className="h-7 w-7" /> : <Camera className="h-6 w-6" />}
-                              </div>
-                              <div className="flex flex-col">
-                                <span className={cn("text-sm font-black leading-none", item.completed ? "text-emerald-900" : "text-slate-900")}>
-                                  {item.task}
-                                </span>
-                                <span className="text-[9px] font-bold text-primary uppercase mt-1.5 flex items-center gap-1">
-                                  {photos.length > 0 ? "PULSAR PARA AÑADIR MÁS FOTOS" : "PULSAR PARA ABRIR CÁMARA"} <ArrowRight className="h-2 w-2" />
-                                </span>
-                              </div>
-                            </div>
-                            {isUploading && activeTaskId === item.id ? (
+                          <div className={cn(
+                            "w-full p-5 rounded-2xl border-2 transition-all flex items-center gap-4 group relative overflow-hidden",
+                            item.completed && photos.length > 0
+                              ? "border-emerald-100 bg-emerald-50/20" 
+                              : item.completed 
+                              ? "border-amber-100 bg-amber-50/20"
+                              : "border-slate-100 bg-white hover:border-primary/30 shadow-sm"
+                          )}>
+                            {/* CHECKBOX PARA MARCAR COMPLETADO SIN FOTO */}
+                            <button 
+                              onClick={() => handleToggleTask(item.id, item.completed)}
+                              className={cn(
+                                "h-10 w-10 rounded-full flex items-center justify-center border-2 shrink-0 transition-all",
+                                item.completed ? "bg-primary border-primary text-white" : "border-slate-200 text-slate-200 bg-white"
+                              )}
+                            >
+                              <Check className={cn("h-6 w-6", !item.completed && "opacity-0")} />
+                            </button>
+
+                            {/* BOTÓN PARA ABRIR CÁMARA */}
+                            <button
+                              onClick={() => handleTaskClick(item.id)}
+                              disabled={isUploading}
+                              className="flex-1 text-left flex flex-col min-w-0"
+                            >
+                              <span className={cn("text-sm font-black leading-none truncate", item.completed ? "text-slate-900" : "text-slate-400")}>
+                                {item.task}
+                              </span>
+                              <span className="text-[9px] font-bold text-primary uppercase mt-1.5 flex items-center gap-1">
+                                <Camera className="h-3 w-3" /> {photos.length > 0 ? "AÑADIR MÁS FOTOS" : "SUBIR EVIDENCIA (OPCIONAL)"}
+                              </span>
+                            </button>
+
+                            {isUploading && activeTaskId === item.id && (
                               <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                {photos.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 font-black text-[9px]">{photos.length}</Badge>}
-                                <ChevronRight className={cn("h-5 w-5 transition-colors", item.completed ? "text-emerald-300" : "text-slate-300 group-hover:text-primary")} />
-                              </div>
                             )}
-                          </button>
+                          </div>
                           
                           {photos.length > 0 && (
                             <div className="px-2 grid grid-cols-2 sm:grid-cols-3 gap-2 animate-in fade-in slide-in-from-top-2">
@@ -425,7 +458,7 @@ export default function FieldCapturePage() {
                       <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 flex gap-3">
                         <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
                         <p className="text-[11px] text-emerald-800 font-bold uppercase leading-tight">
-                          Protocolo Completo: Todo listo para el envío oficial.
+                          Protocolo Completo: El checklist está 100% validado para el cierre oficial.
                         </p>
                       </div>
                       <Button 
@@ -441,7 +474,7 @@ export default function FieldCapturePage() {
                       <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 flex gap-3">
                         <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
                         <p className="text-[11px] text-amber-800 font-bold uppercase leading-tight">
-                          Protocolo Incompleto: Debes completar todas las tareas y subir sus fotos para poder finalizar el reporte.
+                          Checklist Incompleto: Debes marcar todos los puntos como realizados para poder finalizar el reporte oficial.
                         </p>
                       </div>
                       <Button 
@@ -454,7 +487,7 @@ export default function FieldCapturePage() {
                     </div>
                   )}
                   <p className="text-[9px] text-center text-slate-400 font-bold uppercase mt-4 tracking-widest">
-                    * El reporte solo puede enviarse cuando la trazabilidad es total (Checklist + Fotos).
+                    * El envío al supervisor requiere que todos los puntos del protocolo estén marcados.
                   </p>
                 </div>
               </CardContent>
