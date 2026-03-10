@@ -11,7 +11,7 @@ export default function SupportPage() {
 
   return (
     <div className="flex h-screen items-center justify-center font-bold text-slate-400">
-      Módulo deshabilitado. Redirigiendo...
+      Módulo deshabilitado. Redirigiendo al Dashboard...
     </div>
   );
 }
