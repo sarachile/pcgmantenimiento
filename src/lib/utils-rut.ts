@@ -9,12 +9,12 @@ export function validateRut(rut: string): boolean {
   if (!rut || typeof rut !== 'string') return false;
   
   // Limpiar puntos y guión
-  const cleanRut = rut.replace(/\./g, '').replace(/-/g, '').trim().toUpperCase();
+  const cleanRutStr = rut.replace(/\./g, '').replace(/-/g, '').trim().toUpperCase();
   
-  if (cleanRut.length < 2) return false;
+  if (cleanRutStr.length < 2) return false;
   
-  const body = cleanRut.slice(0, -1);
-  const dv = cleanRut.slice(-1);
+  const body = cleanRutStr.slice(0, -1);
+  const dv = cleanRutStr.slice(-1);
   
   if (!/^\d+$/.test(body)) return false;
   
@@ -52,8 +52,14 @@ export function formatRut(rut: string): string {
 }
 
 /**
- * Limpia el RUT para envío a API (solo números y K, sin puntos ni guión)
+ * Limpia el RUT para envío a API o comparaciones internas (solo números y K, sin puntos ni guión)
  */
 export function cleanRutForAPI(rut: string): string {
-  return rut.replace(/\./g, '').replace(/-/g, '').trim().toUpperCase();
+  if (!rut) return "";
+  return rut.replace(/[^0-9kK]/g, '').toLowerCase();
 }
+
+/**
+ * Alias para cleanRutForAPI para uso general en el sistema
+ */
+export const cleanRut = cleanRutForAPI;

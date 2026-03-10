@@ -18,12 +18,14 @@ import {
   Loader2, 
   HardHat, 
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  ArrowRight
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useAuth } from "@/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { cleanRut } from "@/lib/utils-rut";
 import Link from "next/link";
 
 export default function StaffLoginPage() {
@@ -40,10 +42,9 @@ export default function StaffLoginPage() {
     e.preventDefault();
     if (isSubmitting || !firestore || !auth) return;
 
-    // Limpiar RUT: solo números y K
-    const cleanRut = rutInput.replace(/[^0-9kK]/g, '').toLowerCase();
+    const cleanRutStr = cleanRut(rutInput);
     
-    if (!cleanRut || pinInput.length < 6) {
+    if (!cleanRutStr || pinInput.length < 6) {
       toast({ 
         title: "Datos incompletos", 
         description: "Verifique su RUT y que el PIN tenga al menos 6 dígitos.", 
@@ -54,22 +55,21 @@ export default function StaffLoginPage() {
 
     setIsSubmitting(true);
     try {
-      // 1. Buscar el email sintético asociado al RUT en la colección global de usuarios
-      // IMPORTANTE: Se añade limit(1) para cumplir con las reglas de seguridad de Firestore
+      // 1. Buscar el email asociado al RUT en la colección global de usuarios
+      // Usamos el RUT como prefijo del email generado: [rut]@[id].staff.pcg
       const staffQuery = query(
         collection(firestore, "users"), 
-        where("email", ">=", cleanRut), 
-        where("email", "<=", cleanRut + "\uf8ff"),
+        where("email", ">=", cleanRutStr), 
+        where("email", "<=", cleanRutStr + "\uf8ff"),
         limit(1)
       );
       
       const staffSnap = await getDocs(staffQuery);
       
       if (staffSnap.empty) {
-        throw new Error("No se encontró una cuenta activa para este RUT. ¿Ya activaste tu acceso mediante el link enviado a tu WhatsApp?");
+        throw new Error("No se encontró una cuenta activa para este RUT. ¿Ya activaste tu acceso mediante el link de WhatsApp?");
       }
 
-      // Encontramos el usuario que coincide con el formato [rut]@[id].staff.pcg
       const targetUser = staffSnap.docs[0].data();
       const email = targetUser.email;
 
@@ -82,23 +82,19 @@ export default function StaffLoginPage() {
       
       toast({ 
         title: "Acceso Concedido", 
-        description: "Bienvenido al equipo de terreno. Cargando tu hoja de ruta..." 
+        description: "Bienvenido al equipo de terreno." 
       });
       
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Login Error:", error);
       
-      let friendlyMessage = "Credenciales incorrectas o error de conexión.";
+      let friendlyMessage = error.message;
       
-      if (error.message.includes("permission")) {
-        friendlyMessage = "Error de sincronización de seguridad. Por favor, intente en un momento.";
-      } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         friendlyMessage = "RUT o PIN incorrectos. Verifique sus datos.";
       } else if (error.code === 'auth/too-many-requests') {
-        friendlyMessage = "Demasiados intentos fallidos. Cuenta bloqueada temporalmente por seguridad.";
-      } else {
-        friendlyMessage = error.message;
+        friendlyMessage = "Demasiados intentos fallidos. Reintente en unos minutos.";
       }
 
       toast({ 
@@ -159,9 +155,12 @@ export default function StaffLoginPage() {
           </CardContent>
           <CardFooter className="bg-slate-50 p-6 flex flex-col gap-4">
             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase">
-              <AlertCircle className="h-3 w-3" /> ¿Problemas con tu PIN? Contacta a tu supervisor.
+              <AlertCircle className="h-3 w-3" /> ¿No has activado tu cuenta?
             </div>
-            <Link href="/auth/login" className="text-[10px] font-black text-primary uppercase underline tracking-widest">
+            <p className="text-[10px] text-slate-500 leading-relaxed">
+              Debes usar el link enviado a tu WhatsApp por tu supervisor para configurar tu PIN inicial.
+            </p>
+            <Link href="/auth/login" className="text-[10px] font-black text-primary uppercase underline tracking-widest mt-2">
               Acceso Administrativo
             </Link>
           </CardFooter>

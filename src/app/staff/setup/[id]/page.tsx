@@ -28,6 +28,7 @@ import { useFirestore, useAuth } from "@/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { StaffMember, Company } from "@/lib/types";
+import { cleanRut } from "@/lib/utils-rut";
 import Link from "next/link";
 
 function StaffSetupContent({ params }: { params: { id: string } }) {
@@ -40,7 +41,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
   const [staff, setStaff] = useState<StaffMember | null>(null);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
-  const [errorType, setErrorType] = useState<"none" | "invalid">("none");
+  const [errorType, setErrorType] = useState<"none" | "invalid" | "company_missing" | "staff_missing">("none");
   const [step, setStep] = useState(1); // 1: Identidad, 2: PIN, 3: Éxito
   
   const [rutInput, setRutInput] = useState("");
@@ -63,7 +64,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         const companySnap = await getDoc(companyRef);
         
         if (!companySnap.exists()) {
-          setErrorType("invalid");
+          setErrorType("company_missing");
           setLoading(false);
           return;
         }
@@ -74,7 +75,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         const staffSnap = await getDoc(staffRef);
 
         if (!staffSnap.exists()) {
-          setErrorType("invalid");
+          setErrorType("staff_missing");
           setLoading(false);
           return;
         }
@@ -89,7 +90,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
           return;
         }
 
-      } catch (e) {
+      } catch (e: any) {
         console.error("Error en Onboarding:", e);
         setErrorType("invalid");
       } finally {
@@ -103,13 +104,13 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     e.preventDefault();
     if (!staff) return;
 
-    const cleanInput = rutInput.replace(/\D/g, '').toUpperCase();
-    const cleanStaffRut = staff.identification?.replace(/\D/g, '').toUpperCase();
+    const cleanInput = cleanRut(rutInput);
+    const cleanStaffRut = cleanRut(staff.identification || "");
 
     if (cleanInput === cleanStaffRut) {
       setStep(2);
     } else {
-      toast({ title: "RUT no coincide", description: "Verifique que el RUT sea el mismo de la invitación.", variant: "destructive" });
+      toast({ title: "RUT no coincide", description: "Verifique que el RUT sea el mismo que el registrado en su empresa.", variant: "destructive" });
     }
   };
 
@@ -118,14 +119,14 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     if (!staff || !company || !auth || !firestore || isSubmitting) return;
 
     if (pinInput.length < 6) {
-      toast({ title: "PIN muy corto", description: "Ingrese 6 números.", variant: "destructive" });
+      toast({ title: "PIN muy corto", description: "Ingrese exactamente 6 números.", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const cleanRut = staff.identification?.replace(/\D/g, '').toLowerCase();
-      const email = `${cleanRut}@${company.id}.staff.pcg`;
+      const cleanRutStr = cleanRut(staff.identification || "");
+      const email = `${cleanRutStr}@${company.id}.staff.pcg`;
       
       const userCredential = await createUserWithEmailAndPassword(auth, email, pinInput);
       const uid = userCredential.user.uid;
@@ -155,7 +156,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       if (error.code === 'auth/email-already-in-use') {
         router.push('/staff/login');
       } else {
-        toast({ title: "Error en registro", description: "No se pudo crear la cuenta. Reintente.", variant: "destructive" });
+        toast({ title: "Error en registro", description: error.message || "No se pudo crear la cuenta.", variant: "destructive" });
       }
     } finally {
       setIsSubmitting(false);
@@ -171,17 +172,21 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     );
   }
 
-  if (errorType === "invalid" || !staff || !company) {
+  if (errorType !== "none") {
+    let msg = "Este enlace ya no es válido o los datos fueron reseteados.";
+    if (errorType === "company_missing") msg = "La empresa vinculada a este link no existe.";
+    if (errorType === "staff_missing") msg = "El registro de técnico asociado a este link fue eliminado.";
+
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
         <Card className="max-w-md w-full rounded-[2.5rem] shadow-2xl border-none overflow-hidden text-center bg-white">
           <CardHeader className="bg-rose-50 p-10 space-y-4">
             <AlertTriangle className="h-12 w-12 text-rose-600 mx-auto" />
             <CardTitle className="text-xl font-black uppercase italic text-rose-900">Invitación Caducada</CardTitle>
-            <CardDescription className="font-bold text-rose-700">Este enlace ya no es válido o los datos fueron reseteados.</CardDescription>
+            <CardDescription className="font-bold text-rose-700">{msg}</CardDescription>
           </CardHeader>
           <CardContent className="p-10 space-y-4">
-            <p className="text-sm text-slate-500">Por favor, pida a su administrador que genere un **NUEVO LINK** de invitación por WhatsApp.</p>
+            <p className="text-sm text-slate-500 italic">Pida a su supervisor que genere un nuevo link de invitación desde el panel de personal.</p>
             <Button className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase" asChild><Link href="/staff/login">Ir al Inicio de Sesión</Link></Button>
           </CardContent>
         </Card>
@@ -197,20 +202,20 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
             <HardHat className="h-10 w-10 text-primary" />
           </div>
           <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic">Activa tu Acceso</h1>
-          <p className="text-slate-400 font-medium uppercase text-[10px] tracking-widest">{company.name}</p>
+          <p className="text-slate-400 font-medium uppercase text-[10px] tracking-widest">{company?.name}</p>
         </div>
 
         {step === 1 && (
           <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 bg-white">
             <CardHeader className="p-8 text-center border-b">
               <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900">Paso 1: Identidad</CardTitle>
-              <CardDescription>Hola <strong>{staff.name}</strong>, ingresa tu RUT para confirmar.</CardDescription>
+              <CardDescription>Hola <strong>{staff?.name}</strong>, ingresa tu RUT para confirmar.</CardDescription>
             </CardHeader>
             <CardContent className="p-8">
               <form onSubmit={handleVerifyIdentity} className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Tu RUT (solo números)</Label>
-                  <Input placeholder="Ej: 123456789" className="h-14 rounded-2xl border-2 text-xl font-bold text-center" value={rutInput} onChange={(e) => setRutInput(e.target.value.replace(/\D/g, ''))} required />
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Tu RUT</Label>
+                  <Input placeholder="Ej: 12345678-9" className="h-14 rounded-2xl border-2 text-xl font-bold text-center" value={rutInput} onChange={(e) => setRutInput(e.target.value)} required />
                 </div>
                 <Button type="submit" className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-lg uppercase tracking-widest gap-2 shadow-xl">
                   Validar Identidad <ArrowRight className="h-5 w-5" />
