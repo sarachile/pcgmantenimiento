@@ -37,7 +37,8 @@ import {
   AlertTriangle,
   Save,
   ClipboardList,
-  Circle
+  Circle,
+  Images
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -114,11 +115,10 @@ export default function FieldCapturePage() {
     }
   }, [filtered, isOrdersLoading, selectedOT, searchTerm]);
 
-  // EL REQUISITO ES QUE TODOS ESTÉN COMPLETADOS (CHECK OK)
+  // REQUISITO: Todos los puntos marcados (completed === true)
   const isChecklistComplete = useMemo(() => {
     if (!selectedOT || !selectedOT.checklist) return false;
     if (selectedOT.checklist.length === 0) return true;
-    
     return selectedOT.checklist.every(item => item.completed === true);
   }, [selectedOT]);
 
@@ -129,7 +129,6 @@ export default function FieldCapturePage() {
     }
   };
 
-  // NUEVA FUNCIÓN PARA MARCAR CHECK SIN FOTO
   const handleToggleTask = async (taskId: string, currentState: boolean) => {
     if (!selectedOT || !db || !profile?.companyId || !profile) return;
 
@@ -157,7 +156,7 @@ export default function FieldCapturePage() {
         companyId: profile.companyId,
         timestamp: serverTimestamp(),
         eventType: 'action_taken',
-        eventDetails: `Tarea marcada como completada: ${selectedOT.checklist?.find(i => i.id === taskId)?.task}`,
+        eventDetails: `Tarea marcada como OK: ${selectedOT.checklist?.find(i => i.id === taskId)?.task}`,
         actor: profile.id,
         actorName: profile.name
       });
@@ -212,7 +211,7 @@ export default function FieldCapturePage() {
         timestamp: serverTimestamp(),
         eventType: 'action_taken',
         eventDetails: activeTaskId 
-          ? `Evidencia capturada para tarea: ${selectedOT.checklist?.find(i => i.id === activeTaskId)?.task}` 
+          ? `Foto adjunta a protocolo: ${selectedOT.checklist?.find(i => i.id === activeTaskId)?.task}` 
           : "Evidencia fotográfica general capturada.",
         actor: profile.id,
         actorName: profile.name,
@@ -220,7 +219,7 @@ export default function FieldCapturePage() {
         longitude: coords?.lng || null
       });
 
-      toast({ title: "Captura Registrada ✓" });
+      toast({ title: "Evidencia Guardada ✓" });
       setActiveTaskId(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       
@@ -237,7 +236,7 @@ export default function FieldCapturePage() {
     if (!isChecklistComplete) {
       toast({ 
         title: "Protocolo Incompleto", 
-        description: "Debe marcar todos los puntos del protocolo como realizados antes de finalizar.", 
+        description: "Debe marcar todos los puntos como realizados antes de finalizar.", 
         variant: "destructive" 
       });
       return;
@@ -272,7 +271,7 @@ export default function FieldCapturePage() {
   };
 
   const handleSaveProgress = () => {
-    toast({ title: "Progreso Guardado" });
+    toast({ title: "Avance Guardado" });
     router.push('/dashboard');
   };
 
@@ -296,7 +295,7 @@ export default function FieldCapturePage() {
               <div className="bg-white/20 p-3 rounded-2xl"><Info className="h-6 w-6" /></div>
               <div>
                 <p className="font-black uppercase italic tracking-tight">Instrucciones</p>
-                <p className="text-xs font-medium text-blue-100 leading-tight">Marque los puntos realizados. Tocar una tarea abre la cámara para el respaldo recomendado.</p>
+                <p className="text-[11px] font-medium text-blue-100 leading-tight">Marque los puntos realizados. Si desea adjuntar fotos por tarea, pulse la descripción.</p>
               </div>
             </div>
 
@@ -356,7 +355,7 @@ export default function FieldCapturePage() {
               <CardContent className="p-6 space-y-8">
                 <div className="space-y-3 bg-indigo-50/50 p-6 rounded-[2rem] border-2 border-indigo-100 shadow-inner">
                   <Label className="text-[10px] font-black uppercase text-indigo-600 tracking-widest flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4" /> Requerimiento del Cliente
+                    <ClipboardList className="h-4 w-4" /> Misión del Servicio
                   </Label>
                   <p className="text-sm text-slate-700 leading-relaxed font-medium italic">
                     "{selectedOT.description}"
@@ -368,9 +367,12 @@ export default function FieldCapturePage() {
                 </div>
                 
                 <div className="space-y-4">
-                  <Label className="text-[11px] font-black uppercase text-slate-900 tracking-widest flex items-center gap-2 border-b pb-2">
-                    <ListChecks className="h-4 w-4 text-primary" /> Protocolos de Servicio
-                  </Label>
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <Label className="text-[11px] font-black uppercase text-slate-900 tracking-widest flex items-center gap-2">
+                      <ListChecks className="h-4 w-4 text-primary" /> Protocolos Técnicos
+                    </Label>
+                    <span className="text-[9px] font-black text-slate-400 uppercase">Requerido: 100% OK</span>
+                  </div>
                   
                   <div className="space-y-4">
                     {selectedOT.checklist?.map((item) => {
@@ -378,35 +380,45 @@ export default function FieldCapturePage() {
                       return (
                         <div key={item.id} className="space-y-3">
                           <div className={cn(
-                            "w-full p-5 rounded-2xl border-2 transition-all flex items-center gap-4 group relative overflow-hidden",
-                            item.completed && photos.length > 0
+                            "w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-4 group relative overflow-hidden",
+                            item.completed 
                               ? "border-emerald-100 bg-emerald-50/20" 
-                              : item.completed 
-                              ? "border-amber-100 bg-amber-50/20"
                               : "border-slate-100 bg-white hover:border-primary/30 shadow-sm"
                           )}>
-                            {/* CHECKBOX PARA MARCAR COMPLETADO SIN FOTO */}
+                            {/* BOTÓN CHECK INDEPENDIENTE */}
                             <button 
                               onClick={() => handleToggleTask(item.id, item.completed)}
                               className={cn(
-                                "h-10 w-10 rounded-full flex items-center justify-center border-2 shrink-0 transition-all",
-                                item.completed ? "bg-primary border-primary text-white" : "border-slate-200 text-slate-200 bg-white"
+                                "h-12 w-12 rounded-full flex items-center justify-center border-4 shrink-0 transition-all active:scale-90",
+                                item.completed 
+                                  ? "bg-emerald-500 border-emerald-200 text-white" 
+                                  : "border-slate-100 text-slate-200 bg-slate-50"
                               )}
+                              title="Marcar como realizado"
                             >
-                              <Check className={cn("h-6 w-6", !item.completed && "opacity-0")} />
+                              <Check className={cn("h-7 w-7", !item.completed && "opacity-0")} />
                             </button>
 
-                            {/* BOTÓN PARA ABRIR CÁMARA */}
+                            {/* ZONA DE TEXTO Y CÁMARA */}
                             <button
                               onClick={() => handleTaskClick(item.id)}
                               disabled={isUploading}
-                              className="flex-1 text-left flex flex-col min-w-0"
+                              className="flex-1 text-left flex flex-col min-w-0 py-1"
                             >
-                              <span className={cn("text-sm font-black leading-none truncate", item.completed ? "text-slate-900" : "text-slate-400")}>
+                              <span className={cn(
+                                "text-sm font-black leading-tight",
+                                item.completed ? "text-slate-900" : "text-slate-400"
+                              )}>
                                 {item.task}
                               </span>
-                              <span className="text-[9px] font-bold text-primary uppercase mt-1.5 flex items-center gap-1">
-                                <Camera className="h-3 w-3" /> {photos.length > 0 ? "AÑADIR MÁS FOTOS" : "SUBIR EVIDENCIA (OPCIONAL)"}
+                              <span className={cn(
+                                "text-[9px] font-bold uppercase mt-1.5 flex items-center gap-1.5",
+                                photos.length > 0 ? "text-emerald-600" : "text-primary"
+                              )}>
+                                <Camera className="h-3 w-3" /> 
+                                {photos.length > 0 
+                                  ? `EVIDENCIA: ${photos.length} FOTOS` 
+                                  : "ADJUNTAR FOTO (OPCIONAL)"}
                               </span>
                             </button>
 
@@ -416,9 +428,9 @@ export default function FieldCapturePage() {
                           </div>
                           
                           {photos.length > 0 && (
-                            <div className="px-2 grid grid-cols-2 sm:grid-cols-3 gap-2 animate-in fade-in slide-in-from-top-2">
+                            <div className="px-2 grid grid-cols-3 gap-2 animate-in fade-in slide-in-from-top-2">
                               {photos.map((url, i) => (
-                                <div key={i} className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-100 shadow-sm group">
+                                <div key={i} className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-100 shadow-sm">
                                   <FirebaseImage url={url} className="w-full h-full object-cover" />
                                 </div>
                               ))}
@@ -430,19 +442,26 @@ export default function FieldCapturePage() {
                   </div>
                 </div>
 
+                {/* EVIDENCIA GENERAL - MEJORADA */}
                 <div className="pt-6 border-t-2 border-dashed border-slate-100 space-y-4">
-                  <p className="text-[10px] font-black uppercase text-slate-400 text-center">Evidencias Generales de Apoyo</p>
+                  <div className="flex items-center justify-between px-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                      <Images className="h-4 w-4" /> Evidencias Generales
+                    </Label>
+                    <Badge variant="outline" className="text-[8px] font-bold">RECOMENDADO</Badge>
+                  </div>
+                  
                   <Button 
                     variant="outline" 
-                    className="w-full h-14 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-widest gap-2"
+                    className="w-full h-16 rounded-2xl border-2 border-slate-100 bg-slate-50 text-primary font-black uppercase text-[10px] tracking-widest gap-3 shadow-sm hover:bg-white active:scale-95 transition-all"
                     onClick={() => { setActiveTaskId(null); fileInputRef.current?.click(); }}
                     disabled={isUploading}
                   >
-                    {isUploading && !activeTaskId ? <Loader2 className="animate-spin h-4 w-4" /> : <><Plus className="h-4 w-4" /> Añadir Foto General</>}
+                    {isUploading && !activeTaskId ? <Loader2 className="animate-spin h-5 w-5" /> : <><PlusCircle className="h-5 w-5" /> Sube una foto del trabajo terminado</>}
                   </Button>
                   
                   {selectedOT.evidenceUrls && selectedOT.evidenceUrls.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 mt-4">
+                    <div className="grid grid-cols-3 gap-2 mt-4 animate-in fade-in duration-500">
                       {selectedOT.evidenceUrls.map((url, i) => (
                         <div key={i} className="aspect-square rounded-xl overflow-hidden border shadow-inner">
                           <FirebaseImage url={url} className="w-full h-full" />
@@ -452,29 +471,30 @@ export default function FieldCapturePage() {
                   )}
                 </div>
 
+                {/* SECCIÓN DE CIERRE */}
                 <div className="pt-8 space-y-4">
                   {isChecklistComplete ? (
                     <div className="space-y-4 animate-in fade-in zoom-in-95">
-                      <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-200 flex gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
-                        <p className="text-[11px] text-emerald-800 font-bold uppercase leading-tight">
-                          Protocolo Completo: El checklist está 100% validado para el cierre oficial.
+                      <div className="bg-emerald-50 p-5 rounded-[2rem] border-2 border-emerald-200 flex gap-4 items-center">
+                        <CheckCircle2 className="h-8 w-8 text-emerald-600 shrink-0" />
+                        <p className="text-xs text-emerald-800 font-bold uppercase leading-tight">
+                          Protocolo Completo: Todo ha sido verificado satisfactoriamente.
                         </p>
                       </div>
                       <Button 
-                        className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-xl uppercase tracking-widest gap-3 shadow-2xl transition-all active:scale-95"
+                        className="w-full h-24 rounded-[3rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-2xl uppercase tracking-widest gap-4 shadow-2xl transition-all active:scale-95"
                         onClick={handleFinalize}
                         disabled={isFinalizing || isUploading}
                       >
-                        {isFinalizing ? <Loader2 className="animate-spin h-8 w-8" /> : <><CheckCircle2 className="h-6 w-6" /> Finalizar y Enviar</>}
+                        {isFinalizing ? <Loader2 className="animate-spin h-8 w-8" /> : <><Send className="h-8 w-8" /> Finalizar y Enviar</>}
                       </Button>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 flex gap-3">
-                        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-                        <p className="text-[11px] text-amber-800 font-bold uppercase leading-tight">
-                          Checklist Incompleto: Debes marcar todos los puntos como realizados para poder finalizar el reporte oficial.
+                      <div className="bg-amber-50 p-5 rounded-[2rem] border-2 border-amber-200 flex gap-4 items-center">
+                        <AlertTriangle className="h-8 w-8 text-amber-600 shrink-0" />
+                        <p className="text-xs text-amber-800 font-bold uppercase leading-tight">
+                          Checklist Incompleto: Debes marcar todos los puntos como realizados para poder cerrar la orden oficialmente.
                         </p>
                       </div>
                       <Button 
@@ -486,8 +506,8 @@ export default function FieldCapturePage() {
                       </Button>
                     </div>
                   )}
-                  <p className="text-[9px] text-center text-slate-400 font-bold uppercase mt-4 tracking-widest">
-                    * El envío al supervisor requiere que todos los puntos del protocolo estén marcados.
+                  <p className="text-[9px] text-center text-slate-400 font-black uppercase mt-4 tracking-[0.2em]">
+                    * Trazabilidad Inalterable PCGMANTENIMIENTO ERP
                   </p>
                 </div>
               </CardContent>
