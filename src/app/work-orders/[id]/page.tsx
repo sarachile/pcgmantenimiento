@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -45,7 +46,10 @@ import {
   Globe,
   Layers,
   Images,
-  Quote
+  Quote,
+  ExternalLink,
+  Mail,
+  QrCode
 } from "lucide-react";
 import {
   Dialog,
@@ -93,11 +97,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isUploading, setIsUploading] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGeneratingCert, setIsGeneratingCert] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [currentUrl, setCurrentUrl] = useState("");
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile?.companyId) {
-      const baseUrl = "https://www.pcgmantenimiento.com";
+      const baseUrl = window.location.origin;
       setCurrentUrl(`${baseUrl}/portal/approve/${otId}?c=${profile.companyId}`);
     }
   }, [otId, profile?.companyId]);
@@ -170,14 +176,151 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { toast({ title: "Error al generar certificado", variant: "destructive" }); } finally { setIsGeneratingCert(false); }
   };
 
-  const handleDirectApproval = async () => {
+  const handleVisaOrder = async () => {
     if (!otRef || !profile) return;
     setIsUpdating(true);
     try {
-      const verificationCode = `ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      updateDocumentNonBlocking(otRef, { status: 'aprobada', clientApprovalName: profile.name + " (Adm)", clientApprovalDate: serverTimestamp(), clientApprovalCode: verificationCode, updatedAt: serverTimestamp() });
-      toast({ title: "Orden Aprobada Internamente" });
+      if (ot.reviewerRequired) {
+        // Pasar a validación externa
+        updateDocumentNonBlocking(otRef, { 
+          status: 'pendiente cliente', 
+          updatedAt: serverTimestamp() 
+        });
+        
+        await addDoc(collection(db!, "companies", companyId, "workOrders", otId, "digitalLogbookEntries"), {
+          workOrderId: otId,
+          companyId,
+          timestamp: serverTimestamp(),
+          eventType: 'status_change',
+          eventDetails: "Orden visada técnicamente. Se habilita portal de aprobación para el cliente.",
+          actor: profile.id,
+          actorName: profile.name
+        });
+
+        toast({ title: "Orden Visada", description: "Ahora puede enviar el link de aprobación al cliente." });
+      } else {
+        // Aprobación interna inmediata
+        const verificationCode = `ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        updateDocumentNonBlocking(otRef, { 
+          status: 'aprobada', 
+          clientApprovalName: profile.name + " (Adm)", 
+          clientApprovalDate: serverTimestamp(), 
+          clientApprovalCode: verificationCode, 
+          updatedAt: serverTimestamp() 
+        });
+
+        await addDoc(collection(db!, "companies", companyId, "workOrders", otId, "digitalLogbookEntries"), {
+          workOrderId: otId,
+          companyId,
+          timestamp: serverTimestamp(),
+          eventType: 'status_change',
+          eventDetails: "Orden aprobada internamente por administración.",
+          actor: profile.id,
+          actorName: profile.name
+        });
+
+        toast({ title: "Orden Aprobada Internamente" });
+      }
     } catch (e: any) { toast({ title: "Error", variant: "destructive" }); } finally { setIsUpdating(false); }
+  };
+
+  const handleToggleTask = (taskId: string, currentCompleted: boolean) => {
+    if (!otRef || !ot.checklist) return;
+    const updatedChecklist = ot.checklist.map(item => {
+      if (item.id === taskId) {
+        return { 
+          ...item, 
+          completed: !currentCompleted, 
+          completedAt: !currentCompleted ? new Date().toISOString() : null 
+        };
+      }
+      return item;
+    });
+    updateDocumentNonBlocking(otRef, { checklist: updatedChecklist, updatedAt: serverTimestamp() });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !ot || !activeTaskId || !storage || !otRef) return;
+
+    setIsUploading(true);
+    try {
+      const path = `companies/${companyId}/workOrders/${otId}/admin_evidence_${Date.now()}`;
+      const sRef = ref(storage, path);
+      await uploadBytes(sRef, file);
+      const url = await getDownloadURL(sRef);
+
+      const updatedChecklist = ot.checklist?.map(item => {
+        if (item.id === activeTaskId) {
+          const currentUrls = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
+          return { 
+            ...item, 
+            completed: true, 
+            completedAt: new Date().toISOString(), 
+            evidenceUrls: [...currentUrls, url] 
+          };
+        }
+        return item;
+      });
+
+      updateDocumentNonBlocking(otRef, { checklist: updatedChecklist, updatedAt: serverTimestamp() });
+      toast({ title: "Evidencia adjunta con éxito" });
+    } catch (error) {
+      toast({ title: "Error al subir", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+      setActiveTaskId(null);
+    }
+  };
+
+  const handleSendEmailPortal = async () => {
+    if (!client?.contactEmail || !ot) {
+      toast({ title: "Sin Correo", description: "El cliente no tiene un email de contacto registrado.", variant: "destructive" });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      const result = await sendSystemEmail({
+        to: client.contactEmail,
+        subject: `APROBACIÓN DE SERVICIO - ${company?.name || 'PCGMANTENIMIENTO'}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 40px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff;">
+            <h1 style="color: #1e3a8a; text-align: center;">${company?.name}</h1>
+            <h2 style="text-align: center;">Solicitud de Aprobación Digital</h2>
+            <p>Estimados <strong>${client.name}</strong>,</p>
+            <p>Los trabajos correspondientes a la Orden de Trabajo <strong>${ot.id}</strong> han sido finalizados técnicamente.</p>
+            <p>Para cerrar el ciclo y generar su certificado de recepción, por favor ingrese al siguiente portal y valide el servicio con su PIN de seguridad:</p>
+            <div style="text-align: center; margin: 40px 0;">
+              <a href="${currentUrl}" style="background-color: #1e3a8a; color: #ffffff; padding: 20px 40px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">
+                REVISAR Y APROBAR TRABAJOS
+              </a>
+            </div>
+            <p style="font-size: 12px; color: #64748b;">Su PIN de seguridad le ha sido enviado en una comunicación previa. Si no lo tiene, solicítelo al técnico a cargo.</p>
+            <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
+            <p style="font-size: 11px; color: #94a3b8; text-align: center;">Servicio automatizado vía PCGMANTENIMIENTO ERP.</p>
+          </div>
+        `
+      });
+
+      if (result.success) {
+        toast({ title: "Email Enviado", description: `Se ha notificado a ${client.contactEmail}` });
+        await addDoc(collection(db!, "companies", companyId, "workOrders", otId, "digitalLogbookEntries"), {
+          workOrderId: otId,
+          companyId,
+          timestamp: serverTimestamp(),
+          eventType: 'system_alert',
+          eventDetails: `Se envió link de aprobación al cliente (${client.contactEmail}) vía email.`,
+          actor: profile?.id || 'system'
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (e: any) {
+      toast({ title: "Error en envío", description: e.message, variant: "destructive" });
+    } finally {
+      setIsSendingEmail(false);
+    }
   };
 
   if (isDocLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -193,6 +336,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         return <Badge className="bg-blue-100 text-blue-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">En Proceso</Badge>;
       case 'en revision':
         return <Badge className="bg-amber-100 text-amber-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">En Revisión</Badge>;
+      case 'pendiente cliente':
+        return <Badge className="bg-indigo-600 text-white px-3 py-1 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-900/20">Pendiente Cliente</Badge>;
       default:
         return <Badge className="bg-blue-100 text-blue-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">{status.replace('_', ' ').toUpperCase()}</Badge>;
     }
@@ -214,7 +359,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {isAdminOrSupervisor && ot.status !== 'aprobada' && <Button onClick={handleDirectApproval} disabled={isUpdating} className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg">{isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} Visar</Button>}
+          {isAdminOrSupervisor && ot.status === 'en revision' && (
+            <Button onClick={handleVisaOrder} disabled={isUpdating} className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg">
+              {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} 
+              {ot.reviewerRequired ? "Visar y Habilitar Cliente" : "Visar y Aprobar"}
+            </Button>
+          )}
           {isAdminOrSupervisor && <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-amber-200 text-amber-700 font-bold" disabled={ot.status === 'aprobada'}><Link href={`/work-orders/new?editId=${ot.id}`}><Edit2 className="h-4 w-4 mr-2" /> Editar</Link></Button>}
           <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11"><FileDown className="h-4 w-4 mr-2" /> Informe</Button>
           {ot.status === 'aprobada' && <Button variant="outline" size="sm" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700"><Award className="h-4 w-4 mr-2" /> Certificado</Button>}
@@ -223,18 +373,57 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          {/* ALCANCE DEL REQUERIMIENTO - PRIORIDAD ALTA */}
-          <Card className="rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden animate-in fade-in slide-in-from-top-4">
+          {/* PANEL DE VALIDACIÓN EXTERNA (SI ESTÁ HABILITADO) */}
+          {ot.reviewerRequired && (ot.status === 'pendiente cliente' || ot.status === 'en revision' || ot.status === 'aprobada') && (
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-indigo-600 text-white overflow-hidden animate-in zoom-in-95 duration-500">
+              <CardHeader className="bg-white/10 p-8 border-b border-white/10">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3">
+                    <Fingerprint className="h-6 w-6 text-indigo-300" /> Validación Mandante
+                  </CardTitle>
+                  <Badge className="bg-white text-indigo-600 font-black text-[10px] uppercase">Portal Digital Activo</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8">
+                <div className="grid md:grid-cols-2 gap-10 items-center">
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black uppercase text-indigo-200 tracking-widest">Link de Aprobación</p>
+                      <div className="flex gap-2">
+                        <Input value={currentUrl} readOnly className="bg-white/10 border-white/20 text-white h-11 rounded-xl text-xs font-mono" />
+                        <Button size="icon" variant="ghost" className="h-11 w-11 rounded-xl bg-white/10 hover:bg-white/20" onClick={() => { navigator.clipboard.writeText(currentUrl); toast({ title: "Link Copiado" }); }}>
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button className="flex-1 h-12 rounded-xl bg-white text-indigo-600 font-black uppercase text-[10px] gap-2 shadow-xl hover:bg-slate-100" onClick={handleSendEmailPortal} disabled={isSendingEmail}>
+                        {isSendingEmail ? <Loader2 className="animate-spin h-4 w-4" /> : <Mail className="h-4 w-4" />} Enviar por Email
+                      </Button>
+                      <Button variant="outline" className="flex-1 h-12 rounded-xl border-white/20 text-white hover:bg-white/10 font-black uppercase text-[10px] gap-2" asChild>
+                        <a href={currentUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /> Probar Portal</a>
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center gap-4 bg-white p-6 rounded-[2rem] shadow-inner">
+                    <div className="bg-white p-2 rounded-xl border-2 border-slate-100">
+                      <img src={qrUrl} alt="QR Approval" className="h-32 w-32" />
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase text-center tracking-widest leading-tight">Escaneo directo para<br/> firma en terreno</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden">
             <CardHeader className="bg-white/5 p-8 border-b border-white/10">
               <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3">
                 <Quote className="h-6 w-6 text-blue-400" /> Alcance del Requerimiento
               </CardTitle>
-              <CardDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Instrucción oficial de servicio</CardDescription>
             </CardHeader>
             <CardContent className="p-8">
-              <p className="text-lg font-medium leading-relaxed italic text-blue-50">
-                "{ot.description}"
-              </p>
+              <p className="text-lg font-medium leading-relaxed italic text-blue-50">"{ot.description}"</p>
             </CardContent>
           </Card>
 
@@ -250,47 +439,53 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-indigo-50 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Magnitudes Registradas</CardTitle></CardHeader>
-            <CardContent className="p-6">
-              {ot.serviceItems && ot.serviceItems.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {ot.serviceItems.map(item => (
-                    <div key={item.id} className="p-4 bg-slate-50 rounded-2xl border flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400">{item.description || 'Partida sin descripción'}</p>
-                        <p className="text-lg font-black text-slate-900">{item.quantity} <span className="text-xs font-bold text-indigo-600">{item.unit}</span></p>
-                      </div>
-                      <Layers className="h-5 w-5 text-indigo-200" />
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm italic text-slate-400 text-center py-4">No se registraron magnitudes específicas.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolos & Evidencias</CardTitle></CardHeader>
+            <CardHeader className="bg-primary/5 p-6 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
+                  <ListChecks className="h-5 w-5" /> Protocolos & Evidencias
+                </CardTitle>
+                {isAdminOrSupervisor && <span className="text-[9px] font-black text-slate-400 uppercase bg-slate-100 px-2 py-1 rounded-lg">Panel Interactivo Admin</span>}
+              </div>
+            </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 gap-4">
                 {ot.checklist?.map(item => {
                   const photos = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
                   return (
-                    <div key={item.id} className="flex flex-col gap-4 p-4 bg-white border-2 rounded-2xl">
-                      <div className="flex-1 flex items-center gap-4">
-                        <div className={cn("h-6 w-6 rounded-full flex items-center justify-center border-2 shrink-0", item.completed ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 text-slate-200")}>
-                          {item.completed && <Check className="h-4 w-4" />}
-                        </div>
-                        <div className="flex flex-col">
+                    <div key={item.id} className="flex flex-col gap-4 p-5 bg-white border-2 rounded-2xl group transition-all hover:border-primary/20">
+                      <div className="flex items-center gap-4">
+                        <button 
+                          onClick={() => isAdminOrSupervisor && handleToggleTask(item.id, item.completed)}
+                          disabled={!isAdminOrSupervisor || ot.status === 'aprobada'}
+                          className={cn(
+                            "h-8 w-8 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
+                            item.completed ? "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-900/20" : "border-slate-200 text-slate-200 bg-slate-50"
+                          )}
+                        >
+                          <Check className={cn("h-5 w-5", !item.completed && "opacity-0")} />
+                        </button>
+                        <div className="flex-1 flex flex-col">
                           <span className={cn("text-sm font-bold", item.completed ? "text-slate-900" : "text-slate-400")}>{item.task}</span>
-                          {item.completed && <span className="text-[9px] font-black text-slate-400">REALIZADO: {format(new Date(item.completedAt), "dd/MM HH:mm")}</span>}
+                          {item.completed && <span className="text-[9px] font-black text-slate-400">FINALIZADO: {format(new Date(item.completedAt), "dd/MM HH:mm")}</span>}
                         </div>
+                        {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-9 w-9 rounded-xl border-dashed opacity-0 group-hover:opacity-100 transition-opacity" 
+                            onClick={() => { setActiveTaskId(item.id); fileInputRef.current?.click(); }}
+                            disabled={isUploading}
+                          >
+                            {isUploading && activeTaskId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4 text-primary" />}
+                          </Button>
+                        )}
                       </div>
                       {photos.length > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                           {photos.map((url, i) => (
-                            <div key={i} className="aspect-video rounded-xl overflow-hidden shadow-sm border bg-slate-50"><FirebaseImage url={url} className="w-full h-full" /></div>
+                            <div key={i} className="aspect-video rounded-xl overflow-hidden shadow-sm border bg-slate-50 relative group/img">
+                              <FirebaseImage url={url} className="w-full h-full object-cover" />
+                            </div>
                           ))}
                         </div>
                       )}
@@ -302,7 +497,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               {ot.evidenceUrls && ot.evidenceUrls.length > 0 && (
                 <div className="space-y-4 pt-4 border-t-2 border-dashed">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><Images className="h-4 w-4" /> Galería General de Terreno</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {ot.evidenceUrls.map((url, i) => (
                       <div key={i} className="aspect-video rounded-xl overflow-hidden border-2 shadow-sm group bg-slate-50"><FirebaseImage url={url} className="w-full h-full transition-transform group-hover:scale-110" /></div>
                     ))}
@@ -331,6 +526,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
         </div>
       </div>
+
+      <input 
+        type="file" 
+        accept="image/*" 
+        className="hidden" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+      />
     </div>
   );
 }
