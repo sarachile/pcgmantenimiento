@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -16,11 +17,8 @@ import {
   HardHat, 
   ShieldCheck, 
   QrCode, 
-  Trophy,
-  ArrowRight,
   CheckCircle2,
   Smartphone,
-  Building2,
   Fingerprint
 } from "lucide-react";
 import { cn } from "@/lib/utils";

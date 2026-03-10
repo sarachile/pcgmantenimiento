@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -12,14 +13,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { 
   HelpCircle, 
-  Building2, 
-  Smartphone, 
   MapPin, 
   ShieldCheck,
   CheckCircle2,
   PlusCircle,
   Zap,
-  ClipboardPlus
+  Smartphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -18,8 +19,6 @@ import {
   Users2, 
   ShieldCheck,
   CheckCircle2,
-  ArrowRight,
-  Zap,
   KeyRound
 } from "lucide-react";
 import { cn } from "@/lib/utils";
