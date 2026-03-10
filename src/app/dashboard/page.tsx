@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -32,7 +33,8 @@ import {
   XCircle,
   BellRing,
   Monitor,
-  Download
+  Download,
+  ShieldCheck
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -57,7 +59,7 @@ import { cn } from "@/lib/utils";
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading, isTechnician } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
   const limits = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
@@ -98,6 +100,7 @@ export default function DashboardPage() {
   const stats = useMemo(() => {
     const total = realWorkOrders.length;
     const completed = realWorkOrders.filter(ot => ot.status === 'aprobada').length;
+    const reviewPending = realWorkOrders.filter(ot => ot.status === 'en revision').length;
     const rejected = realWorkOrders.filter(ot => ot.status === 'rechazada');
     const active = realWorkOrders.filter(ot => ot.status !== 'aprobada').length;
     
@@ -112,6 +115,7 @@ export default function DashboardPage() {
       total, 
       completed, 
       active, 
+      reviewPending,
       rejected: rejected.length,
       rejectedList: rejected,
       delayed: delayed.length,
@@ -315,8 +319,30 @@ export default function DashboardPage() {
       </div>
 
       {/* ALERTAS OPERATIVAS */}
-      {(stats.alertCount > 0 || iotStats.maintenanceCount > 0) && (
-        <div className="grid gap-6 md:grid-cols-2">
+      {(stats.alertCount > 0 || iotStats.maintenanceCount > 0 || stats.reviewPending > 0) && (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {stats.reviewPending > 0 && (isAdminOrSupervisor) && (
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-amber-500 text-white overflow-hidden border-l-[12px] border-amber-600 animate-in slide-in-from-left-4">
+              <CardHeader className="bg-amber-600/20 p-6 border-b border-amber-600/10">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" /> Visados Pendientes
+                    </CardTitle>
+                    <CardDescription className="text-[10px] font-bold text-amber-100 uppercase">Órdenes ejecutadas por técnicos</CardDescription>
+                  </div>
+                  <Badge className="bg-white text-amber-600 font-black text-[10px]">{stats.reviewPending}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <p className="text-xs font-medium mb-4">Tienes trabajos terminados que requieren tu validación técnica para cerrar el ciclo.</p>
+                <Button asChild variant="outline" className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-[10px] tracking-widest">
+                  <Link href="/reviews">Ir a Centro de Revisiones</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden border-l-[12px] border-rose-500 animate-in slide-in-from-left-4">
             <CardHeader className="bg-rose-50/50 p-6 border-b">
               <div className="flex items-center justify-between">
@@ -329,7 +355,7 @@ export default function DashboardPage() {
                 <Badge className="bg-rose-600 text-white font-black text-[10px]">{stats.alertCount}</Badge>
               </div>
             </CardHeader>
-            <CardContent className="p-0 max-h-[300px] overflow-y-auto">
+            <CardContent className="p-0 max-h-[200px] overflow-y-auto">
               <div className="divide-y divide-rose-100">
                 {stats.rejectedList.map(ot => (
                   <Link key={ot.id} href={`/work-orders/${ot.id}`} className="flex items-center justify-between p-4 hover:bg-rose-50/30 transition-colors group">
@@ -360,7 +386,7 @@ export default function DashboardPage() {
           </Card>
 
           <Link href="/iot-control" className="block group">
-            <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden transition-all group-hover:scale-[1.01] border-l-[12px] border-amber-400">
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden h-full transition-all group-hover:scale-[1.01] border-l-[12px] border-amber-400">
               <CardHeader className="bg-white/10 p-6 border-b border-white/10">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
@@ -372,7 +398,7 @@ export default function DashboardPage() {
                   <Badge className="bg-amber-400 text-slate-900 font-black text-[10px]">{iotStats.maintenanceCount}</Badge>
                 </div>
               </CardHeader>
-              <CardContent className="p-0 max-h-[300px] overflow-y-auto">
+              <CardContent className="p-0 max-h-[200px] overflow-y-auto">
                 <div className="divide-y divide-white/5">
                   {iotStats.maintenanceList.length > 0 ? iotStats.maintenanceList.map(asset => (
                     <div key={asset.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
@@ -560,11 +586,11 @@ export default function DashboardPage() {
               <div className="flex justify-between items-end">
                 <div className="space-y-1">
                   <p className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><HardHat className="h-3 w-3 text-emerald-400" /> Ejecución Terreno</p>
-                  <p className="text-3xl font-black italic tracking-tighter">{limits.techCount} / {limits.maxTechs}</p>
+                  <p className="text-3xl font-black italic tracking-tighter">{limits.techCount} / {limits.maxTechnicians}</p>
                 </div>
                 <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Técnicos de Campo</span>
               </div>
-              <Progress value={(limits.techCount / limits.maxTechs) * 100} className="h-1.5 bg-white/10" />
+              <Progress value={(limits.techCount / limits.maxTechnicians) * 100} className="h-1.5 bg-white/10" />
             </div>
 
             <div className="space-y-4">

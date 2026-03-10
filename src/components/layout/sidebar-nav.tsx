@@ -61,6 +61,7 @@ const operationalItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", href: "/calendar", icon: CalendarDays },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
+  { title: "Revisiones Técnicas", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor', 'companyAdmin'] },
   { title: "Monitor IoT Alertas", href: "/iot-control", icon: Cpu, highlight: true },
   { title: "Captura Terreno", href: "/field/capture", icon: Camera },
 ];
@@ -80,7 +81,6 @@ const businessItems: NavItem[] = [
 const settingsItems: NavItem[] = [
   { title: "Mi Empresa", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor'] },
   { title: "Equipo Técnico", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
-  { title: "Revisiones", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor'] },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
 ];
 
