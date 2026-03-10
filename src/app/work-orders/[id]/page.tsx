@@ -85,6 +85,7 @@ import { jsPDF } from "jspdf";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
+import { WorkOrderHelp } from "@/components/WorkOrderHelp";
 
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -505,6 +506,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <WorkOrderHelp />
           {isTechnician && ot.status !== 'aprobada' && (
             <Button asChild className="rounded-xl h-11 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg">
               <Link href={`/field/capture?otId=${ot.id}`}>

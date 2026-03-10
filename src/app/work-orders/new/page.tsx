@@ -42,13 +42,15 @@ import {
   Building2,
   MapPin,
   Smartphone,
-  Mail
+  Mail,
+  HelpCircle
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Client, Asset, StaffMember, Team, ServiceItem, ChecklistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CHILE_REGIONS } from "@/lib/chile-data";
+import { WorkOrderHelp } from "@/components/WorkOrderHelp";
 
 export const dynamic = 'force-dynamic';
 
@@ -310,12 +312,15 @@ function NewWorkOrderContent() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 px-4 py-8 pb-32">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild><Link href={isEditing ? `/work-orders/${editId}` : "/work-orders"}><ArrowLeft className="h-4 w-4" /></Link></Button>
-        <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">{isEditing ? "Editar Orden" : "Generar Orden"}</h2>
-          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Gestión de Partidas y Trazabilidad Geográfica</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild><Link href={isEditing ? `/work-orders/${editId}` : "/work-orders"}><ArrowLeft className="h-4 w-4" /></Link></Button>
+          <div>
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">{isEditing ? "Editar Orden" : "Generar Orden"}</h2>
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Gestión de Partidas y Trazabilidad Geográfica</p>
+          </div>
         </div>
+        <WorkOrderHelp />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-10">
