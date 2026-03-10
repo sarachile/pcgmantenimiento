@@ -400,7 +400,25 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <Save className="h-4 w-4 mr-2" /> Guardar Avance
             </Button>
           )}
-          {isAdminOrSupervisor && <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-amber-200 text-amber-700 font-bold" disabled={ot.status === 'aprobada'}><Link href={`/work-orders/new?editId=${ot.id}`}><Edit2 className="h-4 w-4 mr-2" /> Editar</Link></Button>}
+          {isAdminOrSupervisor && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              asChild 
+              className="rounded-xl h-11 border-amber-200 text-amber-700 font-bold" 
+              disabled={ot.status === 'aprobada'}
+            >
+              {ot.status === 'aprobada' ? (
+                <div className="flex items-center opacity-50 cursor-not-allowed">
+                  <Edit2 className="h-4 w-4 mr-2" /> Editar
+                </div>
+              ) : (
+                <Link href={`/work-orders/new?editId=${ot.id}`}>
+                  <Edit2 className="h-4 w-4 mr-2" /> Editar
+                </Link>
+              )}
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11"><FileDown className="h-4 w-4 mr-2" /> Informe</Button>
           {ot.status === 'aprobada' && <Button variant="outline" size="sm" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700"><Award className="h-4 w-4 mr-2" /> Certificado</Button>}
         </div>
