@@ -20,7 +20,9 @@ import {
   ArrowRight,
   HardHat,
   CheckCircle2,
-  Lock
+  Lock,
+  AlertTriangle,
+  RefreshCw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useAuth } from "@/firebase";
@@ -28,6 +30,7 @@ import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firest
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { StaffMember, Company } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 function StaffSetupContent({ params }: { params: { id: string } }) {
   const staffId = params.id;
@@ -108,7 +111,6 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         const userCredential = await createUserWithEmailAndPassword(auth, syntheticEmail, pinInput);
         userId = userCredential.user.uid;
       } catch (authError: any) {
-        // Manejar caso donde el correo ya existe (el técnico ya activó su cuenta)
         if (authError.code === 'auth/email-already-in-use') {
           toast({ 
             title: "Cuenta ya activa", 
@@ -167,7 +169,32 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
-  if (!staff || !company) return <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 text-center"><Card className="p-10 rounded-[2.5rem] border-dashed border-2">Invitación no válida o expirada.</Card></div>;
+  
+  if (!staff || !company) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
+        <Card className="max-w-md w-full rounded-[2.5rem] shadow-2xl border-none overflow-hidden animate-in zoom-in-95">
+          <CardHeader className="bg-rose-50 p-10 space-y-4">
+            <div className="bg-rose-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <AlertTriangle className="h-10 w-10 text-rose-600" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl font-black uppercase tracking-tighter italic text-rose-900">Enlace no Válido</CardTitle>
+              <CardDescription className="text-rose-700 font-medium">Esta invitación ha expirado o los datos fueron reseteados.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="p-10 space-y-6">
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Si la base de datos fue reiniciada recientemente, los enlaces antiguos ya no funcionan. Por favor, solicita a tu supervisor que te envíe un <strong>nuevo link de invitación</strong> desde el panel de control.
+            </p>
+            <Button className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest gap-2" asChild>
+              <Link href="/staff/login"><RefreshCw className="h-4 w-4" /> Ir al Login Técnico</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6">
