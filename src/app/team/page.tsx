@@ -35,7 +35,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui/tabs";
+} from "@/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,6 +77,7 @@ import Link from "next/link";
 import { StaffMember, Team, Company } from "@/lib/types";
 import * as XLSX from "xlsx";
 import { usePlanLimits } from "@/hooks/use-plan-limits";
+import { TeamHelp } from "@/components/TeamHelp";
 
 export default function TeamPage() {
   const { profile, isLoading: isAuthLoading } = useUser();
@@ -312,6 +313,7 @@ export default function TeamPage() {
             <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">Control de acceso y cuadrillas de terreno</p>
           </div>
         </div>
+        <TeamHelp />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
