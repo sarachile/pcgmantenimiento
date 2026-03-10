@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -187,6 +186,19 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   const isAdminOrSupervisor = isCompanyAdmin || isSupervisor;
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'aprobada':
+        return <Badge className="bg-emerald-100 text-emerald-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">Aprobada</Badge>;
+      case 'en proceso':
+        return <Badge className="bg-blue-100 text-blue-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">En Proceso</Badge>;
+      case 'en revision':
+        return <Badge className="bg-amber-100 text-amber-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">En Revisión</Badge>;
+      default:
+        return <Badge className="bg-blue-100 text-blue-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">{status.replace('_', ' ').toUpperCase()}</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
@@ -199,7 +211,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h2 className="text-3xl font-black italic tracking-tighter text-slate-900">{ot.id}</h2>
-            <Badge className={cn("px-3 py-1 font-black uppercase text-[10px] tracking-widest", ot.status === 'aprobada' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700")}>{ot.status.replace('_', ' ').toUpperCase()}</Badge>
+            {getStatusBadge(ot.status)}
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

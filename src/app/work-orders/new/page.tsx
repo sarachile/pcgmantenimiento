@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
@@ -55,6 +54,7 @@ function NewWorkOrderContent() {
   const [assignedToStaffIds, setAssignedToStaffIds] = useState<string[]>([]);
   const [assignedTeamId, setAssignedTeamId] = useState<string | null>(null);
   const [assignmentMode, setAssignmentMode] = useState<'team' | 'individual'>('individual');
+  const [status, setStatus] = useState<any>("creada");
   
   // Direccionamiento Estructurado
   const [region, setRegion] = useState("");
@@ -141,6 +141,7 @@ function NewWorkOrderContent() {
             setEvaluationRequired(data.evaluationRequired ?? false);
             setServiceQuantity(data.serviceQuantity?.toString() || "");
             setServiceUnit(data.serviceUnit || "Unidades");
+            setStatus(data.status || "creada");
             if (data.scheduledDate) {
               const d = data.scheduledDate.toDate ? data.scheduledDate.toDate() : new Date(data.scheduledDate);
               setScheduledDate(format(d, 'yyyy-MM-dd'));
@@ -199,6 +200,7 @@ function NewWorkOrderContent() {
           task: item.task, 
           completed: false 
         })),
+        status: status || 'creada',
         updatedAt: serverTimestamp(),
       };
 
@@ -210,7 +212,7 @@ function NewWorkOrderContent() {
       } else {
         const shortId = `OT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         const docRef = doc(db!, "companies", companyId, "workOrders", shortId);
-        await setDoc(docRef, { ...commonData, id: shortId, companyId, status: "creada", createdByUserId: profile!.id, approvalPin: Math.floor(100000 + Math.random() * 900000).toString(), createdAt: serverTimestamp() });
+        await setDoc(docRef, { ...commonData, id: shortId, companyId, status: status || "creada", createdByUserId: profile!.id, approvalPin: Math.floor(100000 + Math.random() * 900000).toString(), createdAt: serverTimestamp() });
         toast({ title: "Orden Generada" });
         router.push(`/work-orders/${shortId}`);
       }
@@ -370,8 +372,33 @@ function NewWorkOrderContent() {
               <div className="p-6 rounded-3xl border-2 flex items-center justify-between bg-white shadow-sm"><div className="space-y-1"><Label className="font-black text-xs uppercase tracking-tighter flex items-center gap-2"><QrCode className="h-4 w-4 text-indigo-600" /> Validación QR Externa</Label><p className="text-[9px] text-slate-400 font-bold uppercase">Sello digital del cliente</p></div><Switch checked={reviewerRequired} onCheckedChange={setReviewerRequired} /></div>
               <div className="p-6 rounded-3xl border-2 flex items-center justify-between bg-white shadow-sm"><div className="space-y-1"><Label className="font-black text-xs uppercase tracking-tighter flex items-center gap-2"><Star className="h-4 w-4 text-amber-500" /> Encuesta Satisfacción</Label><p className="text-[9px] text-slate-400 font-bold uppercase">Feedback nota 1 a 5</p></div><Switch checked={evaluationRequired} onCheckedChange={setEvaluationRequired} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Inicio Programado</Label><Input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="h-12 border-2 rounded-xl font-bold" /></div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Estado de la Orden</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="h-12 border-2 rounded-xl font-bold uppercase text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="solicitada">Solicitada</SelectItem>
+                    <SelectItem value="creada">Creada</SelectItem>
+                    <SelectItem value="asignada">Asignada</SelectItem>
+                    <SelectItem value="en proceso">En Proceso</SelectItem>
+                    <SelectItem value="ejecutada">Ejecutada</SelectItem>
+                    <SelectItem value="en revision">En Revisión</SelectItem>
+                    <SelectItem value="aprobada">Aprobada</SelectItem>
+                    <SelectItem value="rechazada">Rechazada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400">Inicio Programado</Label>
+                <Input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="h-12 border-2 rounded-xl font-bold" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Plazo Estimado (Días)</Label><Input type="number" min="1" value={durationDays} onChange={e => setDurationDays(Number(e.target.value) || 1)} className="h-12 border-2 rounded-xl font-bold" /></div>
             </div>
           </CardContent>

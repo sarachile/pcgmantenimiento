@@ -158,6 +158,19 @@ export default function DashboardPage() {
     return differenceInDays(end, today);
   }, [company?.trialEndsAt, today]);
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'aprobada':
+        return <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4 px-1.5 border-emerald-200 text-emerald-600">Aprobada</Badge>;
+      case 'en proceso':
+        return <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4 px-1.5 border-blue-200 text-blue-600">En Proceso</Badge>;
+      case 'en revision':
+        return <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4 px-1.5 border-amber-200 text-amber-600">En Revisión</Badge>;
+      default:
+        return <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4 px-1.5 border-slate-200 text-slate-600">{status}</Badge>;
+    }
+  };
+
   if (!mounted || isUserLoading || isOrdersLoading || isClientsLoading || isCompanyLoading || isAssetsLoading || !today) {
     return (
       <div className="flex flex-col h-[400px] items-center justify-center gap-4">
@@ -261,7 +274,7 @@ export default function DashboardPage() {
                     <Link key={ot.id} href={`/work-orders/${ot.id}`}>
                       <div className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1"><span className="text-sm font-black text-primary italic">{ot.id}</span><Badge variant="outline" className="text-[8px] font-black uppercase">{ot.status}</Badge></div>
+                          <div className="flex items-center gap-2 mb-1"><span className="text-sm font-black text-primary italic">{ot.id}</span>{getStatusBadge(ot.status)}</div>
                           <p className="text-xs font-bold text-slate-900 truncate">{client?.name || 'Cargando...'}</p>
                         </div>
                         <ChevronRight className="h-4 w-4 text-slate-300 ml-4" />
@@ -500,12 +513,7 @@ export default function DashboardPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-xs font-black text-primary italic tracking-tight">{ot.id}</span>
-                              <Badge variant="outline" className={cn(
-                                "text-[8px] font-black uppercase tracking-tighter h-4 px-1.5",
-                                ot.status === 'aprobada' ? "border-emerald-200 text-emerald-600" : "border-blue-200 text-blue-600"
-                              )}>
-                                {ot.status}
-                              </Badge>
+                              {getStatusBadge(ot.status)}
                             </div>
                             <p className="font-black text-slate-900 truncate text-sm">{client?.name || '...'}</p>
                             <p className="text-xs text-slate-500 line-clamp-1 italic mt-0.5">"{ot.description}"</p>

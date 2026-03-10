@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
@@ -127,7 +126,6 @@ export default function FieldCapturePage() {
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
   // AUTO-SELECCIÓN INTELIGENTE (SALTO DE LISTA)
-  // Ahora solo considera las OTs que han pasado por el filtro de "no aprobadas"
   useEffect(() => {
     if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
       const timer = setTimeout(() => {
@@ -148,6 +146,20 @@ export default function FieldCapturePage() {
     
     setIsSaving(true);
     getPosition();
+
+    const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
+    const updateData: any = {
+      updatedAt: serverTimestamp(),
+      latitude: coords?.lat || null,
+      longitude: coords?.lng || null
+    };
+
+    // Cambiar estado a 'en proceso' si estaba en estados iniciales
+    if (selectedOT.status === 'creada' || selectedOT.status === 'asignada' || selectedOT.status === 'solicitada') {
+      updateData.status = 'en proceso';
+    }
+
+    updateDocumentNonBlocking(otRef, updateData);
 
     if (logComment.trim()) {
       await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
@@ -188,24 +200,24 @@ export default function FieldCapturePage() {
 
       const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
       
+      // La orden pasa a 'en proceso' al registrar evidencia
+      const updateData: any = {
+        updatedAt: serverTimestamp(),
+        status: 'en proceso'
+      };
+
       if (selectedChecklistItemId) {
         const updatedChecklist = selectedOT.checklist?.map(item => 
           item.id === selectedChecklistItemId 
             ? { ...item, completed: true, completedAt: new Date().toISOString(), evidenceUrl: url, latitude: coords?.lat, longitude: coords?.lng } 
             : item
         );
-        updateDocumentNonBlocking(otRef, {
-          checklist: updatedChecklist,
-          updatedAt: serverTimestamp(),
-          status: 'ejecutada' 
-        });
+        updateData.checklist = updatedChecklist;
       } else {
-        updateDocumentNonBlocking(otRef, {
-          evidenceUrls: arrayUnion(url),
-          updatedAt: serverTimestamp(),
-          status: 'ejecutada'
-        });
+        updateData.evidenceUrls = arrayUnion(url);
       }
+
+      updateDocumentNonBlocking(otRef, updateData);
 
       await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
         workOrderId: selectedOT.id,

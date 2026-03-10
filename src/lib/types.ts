@@ -1,6 +1,6 @@
 export type Role = 'companyAdmin' | 'supervisor' | 'tecnico' | 'reviewer' | 'superadmin';
 
-export type OTStatus = 'solicitada' | 'creada' | 'asignada' | 'ejecutada' | 'en revision' | 'pendiente cliente' | 'aprobada' | 'rechazada';
+export type OTStatus = 'solicitada' | 'creada' | 'asignada' | 'en proceso' | 'ejecutada' | 'en revision' | 'pendiente cliente' | 'aprobada' | 'rechazada';
 
 export type AssetStatus = 'activo' | 'inactivo' | 'en mantenimiento';
 

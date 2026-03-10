@@ -52,7 +52,9 @@ import {
   Copy,
   Edit2,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Clock,
+  Timer
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
@@ -160,6 +162,26 @@ export default function WorkOrdersPage() {
 
   const isAdminOrSupervisor = isCompanyAdmin || isSupervisor;
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'aprobada':
+        return <Badge className="bg-emerald-500 text-white font-black uppercase text-[9px] tracking-widest px-3 h-6 rounded-full border-none">Aprobada</Badge>;
+      case 'pendiente cliente':
+        return <Badge className="bg-indigo-600 text-white font-black uppercase text-[9px] tracking-widest px-3 h-6 rounded-full border-none shadow-lg shadow-indigo-900/20">Pendiente Cliente</Badge>;
+      case 'en revision':
+        return <Badge className="bg-amber-500 text-white font-black uppercase text-[9px] tracking-widest px-3 h-6 rounded-full border-none">En Revisión</Badge>;
+      case 'en proceso':
+        return <Badge className="bg-blue-500 text-white font-black uppercase text-[9px] tracking-widest px-3 h-6 rounded-full border-none">En Proceso</Badge>;
+      case 'creada':
+      case 'asignada':
+        return <Badge className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] tracking-widest px-3 h-6 rounded-full border-none">{status}</Badge>;
+      case 'rechazada':
+        return <Badge className="bg-rose-500 text-white font-black uppercase text-[9px] tracking-widest px-3 h-6 rounded-full border-none">Rechazada</Badge>;
+      default:
+        return <Badge className="bg-slate-200 text-slate-600 font-black uppercase text-[9px] tracking-widest px-3 h-6 rounded-full border-none">{status}</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-8 pb-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -253,6 +275,7 @@ export default function WorkOrdersPage() {
                       <SelectItem value="solicitada">Solicitada</SelectItem>
                       <SelectItem value="creada">Creada</SelectItem>
                       <SelectItem value="asignada">Asignada</SelectItem>
+                      <SelectItem value="en proceso">En Proceso</SelectItem>
                       <SelectItem value="ejecutada">Ejecutada</SelectItem>
                       <SelectItem value="en revision">En Revisión</SelectItem>
                       <SelectItem value="pendiente cliente">Pendiente Cliente</SelectItem>
@@ -388,15 +411,7 @@ export default function WorkOrdersPage() {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className={cn(
-                                    "text-[9px] font-black uppercase tracking-widest px-3 h-6 rounded-full border-none",
-                                    ot.status === 'aprobada' ? "bg-emerald-500 text-white" : 
-                                    ot.status === 'pendiente cliente' ? "bg-indigo-600 text-white shadow-lg shadow-indigo-900/20" :
-                                    ot.status === 'en revision' ? "bg-amber-500 text-white" :
-                                    "bg-slate-200 text-slate-600"
-                                  )}>
-                                    {ot.status.replace(' ', '_')}
-                                  </Badge>
+                                  {getStatusBadge(ot.status)}
                                 </TableCell>
                                 <TableCell className="text-right pr-8">
                                   <div className="flex justify-end gap-2">
