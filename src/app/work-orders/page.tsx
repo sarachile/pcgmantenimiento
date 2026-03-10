@@ -27,6 +27,13 @@ import {
   AccordionTrigger,
   AccordionContent
 } from "@/components/ui/accordion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Search, 
   Filter, 
@@ -44,7 +51,9 @@ import {
   Zap,
   ArrowRight,
   Copy,
-  Edit2
+  Edit2,
+  X,
+  AlertTriangle
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
@@ -52,7 +61,7 @@ import { collection, doc } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { WorkOrder, Client } from "@/lib/types";
+import { WorkOrder, Client, OTStatus } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -60,7 +69,13 @@ export default function WorkOrdersPage() {
   const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
+  
+  // States
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [clientFilter, setClientFilter] = useState<string>("all");
+  const [urgencyFilter, setUrgencyFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
@@ -100,17 +115,23 @@ export default function WorkOrdersPage() {
   const filteredOTs = useMemo(() => {
     return workOrders.filter(ot => {
       const client = clients?.find(c => c.id === ot.clientId);
-      return (
+      
+      const matchesSearch = 
         ot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         ot.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+        client?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === "all" || ot.status === statusFilter;
+      const matchesClient = clientFilter === "all" || ot.clientId === clientFilter;
+      const matchesUrgency = urgencyFilter === "all" || ot.urgency === urgencyFilter;
+
+      return matchesSearch && matchesStatus && matchesClient && matchesUrgency;
     }).sort((a, b) => {
       const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt) : new Date(0));
       const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : (typeof b.createdAt === 'string' ? parseISO(b.createdAt) : new Date(0));
       return dateB.getTime() - dateA.getTime();
     });
-  }, [workOrders, searchTerm, clients]);
+  }, [workOrders, searchTerm, statusFilter, clientFilter, urgencyFilter, clients]);
 
   const groupedOTs = useMemo(() => {
     const groups: Record<string, { label: string, orders: WorkOrder[] }> = {};
@@ -123,6 +144,15 @@ export default function WorkOrdersPage() {
     });
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filteredOTs]);
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setClientFilter("all");
+    setUrgencyFilter("all");
+  };
+
+  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || clientFilter !== "all" || urgencyFilter !== "all";
 
   if (isUserLoading || !mounted) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
@@ -175,17 +205,92 @@ export default function WorkOrdersPage() {
 
       <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
         <CardHeader className="p-8 pb-4 border-b border-slate-50">
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input 
-                placeholder="Buscar por ID, mandante o descripción técnica..." 
-                className="pl-12 h-14 border-none bg-slate-50 rounded-2xl text-base font-medium focus-visible:ring-primary shadow-inner"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                <Input 
+                  placeholder="Buscar por ID, mandante o descripción técnica..." 
+                  className="pl-12 h-14 border-none bg-slate-50 rounded-2xl text-base font-medium focus-visible:ring-primary shadow-inner"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto">
+                <Button 
+                  variant={showFilters ? "default" : "outline"} 
+                  className={cn("h-14 px-6 rounded-2xl border-slate-100 flex-1 sm:flex-none", showFilters ? "bg-slate-900 text-white" : "bg-slate-50")}
+                  onClick={() => setShowFilters(!showFilters)}
+                >
+                  <Filter className={cn("h-5 w-5 mr-2", showFilters && "text-blue-400")} />
+                  {showFilters ? "Ocultar Filtros" : "Filtros Avanzados"}
+                </Button>
+                {hasActiveFilters && (
+                  <Button 
+                    variant="ghost" 
+                    className="h-14 w-14 rounded-2xl text-rose-500 hover:bg-rose-50 hover:text-rose-600"
+                    onClick={resetFilters}
+                    title="Limpiar Filtros"
+                  >
+                    <X className="h-6 w-6" />
+                  </Button>
+                )}
+              </div>
             </div>
-            <Button variant="outline" className="h-14 w-14 rounded-2xl border-slate-100 bg-slate-50"><Filter className="h-5 w-5" /></Button>
+
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100 animate-in fade-in slide-in-from-top-2">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Estado de Orden</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
+                      <SelectValue placeholder="Todos los estados" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los estados</SelectItem>
+                      <SelectItem value="solicitada">Solicitada</SelectItem>
+                      <SelectItem value="creada">Creada</SelectItem>
+                      <SelectItem value="asignada">Asignada</SelectItem>
+                      <SelectItem value="ejecutada">Ejecutada</SelectItem>
+                      <SelectItem value="en revision">En Revisión</SelectItem>
+                      <SelectItem value="pendiente cliente">Pendiente Cliente</SelectItem>
+                      <SelectItem value="aprobada">Aprobada</SelectItem>
+                      <SelectItem value="rechazada">Rechazada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Filtrar por Cliente</Label>
+                  <Select value={clientFilter} onValueChange={setClientFilter}>
+                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
+                      <SelectValue placeholder="Todos los clientes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los clientes</SelectItem>
+                      {clients?.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nivel de Urgencia</Label>
+                  <Select value={urgencyFilter} onValueChange={setUrgencyFilter}>
+                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
+                      <SelectValue placeholder="Cualquier urgencia" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Cualquier urgencia</SelectItem>
+                      <SelectItem value="low">Baja</SelectItem>
+                      <SelectItem value="medium">Media</SelectItem>
+                      <SelectItem value="high">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -200,11 +305,17 @@ export default function WorkOrdersPage() {
               <div>
                 <p className="text-xl font-black italic tracking-tighter uppercase">Sin resultados</p>
                 <p className="text-sm text-slate-400 font-medium">
-                  {isTechnician ? "No tienes órdenes asignadas que coincidan con tu búsqueda." : "Ajusta tu búsqueda o crea una nueva orden para poblar el listado."}
+                  {hasActiveFilters 
+                    ? "Ninguna orden coincide con los filtros aplicados. Intenta ajustar los parámetros." 
+                    : (isTechnician ? "No tienes órdenes asignadas actualmente." : "Comienza generando tu primera Orden de Trabajo.")
+                  }
                 </p>
               </div>
-              {!isTechnician && (
+              {!isTechnician && !hasActiveFilters && (
                 <Button asChild className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full"><Link href="/work-orders/new">Generar Primera OT</Link></Button>
+              )}
+              {hasActiveFilters && (
+                <Button variant="outline" className="rounded-xl h-12 font-black uppercase tracking-widest text-[10px] w-full" onClick={resetFilters}>Limpiar Filtros</Button>
               )}
             </div>
           ) : (
@@ -230,7 +341,7 @@ export default function WorkOrdersPage() {
                             <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] pl-8 h-12">ID / Operativo</TableHead>
                             <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Mandante / Entidad</TableHead>
                             <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Descripción Alcance</TableHead>
-                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-center">Evidencias</TableHead>
+                            <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-center">Prioridad</TableHead>
                             <TableHead className="font-black uppercase text-[10px] tracking-[0.2em]">Estado</TableHead>
                             <TableHead className="text-right font-black uppercase text-[10px] tracking-[0.2em] pr-8">Acción</TableHead>
                           </TableRow>
@@ -260,10 +371,19 @@ export default function WorkOrdersPage() {
                                   <p className="text-xs font-medium text-slate-600 line-clamp-2 italic leading-relaxed">"{ot.description}"</p>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  <div className="flex justify-center gap-1">
-                                    {(ot.evidenceUrls?.length || 0) > 0 && <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 text-[8px] h-5">{ot.evidenceUrls?.length} FOTOS</Badge>}
-                                    {ot.clientApprovalCode && <Badge className="bg-emerald-100 text-emerald-700 text-[8px] h-5 font-black uppercase">FIRMADA</Badge>}
-                                  </div>
+                                  {ot.urgency === 'high' ? (
+                                    <Badge className="bg-rose-50 text-rose-700 border-rose-200 text-[8px] font-black uppercase gap-1 px-2">
+                                      <AlertTriangle className="h-2 w-2" /> Urgente
+                                    </Badge>
+                                  ) : ot.urgency === 'medium' ? (
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[8px] font-black uppercase px-2">
+                                      Media
+                                    </Badge>
+                                  ) : (
+                                    <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[8px] font-black uppercase px-2">
+                                      Baja
+                                    </Badge>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   <Badge className={cn(
