@@ -192,12 +192,12 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           companyId,
           timestamp: serverTimestamp(),
           eventType: 'status_change',
-          eventDetails: "Orden visada técnicamente. Se habilita portal de aprobación para el cliente.",
+          eventDetails: "Orden visada técnicamente por administración. Se habilita portal de aprobación para el cliente.",
           actor: profile.id,
           actorName: profile.name
         });
 
-        toast({ title: "Orden Visada", description: "Ahora puede enviar el link de aprobación al cliente." });
+        toast({ title: "Orden Visada", description: "Estado: Pendiente Cliente. Link de aprobación habilitado." });
       } else {
         // Aprobación interna inmediata
         const verificationCode = `ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -214,7 +214,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           companyId,
           timestamp: serverTimestamp(),
           eventType: 'status_change',
-          eventDetails: "Orden aprobada internamente por administración.",
+          eventDetails: "Orden aprobada internamente por administración (Cierre Directo).",
           actor: profile.id,
           actorName: profile.name
         });
@@ -331,7 +331,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'aprobada':
-        return <Badge className="bg-emerald-100 text-emerald-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">Aprobada</Badge>;
+        return <Badge className="bg-emerald-500 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 rounded-full border-none">Aprobada</Badge>;
       case 'en proceso':
         return <Badge className="bg-blue-100 text-blue-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">En Proceso</Badge>;
       case 'en revision':
@@ -339,7 +339,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       case 'pendiente cliente':
         return <Badge className="bg-indigo-600 text-white px-3 py-1 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-900/20">Pendiente Cliente</Badge>;
       default:
-        return <Badge className="bg-blue-100 text-blue-700 px-3 py-1 font-black uppercase text-[10px] tracking-widest">{status.replace('_', ' ').toUpperCase()}</Badge>;
+        return <Badge className="bg-slate-100 text-slate-600 px-3 py-1 font-black uppercase text-[10px] tracking-widest">{status.replace('_', ' ').toUpperCase()}</Badge>;
     }
   };
 
@@ -359,7 +359,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {isAdminOrSupervisor && ot.status === 'en revision' && (
+          {isAdminOrSupervisor && ot.status !== 'aprobada' && ot.status !== 'pendiente cliente' && (
             <Button onClick={handleVisaOrder} disabled={isUpdating} className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg">
               {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} 
               {ot.reviewerRequired ? "Visar y Habilitar Cliente" : "Visar y Aprobar"}
@@ -374,7 +374,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
           {/* PANEL DE VALIDACIÓN EXTERNA (SI ESTÁ HABILITADO) */}
-          {ot.reviewerRequired && (ot.status === 'pendiente cliente' || ot.status === 'en revision' || ot.status === 'aprobada') && (
+          {ot.reviewerRequired && (ot.status === 'pendiente cliente' || ot.status === 'aprobada' || ot.status === 'en revision') && (
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-indigo-600 text-white overflow-hidden animate-in zoom-in-95 duration-500">
               <CardHeader className="bg-white/10 p-8 border-b border-white/10">
                 <div className="flex items-center justify-between">
