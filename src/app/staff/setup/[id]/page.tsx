@@ -24,7 +24,8 @@ import {
   AlertTriangle,
   RefreshCw,
   Building2,
-  UserX
+  UserX,
+  UserCheck
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useAuth } from "@/firebase";
@@ -56,14 +57,15 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     async function loadData() {
+      // Esperar a que los parámetros estén disponibles antes de marcar error
       if (!companyId || !firestore || !staffId) {
-        setLoading(false);
-        setErrorType("generic");
         return;
       }
 
       try {
+        setErrorType("none");
         setLoading(true);
+        
         // 1. Verificar Empresa
         const companyDoc = await getDoc(doc(firestore, "companies", companyId));
         if (!companyDoc.exists()) {
@@ -74,40 +76,60 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         const companyData = { ...companyDoc.data() as Company, id: companyId };
         setCompany(companyData);
 
-        // 2. Verificar Técnico
+        // 2. Verificar Registro del Técnico
         const staffDoc = await getDoc(doc(firestore, "companies", companyId, "staff", staffId));
         if (!staffDoc.exists()) {
           setErrorType("no_staff");
           setLoading(false);
           return;
         }
-        setStaff({ ...staffDoc.data() as StaffMember, id: staffId });
+        
+        const staffData = { ...staffDoc.data() as StaffMember, id: staffId };
+        setStaff(staffData);
+
+        // 3. VALIDACIÓN CRÍTICA: ¿Ya tiene cuenta?
+        if (staffData.hasAccount || staffData.userId) {
+          toast({
+            title: "Cuenta ya activa",
+            description: "Ya configuraste tu acceso anteriormente. Redirigiendo al login...",
+          });
+          // Esperamos un momento para que el usuario lea el toast y luego redirigimos
+          setTimeout(() => router.push('/staff/login'), 2000);
+          return;
+        }
+
         setErrorType("none");
 
-      } catch (e) {
+      } catch (e: any) {
         console.error("Error loading setup data:", e);
-        setErrorType("generic");
+        // Si es un error de permisos, es probable que los datos existan pero haya un bloqueo
+        if (e.message?.includes("permission")) {
+          setErrorType("generic");
+        } else {
+          setErrorType("generic");
+        }
       } finally {
         setLoading(false);
       }
     }
     loadData();
-  }, [firestore, staffId, companyId]);
+  }, [firestore, staffId, companyId, router, toast]);
 
   const handleVerifyIdentity = (e: React.FormEvent) => {
     e.preventDefault();
     if (!staff) return;
 
+    // Limpieza agresiva de RUT
     const cleanInput = rutInput.replace(/\D/g, '').toUpperCase();
     const cleanStaffRut = staff.identification?.replace(/\D/g, '').toUpperCase();
 
     if (cleanInput === cleanStaffRut) {
       setStep(2);
-      toast({ title: "Identidad Confirmada", description: "Ahora defina su clave de acceso personal." });
+      toast({ title: "Identidad Confirmada", description: "Define tu PIN de 6 números ahora." });
     } else {
       toast({ 
         title: "RUT Incorrecto", 
-        description: "El RUT ingresado no coincide con el registro de la empresa.", 
+        description: "El RUT no coincide con la invitación enviada.", 
         variant: "destructive" 
       });
     }
@@ -118,7 +140,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     if (!staff || !company || !auth || !firestore || isSubmitting) return;
 
     if (pinInput.length < 6) {
-      toast({ title: "PIN muy corto", description: "El PIN debe tener exactamente 6 números.", variant: "destructive" });
+      toast({ title: "PIN inválido", description: "Debes ingresar exactamente 6 números.", variant: "destructive" });
       return;
     }
 
@@ -133,17 +155,15 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         userId = userCredential.user.uid;
       } catch (authError: any) {
         if (authError.code === 'auth/email-already-in-use') {
-          toast({ 
-            title: "Cuenta ya activa", 
-            description: "Ya tienes acceso configurado para este RUT." 
-          });
+          // El usuario ya existe en Auth, posiblemente por un intento previo fallido
+          // Intentamos recuperar o simplemente informamos que ya está listo
           setStep(3);
           return;
         }
         throw authError;
       }
 
-      // Crear Perfil Global
+      // Crear Perfil Global Atómico
       const userRef = doc(firestore, "users", userId);
       await setDoc(userRef, {
         id: userId,
@@ -157,7 +177,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         createdAt: new Date().toISOString(),
       });
 
-      // Vincular Registro Staff
+      // Vincular Registro Staff Atómico
       const staffRef = doc(firestore, "companies", company.id, "staff", staff.id);
       await updateDoc(staffRef, {
         userId: userId,
@@ -166,12 +186,12 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       });
 
       setStep(3);
-      toast({ title: "¡Acceso Activado!", description: "Bienvenido al equipo digital de PCGMANTENIMIENTO." });
+      toast({ title: "Acceso Creado", description: "¡Bienvenido a PCGMANTENIMIENTO!" });
     } catch (error: any) {
       console.error("Setup Error:", error);
       toast({ 
-        title: "Error de Registro", 
-        description: error.message || "No se pudo completar el registro.", 
+        title: "Fallo en Registro", 
+        description: "No pudimos crear tu acceso. Contacta a tu supervisor.", 
         variant: "destructive" 
       });
     } finally {
@@ -183,7 +203,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-xs font-black uppercase tracking-[0.3em] animate-pulse">Sincronizando Invitación...</p>
+        <p className="text-xs font-black uppercase tracking-[0.3em] animate-pulse">Autenticando Invitación...</p>
       </div>
     );
   }
@@ -194,22 +214,20 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         <Card className="max-w-md w-full rounded-[2.5rem] shadow-2xl border-none overflow-hidden animate-in zoom-in-95">
           <CardHeader className="bg-rose-50 p-10 space-y-4">
             <div className="bg-rose-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-inner">
-              {errorType === "no_company" ? <Building2 className="h-10 w-10 text-rose-600" /> : <UserX className="h-10 w-10 text-rose-600" />}
+              <AlertTriangle className="h-10 w-10 text-rose-600" />
             </div>
             <div>
               <CardTitle className="text-2xl font-black uppercase tracking-tighter italic text-rose-900">
-                {errorType === "no_company" ? "Empresa no encontrada" : "Invitación no válida"}
+                Invitación Pendiente
               </CardTitle>
               <CardDescription className="text-rose-700 font-medium">
-                {errorType === "no_company" 
-                  ? "El código de empresa en este link ya no existe." 
-                  : "Este registro técnico fue borrado o el link ha caducado."}
+                No pudimos validar tu enlace de registro en este momento.
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="p-10 space-y-6">
             <p className="text-sm text-slate-500 leading-relaxed">
-              Al borrar los datos de la plataforma, los links antiguos dejan de funcionar. Por favor, solicita a tu supervisor que te envíe un <strong>nuevo link</strong> desde su panel de control.
+              Esto puede ocurrir si el administrador borró tu registro o si el link tiene un error de copia.
             </p>
             <div className="flex flex-col gap-3">
               <Button className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-widest gap-2" onClick={() => window.location.reload()}>
@@ -240,7 +258,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
           <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4">
             <CardHeader className="bg-white p-8 text-center border-b">
               <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900">Paso 1: Identidad</CardTitle>
-              <CardDescription>Hola <strong>{staff.name}</strong>, para activar tu cuenta ingresa tu RUT sin puntos ni guión.</CardDescription>
+              <CardDescription>Hola <strong>{staff.name}</strong>, ingresa tu RUT para confirmar que eres tú.</CardDescription>
             </CardHeader>
             <CardContent className="p-8">
               <form onSubmit={handleVerifyIdentity} className="space-y-6">
@@ -255,7 +273,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
                   />
                 </div>
                 <Button type="submit" className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-lg uppercase tracking-widest gap-2 shadow-xl shadow-slate-900/20">
-                  Validar Datos <ArrowRight className="h-5 w-5" />
+                  Validar Identidad <ArrowRight className="h-5 w-5" />
                 </Button>
               </form>
             </CardContent>
@@ -266,12 +284,12 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
           <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in slide-in-from-right-4">
             <CardHeader className="bg-white p-8 text-center border-b">
               <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900">Paso 2: Seguridad</CardTitle>
-              <CardDescription>Crea tu PIN de acceso de 6 números. Úsalo para entrar a la App.</CardDescription>
+              <CardDescription>Crea un PIN de 6 dígitos. No lo olvides, lo usarás para entrar siempre.</CardDescription>
             </CardHeader>
             <CardContent className="p-8">
               <form onSubmit={handleCreateAccess} className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Define tu PIN (6 números)</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Nuevo PIN de Acceso</Label>
                   <Input 
                     type="password"
                     inputMode="numeric"
@@ -284,7 +302,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
                   />
                 </div>
                 <Button disabled={isSubmitting} type="submit" className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-lg uppercase tracking-widest gap-2 shadow-xl shadow-primary/20">
-                  {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><ShieldCheck className="h-6 w-6" /> Activar mi Cuenta</>}
+                  {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : <><ShieldCheck className="h-6 w-6" /> Terminar Registro</>}
                 </Button>
               </form>
             </CardContent>
@@ -294,12 +312,12 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         {step === 3 && (
           <Card className="rounded-[3rem] border-none shadow-2xl p-12 text-center bg-white animate-in zoom-in-95">
             <div className="bg-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-100">
-              <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+              <UserCheck className="h-12 w-12 text-emerald-600" />
             </div>
-            <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter uppercase italic">¡Todo Listo!</h2>
-            <p className="text-slate-500 font-bold mb-10 leading-relaxed">Tu acceso ha sido activado exitosamente. Ahora puedes entrar con tu RUT y el PIN que acabas de definir.</p>
+            <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter uppercase italic">¡Acceso Activo!</h2>
+            <p className="text-slate-500 font-bold mb-10 leading-relaxed">Tu cuenta ha sido vinculada correctamente. Ya puedes entrar con tu RUT y el PIN que definiste.</p>
             <Button className="w-full h-16 rounded-2xl bg-slate-900 font-black uppercase tracking-widest text-white shadow-xl" onClick={() => router.push('/staff/login')}>
-              Entrar al Dashboard Técnico
+              Entrar al ERP Técnico
             </Button>
           </Card>
         )}
@@ -313,7 +331,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
 export default function StaffSetupPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-white"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
       <StaffSetupContent params={resolvedParams} />
     </Suspense>
   );

@@ -19,7 +19,6 @@ service cloud.firestore {
     }
 
     function getUserData() {
-      // VALIDACIÓN CRÍTICA: Solo intentar obtener datos si hay una sesión activa
       if (!isSignedIn()) {
         return null;
       }
@@ -43,32 +42,16 @@ service cloud.firestore {
 
     // --- Reglas de Colección ---
 
-    match /users/{userId} {
-      allow get: if isSignedIn();
-      // Permitir listado para el login de técnicos por RUT (búsqueda de email sintético)
-      // Se requiere un límite estricto para evitar escaneo masivo de usuarios
-      allow list: if isSignedIn() || isPlatformAdmin() || (request.query.limit <= 10);
-      allow create: if true; // Permitir creación inicial en el registro
-      allow update: if isOwner(userId) || isPlatformAdmin();
-      allow delete: if isPlatformAdmin();
-    }
-
-    match /platform_admins/{adminId} {
-      allow get: if isSignedIn();
-      allow list: if isPlatformAdmin();
-    }
-
+    // PERMITIR LECTURA PÚBLICA PARA SETUP DE TÉCNICOS Y PORTALES
+    // La seguridad reside en que el ID es un token aleatorio largo generado por el sistema
     match /companies/{companyId} {
-      // Acceso público para carga inicial de perfiles técnicos y portales de clientes
       allow get: if true;
       allow list: if isPlatformAdmin() || isSignedIn();
-      // Permitir escritura inicial si el usuario acaba de registrarse (Onboarding)
       allow write: if isSignedIn() || isPlatformAdmin();
 
       match /staff/{staffId} {
         allow get: if true;
         allow list: if isCompanyMember(companyId);
-        // Permitir que un técnico vincule su cuenta de Auth recién creada
         allow write: if isCompanyMember(companyId) || (isSignedIn() && (request.resource.data.userId == request.auth.uid || resource.data.userId == request.auth.uid));
       }
 
@@ -112,6 +95,19 @@ service cloud.firestore {
           allow read, write: if isCompanyMember(companyId);
         }
       }
+    }
+
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn() || isPlatformAdmin() || (request.query.limit <= 10);
+      allow create: if true; 
+      allow update: if isOwner(userId) || isPlatformAdmin();
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /platform_admins/{adminId} {
+      allow get: if isSignedIn();
+      allow list: if isPlatformAdmin();
     }
 
     match /supportTickets/{ticketId} {
