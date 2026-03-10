@@ -2,12 +2,16 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     /**
-     * PCGMANTENIMIENTO STORAGE RULES - Secure Production Edition
-     * Permite a cualquier usuario autenticado (Técnicos y Admins) subir y leer evidencias.
-     * Esto soluciona los errores de subida manteniendo una barrera básica contra el público general.
+     * PCGMANTENIMIENTO STORAGE RULES - Production Reliability Edition
+     * Permite lectura pública para que los reportes y portales siempre muestren las fotos.
+     * Permite escritura a cualquier usuario autenticado (Técnicos y Admins).
      */
     match /{allPaths=**} {
-      allow read, write: if request.auth != null;
+      // Lectura abierta para evitar errores en reportes PDF y Portal QR
+      allow read: if true;
+      
+      // Escritura permitida para personal de la empresa logueado
+      allow write: if request.auth != null;
     }
   }
 }
