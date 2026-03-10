@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
@@ -33,7 +32,8 @@ import {
   Zap,
   Info,
   Smartphone,
-  ArrowRight
+  ArrowRight,
+  PlusCircle
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +56,6 @@ export default function FieldCapturePage() {
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
 
-  // Captura de ubicación
   const getPosition = () => {
     if (typeof window === 'undefined' || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -70,7 +69,6 @@ export default function FieldCapturePage() {
     getPosition();
   }, [selectedOT]);
 
-  // Consultar OTs activas (no aprobadas ni rechazadas si es necesario, pero mantenemos lógica de no-aprobada)
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return query(
@@ -81,7 +79,6 @@ export default function FieldCapturePage() {
 
   const { data: workOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
 
-  // Consultar clientes
   const clientsQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return collection(db, "companies", profile.companyId, "clients");
@@ -107,14 +104,12 @@ export default function FieldCapturePage() {
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
-  // Auto-selección inteligente: Si solo queda una OT activa para el técnico, entrar directo
   useEffect(() => {
     if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
       setSelectedOT(filtered[0]);
     }
   }, [filtered, isOrdersLoading, selectedOT, searchTerm]);
 
-  // DISPARADOR DE CÁMARA: Al elegir una tarea, abre la cámara directamente
   const handleTaskClick = (taskId: string) => {
     setActiveTaskId(taskId);
     if (fileInputRef.current) {
@@ -144,32 +139,33 @@ export default function FieldCapturePage() {
       };
 
       if (activeTaskId) {
-        updateData.checklist = selectedOT.checklist?.map(item => 
-          item.id === activeTaskId 
-            ? { 
-                ...item, 
-                completed: true, 
-                completedAt: new Date().toISOString(), 
-                evidenceUrl: url, 
-                latitude: coords?.lat || null, 
-                longitude: coords?.lng || null 
-              } 
-            : item
-        );
+        updateData.checklist = selectedOT.checklist?.map(item => {
+          if (item.id === activeTaskId) {
+            const currentUrls = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
+            return { 
+              ...item, 
+              completed: true, 
+              completedAt: new Date().toISOString(), 
+              evidenceUrls: [...currentUrls, url],
+              latitude: coords?.lat || null, 
+              longitude: coords?.lng || null 
+            };
+          }
+          return item;
+        });
       } else {
         updateData.evidenceUrls = arrayUnion(url);
       }
 
       updateDocumentNonBlocking(otRef, updateData);
 
-      // Registrar en bitácora
       await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
         workOrderId: selectedOT.id,
         companyId: profile.companyId,
         timestamp: serverTimestamp(),
         eventType: 'action_taken',
         eventDetails: activeTaskId 
-          ? `Evidencia capturada para tarea: ${selectedOT.checklist?.find(i => i.id === activeTaskId)?.task}` 
+          ? `Nueva evidencia capturada para tarea: ${selectedOT.checklist?.find(i => i.id === activeTaskId)?.task}` 
           : "Evidencia fotográfica general capturada.",
         actor: profile.id,
         actorName: profile.name,
@@ -177,7 +173,7 @@ export default function FieldCapturePage() {
         longitude: coords?.lng || null
       });
 
-      toast({ title: "Evidencia Registrada ✓" });
+      toast({ title: "Captura Registrada ✓" });
       setActiveTaskId(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       
@@ -208,16 +204,11 @@ export default function FieldCapturePage() {
   };
 
   if (isUserLoading || isOrdersLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col pb-32">
-      {/* NAVBAR CAPTURA */}
       <div className="bg-slate-900 text-white p-6 sticky top-0 z-30 shadow-xl flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild className="text-white">
           <Link href="/dashboard"><ArrowLeft className="h-6 w-6" /></Link>
@@ -274,30 +265,6 @@ export default function FieldCapturePage() {
           </div>
         ) : (
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
-            {/* GUÍA DE USO PARA EL TÉCNICO */}
-            <Card className="rounded-[2rem] border-none bg-blue-600 text-white shadow-xl overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="bg-white/20 p-2.5 rounded-xl"><Smartphone className="h-5 w-5" /></div>
-                  <p className="font-black uppercase italic tracking-widest text-sm">Guía de Uso Rápido</p>
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="bg-white/10 p-3 rounded-2xl text-center space-y-1">
-                    <p className="text-[10px] font-black">1. TOCA</p>
-                    <p className="text-[8px] opacity-70">Cualquier tarea de la lista</p>
-                  </div>
-                  <div className="bg-white/10 p-3 rounded-2xl text-center space-y-1">
-                    <p className="text-[10px] font-black">2. CAPTURA</p>
-                    <p className="text-[8px] opacity-70">Toma la foto del avance</p>
-                  </div>
-                  <div className="bg-white/10 p-3 rounded-2xl text-center space-y-1">
-                    <p className="text-[10px] font-black">3. ENVÍA</p>
-                    <p className="text-[8px] opacity-70">Finaliza al terminar todo</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
               <CardHeader className="bg-slate-900 text-white p-6">
                 <div className="flex justify-between items-center">
@@ -321,60 +288,63 @@ export default function FieldCapturePage() {
                   </Label>
                   
                   <div className="space-y-4">
-                    {selectedOT.checklist?.map((item) => (
-                      <div key={item.id} className="space-y-2">
-                        <button
-                          onClick={() => handleTaskClick(item.id)}
-                          disabled={isUploading}
-                          className={cn(
-                            "w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center justify-between group relative overflow-hidden",
-                            item.completed 
-                              ? "border-emerald-100 bg-emerald-50/20" 
-                              : "border-slate-100 bg-white hover:border-primary/30 shadow-sm active:bg-slate-50"
-                          )}
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div className={cn(
-                              "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-active:scale-90",
-                              item.completed ? "bg-emerald-500 text-white" : "bg-primary text-white animate-pulse"
-                            )}>
-                              {item.completed ? <Check className="h-7 w-7" /> : <Camera className="h-6 w-6" />}
-                            </div>
-                            <div className="flex flex-col">
-                              <span className={cn("text-sm font-black leading-none", item.completed ? "text-emerald-900" : "text-slate-900")}>
-                                {item.task}
-                              </span>
-                              {!item.completed && (
-                                <span className="text-[9px] font-bold text-primary uppercase mt-1.5 flex items-center gap-1">
-                                  Pulsa para abrir cámara <ArrowRight className="h-2 w-2" />
+                    {selectedOT.checklist?.map((item) => {
+                      const photos = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
+                      return (
+                        <div key={item.id} className="space-y-3">
+                          <button
+                            onClick={() => handleTaskClick(item.id)}
+                            disabled={isUploading}
+                            className={cn(
+                              "w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center justify-between group relative overflow-hidden",
+                              item.completed 
+                                ? "border-emerald-100 bg-emerald-50/20" 
+                                : "border-slate-100 bg-white hover:border-primary/30 shadow-sm active:bg-slate-50"
+                            )}
+                          >
+                            <div className="flex items-center gap-4 flex-1">
+                              <div className={cn(
+                                "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-active:scale-90",
+                                item.completed ? "bg-emerald-500 text-white" : "bg-primary text-white"
+                              )}>
+                                {item.completed ? <PlusCircle className="h-7 w-7" /> : <Camera className="h-6 w-6" />}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className={cn("text-sm font-black leading-none", item.completed ? "text-emerald-900" : "text-slate-900")}>
+                                  {item.task}
                                 </span>
-                              )}
-                            </div>
-                          </div>
-                          {isUploading && activeTaskId === item.id ? (
-                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                          ) : (
-                            <ChevronRight className={cn("h-5 w-5 transition-colors", item.completed ? "text-emerald-300" : "text-slate-300 group-hover:text-primary")} />
-                          )}
-                        </button>
-                        
-                        {item.evidenceUrl && (
-                          <div className="px-2 animate-in fade-in slide-in-from-top-2">
-                            <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-emerald-100 shadow-md group">
-                              <FirebaseImage url={item.evidenceUrl} className="w-full h-full object-cover" />
-                              <div className="absolute top-3 right-3 bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-lg border border-white/20 flex items-center gap-1">
-                                <CheckCircle2 className="h-3 w-3" /> Evidencia Capturada
+                                <span className="text-[9px] font-bold text-primary uppercase mt-1.5 flex items-center gap-1">
+                                  {item.completed ? "Pulsa para añadir más fotos" : "Pulsa para abrir cámara"} <ArrowRight className="h-2 w-2" />
+                                </span>
                               </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                            {isUploading && activeTaskId === item.id ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                {photos.length > 0 && <Badge variant="secondary" className="h-5 px-1.5 font-black text-[9px]">{photos.length}</Badge>}
+                                <ChevronRight className={cn("h-5 w-5 transition-colors", item.completed ? "text-emerald-300" : "text-slate-300 group-hover:text-primary")} />
+                              </div>
+                            )}
+                          </button>
+                          
+                          {photos.length > 0 && (
+                            <div className="px-2 grid grid-cols-2 sm:grid-cols-3 gap-2 animate-in fade-in slide-in-from-top-2">
+                              {photos.map((url, i) => (
+                                <div key={i} className="relative aspect-video rounded-xl overflow-hidden border-2 border-emerald-100 shadow-sm group">
+                                  <FirebaseImage url={url} className="w-full h-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
                 <div className="pt-6 border-t-2 border-dashed border-slate-100 space-y-4">
-                  <p className="text-[10px] font-black uppercase text-slate-400 text-center">¿Necesitas registrar algo más?</p>
+                  <p className="text-[10px] font-black uppercase text-slate-400 text-center">Evidencias Generales de Apoyo</p>
                   <Button 
                     variant="outline" 
                     className="w-full h-14 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-widest gap-2"
@@ -401,10 +371,10 @@ export default function FieldCapturePage() {
                     onClick={handleFinalize}
                     disabled={isFinalizing || isUploading}
                   >
-                    {isFinalizing ? <Loader2 className="animate-spin h-8 w-8" /> : <><Send className="h-6 w-6" /> Finalizar y Enviar</>}
+                    {isFinalizing ? <Loader2 className="animate-spin h-8 w-8" /> : <><CheckCircle2 className="h-6 w-6" /> Finalizar y Enviar</>}
                   </Button>
                   <p className="text-[9px] text-center text-slate-400 font-bold uppercase mt-4 tracking-widest">
-                    * Al finalizar, el reporte se enviará a revisión técnica.
+                    * El reporte se enviará a revisión técnica del supervisor.
                   </p>
                 </div>
               </CardContent>
@@ -413,7 +383,6 @@ export default function FieldCapturePage() {
         )}
       </div>
 
-      {/* INPUT CÁMARA OCULTO */}
       <input 
         type="file" 
         accept="image/*" 

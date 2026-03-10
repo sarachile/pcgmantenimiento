@@ -43,7 +43,8 @@ import {
   Compass,
   Map as MapIcon,
   Globe,
-  Layers
+  Layers,
+  Images
 } from "lucide-react";
 import {
   Dialog,
@@ -232,7 +233,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             </CardContent>
           </Card>
 
-          {/* MAGNITUDES DEL SERVICIO */}
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
             <CardHeader className="bg-indigo-50 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><Layers className="h-5 w-5 text-indigo-600" /> Magnitudes Registradas</CardTitle></CardHeader>
             <CardContent className="p-6">
@@ -258,20 +258,29 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolos & Evidencias</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="grid grid-cols-1 gap-4">
-                {ot.checklist?.map(item => (
-                  <div key={item.id} className="flex flex-col sm:flex-row gap-4 p-4 bg-white border-2 rounded-2xl">
-                    <div className="flex-1 flex items-center gap-4">
-                      <div className={cn("h-6 w-6 rounded-full flex items-center justify-center border-2 shrink-0", item.completed ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 text-slate-200")}><Check className="h-4 w-4" /></div>
-                      <div className="flex flex-col"><span className={cn("text-sm font-bold", item.completed ? "text-slate-900" : "text-slate-400")}>{item.task}</span>{item.completed && <span className="text-[9px] font-black text-slate-400">REALIZADO: {format(new Date(item.completedAt), "dd/MM HH:mm")}</span>}</div>
+                {ot.checklist?.map(item => {
+                  const photos = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
+                  return (
+                    <div key={item.id} className="flex flex-col gap-4 p-4 bg-white border-2 rounded-2xl">
+                      <div className="flex-1 flex items-center gap-4">
+                        <div className={cn("h-6 w-6 rounded-full flex items-center justify-center border-2 shrink-0", item.completed ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 text-slate-200")}><Check className="h-4 w-4" /></div>
+                        <div className="flex flex-col"><span className={cn("text-sm font-bold", item.completed ? "text-slate-900" : "text-slate-400")}>{item.task}</span>{item.completed && <span className="text-[9px] font-black text-slate-400">REALIZADO: {format(new Date(item.completedAt), "dd/MM HH:mm")}</span>}</div>
+                      </div>
+                      {photos.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {photos.map((url, i) => (
+                            <div key={i} className="aspect-video rounded-xl overflow-hidden shadow-sm border bg-slate-50"><FirebaseImage url={url} className="w-full h-full" /></div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    {item.evidenceUrl && <div className="w-full sm:w-40 aspect-video rounded-xl overflow-hidden shadow-sm"><FirebaseImage url={item.evidenceUrl} className="w-full h-full" /></div>}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {ot.evidenceUrls && ot.evidenceUrls.length > 0 && (
                 <div className="space-y-4 pt-4 border-t-2 border-dashed">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><Camera className="h-4 w-4" /> Galería General de Terreno</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><Images className="h-4 w-4" /> Galería General de Terreno</Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {ot.evidenceUrls.map((url, i) => (
                       <div key={i} className="aspect-video rounded-xl overflow-hidden border-2 shadow-sm group bg-slate-50"><FirebaseImage url={url} className="w-full h-full transition-transform group-hover:scale-110" /></div>

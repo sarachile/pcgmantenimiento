@@ -57,7 +57,6 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
-      {/* Magnitudes en el Reporte */}
       {workOrder.serviceItems && workOrder.serviceItems.length > 0 && (
         <div className="mb-10">
           <h3 className="text-[10px] font-black uppercase text-slate-400 border-b-2 pb-2 mb-4 flex items-center gap-2">
@@ -81,16 +80,25 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
 
       <div className="mb-10">
         <h3 className="text-[10px] font-black uppercase text-slate-400 border-b-2 pb-2 mb-4">PROTOCOLOS Y EVIDENCIAS</h3>
-        <div className="grid grid-cols-1 gap-4">
-          {workOrder.checklist?.map(item => (
-            <div key={item.id} className="flex gap-6 p-4 bg-white rounded-xl border-2">
-              <div className="flex-1 flex items-center gap-4">
-                <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${item.completed ? 'bg-emerald-500 text-white' : 'border-slate-300'}`}>{item.completed && <Check className="h-3 w-3" />}</div>
-                <div className="flex flex-col"><span className={`text-sm font-bold ${item.completed ? 'text-slate-900' : 'text-slate-400'}`}>{item.task}</span>{item.completed && <span className="text-[8px] font-black text-slate-400">REALIZADO: {formatDateLabel(item.completedAt)}</span>}</div>
+        <div className="grid grid-cols-1 gap-6">
+          {workOrder.checklist?.map(item => {
+            const photos = item.evidenceUrls || (item.evidenceUrl ? [item.evidenceUrl] : []);
+            return (
+              <div key={item.id} className="flex flex-col gap-4 p-4 bg-white rounded-xl border-2">
+                <div className="flex items-center gap-4">
+                  <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center ${item.completed ? 'bg-emerald-500 text-white' : 'border-slate-300'}`}>{item.completed && <Check className="h-3 w-3" />}</div>
+                  <div className="flex flex-col"><span className={`text-sm font-bold ${item.completed ? 'text-slate-900' : 'text-slate-400'}`}>{item.task}</span>{item.completed && <span className="text-[8px] font-black text-slate-400">REALIZADO: {formatDateLabel(item.completedAt)}</span>}</div>
+                </div>
+                {photos.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {photos.map((url, i) => (
+                      <div key={i} className="aspect-video rounded-lg overflow-hidden border bg-slate-50"><FirebaseImage url={url} className="w-full h-full object-cover" /></div>
+                    ))}
+                  </div>
+                )}
               </div>
-              {item.evidenceUrl && <div className="w-32 aspect-video rounded-lg overflow-hidden border bg-slate-50"><FirebaseImage url={item.evidenceUrl} className="w-full h-full object-cover" /></div>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
