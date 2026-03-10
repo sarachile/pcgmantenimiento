@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -66,9 +65,9 @@ export default function SupportPage() {
   const { data: company } = useDoc<Company>(companyRef);
 
   const ticketsQuery = useMemoFirebase(() => {
-    if (!db || !profile?.id || !profile?.companyId) return null;
+    if (!db || !profile?.id) return null;
     
-    // Si es superadmin, ve todo
+    // Si es superadmin, ve todos los tickets del sistema
     if (isSuperAdmin) {
       return query(
         collection(db, "supportTickets"),
@@ -76,8 +75,8 @@ export default function SupportPage() {
       );
     }
 
-    // Si es admin de empresa o supervisor, ve todos los tickets de su empresa
-    if (isCompanyAdmin || isSupervisor) {
+    // Si es admin de empresa o supervisor, ve los tickets vinculados a su empresa
+    if ((isCompanyAdmin || isSupervisor) && profile.companyId) {
       return query(
         collection(db, "supportTickets"),
         where("companyId", "==", profile.companyId),
@@ -85,7 +84,7 @@ export default function SupportPage() {
       );
     }
 
-    // Los técnicos solo ven sus propios tickets
+    // Los técnicos ven solo sus propios requerimientos
     return query(
       collection(db, "supportTickets"),
       where("userId", "==", profile.id),
@@ -123,7 +122,7 @@ export default function SupportPage() {
         subject: `NUEVO TICKET DE SOPORTE - ${company.name}`,
         html: `
           <div style="font-family: sans-serif; padding: 20px;">
-            <h2>Nuevo Requerimiento de Soporte</h2>
+            <h2>Nuevo Requerimiento de Soporte / Feedback</h2>
             <p><strong>Empresa:</strong> ${company.name}</p>
             <p><strong>Usuario:</strong> ${profile.name} (${profile.email})</p>
             <p><strong>Asunto:</strong> ${formData.subject}</p>
@@ -141,12 +140,12 @@ export default function SupportPage() {
 
       toast({
         title: "Ticket Creado",
-        description: "Un ejecutivo revisará su requerimiento a la brevedad.",
+        description: "Su requerimiento ha sido recibido. Lo contactaremos a la brevedad.",
       });
       setIsCreateOpen(false);
       setFormData({ subject: "", description: "", category: "technical", priority: "medium" });
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error de permisos", description: "No se pudo crear el ticket. Verifique su conexión.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -162,27 +161,28 @@ export default function SupportPage() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild><Link href="/dashboard"><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
-            <h2 className="text-3xl font-black tracking-tight">Centro de Soporte</h2>
-            <p className="text-muted-foreground">Gestione sus requerimientos técnicos y consultas.</p>
+            <h2 className="text-3xl font-black tracking-tight uppercase italic">Centro de Soporte</h2>
+            <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest">Feedback y Requerimientos</p>
           </div>
         </div>
         
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="shadow-lg">
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Requerimiento
+            <Button className="shadow-lg h-12 px-6 font-black gap-2">
+              <Plus className="h-5 w-5" /> Nuevo Requerimiento
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] rounded-[2rem]">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black italic">Crear Ticket de Soporte</DialogTitle>
-              <DialogDescription>Describa su problema o consulta detalladamente.</DialogDescription>
+              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Crear Ticket</DialogTitle>
+              <DialogDescription className="font-bold text-slate-500">¿En qué podemos ayudarte a mejorar tu operación?</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateTicket} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Asunto del Ticket</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400">Asunto del Ticket *</Label>
                 <Input 
-                  placeholder="Ej: Problema con reporte PDF..." 
+                  placeholder="Ej: Propuesta de mejora en reportes..." 
+                  className="h-12 rounded-xl border-2 font-bold"
                   value={formData.subject}
                   onChange={(e) => setFormData({...formData, subject: e.target.value})}
                   required
@@ -190,9 +190,9 @@ export default function SupportPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Categoría</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Categoría</Label>
                   <Select value={formData.category} onValueChange={(val) => setFormData({...formData, category: val})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-xl border-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -204,9 +204,9 @@ export default function SupportPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Prioridad</Label>
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Prioridad</Label>
                   <Select value={formData.priority} onValueChange={(val) => setFormData({...formData, priority: val})}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-12 rounded-xl border-2">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -219,17 +219,17 @@ export default function SupportPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label>Descripción Detallada</Label>
+                <Label className="text-[10px] font-black uppercase text-slate-400">Descripción Detallada *</Label>
                 <Textarea 
-                  placeholder="Explique qué sucede..." 
-                  className="min-h-[120px]"
+                  placeholder="Explique qué necesita o qué mejora propone..." 
+                  className="min-h-[120px] rounded-xl border-2 p-4 text-sm font-medium"
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   required
                 />
               </div>
               <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full h-12 font-black" disabled={isSubmitting}>
+                <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Enviar a Soporte Central"}
                 </Button>
               </DialogFooter>
@@ -240,22 +240,22 @@ export default function SupportPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
-            {isCompanyAdmin || isSupervisor ? "Tickets de la Empresa" : "Mis Tickets Activos"}
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 ml-2">
+            Mis Requerimientos Activos
           </h3>
           
           {isTicketsLoading ? (
             <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" /></div>
           ) : !tickets || tickets.length === 0 ? (
-            <Card className="border-2 border-dashed p-12 text-center rounded-[2rem] bg-muted/10">
+            <Card className="border-2 border-dashed p-12 text-center rounded-[2.5rem] bg-slate-50/50">
               <LifeBuoy className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-              <p className="font-bold text-slate-500">No tiene tickets registrados aún.</p>
-              <p className="text-xs text-slate-400 mt-1">Si necesita ayuda, cree un nuevo requerimiento arriba.</p>
+              <p className="font-black uppercase italic text-slate-400 tracking-tighter">Sin tickets registrados</p>
+              <p className="text-xs text-slate-400 mt-2 font-medium">Si tienes dudas o propuestas de mejora, estamos para escucharte.</p>
             </Card>
           ) : (
             tickets.map((ticket) => (
               <Link key={ticket.id} href={`/support/${ticket.id}`}>
-                <Card className="group border-none shadow-sm hover:shadow-md transition-all rounded-2xl overflow-hidden mb-3">
+                <Card className="group border-none shadow-sm hover:shadow-md transition-all rounded-[1.5rem] overflow-hidden mb-3 bg-white">
                   <div className="flex items-center p-5 gap-4">
                     <div className={cn(
                       "h-12 w-12 rounded-xl flex items-center justify-center shrink-0",
@@ -269,25 +269,25 @@ export default function SupportPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-[9px] font-black uppercase tracking-tighter">
+                        <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4">
                           {ticket.category}
                         </Badge>
-                        <span className="text-[10px] text-muted-foreground font-bold">
+                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                           #{ticket.id.slice(-6).toUpperCase()}
                         </span>
                       </div>
-                      <h4 className="font-black text-slate-900 truncate group-hover:text-primary transition-colors">
+                      <h4 className="font-black text-slate-900 truncate group-hover:text-primary transition-colors text-sm uppercase italic">
                         {ticket.subject}
                       </h4>
-                      <p className="text-[10px] text-muted-foreground mt-1">
+                      <p className="text-[9px] text-slate-400 mt-1 font-bold uppercase">
                         Actualizado: {ticket.updatedAt ? format(ticket.updatedAt.toDate ? ticket.updatedAt.toDate() : new Date(ticket.updatedAt), "dd MMM HH:mm", { locale: es }) : ''}
                       </p>
                     </div>
                     <div className="text-right flex flex-col items-end gap-2">
                       <Badge className={cn(
-                        "text-[9px] font-black uppercase",
-                        ticket.priority === 'urgent' ? "bg-rose-500" :
-                        ticket.priority === 'high' ? "bg-amber-500" : "bg-slate-500"
+                        "text-[8px] font-black uppercase tracking-widest px-2 h-5",
+                        ticket.priority === 'urgent' ? "bg-rose-500 text-white" :
+                        ticket.priority === 'high' ? "bg-amber-500 text-white" : "bg-slate-500 text-white"
                       )}>
                         {ticket.priority}
                       </Badge>
@@ -301,36 +301,36 @@ export default function SupportPage() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-none shadow-sm bg-primary text-white rounded-3xl overflow-hidden relative">
+          <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] overflow-hidden relative">
             <div className="absolute -top-10 -right-10 opacity-10"><LifeBuoy className="h-40 w-40" /></div>
-            <CardHeader>
-              <CardTitle className="text-xl font-black italic">Ayuda Directa</CardTitle>
-              <CardDescription className="text-primary-foreground/70">¿Tienes una duda urgente? Nuestro equipo está listo para asistirte.</CardDescription>
+            <CardHeader className="p-8">
+              <CardTitle className="text-xl font-black italic uppercase tracking-tighter">Ayuda Directa</CardTitle>
+              <CardDescription className="text-blue-400 font-bold uppercase text-[10px] tracking-widest mt-1">Soporte centralizado PCGMANTENIMIENTO</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 pt-0">
-              <div className="bg-white/10 p-4 rounded-2xl space-y-2 backdrop-blur-sm border border-white/10">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Horario de Atención</p>
+            <CardContent className="space-y-4 pt-0 p-8">
+              <div className="bg-white/5 p-5 rounded-2xl space-y-2 backdrop-blur-sm border border-white/10">
+                <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">Horario de Atención</p>
                 <p className="text-sm font-bold">Lun - Vie: 09:00 a 18:30 hrs</p>
               </div>
-              <div className="bg-white/10 p-4 rounded-2xl space-y-2 backdrop-blur-sm border border-white/10">
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Correo Directo</p>
+              <div className="bg-white/5 p-5 rounded-2xl space-y-2 backdrop-blur-sm border border-white/10">
+                <p className="text-[9px] font-black uppercase tracking-widest text-blue-400">Correo Directo</p>
                 <p className="text-sm font-bold">soporte@pcgoperacion.com</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm rounded-3xl">
-            <CardHeader>
-              <CardTitle className="text-sm font-black uppercase tracking-widest">Preguntas Frecuentes</CardTitle>
+          <Card className="border-none shadow-sm rounded-[2rem] bg-white">
+            <CardHeader className="p-6 pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Preguntas Frecuentes</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3 p-6 pt-2">
               {[
-                "¿Cómo cambio mi plan?",
-                "¿Olvidé mi contraseña?",
-                "¿Límites de almacenamiento?"
+                "¿Cómo cambiar mi plan?",
+                "¿Configuración de firmas QR?",
+                "¿Límites de técnicos?"
               ].map((q, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl border hover:bg-slate-50 cursor-pointer transition-colors group">
-                  <span className="text-xs font-bold text-slate-600">{q}</span>
+                <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-slate-50 hover:bg-slate-50 cursor-pointer transition-colors group">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase">{q}</span>
                   <ChevronRight className="h-3 w-3 text-slate-300 group-hover:text-primary" />
                 </div>
               ))}

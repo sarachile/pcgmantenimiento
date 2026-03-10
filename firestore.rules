@@ -2,11 +2,49 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     /**
-     * PCGMANTENIMIENTO SECURITY RULES - Secure Production Edition
-     * Permite lectura y escritura a usuarios autenticados para mantener la fluidez operativa.
-     * El portal de aprobación del cliente requiere acceso para usuarios logueados.
+     * PCGMANTENIMIENTO SECURITY RULES - Release Edition
+     * Reglas optimizadas para flujo administrativo, técnico y portal de clientes.
      */
+
+    // 1. REGLA MAESTRA: Usuarios logueados pueden operar en el sistema
     match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // 2. EXCEPCIÓN PORTAL CLIENTE: Lectura pública de OTs y datos vinculados para aprobación
+    // Esto permite que el portal QR funcione para mandantes externos no logueados.
+    match /companies/{companyId}/workOrders/{otId} {
+      allow read: if true;
+      allow update: if true; // Permitir que el portal actualice el estado a 'aprobada' o 'rechazada'
+    }
+    
+    match /companies/{companyId}/clients/{clientId} {
+      allow read: if true;
+    }
+    
+    match /companies/{companyId}/assets/{assetId} {
+      allow read: if true;
+    }
+
+    match /companies/{companyId}/workOrders/{otId}/digitalLogbookEntries/{entryId} {
+      allow read: if true;
+      allow create: if true; // Permitir registrar eventos desde el portal
+    }
+
+    match /companies/{companyId}/evaluations/{evalId} {
+      allow create: if true; // Permitir que el cliente guarde su encuesta
+    }
+
+    match /companies/{companyId}/staff/{staffId} {
+      allow read: if true; // Permitir al portal ver quién es el técnico
+    }
+
+    // 3. CENTRO DE SOPORTE GLOBAL
+    match /supportTickets/{ticketId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /supportTickets/{ticketId}/messages/{messageId} {
       allow read, write: if request.auth != null;
     }
   }
