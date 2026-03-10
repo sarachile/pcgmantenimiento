@@ -247,8 +247,8 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   {ot.locationComment && <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-100 text-[9px] font-black uppercase">{ot.locationComment}</Badge>}
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2 border-slate-200" onClick={() => openNavigation('google')}><img src="https://www.google.com/images/branding/product/2x/maps_96in128dp.png" className="h-4 w-4" alt="Maps" /> Maps</Button>
-                  <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2 border-slate-200" onClick={() => openNavigation('waze')}><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Waze_icon.svg/1200px-Waze_icon.svg.png" className="h-4 w-4" alt="Waze" /> Waze</Button>
+                  <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2 border-slate-200" onClick={() => openNavigation('google')}><img src="/maps.png" className="h-4 w-4" alt="Maps" /> Maps</Button>
+                  <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2 border-slate-200" onClick={() => openNavigation('waze')}><img src="/waze.png" className="h-4 w-4" alt="Waze" /> Waze</Button>
                 </div>
               </div>
             </CardContent>

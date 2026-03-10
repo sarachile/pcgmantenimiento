@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
@@ -367,7 +366,7 @@ export default function FieldCapturePage() {
                       className="bg-white border-2 border-slate-100 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest gap-2"
                       onClick={() => openNavigation('google', selectedOT.serviceLocation || clients?.find(c => c.id === selectedOT.clientId)?.address || "")}
                     >
-                      <img src="https://www.google.com/images/branding/product/2x/maps_96in128dp.png" className="h-5 w-5 object-contain" alt="Maps" />
+                      <img src="/maps.png" className="h-5 w-5 object-contain" alt="Maps" />
                       Google Maps
                     </Button>
                     <Button 
@@ -375,7 +374,7 @@ export default function FieldCapturePage() {
                       className="bg-white border-2 border-slate-100 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest gap-2"
                       onClick={() => openNavigation('waze', selectedOT.serviceLocation || clients?.find(c => c.id === selectedOT.clientId)?.address || "")}
                     >
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/Waze_icon.svg/1200px-Waze_icon.svg.png" className="h-5 w-5 object-contain" alt="Waze" />
+                      <img src="/waze.png" className="h-5 w-5 object-contain" alt="Waze" />
                       Waze
                     </Button>
                   </div>
