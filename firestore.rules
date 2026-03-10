@@ -5,9 +5,7 @@ service cloud.firestore {
 
     /**
      * PCGMANTENIMIENTO SECURITY RULES - SaaS Edition
-     * MAX FLEXIBILITY FOR ONBOARDING & TECH ACCESS
-     * Estas reglas permiten que el proceso de invitación por WhatsApp y creación de PIN 
-     * funcione sin fricciones de permisos.
+     * MAX FLEXIBILITY FOR EXTERNAL PORTALS & ONBOARDING
      */
 
     // --- Funciones de Ayuda ---
@@ -31,30 +29,37 @@ service cloud.firestore {
     // --- REGLAS DE ACCESO PÚBLICO (PARA INVITACIONES Y PORTALES) ---
     
     match /companies/{companyId} {
-      // Lectura pública para branding en portales e invitaciones
+      // Lectura pública total para branding en portales e invitaciones
       allow get: if true;
-      allow list: if isSignedIn();
+      allow list: if true;
 
       match /staff/{staffId} {
-        // FLEXIBILIZADO AL MÁXIMO: Permitir que el técnico lea su invitación y actualice su estado al registrarse
+        // Permitir que el técnico lea su invitación y actualice su estado
         allow get, write: if true; 
-        allow list: if true; // Permitir listado para validación de login por RUT
+        allow list: if true;
       }
 
       match /clients/{clientId} {
-        allow get: if true; // Para portal de aprobación pública
+        // El portal de aprobación necesita leer los datos del cliente para validar el PIN
+        allow get: if true; 
         allow list: if isCompanyMember(companyId);
         allow write: if isCompanyMember(companyId);
       }
 
       match /workOrders/{workOrderId} {
-        allow get: if true; // Para que el cliente pueda ver la OT en su portal sin loguearse
+        // El cliente debe poder ver su OT sin loguearse
+        allow get: if true; 
         allow list: if isCompanyMember(companyId);
+        // Permitir creación inicial (desde API/Portal)
         allow create: if isCompanyMember(companyId) || (request.resource.data.status == 'solicitada');
-        allow update: if isCompanyMember(companyId) || isSignedIn() || (resource.data.status == 'pendiente cliente');
+        // Aprobación del cliente: Permitir actualización si la OT está en estados interactivos
+        allow update: if isCompanyMember(companyId) || isSignedIn() || 
+                     (resource.data.status == 'pendiente cliente') || 
+                     (resource.data.status == 'en revision') ||
+                     (resource.data.status == 'ejecutada');
         
         match /digitalLogbookEntries/{entryId} {
-          allow read, write: if true; // Permitir logs desde portal público y técnicos
+          allow read, write: if true; // Bitácora siempre accesible para trazabilidad
         }
         
         match /partUsages/{usageId} {
@@ -63,13 +68,15 @@ service cloud.firestore {
       }
       
       match /assets/{assetId} {
+        // El portal muestra el equipo intervenido
         allow get: if true;
         allow list, write: if isCompanyMember(companyId);
       }
 
       match /evaluations/{evalId} {
-        allow create: if true; // El cliente puede evaluar sin estar logueado
-        allow read, write: if isCompanyMember(companyId);
+        // El cliente debe poder enviar su evaluación de satisfacción
+        allow create: if true; 
+        allow read, update: if isCompanyMember(companyId);
       }
       
       // Resto de subcolecciones protegidas por membresía de empresa
@@ -81,7 +88,6 @@ service cloud.firestore {
     // --- REGLAS DE USUARIOS (SOPORTE TOTAL PARA LOGIN Y REGISTRO) ---
 
     match /users/{userId} {
-      // ACCESO TOTAL: Garantiza que el técnico pueda crear su perfil y el login pueda buscar su email
       allow get, list, create, update: if true;
       allow delete: if isPlatformAdmin();
     }
