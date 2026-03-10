@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -263,8 +264,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   return (
                     <div key={item.id} className="flex flex-col gap-4 p-4 bg-white border-2 rounded-2xl">
                       <div className="flex-1 flex items-center gap-4">
-                        <div className={cn("h-6 w-6 rounded-full flex items-center justify-center border-2 shrink-0", item.completed ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 text-slate-200")}><Check className="h-4 w-4" /></div>
-                        <div className="flex flex-col"><span className={cn("text-sm font-bold", item.completed ? "text-slate-900" : "text-slate-400")}>{item.task}</span>{item.completed && <span className="text-[9px] font-black text-slate-400">REALIZADO: {format(new Date(item.completedAt), "dd/MM HH:mm")}</span>}</div>
+                        <div className={cn("h-6 w-6 rounded-full flex items-center justify-center border-2 shrink-0", item.completed ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 text-slate-200")}>
+                          {item.completed && <Check className="h-4 w-4" />}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={cn("text-sm font-bold", item.completed ? "text-slate-900" : "text-slate-400")}>{item.task}</span>
+                          {item.completed && <span className="text-[9px] font-black text-slate-400">REALIZADO: {format(new Date(item.completedAt), "dd/MM HH:mm")}</span>}
+                        </div>
                       </div>
                       {photos.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">

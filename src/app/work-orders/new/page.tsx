@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
@@ -44,7 +45,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { Client, Asset, StaffMember, Team, ServiceItem } from "@/lib/types";
+import { Client, Asset, StaffMember, Team, ServiceItem, ChecklistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CHILE_REGIONS } from "@/lib/chile-data";
 
@@ -101,7 +102,7 @@ function NewWorkOrderContent() {
   const [scheduledDate, setScheduledDate] = useState("");
   const [durationDays, setDurationDays] = useState(1);
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
-  const [checklist, setChecklist] = useState<{task: string}[]>([]);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
 
   // New Client Dialog State
   const [isClientDialogOpen, setIsClientOpen] = useState(false);
@@ -177,7 +178,7 @@ function NewWorkOrderContent() {
               setScheduledDate(format(d, 'yyyy-MM-dd'));
             }
             setDurationDays(data.durationDays || 1);
-            if (data.checklist) setChecklist(data.checklist.map((i: any) => ({ task: i.task })));
+            if (data.checklist) setChecklist(data.checklist);
           }
         } catch (e) { console.error(e); } finally { setIsLoadingData(false); }
       };
@@ -275,9 +276,10 @@ function NewWorkOrderContent() {
         durationDays: Number(durationDays),
         serviceItems,
         checklist: checklist.map((item, idx) => ({ 
-          id: `task-${idx}-${Date.now()}`, 
+          ...item,
+          id: item.id || `task-${idx}-${Date.now()}`, 
           task: item.task, 
-          completed: false 
+          completed: item.completed || false 
         })),
         status: status || 'creada',
         updatedAt: serverTimestamp(),
@@ -545,7 +547,7 @@ function NewWorkOrderContent() {
               <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
                 <LayoutList className="h-6 w-6 text-amber-400" /> 4. Protocolos Técnicos
               </CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={() => setChecklist([...checklist, { task: "" }])} className="h-10 rounded-xl font-black text-[10px] uppercase gap-2 border-white/20 text-white bg-white/10"><Plus className="h-4 w-4" /> Añadir Punto</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => setChecklist([...checklist, { task: "", completed: false, id: `task-new-${Date.now()}` }])} className="h-10 rounded-xl font-black text-[10px] uppercase gap-2 border-white/20 text-white bg-white/10"><Plus className="h-4 w-4" /> Añadir Punto</Button>
             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-4">
