@@ -56,7 +56,7 @@ export default function StaffLoginPage() {
     setIsSubmitting(true);
     try {
       // 1. Buscar el email asociado al RUT en la colección global de usuarios
-      // Usamos el RUT como prefijo del email generado: [rut]@[id].staff.pcg
+      // El formato es [rut]@[id_empresa].staff.pcg
       const staffQuery = query(
         collection(firestore, "users"), 
         where("email", ">=", cleanRutStr), 
@@ -67,15 +67,11 @@ export default function StaffLoginPage() {
       const staffSnap = await getDocs(staffQuery);
       
       if (staffSnap.empty) {
-        throw new Error("No se encontró una cuenta activa para este RUT. ¿Ya activaste tu acceso mediante el link de WhatsApp?");
+        throw new Error("No se encontró una cuenta activa para este RUT. ¿Ya activaste tu acceso mediante el link enviado a tu WhatsApp?");
       }
 
       const targetUser = staffSnap.docs[0].data();
       const email = targetUser.email;
-
-      if (!email || !email.includes("@")) {
-        throw new Error("Error de configuración de cuenta. Contacte a su supervisor.");
-      }
 
       // 2. Iniciar sesión con Firebase Auth
       await signInWithEmailAndPassword(auth, email, pinInput);
@@ -89,12 +85,14 @@ export default function StaffLoginPage() {
     } catch (error: any) {
       console.error("Login Error:", error);
       
-      let friendlyMessage = error.message;
+      let friendlyMessage = "RUT o PIN incorrectos. Verifique sus datos.";
       
-      if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         friendlyMessage = "RUT o PIN incorrectos. Verifique sus datos.";
       } else if (error.code === 'auth/too-many-requests') {
-        friendlyMessage = "Demasiados intentos fallidos. Reintente en unos minutos.";
+        friendlyMessage = "Demasiados intentos fallidos por seguridad. Reintente en unos minutos.";
+      } else {
+        friendlyMessage = error.message || "Error inesperado al intentar ingresar.";
       }
 
       toast({ 
@@ -108,9 +106,9 @@ export default function StaffLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
       <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
+        <div className="space-y-2">
           <div className="bg-primary/20 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto border border-primary/30 mb-4">
             <HardHat className="h-10 w-10 text-primary" />
           </div>
@@ -119,13 +117,13 @@ export default function StaffLoginPage() {
         </div>
 
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-          <CardHeader className="bg-white p-8 text-center border-b">
+          <CardHeader className="bg-white p-8 border-b">
             <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900">Identificación</CardTitle>
             <CardDescription>Ingresa tu RUT y PIN para ver tus trabajos asignados.</CardDescription>
           </CardHeader>
           <CardContent className="p-8">
             <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2">
+              <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Tu RUT</Label>
                 <Input 
                   placeholder="12.345.678-9" 
@@ -135,7 +133,7 @@ export default function StaffLoginPage() {
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 text-left">
                 <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">PIN de Acceso (6 dígitos)</Label>
                 <Input 
                   type="password"
@@ -157,7 +155,7 @@ export default function StaffLoginPage() {
             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase">
               <AlertCircle className="h-3 w-3" /> ¿No has activado tu cuenta?
             </div>
-            <p className="text-[10px] text-slate-500 leading-relaxed">
+            <p className="text-[10px] text-slate-500 leading-relaxed text-left">
               Debes usar el link enviado a tu WhatsApp por tu supervisor para configurar tu PIN inicial.
             </p>
             <Link href="/auth/login" className="text-[10px] font-black text-primary uppercase underline tracking-widest mt-2">

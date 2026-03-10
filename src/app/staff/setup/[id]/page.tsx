@@ -20,12 +20,11 @@ import {
   HardHat,
   UserCheck,
   AlertTriangle,
-  RefreshCw,
   Lock
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useAuth } from "@/firebase";
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { StaffMember, Company } from "@/lib/types";
 import { cleanRut } from "@/lib/utils-rut";
@@ -53,7 +52,10 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     async function loadData() {
-      if (!companyId || !firestore || !staffId) return;
+      if (!companyId || !firestore || !staffId) {
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
@@ -70,7 +72,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         }
         setCompany({ ...companySnap.data() as Company, id: companyId });
 
-        // 2. Cargar Técnico
+        // 2. Cargar Registro del Técnico
         const staffRef = doc(firestore, "companies", companyId, "staff", staffId);
         const staffSnap = await getDoc(staffRef);
 
@@ -83,10 +85,10 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         const staffData = { ...staffSnap.data() as StaffMember, id: staffId };
         setStaff(staffData);
 
-        // 3. Si ya tiene cuenta, redirigir al login
-        if (staffData.hasAccount || staffData.userId) {
-          toast({ title: "Cuenta ya activa", description: "Inicia sesión con tus credenciales." });
-          router.push('/staff/login');
+        // 3. Verificación de cuenta existente en Firestore
+        if (staffData.hasAccount && staffData.userId) {
+          setStep(3); // Ya está activado
+          setLoading(false);
           return;
         }
 
@@ -98,7 +100,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       }
     }
     loadData();
-  }, [firestore, staffId, companyId, router, toast]);
+  }, [firestore, staffId, companyId]);
 
   const handleVerifyIdentity = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +112,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     if (cleanInput === cleanStaffRut) {
       setStep(2);
     } else {
-      toast({ title: "RUT no coincide", description: "Verifique que el RUT sea el mismo que el registrado en su empresa.", variant: "destructive" });
+      toast({ title: "RUT no coincide", description: "Verifique que el RUT sea el mismo registrado por su empresa.", variant: "destructive" });
     }
   };
 
@@ -128,10 +130,34 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
       const cleanRutStr = cleanRut(staff.identification || "");
       const email = `${cleanRutStr}@${company.id}.staff.pcg`;
       
-      const userCredential = await createUserWithEmailAndPassword(auth, email, pinInput);
-      const uid = userCredential.user.uid;
+      let uid = "";
 
-      // Crear Perfil de Usuario
+      try {
+        // Intentar crear el usuario en Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, pinInput);
+        uid = userCredential.user.uid;
+      } catch (authError: any) {
+        // Si el usuario ya existe en Auth (por un reseteo de base de datos previo), lo recuperamos
+        if (authError.code === 'auth/email-already-in-use') {
+          // Buscamos si ya existe el perfil en la colección global de usuarios
+          const userQuery = query(collection(firestore, "users"), where("email", "==", email), limit(1));
+          const userSnap = await getDocs(userQuery);
+          
+          if (!userSnap.empty) {
+            uid = userSnap.docs[0].id;
+          } else {
+            // Caso extremo: Existe en Auth pero no en Firestore Users (huérfano)
+            // En este MVP redirigimos al login para que use su PIN original
+            toast({ title: "Cuenta ya registrada", description: "Este RUT ya tiene un PIN asignado. Intente ingresar con sus datos." });
+            router.push('/staff/login');
+            return;
+          }
+        } else {
+          throw authError;
+        }
+      }
+
+      // Crear o Actualizar Perfil de Usuario en Firestore
       await setDoc(doc(firestore, "users", uid), {
         id: uid,
         email,
@@ -142,9 +168,9 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         isStaffAccount: true,
         staffId: staff.id,
         createdAt: new Date().toISOString(),
-      });
+      }, { merge: true });
 
-      // Marcar registro de staff como activado
+      // Actualizar el registro del staff para marcarlo como activado
       await updateDoc(doc(firestore, "companies", company.id, "staff", staff.id), {
         userId: uid,
         hasAccount: true,
@@ -153,11 +179,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
 
       setStep(3);
     } catch (error: any) {
-      if (error.code === 'auth/email-already-in-use') {
-        router.push('/staff/login');
-      } else {
-        toast({ title: "Error en registro", description: error.message || "No se pudo crear la cuenta.", variant: "destructive" });
-      }
+      toast({ title: "Error en registro", description: error.message || "No se pudo completar la activación.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -173,20 +195,16 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
   }
 
   if (errorType !== "none") {
-    let msg = "Este enlace ya no es válido o los datos fueron reseteados.";
-    if (errorType === "company_missing") msg = "La empresa vinculada a este link no existe.";
-    if (errorType === "staff_missing") msg = "El registro de técnico asociado a este link fue eliminado.";
-
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
         <Card className="max-w-md w-full rounded-[2.5rem] shadow-2xl border-none overflow-hidden text-center bg-white">
           <CardHeader className="bg-rose-50 p-10 space-y-4">
             <AlertTriangle className="h-12 w-12 text-rose-600 mx-auto" />
             <CardTitle className="text-xl font-black uppercase italic text-rose-900">Invitación Caducada</CardTitle>
-            <CardDescription className="font-bold text-rose-700">{msg}</CardDescription>
+            <CardDescription className="font-bold text-rose-700">El link no es válido o la empresa fue reseteada.</CardDescription>
           </CardHeader>
           <CardContent className="p-10 space-y-4">
-            <p className="text-sm text-slate-500 italic">Pida a su supervisor que genere un nuevo link de invitación desde el panel de personal.</p>
+            <p className="text-sm text-slate-500 italic">Por favor, pida a su supervisor que genere un nuevo link de invitación desde el panel administrativo.</p>
             <Button className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase" asChild><Link href="/staff/login">Ir al Inicio de Sesión</Link></Button>
           </CardContent>
         </Card>
@@ -195,9 +213,9 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
       <div className="w-full max-w-md space-y-8">
-        <div className="text-center space-y-2">
+        <div className="space-y-2">
           <div className="bg-primary/20 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto border border-primary/30 mb-4">
             <HardHat className="h-10 w-10 text-primary" />
           </div>
@@ -213,7 +231,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="p-8">
               <form onSubmit={handleVerifyIdentity} className="space-y-6">
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Tu RUT</Label>
                   <Input placeholder="Ej: 12345678-9" className="h-14 rounded-2xl border-2 text-xl font-bold text-center" value={rutInput} onChange={(e) => setRutInput(e.target.value)} required />
                 </div>
@@ -233,7 +251,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="p-8">
               <form onSubmit={handleCreateAccess} className="space-y-6">
-                <div className="space-y-2">
+                <div className="space-y-2 text-left">
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Nuevo PIN de Acceso</Label>
                   <Input type="password" inputMode="numeric" maxLength={6} placeholder="******" className="h-16 rounded-2xl border-2 text-3xl font-black text-center tracking-[0.5em]" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))} required />
                 </div>
