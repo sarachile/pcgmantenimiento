@@ -33,12 +33,12 @@ export function FirebaseImage({ url, alt = "Imagen de Terreno", className, force
   }, [url]);
 
   if (!mounted) {
-    return <div className={cn("bg-muted/5 animate-pulse rounded-xl", className)} />;
+    return <div className={cn("bg-transparent animate-pulse rounded-xl", className)} />;
   }
 
   if (!url || error) {
     return (
-      <div className={cn("flex flex-col items-center justify-center bg-slate-50 border border-dashed rounded-xl p-4 text-slate-300", className)}>
+      <div className={cn("flex flex-col items-center justify-center bg-transparent border border-dashed rounded-xl p-4 text-slate-300", className)}>
         <ImageOff className="h-6 w-6 opacity-20" />
         <span className="text-[8px] font-black uppercase tracking-widest mt-2 opacity-40 text-center">No disponible</span>
       </div>

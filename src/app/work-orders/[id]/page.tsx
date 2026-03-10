@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -484,7 +483,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         <ExperienceCertificate forwardedRef={certRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} />
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-4 bg-white p-6 rounded-[2rem] border shadow-sm sticky top-4 z-20 backdrop-blur-md bg-white/90">
+      <div className="flex flex-col md:flex-row md:items-center gap-4 bg-white/90 p-6 rounded-[2rem] border shadow-sm sticky top-4 z-20 backdrop-blur-md">
         <Button variant="ghost" size="icon" asChild className="rounded-full"><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
@@ -714,7 +713,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                           {photos.map((url, i) => (
                             <div 
                               key={i} 
-                              className="aspect-video rounded-xl overflow-hidden shadow-sm border bg-slate-50 relative group/img cursor-pointer"
+                              className="aspect-video rounded-xl overflow-hidden shadow-sm border bg-transparent relative group/img cursor-pointer"
                               onClick={() => setSelectedImage({ url, task: item.task, lat: item.latitude, lng: item.longitude })}
                             >
                               <FirebaseImage url={url} className="w-full h-full object-cover transition-transform group-hover/img:scale-110" />
@@ -737,7 +736,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                     {ot.evidenceUrls.map((url, i) => (
                       <div 
                         key={i} 
-                        className="aspect-video rounded-xl overflow-hidden border-2 shadow-sm group bg-slate-50 cursor-pointer relative"
+                        className="aspect-video rounded-xl overflow-hidden border-2 shadow-sm group bg-transparent cursor-pointer relative"
                         onClick={() => setSelectedImage({ url, task: "Evidencia General" })}
                       >
                         <FirebaseImage url={url} className="w-full h-full transition-transform group-hover:scale-110" />

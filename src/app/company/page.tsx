@@ -167,7 +167,7 @@ export default function CompanyProfilePage() {
       updatedAt: serverTimestamp()
     });
     toast({
-      title: "Logotipo Eliminado",
+      title: "Logotipo Eliminar",
       description: "Se ha restaurado el icono por defecto.",
     });
   };
