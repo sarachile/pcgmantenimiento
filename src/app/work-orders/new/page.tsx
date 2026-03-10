@@ -96,15 +96,12 @@ function NewWorkOrderContent() {
   const clients = useMemo(() => (rawClients || []).filter(c => !c.isDeleted), [rawClients]);
   const assets = useMemo(() => (rawAssets || []).filter(a => !a.isDeleted), [rawAssets]);
 
-  // Auto-fill client defaults con lógica de sincronización para Comuna
+  // Auto-fill client defaults
   useEffect(() => {
     if (!isEditing && !duplicateFrom && clientId && clients) {
       const selectedClient = clients.find(c => c.id === clientId);
       if (selectedClient) {
-        // Actualizamos por etapas para permitir que los Selects reaccionen
         setRegion(selectedClient.region || "");
-        
-        // Pequeño delay para que el Select de Ciudad/Comuna cargue sus opciones basadas en la región
         setTimeout(() => {
           setCity(selectedClient.city || "");
           setCommune(selectedClient.commune || "");
@@ -112,8 +109,7 @@ function NewWorkOrderContent() {
           setStreetNumber(selectedClient.streetNumber || "");
           setComplement(selectedClient.complement || "");
           setRequestedByName(selectedClient.contactName || "");
-        }, 10);
-
+        }, 50);
         toast({ title: "Dirección de cliente cargada" });
       }
     }
@@ -162,8 +158,25 @@ function NewWorkOrderContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !clientId || !region || !city || !commune || !streetNumber || !profile) {
-      toast({ title: "Faltan campos obligatorios", variant: "destructive" });
+    
+    // VALIDACIÓN GRANULAR
+    const missingFields = [];
+    if (!description.trim()) missingFields.push("Descripción técnica");
+    if (!clientId) missingFields.push("Cliente");
+    if (!region) missingFields.push("Región");
+    if (!city) missingFields.push("Ciudad");
+    if (!commune) missingFields.push("Comuna");
+    if (!street) missingFields.push("Calle");
+    if (!streetNumber) missingFields.push("Número de calle");
+    if (assignedToStaffIds.length === 0) missingFields.push("Técnico asignado");
+    if (!profile) missingFields.push("Sesión de usuario");
+
+    if (missingFields.length > 0) {
+      toast({ 
+        title: "Faltan campos obligatorios", 
+        description: `Por favor complete: ${missingFields.join(", ")}.`,
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -298,7 +311,7 @@ function NewWorkOrderContent() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Descripción Técnica del Servicio</Label>
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Descripción Técnica del Servicio *</Label>
               <Textarea placeholder="Detalle el alcance..." className="min-h-[100px] rounded-2xl border-2 p-4 text-sm bg-slate-50/50" value={description} onChange={e => setDescription(e.target.value)} />
             </div>
 
@@ -318,7 +331,7 @@ function NewWorkOrderContent() {
         </Card>
 
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="bg-primary p-8"><CardTitle className="flex items-center gap-3 text-xl font-black text-white uppercase tracking-tighter italic"><Users className="h-6 w-6" /> 2. Personal Técnico</CardTitle></CardHeader>
+          <CardHeader className="bg-primary p-8"><CardTitle className="flex items-center gap-3 text-xl font-black text-white uppercase tracking-tighter italic"><Users className="h-6 w-6" /> 2. Personal Técnico *</CardTitle></CardHeader>
           <CardContent className="p-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[250px] overflow-y-auto">
               {staffMembers?.map(s => (
@@ -363,7 +376,7 @@ function NewWorkOrderContent() {
             </div>
           </CardContent>
           <CardFooter className="p-8 pt-0">
-            <Button type="submit" disabled={isSubmitting || !clientId || assignedToStaffIds.length === 0} className={cn("w-full h-20 rounded-[2rem] text-white font-black text-xl uppercase tracking-widest shadow-2xl transition-all", isEditing ? "bg-amber-600 shadow-amber-900/20" : "bg-primary shadow-primary/20 hover:scale-[1.02]")}>
+            <Button type="submit" disabled={isSubmitting} className={cn("w-full h-20 rounded-[2rem] text-white font-black text-xl uppercase tracking-widest shadow-2xl transition-all", isEditing ? "bg-amber-600 shadow-amber-900/20" : "bg-primary shadow-primary/20 hover:scale-[1.02]")}>
               {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : (isEditing ? <Edit2 className="h-8 w-8 mr-2" /> : <Plus className="h-8 w-8 mr-2" />) + (isEditing ? "Actualizar Orden" : "Activar Orden")}
             </Button>
           </CardFooter>

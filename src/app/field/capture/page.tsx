@@ -122,7 +122,7 @@ export default function FieldCapturePage() {
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
-  // AUTO-SELECCIÓN SI HAY UNA SOLA OT
+  // AUTO-SELECCIÓN INTELIGENTE: Si hay una sola OT después de cargar, entrar directo
   useEffect(() => {
     if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
       setSelectedOT(filtered[0]);
