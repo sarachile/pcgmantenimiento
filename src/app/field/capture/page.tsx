@@ -30,7 +30,10 @@ import {
   Check,
   Send,
   Plus,
-  Image as ImageIcon
+  Zap,
+  Info,
+  Smartphone,
+  ArrowRight
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
@@ -67,7 +70,7 @@ export default function FieldCapturePage() {
     getPosition();
   }, [selectedOT]);
 
-  // Consultar OTs activas (no aprobadas)
+  // Consultar OTs activas (no aprobadas ni rechazadas si es necesario, pero mantenemos lógica de no-aprobada)
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
     return query(
@@ -104,7 +107,7 @@ export default function FieldCapturePage() {
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
-  // Auto-selección inteligente corregida
+  // Auto-selección inteligente: Si solo queda una OT activa para el técnico, entrar directo
   useEffect(() => {
     if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
       setSelectedOT(filtered[0]);
@@ -135,7 +138,6 @@ export default function FieldCapturePage() {
 
       const otRef = doc(db, "companies", profile.companyId, "workOrders", selectedOT.id);
       
-      // Actualizar el item específico del checklist o añadir a galería general
       const updateData: any = {
         updatedAt: serverTimestamp(),
         status: 'en proceso'
@@ -175,7 +177,7 @@ export default function FieldCapturePage() {
         longitude: coords?.lng || null
       });
 
-      toast({ title: "Evidencia Registrada" });
+      toast({ title: "Evidencia Registrada ✓" });
       setActiveTaskId(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       
@@ -196,7 +198,7 @@ export default function FieldCapturePage() {
         executedAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Trabajo Enviado", description: "La orden pasó a revisión." });
+      toast({ title: "Trabajo Enviado", description: "La orden pasó a revisión administrativa." });
       setSelectedOT(null);
     } catch (e) {
       toast({ title: "Error", variant: "destructive" });
@@ -220,16 +222,24 @@ export default function FieldCapturePage() {
         <Button variant="ghost" size="icon" asChild className="text-white">
           <Link href="/dashboard"><ArrowLeft className="h-6 w-6" /></Link>
         </Button>
-        <h1 className="text-xl font-black uppercase tracking-tighter italic">Cámara de Terreno</h1>
+        <h1 className="text-xl font-black uppercase tracking-tighter italic">Reporte de Terreno</h1>
       </div>
 
       <div className="flex-1 p-4 space-y-6 max-w-xl mx-auto w-full">
         {!selectedOT ? (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
+            <div className="bg-blue-600 text-white p-6 rounded-[2rem] shadow-lg flex items-center gap-4">
+              <div className="bg-white/20 p-3 rounded-2xl"><Info className="h-6 w-6" /></div>
+              <div>
+                <p className="font-black uppercase italic tracking-tight">Instrucciones</p>
+                <p className="text-xs font-medium text-blue-100 leading-tight">Selecciona el trabajo que estás realizando para comenzar a capturar evidencias.</p>
+              </div>
+            </div>
+
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
-                placeholder="Buscar trabajo pendiente..." 
+                placeholder="Buscar trabajo..." 
                 className="h-14 pl-12 rounded-2xl border-none shadow-md bg-white text-lg font-bold"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -237,17 +247,17 @@ export default function FieldCapturePage() {
             </div>
 
             <div className="space-y-3">
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Seleccione Orden de Trabajo</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">Órdenes de Trabajo Pendientes</p>
               {filtered.length === 0 ? (
                 <div className="p-12 text-center bg-white rounded-[2rem] border-2 border-dashed">
-                  <p className="text-slate-400 italic">No hay órdenes activas asignadas.</p>
+                  <p className="text-slate-400 italic font-medium">No hay órdenes activas asignadas.</p>
                 </div>
               ) : (
                 filtered.map(ot => (
                   <button 
                     key={ot.id}
                     onClick={() => setSelectedOT(ot)}
-                    className="w-full text-left bg-white p-6 rounded-[2rem] shadow-sm border border-transparent active:scale-95 transition-all flex items-center justify-between"
+                    className="w-full text-left bg-white p-6 rounded-[2rem] shadow-sm border-2 border-transparent active:scale-95 active:border-primary transition-all flex items-center justify-between"
                   >
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -264,7 +274,30 @@ export default function FieldCapturePage() {
           </div>
         ) : (
           <div className="space-y-6 animate-in zoom-in-95 duration-300">
-            {/* ENCABEZADO MINIMALISTA SOLICITADO */}
+            {/* GUÍA DE USO PARA EL TÉCNICO */}
+            <Card className="rounded-[2rem] border-none bg-blue-600 text-white shadow-xl overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="bg-white/20 p-2.5 rounded-xl"><Smartphone className="h-5 w-5" /></div>
+                  <p className="font-black uppercase italic tracking-widest text-sm">Guía de Uso Rápido</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="bg-white/10 p-3 rounded-2xl text-center space-y-1">
+                    <p className="text-[10px] font-black">1. TOCA</p>
+                    <p className="text-[8px] opacity-70">Cualquier tarea de la lista</p>
+                  </div>
+                  <div className="bg-white/10 p-3 rounded-2xl text-center space-y-1">
+                    <p className="text-[10px] font-black">2. CAPTURA</p>
+                    <p className="text-[8px] opacity-70">Toma la foto del avance</p>
+                  </div>
+                  <div className="bg-white/10 p-3 rounded-2xl text-center space-y-1">
+                    <p className="text-[10px] font-black">3. ENVÍA</p>
+                    <p className="text-[8px] opacity-70">Finaliza al terminar todo</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
               <CardHeader className="bg-slate-900 text-white p-6">
                 <div className="flex justify-between items-center">
@@ -277,52 +310,60 @@ export default function FieldCapturePage() {
                   <Button variant="outline" size="sm" className="border-white/20 text-white bg-white/5 rounded-xl h-8 text-[9px] font-black uppercase" onClick={() => setSelectedOT(null)}>Cambiar OT</Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-6 space-y-8">
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400">
                   <MapPin className="h-3.5 w-3.5 text-primary" /> {selectedOT.serviceLocation || 'Ubicación no especificada'}
                 </div>
                 
-                {/* PROTOCOLOS DE SERVICIO (TRIGGER CÁMARA) */}
                 <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-primary" /> Protocolos de Servicio (Pulsa para capturar)
+                  <Label className="text-[11px] font-black uppercase text-slate-900 tracking-widest flex items-center gap-2 border-b pb-2">
+                    <ListChecks className="h-4 w-4 text-primary" /> Protocolos de Servicio
                   </Label>
-                  <div className="space-y-3">
+                  
+                  <div className="space-y-4">
                     {selectedOT.checklist?.map((item) => (
                       <div key={item.id} className="space-y-2">
                         <button
                           onClick={() => handleTaskClick(item.id)}
                           disabled={isUploading}
                           className={cn(
-                            "w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center justify-between group",
-                            item.completed ? "border-emerald-100 bg-emerald-50/20" : "border-slate-100 bg-white hover:border-primary/30"
+                            "w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center justify-between group relative overflow-hidden",
+                            item.completed 
+                              ? "border-emerald-100 bg-emerald-50/20" 
+                              : "border-slate-100 bg-white hover:border-primary/30 shadow-sm active:bg-slate-50"
                           )}
                         >
                           <div className="flex items-center gap-4 flex-1">
                             <div className={cn(
-                              "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm",
-                              item.completed ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-400"
+                              "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-active:scale-90",
+                              item.completed ? "bg-emerald-500 text-white" : "bg-primary text-white animate-pulse"
                             )}>
-                              {item.completed ? <Check className="h-6 w-6" /> : <Camera className="h-5 w-5" />}
+                              {item.completed ? <Check className="h-7 w-7" /> : <Camera className="h-6 w-6" />}
                             </div>
-                            <span className={cn("text-sm font-bold leading-tight", item.completed ? "text-emerald-900" : "text-slate-700")}>
-                              {item.task}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className={cn("text-sm font-black leading-none", item.completed ? "text-emerald-900" : "text-slate-900")}>
+                                {item.task}
+                              </span>
+                              {!item.completed && (
+                                <span className="text-[9px] font-bold text-primary uppercase mt-1.5 flex items-center gap-1">
+                                  Pulsa para abrir cámara <ArrowRight className="h-2 w-2" />
+                                </span>
+                              )}
+                            </div>
                           </div>
                           {isUploading && activeTaskId === item.id ? (
                             <Loader2 className="h-5 w-5 animate-spin text-primary" />
                           ) : (
-                            <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-primary transition-colors" />
+                            <ChevronRight className={cn("h-5 w-5 transition-colors", item.completed ? "text-emerald-300" : "text-slate-300 group-hover:text-primary")} />
                           )}
                         </button>
                         
-                        {/* IMAGEN INCRUSTADA EN EL ITEM (SOLICITADO) */}
                         {item.evidenceUrl && (
-                          <div className="px-2">
-                            <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-emerald-50 shadow-inner group">
+                          <div className="px-2 animate-in fade-in slide-in-from-top-2">
+                            <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-emerald-100 shadow-md group">
                               <FirebaseImage url={item.evidenceUrl} className="w-full h-full object-cover" />
-                              <div className="absolute top-3 right-3 bg-emerald-500 text-white px-3 py-1 rounded-full text-[8px] font-black uppercase shadow-lg">
-                                Realizado ✓
+                              <div className="absolute top-3 right-3 bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase shadow-lg border border-white/20 flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" /> Evidencia Capturada
                               </div>
                             </div>
                           </div>
@@ -332,21 +373,21 @@ export default function FieldCapturePage() {
                   </div>
                 </div>
 
-                {/* EVIDENCIA GENERAL ADICIONAL */}
-                <div className="pt-4 border-t border-dashed">
+                <div className="pt-6 border-t-2 border-dashed border-slate-100 space-y-4">
+                  <p className="text-[10px] font-black uppercase text-slate-400 text-center">¿Necesitas registrar algo más?</p>
                   <Button 
                     variant="outline" 
                     className="w-full h-14 rounded-2xl border-2 border-slate-100 bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-widest gap-2"
                     onClick={() => { setActiveTaskId(null); fileInputRef.current?.click(); }}
                     disabled={isUploading}
                   >
-                    {isUploading && !activeTaskId ? <Loader2 className="animate-spin h-4 w-4" /> : <><Plus className="h-4 w-4" /> Añadir Evidencia General</>}
+                    {isUploading && !activeTaskId ? <Loader2 className="animate-spin h-4 w-4" /> : <><Plus className="h-4 w-4" /> Añadir Foto General</>}
                   </Button>
                   
                   {selectedOT.evidenceUrls && selectedOT.evidenceUrls.length > 0 && (
                     <div className="grid grid-cols-3 gap-2 mt-4">
                       {selectedOT.evidenceUrls.map((url, i) => (
-                        <div key={i} className="aspect-square rounded-xl overflow-hidden border">
+                        <div key={i} className="aspect-square rounded-xl overflow-hidden border shadow-inner">
                           <FirebaseImage url={url} className="w-full h-full" />
                         </div>
                       ))}
@@ -354,14 +395,17 @@ export default function FieldCapturePage() {
                   )}
                 </div>
 
-                <div className="pt-6">
+                <div className="pt-8">
                   <Button 
-                    className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest gap-2 shadow-2xl"
+                    className="w-full h-20 rounded-[2.5rem] bg-slate-900 hover:bg-slate-800 text-white font-black text-xl uppercase tracking-widest gap-3 shadow-2xl transition-all active:scale-95"
                     onClick={handleFinalize}
                     disabled={isFinalizing || isUploading}
                   >
-                    {isFinalizing ? <Loader2 className="animate-spin h-5 w-5" /> : <><Send className="h-5 w-5" /> Terminar Reporte</>}
+                    {isFinalizing ? <Loader2 className="animate-spin h-8 w-8" /> : <><Send className="h-6 w-6" /> Finalizar y Enviar</>}
                   </Button>
+                  <p className="text-[9px] text-center text-slate-400 font-bold uppercase mt-4 tracking-widest">
+                    * Al finalizar, el reporte se enviará a revisión técnica.
+                  </p>
                 </div>
               </CardContent>
             </Card>

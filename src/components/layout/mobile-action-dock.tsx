@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -22,10 +23,10 @@ export function MobileActionDock() {
       setShowHint(true);
     }, 1500);
 
-    // Ocultar el hint automáticamente después de 10 segundos
+    // Ocultar el hint automáticamente después de 15 segundos
     const hideTimer = setTimeout(() => {
       setShowHint(false);
-    }, 11500);
+    }, 16500);
 
     return () => {
       clearTimeout(timer);
@@ -52,15 +53,17 @@ export function MobileActionDock() {
           if (item.isMain) {
             return (
               <div key={item.title} className="relative">
-                {/* HINT FLOTANTE (OPCIÓN C) */}
+                {/* HINT FLOTANTE REFORZADO */}
                 {showHint && (
                   <div 
-                    className="absolute -top-16 left-1/2 -translate-x-1/2 w-max animate-bounce z-[60]"
+                    className="absolute -top-24 left-1/2 -translate-x-1/2 w-[200px] animate-bounce z-[60]"
                     onClick={() => setShowHint(false)}
                   >
-                    <div className="bg-blue-500 text-white text-[9px] font-black uppercase tracking-[0.1em] px-4 py-2.5 rounded-2xl shadow-2xl relative border border-white/20">
-                      Pulsa aquí para reportar
-                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-500 rotate-45 border-r border-b border-white/10" />
+                    <div className="bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest px-5 py-4 rounded-[1.5rem] shadow-2xl relative border-2 border-white/30 text-center leading-tight">
+                      REPORTE DE TERRENO:
+                      <br />
+                      <span className="text-[8px] opacity-80 font-bold">PULSA AQUÍ PARA ABRIR CÁMARA</span>
+                      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-600 rotate-45 border-r-2 border-b-2 border-white/30" />
                     </div>
                   </div>
                 )}
@@ -74,7 +77,7 @@ export function MobileActionDock() {
                     "h-16 w-16 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 active:scale-90",
                     isActive 
                       ? "bg-white text-slate-900" 
-                      : "bg-blue-600 text-white hover:bg-blue-500 shadow-blue-900/40"
+                      : "bg-blue-600 text-white hover:bg-blue-500 shadow-blue-900/40 border-2 border-white/20"
                   )}>
                     <item.icon className="h-8 w-8" />
                   </div>
