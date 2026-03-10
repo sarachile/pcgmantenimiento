@@ -64,7 +64,9 @@ import {
   CheckCircle2,
   Clock,
   Plus,
-  Shield
+  Shield,
+  Filter,
+  X
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -83,6 +85,9 @@ export default function TeamPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState("staff");
   
   // UI States
@@ -109,10 +114,17 @@ export default function TeamPage() {
   const { data: staffMembers, isLoading: isStaffLoading } = useCollection<StaffMember>(staffQuery);
   const { data: teams, isLoading: isTeamsLoading } = useCollection<Team>(teamsQuery);
 
-  const filteredStaff = (staffMembers || []).filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.identification?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStaff = useMemo(() => {
+    return (staffMembers || []).filter(s => {
+      const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           s.identification?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRole = roleFilter === "all" || s.role === roleFilter;
+      const matchesStatus = statusFilter === "all" || 
+                           (statusFilter === "active" ? s.hasAccount : !s.hasAccount);
+      
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [staffMembers, searchTerm, roleFilter, statusFilter]);
 
   const isAtLimit = !canAddTech && !editingStaff;
 
@@ -253,6 +265,14 @@ export default function TeamPage() {
     reader.readAsBinaryString(file);
   };
 
+  const resetFilters = () => {
+    setSearchTerm("");
+    setRoleFilter("all");
+    setStatusFilter("all");
+  };
+
+  const hasActiveFilters = searchTerm !== "" || roleFilter !== "all" || statusFilter !== "all";
+
   if (isAuthLoading) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
@@ -310,9 +330,68 @@ export default function TeamPage() {
         <TabsContent value="staff">
           <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
             <CardHeader className="bg-white border-b p-8">
-              <div className="relative max-w-md w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <Input placeholder="Buscar por nombre o RUT..." className="pl-12 h-12 border-none bg-slate-50 rounded-2xl text-base font-medium shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="relative flex-1 w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                    <Input 
+                      placeholder="Buscar por nombre o RUT..." 
+                      className="pl-12 h-14 border-none bg-slate-50 rounded-2xl text-base font-medium shadow-inner" 
+                      value={searchTerm} 
+                      onChange={(e) => setSearchTerm(e.target.value)} 
+                    />
+                  </div>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button 
+                      variant={showFilters ? "default" : "outline"} 
+                      className={cn("h-14 px-6 rounded-2xl border-slate-100 flex-1 sm:flex-none", showFilters ? "bg-slate-900 text-white" : "bg-slate-50")}
+                      onClick={() => setShowFilters(!showFilters)}
+                    >
+                      <Filter className={cn("h-5 w-5 mr-2", showFilters && "text-blue-400")} />
+                      {showFilters ? "Ocultar Filtros" : "Filtros"}
+                    </Button>
+                    {hasActiveFilters && (
+                      <Button 
+                        variant="ghost" 
+                        className="h-14 w-14 rounded-2xl text-rose-500 hover:bg-rose-50"
+                        onClick={resetFilters}
+                      >
+                        <X className="h-6 w-6" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {showFilters && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 bg-slate-50 rounded-[2rem] border border-slate-100 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Filtrar por Rol</Label>
+                      <Select value={roleFilter} onValueChange={setRoleFilter}>
+                        <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
+                          <SelectValue placeholder="Todos los roles" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los roles</SelectItem>
+                          <SelectItem value="Técnico">Técnicos</SelectItem>
+                          <SelectItem value="Supervisor">Supervisores</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Estado de Acceso</Label>
+                      <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-12 rounded-xl border-2 bg-white">
+                          <SelectValue placeholder="Todos los estados" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los estados</SelectItem>
+                          <SelectItem value="active">Acceso Activo</SelectItem>
+                          <SelectItem value="pending">Activación Pendiente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -329,7 +408,7 @@ export default function TeamPage() {
                   {isStaffLoading ? (
                     <TableRow><TableCell colSpan={4} className="py-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary/20" /></TableCell></TableRow>
                   ) : filteredStaff.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="py-20 text-center italic text-slate-400">Sin técnicos registrados.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="py-20 text-center italic text-slate-400">No se encontraron técnicos con los filtros aplicados.</TableCell></TableRow>
                   ) : (
                     filteredStaff.map((s) => (
                       <TableRow key={s.id} className="hover:bg-slate-50 transition-colors group">
@@ -374,7 +453,7 @@ export default function TeamPage() {
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-100"><MoreVertical className="h-5 w-5 text-slate-400" /></Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56 rounded-2xl border-none shadow-2xl p-2">
+                              <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
                                 <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Comunicación</DropdownMenuLabel>
                                 <DropdownMenuItem className="rounded-xl p-3 focus:bg-emerald-50 font-bold gap-3 text-emerald-700" onClick={() => handleSendWhatsApp(s)}>
                                   <MessageCircle className="h-4 w-4" /> Enviar por WhatsApp
