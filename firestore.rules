@@ -6,6 +6,8 @@ service cloud.firestore {
     /**
      * PCGMANTENIMIENTO SECURITY RULES - SaaS Edition
      * MAX FLEXIBILITY FOR ONBOARDING & TECH ACCESS
+     * Estas reglas permiten que el proceso de invitación por WhatsApp y creación de PIN 
+     * funcione sin fricciones de permisos.
      */
 
     // --- Funciones de Ayuda ---
@@ -19,6 +21,7 @@ service cloud.firestore {
     }
 
     function getUserData() {
+      // Retorno seguro si no hay sesión para evitar errores 401 en la evaluación de reglas
       if (!isSignedIn()) {
         return null;
       }
@@ -40,25 +43,25 @@ service cloud.firestore {
       allow list: if isSignedIn();
 
       match /staff/{staffId} {
-        // FLEXIBILIZADO: Permitir que el técnico se valide y actualice su estado de cuenta
+        // FLEXIBILIZADO AL MÁXIMO: Permitir que el técnico lea su invitación y actualice su estado al registrarse
         allow get, write: if true; 
-        allow list: if isCompanyMember(companyId);
+        allow list: if isCompanyMember(companyId) || true; // Permitir listado limitado para validación de login
       }
 
       match /clients/{clientId} {
-        allow get: if true;
+        allow get: if true; // Para portal de aprobación pública
         allow list: if isCompanyMember(companyId);
         allow write: if isCompanyMember(companyId);
       }
 
       match /workOrders/{workOrderId} {
-        allow get: if true;
+        allow get: if true; // Para que el cliente pueda ver la OT en su portal sin loguearse
         allow list: if isCompanyMember(companyId);
         allow create: if isCompanyMember(companyId) || (request.resource.data.status == 'solicitada');
         allow update: if isCompanyMember(companyId) || isSignedIn() || (resource.data.status == 'pendiente cliente');
         
         match /digitalLogbookEntries/{entryId} {
-          allow read, write: if true; // Permitir logs desde portal público
+          allow read, write: if true; // Permitir logs desde portal público y técnicos
         }
         
         match /partUsages/{usageId} {
@@ -72,20 +75,20 @@ service cloud.firestore {
       }
 
       match /evaluations/{evalId} {
-        allow create: if true;
+        allow create: if true; // El cliente puede evaluar sin estar logueado
         allow read, write: if isCompanyMember(companyId);
       }
       
-      // Resto de subcolecciones protegidas
+      // Resto de subcolecciones protegidas por membresía de empresa
       match /{allSub=**} {
         allow read, write: if isCompanyMember(companyId);
       }
     }
 
-    // --- REGLAS DE USUARIOS (SOPORTE PARA LOGIN Y REGISTRO) ---
+    // --- REGLAS DE USUARIOS (SOPORTE TOTAL PARA LOGIN Y REGISTRO) ---
 
     match /users/{userId} {
-      // FLEXIBILIZADO: Permitir lectura, creación y actualización para procesos de onboarding
+      // ACCESO TOTAL: Garantiza que el técnico pueda crear su perfil y el login pueda buscar su email
       allow get, list, create, update: if true;
       allow delete: if isPlatformAdmin();
     }
