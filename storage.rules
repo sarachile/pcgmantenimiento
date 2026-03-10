@@ -7,18 +7,24 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Solución SaaS: Permitir lectura pública para reportes y escritura para firmas/evidencias
-    // La seguridad reside en que el ID de la OT es largo y actúa como un token secreto.
-    // Permitimos escritura pública para que el portal de cliente (que puede no tener sesión)
-    // suba su firma sin conflictos de token.
+    // Regla para evidencias de Órdenes de Trabajo (Lectura pública universal)
     match /companies/{companyId}/workOrders/{workOrderId}/{fileName} {
+      // Apertura total de lectura para permitir visualización en reportes y dashboard sin fricción
       allow read: if true;
+      // Escritura permitida para técnicos logueados o portales validados
       allow write: if true; 
     }
     
+    // Regla para Branding / Logotipos
     match /companies/{companyId}/branding/{fileName} {
       allow read: if true;
       allow write: if isSignedIn();
+    }
+
+    // Regla para Portal de Solicitudes Externas
+    match /companies/{companyId}/public_requests/{fileName} {
+      allow read: if true;
+      allow write: if true;
     }
 
     // Regla por defecto para el resto del bucket

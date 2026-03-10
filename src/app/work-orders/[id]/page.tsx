@@ -99,7 +99,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   useEffect(() => {
     if (profile?.companyId) {
-      // FORCE PRODUCTION DOMAIN TO AVOID 401 DEV ERRORS
       const baseUrl = "https://www.pcgmantenimiento.com";
       setCurrentUrl(`${baseUrl}/portal/approve/${otId}?c=${profile.companyId}`);
     }
@@ -143,16 +142,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { return "N/A"; }
   };
 
-  const openNavigation = (app: 'waze' | 'google') => {
-    const address = ot?.serviceLocation || client?.address || "";
-    if (!address) return;
-    const encoded = encodeURIComponent(address);
-    const url = app === 'waze' 
-      ? `https://waze.com/ul?q=${encoded}&navigate=yes` 
-      : `https://www.google.com/maps/search/?api=1&query=${encoded}`;
-    window.open(url, "_blank");
-  };
-
   const qrUrl = useMemo(() => currentUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}` : "", [currentUrl]);
 
   const handleDownloadPdf = async () => {
@@ -183,19 +172,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     } catch (e) { toast({ title: "Error al generar certificado", variant: "destructive" }); } finally { setIsGeneratingCert(false); }
   };
 
-  const handleGenerateAISummary = async () => {
-    if (!ot || !logbook || !otRef) return;
-    setIsGeneratingSummary(true);
-    try {
-      const result = await generateWorkOrderSummary({
-        workOrder: { id: ot.id, description: ot.description, status: ot.status as any, createdAt: ot.createdAt?.toDate ? ot.createdAt.toDate().toISOString() : ot.createdAt, companyId: ot.companyId },
-        digitalLogbookEntries: logbook.map(e => ({ id: e.id, timestamp: e.timestamp?.toDate ? e.timestamp.toDate().toISOString() : e.timestamp, eventType: e.eventType, eventDetails: e.eventDetails, actor: e.actor, workOrderId: ot.id }))
-      });
-      updateDocumentNonBlocking(otRef, { aiSummary: result.summary, updatedAt: serverTimestamp() });
-      toast({ title: "Resumen IA Generado" });
-    } catch (error: any) { toast({ title: "Error de IA", variant: "destructive" }); } finally { setIsGeneratingSummary(false); }
-  };
-
   const handleDirectApproval = async () => {
     if (!otRef || !profile) return;
     setIsUpdating(true);
@@ -210,7 +186,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   if (!ot) return <div className="p-8 text-center">Orden no encontrada.</div>;
 
   const isAdminOrSupervisor = isCompanyAdmin || isSupervisor;
-  const checklistProgress = ot.checklist?.length ? (ot.checklist.filter(i => i.completed).length / ot.checklist.length) * 100 : 0;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
@@ -228,7 +203,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {ot.status !== 'aprobada' && <Button onClick={() => toast({ title: "Avance Sincronizado" })} variant="outline" className="rounded-xl h-11 border-primary/20 text-primary font-black uppercase text-[10px] gap-2"><Save className="h-4 w-4" /> Guardar</Button>}
           {isAdminOrSupervisor && ot.status !== 'aprobada' && <Button onClick={handleDirectApproval} disabled={isUpdating} className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg">{isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} Visar</Button>}
           {isAdminOrSupervisor && <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-amber-200 text-amber-700 font-bold" disabled={ot.status === 'aprobada'}><Link href={`/work-orders/new?editId=${ot.id}`}><Edit2 className="h-4 w-4 mr-2" /> Editar</Link></Button>}
           <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11"><FileDown className="h-4 w-4 mr-2" /> Informe</Button>
@@ -238,51 +212,42 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
-          <Card className="rounded-3xl border-none shadow-sm overflow-hidden bg-slate-50 border-slate-200">
-            <CardHeader className="bg-white border-b p-6"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><MapIcon className="h-5 w-5 text-primary" /> Georeferencia & Ruta</CardTitle></CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1 space-y-1">
-                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Ubicación Estructurada</p>
-                  <p className="text-sm font-bold text-slate-700">{ot.street} {ot.streetNumber}{ot.complement ? ', ' + ot.complement : ''}</p>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ot.commune}, {ot.region}</p>
-                  {ot.locationComment && <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-100 text-[9px] font-black uppercase">{ot.locationComment}</Badge>}
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2 border-slate-200" onClick={() => openNavigation('google')}><img src="/maps.png" className="h-4 w-4" alt="Maps" /> Maps</Button>
-                  <Button variant="outline" size="sm" className="rounded-xl h-10 gap-2 border-slate-200" onClick={() => openNavigation('waze')}><img src="/waze.png" className="h-4 w-4" alt="Waze" /> Waze</Button>
-                </div>
+          <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
+            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><MapIcon className="h-5 w-5 text-primary" /> Ubicación del Servicio</CardTitle></CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-slate-700">{ot.street} {ot.streetNumber}{ot.complement ? ', ' + ot.complement : ''}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ot.commune}, {ot.city}, {ot.region}</p>
+                {ot.locationComment && <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-100 text-[9px] font-black uppercase italic">{ot.locationComment}</Badge>}
               </div>
             </CardContent>
           </Card>
 
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><ClipboardList className="h-5 w-5" /> Información del Servicio</CardTitle></CardHeader>
+            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolos & Evidencias</CardTitle></CardHeader>
             <CardContent className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-1"><p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Mandante</p><p className="text-sm font-bold text-slate-900">{client?.name || "..."}</p></div>
-                <div className="space-y-1"><p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Responsable</p><p className="text-sm font-bold text-slate-700">{ot.requestedByName || "S/I"}</p></div>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-2xl border text-sm text-slate-700 italic">"{ot.description}"</div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><ListChecks className="h-5 w-5" /> Protocolos de Inspección</CardTitle></CardHeader>
-            <CardContent className="p-6 space-y-3">
-              {ot.checklist?.map(item => (
-                <div key={item.id} className="flex flex-col p-4 bg-white border-2 rounded-2xl gap-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Checkbox checked={item.completed} onCheckedChange={() => {
-                        const next = !item.completed;
-                        updateDocumentNonBlocking(otRef!, { checklist: ot.checklist?.map(i => i.id === item.id ? { ...i, completed: next, completedAt: next ? new Date().toISOString() : null } : i) });
-                      }} disabled={ot.status === 'aprobada'} />
-                      <div className="flex flex-col"><span className={cn("text-sm font-bold", item.completed ? "text-slate-400" : "text-slate-700")}>{item.task}</span>{item.completed && <span className="text-[10px] font-black text-emerald-600 uppercase">REALIZADO: {format(new Date(item.completedAt), "dd/MM HH:mm")}</span>}</div>
+              <div className="grid grid-cols-1 gap-4">
+                {ot.checklist?.map(item => (
+                  <div key={item.id} className="flex flex-col sm:flex-row gap-4 p-4 bg-white border-2 rounded-2xl">
+                    <div className="flex-1 flex items-center gap-4">
+                      <div className={cn("h-6 w-6 rounded-full flex items-center justify-center border-2 shrink-0", item.completed ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-200 text-slate-200")}><Check className="h-4 w-4" /></div>
+                      <div className="flex flex-col"><span className={cn("text-sm font-bold", item.completed ? "text-slate-900" : "text-slate-400")}>{item.task}</span>{item.completed && <span className="text-[9px] font-black text-slate-400">REALIZADO: {format(new Date(item.completedAt), "dd/MM HH:mm")}</span>}</div>
                     </div>
+                    {item.evidenceUrl && <div className="w-full sm:w-40 aspect-video rounded-xl overflow-hidden shadow-sm"><FirebaseImage url={item.evidenceUrl} className="w-full h-full" /></div>}
+                  </div>
+                ))}
+              </div>
+
+              {ot.evidenceUrls && ot.evidenceUrls.length > 0 && (
+                <div className="space-y-4 pt-4 border-t-2 border-dashed">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><Camera className="h-4 w-4" /> Galería General de Terreno</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {ot.evidenceUrls.map((url, i) => (
+                      <div key={i} className="aspect-video rounded-xl overflow-hidden border-2 shadow-sm group bg-slate-50"><FirebaseImage url={url} className="w-full h-full transition-transform group-hover:scale-110" /></div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
         </div>
@@ -294,9 +259,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               <div className="p-6 space-y-6">
                 {logbook?.map(e => (
                   <div key={e.id} className="relative pl-6 border-l-2 border-white/10 pb-4 last:pb-0">
-                    <div className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-blue-500" />
+                    <div className="absolute -left-[7px] top-1 w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                     <p className="text-[10px] font-black text-blue-400 uppercase mb-1">{e.eventType.replace('_', ' ')}</p>
-                    <p className="text-xs text-slate-300 font-medium mb-1">{e.eventDetails}</p>
+                    <p className="text-xs text-slate-300 font-medium mb-1 leading-relaxed">{e.eventDetails}</p>
                     <p className="text-[9px] text-slate-500 italic">{formatDateLabel(e.timestamp)}</p>
                   </div>
                 ))}

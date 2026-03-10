@@ -74,7 +74,7 @@ export default function FieldCapturePage() {
 
   // Captura de ubicación al montar o seleccionar OT
   const getPosition = () => {
-    if (!navigator.geolocation) return;
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
       (err) => console.warn("GPS no disponible:", err.message),
@@ -113,7 +113,11 @@ export default function FieldCapturePage() {
         ot.assignedToStaffIds?.includes(profile.staffId || '')
       );
     }
-    return list.filter(ot => {
+    
+    // Filtro final: solo mostrar órdenes que NO estén aprobadas
+    const activeList = list.filter(ot => ot.status !== 'aprobada');
+
+    return activeList.filter(ot => {
       const client = clients?.find(c => c.id === ot.clientId);
       return (
         ot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -123,10 +127,9 @@ export default function FieldCapturePage() {
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
   // AUTO-SELECCIÓN INTELIGENTE (SALTO DE LISTA)
-  // Si solo hay una OT cargada y no hay búsqueda, entramos directo
+  // Ahora solo considera las OTs que han pasado por el filtro de "no aprobadas"
   useEffect(() => {
     if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
-      // Pequeño timeout para asegurar que el estado de carga ha terminado visualmente
       const timer = setTimeout(() => {
         setSelectedOT(filtered[0]);
       }, 300);
@@ -311,11 +314,11 @@ export default function FieldCapturePage() {
 
             <div className="space-y-3">
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">
-                {isTechnician ? "Mis Órdenes Asignadas" : "Órdenes de Trabajo Activas"}
+                {isTechnician ? "Mis Órdenes Activas" : "Órdenes de Trabajo Disponibles"}
               </p>
               {filtered.length === 0 ? (
                 <div className="p-10 text-center text-slate-400 italic bg-white rounded-3xl border-2 border-dashed">
-                  No hay órdenes disponibles para captura.
+                  No hay órdenes con actividades pendientes.
                 </div>
               ) : (
                 filtered.map(ot => {

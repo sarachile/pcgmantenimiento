@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Loader2, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -12,10 +13,11 @@ interface FirebaseImageProps {
 }
 
 /**
- * Componente robusto para renderizar imágenes de Firebase Storage.
- * Maneja silenciosamente errores de carga y previene errores de hidratación.
+ * Componente optimizado para renderizar imágenes de Firebase Storage.
+ * Utiliza next/image con unoptimized={true} para evitar conflictos de dominio y CORS
+ * mientras mantiene los beneficios de lazy-loading intrínseco.
  */
-export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageProps) {
+export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -38,36 +40,38 @@ export function FirebaseImage({ url, alt = "Imagen", className }: FirebaseImageP
     return <div className={cn("bg-muted/10 animate-pulse rounded-xl", className)} />;
   }
 
-  // Si no hay URL, el archivo fue borrado o hay error de permisos, mostramos placeholder neutro
+  // Si no hay URL o hay error persistente, mostramos placeholder neutro
   if (!url || error) {
     return (
-      <div className={cn("flex flex-col items-center justify-center bg-muted/5 border border-dashed rounded-xl p-4 text-muted-foreground/20", className)}>
-        <ImageOff className="h-5 w-5" />
+      <div className={cn("flex flex-col items-center justify-center bg-slate-100 border border-dashed rounded-xl p-4 text-slate-300", className)}>
+        <ImageOff className="h-6 w-6 opacity-20" />
+        <span className="text-[8px] font-black uppercase tracking-widest mt-2 opacity-40">Sin Imagen</span>
       </div>
     );
   }
 
   return (
-    <div className={cn("relative flex items-center justify-center overflow-hidden bg-slate-50", className)}>
+    <div className={cn("relative flex items-center justify-center overflow-hidden bg-slate-50 rounded-xl", className)}>
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-50 z-10">
-          <Loader2 className="h-4 w-4 animate-spin text-primary/20" />
+          <Loader2 className="h-5 w-5 animate-spin text-primary/20" />
         </div>
       )}
       
-      <img 
-        src={url} 
-        alt={alt} 
+      <Image
+        src={url}
+        alt={alt}
+        fill
         className={cn(
-          "max-w-full max-h-full object-contain transition-opacity duration-300", 
-          loading ? "opacity-0" : "opacity-100"
+          "object-cover transition-all duration-500", 
+          loading ? "opacity-0 scale-105" : "opacity-100 scale-100"
         )}
+        unoptimized={true} // Obligatorio para URLs externas dinámicas de Firebase en modo prototipo
         onLoad={() => setLoading(false)}
         onError={(e) => {
+          console.error("Fallo carga imagen Firebase:", url);
           setLoading(false);
           setError(true);
-          // Prevenir log de error infinito en consola si la imagen de fallback también fallara
-          (e.target as HTMLImageElement).onerror = null;
         }}
       />
     </div>
