@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,6 +23,14 @@ export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: Fir
     setMounted(true);
   }, []);
 
+  // Resetear estado si la URL cambia
+  useEffect(() => {
+    if (url) {
+      setLoading(true);
+      setError(false);
+    }
+  }, [url]);
+
   if (!mounted) {
     return <div className={cn("bg-muted/10 animate-pulse rounded-xl", className)} />;
   }
@@ -32,7 +39,7 @@ export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: Fir
     return (
       <div className={cn("flex flex-col items-center justify-center bg-slate-100 border border-dashed rounded-xl p-4 text-slate-300", className)}>
         <ImageOff className="h-6 w-6 opacity-20" />
-        <span className="text-[8px] font-black uppercase tracking-widest mt-2 opacity-40">Sin Imagen</span>
+        <span className="text-[8px] font-black uppercase tracking-widest mt-2 opacity-40 text-center">Evidencia no disponible</span>
       </div>
     );
   }
@@ -55,6 +62,7 @@ export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: Fir
         crossOrigin="anonymous"
         onLoad={() => setLoading(false)}
         onError={() => {
+          console.error("Error cargando imagen:", url);
           setLoading(false);
           setError(true);
         }}

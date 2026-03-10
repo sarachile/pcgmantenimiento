@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -153,14 +152,34 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!reportRef.current || !ot) return;
     setIsGeneratingPdf(true);
     try {
-      await new Promise(r => setTimeout(r, 1000));
-      const canv = await html2canvas(reportRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
-      const imgData = canv.toDataURL("image/png");
+      // Pequeño retardo para asegurar renderizado final de imágenes
+      await new Promise(r => setTimeout(r, 1500));
+      
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: "#ffffff",
+        logging: false,
+        height: element.scrollHeight,
+        width: element.scrollWidth
+      });
+      
+      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
-      const pw = pdf.internal.pageSize.getWidth();
-      pdf.addImage(imgData, "PNG", 0, 0, pw, (canv.height * pw) / canv.width);
-      pdf.save(`REPORTE_PCG_${ot.id}.pdf`);
-    } catch (e) { toast({ title: "Error al generar PDF", variant: "destructive" }); } finally { setIsGeneratingPdf(false); }
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`INFORME_TECNICO_${ot.id}.pdf`);
+      
+      toast({ title: "Reporte Generado", description: "El PDF se ha descargado exitosamente." });
+    } catch (e) { 
+      console.error("Error PDF:", e);
+      toast({ title: "Error al generar PDF", variant: "destructive" }); 
+    } finally { 
+      setIsGeneratingPdf(false); 
+    }
   };
 
   const handleDownloadExperienceCert = async () => {
@@ -361,6 +380,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
+      {/* Contenedor invisible para captura de Reporte */}
       <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
         <WorkOrderReport forwardedRef={reportRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} logbook={logbook || []} assignedStaff={assignedStaff || []} partUsages={partUsages || []} qrCodeUrl={qrUrl} />
         <ExperienceCertificate forwardedRef={certRef} company={company || null} workOrder={ot} client={client || null} asset={asset || null} />
@@ -419,7 +439,10 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               )}
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11"><FileDown className="h-4 w-4 mr-2" /> Informe</Button>
+          <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="rounded-xl h-11">
+            {isGeneratingPdf ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <FileDown className="h-4 w-4 mr-2" />} 
+            Informe
+          </Button>
           {ot.status === 'aprobada' && <Button variant="outline" size="sm" onClick={handleDownloadExperienceCert} disabled={isGeneratingCert} className="rounded-xl h-11 border-blue-200 text-blue-700"><Award className="h-4 w-4 mr-2" /> Certificado</Button>}
         </div>
       </div>
