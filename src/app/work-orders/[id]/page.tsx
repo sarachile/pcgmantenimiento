@@ -89,7 +89,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const resolvedParams = use(params);
   const otId = resolvedParams.id;
   const { toast } = useToast();
-  const { profile, isSupervisor, isCompanyAdmin } = useUser();
+  const { profile, isSupervisor, isCompanyAdmin, isTechnician } = useUser();
   const db = useFirestore();
   const storage = useStorage();
   const router = useRouter();
@@ -484,7 +484,11 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center gap-4 bg-white/90 p-6 rounded-[2rem] border shadow-sm sticky top-4 z-20 backdrop-blur-md">
-        <Button variant="ghost" size="icon" asChild className="rounded-full"><Link href="/work-orders"><ArrowLeft className="h-4 w-4" /></Link></Button>
+        <Button variant="ghost" size="icon" asChild className="rounded-full">
+          <Link href={isTechnician ? "/dashboard" : "/work-orders"}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h2 className="text-3xl font-black italic tracking-tighter text-slate-900">{ot.id}</h2>
