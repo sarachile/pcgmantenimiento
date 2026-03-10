@@ -1,8 +1,7 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // EMERGENCIA PRODUCCIÓN: Se libera el acceso total de lectura y escritura
-    // para técnicos y administradores en todo el bucket.
+    // REGLAS DE EMERGENCIA: Permite lectura y escritura total para evitar bloqueos en terreno.
     match /{allPaths=**} {
       allow read, write: if true;
     }

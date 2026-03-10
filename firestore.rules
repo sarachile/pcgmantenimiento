@@ -1,14 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
     /**
-     * PCGMANTENIMIENTO SECURITY RULES - Zero-Friction Production Edition
-     * Se eliminan todas las restricciones de validación complejas para 
-     * asegurar la continuidad operativa en terreno y subida de evidencias.
+     * PCGMANTENIMIENTO SECURITY RULES - Zero-Friction Edition
+     * Permiso universal de lectura y escritura para garantizar la operatividad de la API, 
+     * portales públicos y técnicos en terreno.
      */
-
-    // Acceso universal a todas las colecciones y documentos
     match /{document=**} {
       allow read, write: if true;
     }
