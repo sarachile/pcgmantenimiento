@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useMemo } from "react";
@@ -66,10 +65,12 @@ import {
   Plus,
   Shield,
   Filter,
-  X
+  X,
+  RefreshCcw,
+  KeyRound
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc, updateDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, increment } from "firebase/firestore";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -137,7 +138,14 @@ export default function TeamPage() {
       return; 
     }
 
-    const dataToSave = { ...formData, companyId: profile.companyId, active: true, createdAt: serverTimestamp() };
+    const dataToSave = { 
+      ...formData, 
+      companyId: profile.companyId, 
+      active: true, 
+      createdAt: serverTimestamp(),
+      accountVersion: editingStaff?.accountVersion || 0
+    };
+
     if (editingStaff) {
       updateDocumentNonBlocking(doc(db, "companies", profile.companyId, "staff", editingStaff.id), { ...dataToSave, updatedAt: serverTimestamp() });
       toast({ title: "Técnico actualizado" });
@@ -166,6 +174,23 @@ export default function TeamPage() {
     if (!db || !profile?.companyId) return;
     deleteDocumentNonBlocking(doc(db, "companies", profile.companyId, "staff", staff.id));
     toast({ title: "Técnico eliminado" });
+  };
+
+  const handleResetAccess = (staff: StaffMember) => {
+    if (!db || !profile?.companyId) return;
+    
+    const staffRef = doc(db, "companies", profile.companyId, "staff", staff.id);
+    updateDocumentNonBlocking(staffRef, {
+      hasAccount: false,
+      userId: null,
+      accountVersion: increment(1),
+      updatedAt: serverTimestamp()
+    });
+
+    toast({
+      title: "Acceso Reseteado",
+      description: "El PIN antiguo ha sido invalidado. Envíe una nueva invitación al técnico.",
+    });
   };
 
   // --- TEAM HANDLERS ---
@@ -210,7 +235,6 @@ export default function TeamPage() {
   // --- UTILS ---
   const getInvitationLink = (staffId: string) => {
     if (!profile?.companyId) return "";
-    // FORCE PRODUCTION DOMAIN TO AVOID 401 DEV ERRORS
     const baseUrl = "https://www.pcgmantenimiento.com";
     return `${baseUrl}/staff/setup/${staffId}?c=${profile.companyId}`;
   };
@@ -256,7 +280,8 @@ export default function TeamPage() {
             email: row.Email || "", 
             companyId: profile.companyId, 
             active: true, 
-            createdAt: serverTimestamp() 
+            createdAt: serverTimestamp(),
+            accountVersion: 0
           });
           count++;
         }
@@ -455,7 +480,7 @@ export default function TeamPage() {
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-slate-100"><MoreVertical className="h-5 w-5 text-slate-400" /></Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
+                              <DropdownMenuContent align="end" className="w-64 rounded-2xl shadow-2xl border-none p-2">
                                 <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Comunicación</DropdownMenuLabel>
                                 <DropdownMenuItem className="rounded-xl p-3 focus:bg-emerald-50 font-bold gap-3 text-emerald-700" onClick={() => handleSendWhatsApp(s)}>
                                   <MessageCircle className="h-4 w-4" /> Enviar por WhatsApp
@@ -464,7 +489,10 @@ export default function TeamPage() {
                                   <Link2 className="h-4 w-4" /> Copiar Link Invitación
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-slate-50" />
-                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones</DropdownMenuLabel>
+                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones Críticas</DropdownMenuLabel>
+                                <DropdownMenuItem className="rounded-xl p-3 focus:bg-amber-50 font-bold gap-3 text-amber-700" onClick={() => handleResetAccess(s)}>
+                                  <RefreshCcw className="h-4 w-4" /> Resetear PIN / Acceso
+                                </DropdownMenuItem>
                                 <DropdownMenuItem className="rounded-xl p-3 focus:bg-slate-50 font-bold gap-3" onClick={() => handleEditStaff(s)}>
                                   <Edit className="h-4 w-4 text-slate-400" /> Editar Datos
                                 </DropdownMenuItem>

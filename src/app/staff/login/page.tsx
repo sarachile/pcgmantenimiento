@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -55,8 +54,9 @@ export default function StaffLoginPage() {
 
     setIsSubmitting(true);
     try {
-      // 1. Buscar el email asociado al RUT en la colección global de usuarios
-      // El formato es [rut]@[id_empresa].staff.pcg
+      // 1. Buscar el usuario por su RUT en la colección global de usuarios
+      // Ahora los emails técnicos tienen el formato: [rut]_v[version]@[id].staff.pcg
+      // Buscamos cualquier email que empiece con el RUT limpio
       const staffQuery = query(
         collection(firestore, "users"), 
         where("email", ">=", cleanRutStr), 
@@ -70,10 +70,11 @@ export default function StaffLoginPage() {
         throw new Error("No se encontró una cuenta activa para este RUT. ¿Ya activaste tu acceso mediante el link enviado a tu WhatsApp?");
       }
 
+      // Encontramos el usuario que coincide con el formato [rut]@[id].staff.pcg
       const targetUser = staffSnap.docs[0].data();
       const email = targetUser.email;
 
-      // 2. Iniciar sesión con Firebase Auth
+      // 2. Iniciar sesión con Firebase Auth usando el email virtual exacto
       await signInWithEmailAndPassword(auth, email, pinInput);
       
       toast({ 
@@ -153,10 +154,10 @@ export default function StaffLoginPage() {
           </CardContent>
           <CardFooter className="bg-slate-50 p-6 flex flex-col gap-4">
             <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase">
-              <AlertCircle className="h-3 w-3" /> ¿No has activado tu cuenta?
+              <AlertCircle className="h-3 w-3" /> ¿Olvidaste tu PIN?
             </div>
             <p className="text-[10px] text-slate-500 leading-relaxed text-left">
-              Debes usar el link enviado a tu WhatsApp por tu supervisor para configurar tu PIN inicial.
+              Contacta a tu supervisor para que realice un <strong>"Reset de Acceso"</strong> en el panel administrativo. Esto te permitirá crear un nuevo PIN.
             </p>
             <Link href="/auth/login" className="text-[10px] font-black text-primary uppercase underline tracking-widest mt-2">
               Acceso Administrativo

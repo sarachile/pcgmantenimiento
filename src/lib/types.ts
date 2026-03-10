@@ -87,6 +87,7 @@ export interface StaffMember {
   hasAccount?: boolean;
   userId?: string;
   isDeleted?: boolean;
+  accountVersion?: number; // Para manejar reseteos de PIN
 }
 
 export interface Team {

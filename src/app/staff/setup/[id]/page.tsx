@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, Suspense } from "react";
@@ -20,12 +19,13 @@ import {
   HardHat,
   UserCheck,
   AlertTriangle,
-  Lock
+  Lock,
+  RefreshCcw
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useAuth } from "@/firebase";
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection, query, where, getDocs, limit } from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { StaffMember, Company } from "@/lib/types";
 import { cleanRut } from "@/lib/utils-rut";
 import Link from "next/link";
@@ -128,7 +128,9 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
     setIsSubmitting(true);
     try {
       const cleanRutStr = cleanRut(staff.identification || "");
-      const email = `${cleanRutStr}@${company.id}.staff.pcg`;
+      // Usar accountVersion para evitar conflictos con emails antiguos borrados
+      const version = staff.accountVersion || 0;
+      const email = `${cleanRutStr}_v${version}@${company.id}.staff.pcg`;
       
       let uid = "";
 
@@ -137,20 +139,14 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, pinInput);
         uid = userCredential.user.uid;
       } catch (authError: any) {
-        // Si el usuario ya existe en Auth (por un reseteo de base de datos previo), lo recuperamos
+        // Si el usuario ya existe en Auth (por un reseteo previo), lo vinculamos
         if (authError.code === 'auth/email-already-in-use') {
-          // Buscamos si ya existe el perfil en la colección global de usuarios
-          const userQuery = query(collection(firestore, "users"), where("email", "==", email), limit(1));
-          const userSnap = await getDocs(userQuery);
-          
-          if (!userSnap.empty) {
-            uid = userSnap.docs[0].id;
-          } else {
-            // Caso extremo: Existe en Auth pero no en Firestore Users (huérfano)
-            // En este MVP redirigimos al login para que use su PIN original
-            toast({ title: "Cuenta ya registrada", description: "Este RUT ya tiene un PIN asignado. Intente ingresar con sus datos." });
-            router.push('/staff/login');
-            return;
+          // Intentamos entrar para validar que el PIN funciona o simplemente avisar
+          try {
+            const loginCred = await signInWithEmailAndPassword(auth, email, pinInput);
+            uid = loginCred.user.uid;
+          } catch (loginError) {
+            throw new Error("Este RUT ya tiene un PIN asignado. Si no lo recuerda, pida a su administrador que 'Reseteé su Acceso' en el panel de equipo.");
           }
         } else {
           throw authError;
@@ -224,7 +220,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         </div>
 
         {step === 1 && (
-          <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 bg-white">
+          <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 bg-white">
             <CardHeader className="p-8 text-center border-b">
               <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900">Paso 1: Identidad</CardTitle>
               <CardDescription>Hola <strong>{staff?.name}</strong>, ingresa tu RUT para confirmar.</CardDescription>
@@ -244,7 +240,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         )}
 
         {step === 2 && (
-          <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in slide-in-from-right-4 bg-white">
+          <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden animate-in slide-in-from-right-4 bg-white">
             <CardHeader className="p-8 text-center border-b">
               <CardTitle className="text-xl font-black uppercase tracking-tight text-slate-900">Paso 2: Seguridad</CardTitle>
               <CardDescription>Crea un PIN de 6 dígitos para entrar.</CardDescription>
@@ -264,7 +260,7 @@ function StaffSetupContent({ params }: { params: { id: string } }) {
         )}
 
         {step === 3 && (
-          <Card className="rounded-[3rem] border-none shadow-2xl p-12 text-center bg-white animate-in zoom-in-95">
+          <Card className="rounded-[3rem] border-none shadow-xl p-12 text-center bg-white animate-in zoom-in-95">
             <div className="bg-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-100">
               <UserCheck className="h-12 w-12 text-emerald-600" />
             </div>
