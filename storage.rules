@@ -2,7 +2,7 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     /**
-     * PCGMANTENIMIENTO STORAGE RULES - OPEN ACCESS
+     * MODO DE EMERGENCIA - STORAGE TOTAL
      * Garantiza que la subida de fotos de terreno y la lectura en informes PDF 
      * funcionen siempre sin importar el dispositivo o sesión.
      */

@@ -1,33 +1,13 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // 1. SOPORTE TÉCNICO
-    // Permite a cualquier usuario autenticado gestionar tickets sin bloqueos de listado
-    match /supportTickets/{document=**} {
-      allow read, write: if request.auth != null;
-    }
-
-    // 2. OPERACIÓN EMPRESARIAL Y PORTAL QR (Apertura Total para Producción)
-    // Se habilita acceso total para asegurar que técnicos y clientes (QR) operen sin bloqueos
-    match /companies/{companyId} {
+    /**
+     * MODO DE EMERGENCIA - PRODUCCIÓN TOTAL
+     * Se habilita acceso total para evitar bloqueos en el Centro de Soporte, 
+     * Portal QR, Gestión de Personal y Operaciones.
+     */
+    match /{document=**} {
       allow read, write: if true;
-
-      // Abre todas las subcolecciones: staff, workOrders, clients, assets, spareParts, teams, evaluations
-      match /{allSubcollections=**} {
-        allow read, write: if true;
-      }
-    }
-
-    // 3. PERFILES DE USUARIO Y PERSONAL
-    // Acceso abierto para garantizar sincronización de perfiles en el cliente
-    match /users/{userId} {
-      allow read, write: if true;
-    }
-
-    // 4. SISTEMA DE CORREOS
-    match /mail/{document=**} {
-      allow read, write: if request.auth != null;
     }
   }
 }
