@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -174,7 +173,7 @@ export default function ClientsPage() {
     setEditingClient(client);
     setFormData({
       name: client.name,
-      rut: client.rut,
+      rut: client.rut || "",
       region: client.region || "",
       city: client.city || "",
       commune: client.commune || "",
@@ -309,8 +308,8 @@ export default function ClientsPage() {
               <form onSubmit={handleSubmit} className="space-y-6 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">RUT Empresa *</Label>
-                    <Input placeholder="76.000.000-0" value={formData.rut} onChange={(e) => setFormData({...formData, rut: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
+                    <Label className="text-[10px] font-black uppercase text-slate-400">RUT Empresa</Label>
+                    <Input placeholder="76.000.000-0" value={formData.rut} onChange={(e) => setFormData({...formData, rut: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Razón Social *</Label>
@@ -428,7 +427,7 @@ export default function ClientsPage() {
                           <div className="flex flex-col">
                             <span className="font-black text-slate-900 text-lg tracking-tighter leading-none">{client.name}</span>
                             <div className="flex flex-col mt-1">
-                              <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">RUT: {client.rut}</span>
+                              <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">RUT: {client.rut || 'No registrado'}</span>
                               <span className="text-[10px] text-primary font-bold flex items-center gap-1"><Mail className="h-2.5 w-2.5" /> {client.contactEmail || 'Sin email'}</span>
                             </div>
                           </div>

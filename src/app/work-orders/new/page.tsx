@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
@@ -208,8 +207,8 @@ function NewWorkOrderContent() {
 
   const handleCreateQuickClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !companyId || !newClientData.name || !newClientData.rut || !newClientData.contactEmail) {
-      toast({ title: "Faltan datos", description: "Razón Social, RUT y Email son obligatorios.", variant: "destructive" });
+    if (!db || !companyId || !newClientData.name || !newClientData.contactEmail) {
+      toast({ title: "Faltan datos", description: "Razón Social e Email son obligatorios.", variant: "destructive" });
       return;
     }
 
@@ -350,7 +349,7 @@ function NewWorkOrderContent() {
                             <Input placeholder="Nombre Empresa / Particular" value={newClientData.name} onChange={(e) => setNewClientData({...newClientData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-slate-400">RUT *</Label>
+                            <Label className="text-[10px] font-black uppercase text-slate-400">RUT</Label>
                             <Input placeholder="76.000.000-0" value={newClientData.rut} onChange={(e) => setNewClientData({...newClientData, rut: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                           </div>
                         </div>
