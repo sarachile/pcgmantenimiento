@@ -41,7 +41,9 @@ import {
   LayoutList,
   UserPlus,
   Building2,
-  MapPin
+  MapPin,
+  Smartphone,
+  Mail
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -206,7 +208,10 @@ function NewWorkOrderContent() {
 
   const handleCreateQuickClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!db || !companyId) return;
+    if (!db || !companyId || !newClientData.name || !newClientData.rut || !newClientData.contactEmail) {
+      toast({ title: "Faltan datos", description: "Razón Social, RUT y Email son obligatorios.", variant: "destructive" });
+      return;
+    }
 
     const fullAddress = `${newClientData.street} ${newClientData.streetNumber}${newClientData.complement ? ', ' + newClientData.complement : ''}, ${newClientData.commune}, ${newClientData.city}, ${newClientData.region}`;
 
@@ -383,6 +388,20 @@ function NewWorkOrderContent() {
                             <div className="space-y-2">
                               <Label className="text-[9px] font-black uppercase text-slate-400">N°</Label>
                               <Input placeholder="1234" value={newClientData.streetNumber} onChange={(e) => setNewClientData({...newClientData, streetNumber: e.target.value})} className="h-11 border-2 rounded-xl" />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 border-t pt-6">
+                          <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2"><Smartphone className="h-4 w-4" /> Responsable Portal Autogestión</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase text-slate-400">Nombre Responsable</Label>
+                              <Input placeholder="Nombre Apellido" value={newClientData.contactName} onChange={(e) => setNewClientData({...newClientData, contactName: e.target.value})} className="h-11 border-2 rounded-xl" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase text-slate-400">Email Corporativo *</Label>
+                              <Input placeholder="email@empresa.cl" type="email" value={newClientData.contactEmail} onChange={(e) => setNewClientData({...newClientData, contactEmail: e.target.value})} className="h-11 border-2 rounded-xl" />
                             </div>
                           </div>
                         </div>

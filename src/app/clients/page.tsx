@@ -116,7 +116,8 @@ export default function ClientsPage() {
 
   const filtered = clients.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.rut.toLowerCase().includes(searchTerm.toLowerCase())
+    c.rut.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.contactEmail?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -381,8 +382,8 @@ export default function ClientsPage() {
                       <Input placeholder="Nombre Apellido" value={formData.contactName} onChange={(e) => setFormData({...formData, contactName: e.target.value})} className="h-12 border-2 rounded-xl" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[9px] font-black text-slate-400 uppercase">Email Corporativo</Label>
-                      <Input placeholder="email@empresa.cl" value={formData.contactEmail} onChange={(e) => setFormData({...formData, contactEmail: e.target.value})} className="h-12 border-2 rounded-xl" />
+                      <Label className="text-[9px] font-black text-slate-400 uppercase">Email Corporativo *</Label>
+                      <Input placeholder="email@empresa.cl" value={formData.contactEmail} onChange={(e) => setFormData({...formData, contactEmail: e.target.value})} className="h-12 border-2 rounded-xl" required />
                     </div>
                   </div>
                 </div>
@@ -426,7 +427,10 @@ export default function ClientsPage() {
                           <div className="bg-primary/5 p-3 rounded-[1.2rem] group-hover:bg-primary/10 transition-colors"><Building2 className="h-6 w-6 text-primary" /></div>
                           <div className="flex flex-col">
                             <span className="font-black text-slate-900 text-lg tracking-tighter leading-none">{client.name}</span>
-                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">RUT: {client.rut}</span>
+                            <div className="flex flex-col mt-1">
+                              <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest">RUT: {client.rut}</span>
+                              <span className="text-[10px] text-primary font-bold flex items-center gap-1"><Mail className="h-2.5 w-2.5" /> {client.contactEmail || 'Sin email'}</span>
+                            </div>
                           </div>
                         </div>
                       </TableCell>

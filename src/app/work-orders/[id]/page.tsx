@@ -357,6 +357,16 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <h2 className="text-3xl font-black italic tracking-tighter text-slate-900">{ot.id}</h2>
             {getStatusBadge(ot.status)}
           </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+              <Building2 className="h-3 w-3" /> {client?.name}
+            </span>
+            {client?.contactEmail && (
+              <span className="text-[10px] font-bold text-primary flex items-center gap-1">
+                <Mail className="h-2.5 w-2.5" /> {client.contactEmail}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           {isAdminOrSupervisor && ot.status !== 'aprobada' && ot.status !== 'pendiente cliente' && (
