@@ -89,25 +89,28 @@ export default function FeedbackPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard"><ArrowLeft className="h-4 w-4" /></Link>
+          <Button variant="ghost" size="icon" asChild className="rounded-full shrink-0">
+            <Link href="/dashboard"><ArrowLeft className="h-5 w-5" /></Link>
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Voz del Cliente</h2>
-            <p className="text-muted-foreground">Monitoreo de satisfacción y retroalimentación técnica.</p>
+            <h2 className="text-2xl md:text-3xl font-black tracking-tight uppercase italic">Voz del Cliente</h2>
+            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Satisfacción técnica</p>
           </div>
         </div>
-        <div className="bg-primary/10 px-6 py-3 rounded-2xl border border-primary/20 flex items-center gap-4">
-          <div className="text-center">
-            <p className="text-[10px] font-black uppercase text-primary tracking-widest">Nota Promedio</p>
-            <p className="text-3xl font-black text-primary">{calculateAverage(evaluations || [])}</p>
+        <div className="bg-white px-6 py-4 rounded-[2rem] border-2 border-primary/10 shadow-sm flex items-center justify-center md:justify-start gap-6 self-stretch md:self-auto">
+          <div className="text-center md:text-left">
+            <p className="text-[9px] font-black uppercase text-primary tracking-widest mb-1">Nota Promedio</p>
+            <p className="text-4xl font-black text-primary tracking-tighter leading-none">{calculateAverage(evaluations || [])}</p>
           </div>
-          <div className="flex gap-0.5">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Star key={s} className={cn("h-4 w-4 fill-primary text-primary", s > Number(calculateAverage(evaluations || [])) && "fill-transparent opacity-30")} />
-            ))}
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star key={s} className={cn("h-4 w-4 fill-primary text-primary", s > Number(calculateAverage(evaluations || [])) && "fill-transparent opacity-20")} />
+              ))}
+            </div>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{evaluations?.length || 0} Evaluaciones</p>
           </div>
         </div>
       </div>
@@ -116,89 +119,97 @@ export default function FeedbackPage() {
         {isEvalLoading ? (
           <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" /> Cargando feedback...</div>
         ) : !evaluations || evaluations.length === 0 ? (
-          <div className="py-20 text-center border-2 border-dashed rounded-3xl opacity-50">
-            <MessageSquare className="h-12 w-12 mx-auto mb-4" />
-            <p className="font-bold">Aún no hay evaluaciones registradas.</p>
-            <p className="text-sm">Asegúrese de habilitar las encuestas en la ficha del cliente.</p>
+          <div className="py-32 text-center border-2 border-dashed rounded-[3rem] bg-slate-50/50">
+            <MessageSquare className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+            <p className="font-black uppercase italic text-slate-400 tracking-tighter text-lg">Sin evaluaciones registradas</p>
+            <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto mt-2">Los resultados aparecerán cuando sus clientes cierren las órdenes en el portal.</p>
           </div>
         ) : (
           evaluations.map((evalItem) => (
-            <Card key={evalItem.id} className="border-none shadow-md overflow-hidden">
-              <div className="grid md:grid-cols-4">
-                <CardHeader className="bg-muted/30 border-r md:col-span-1">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-4 w-4 text-primary" />
+            <Card key={evalItem.id} className="border-none shadow-lg rounded-[2.5rem] overflow-hidden bg-white group hover:shadow-xl transition-all">
+              <div className="flex flex-col md:flex-row">
+                <CardHeader className="bg-slate-50/50 p-6 md:p-8 md:w-1/3 md:border-r border-slate-100 shrink-0">
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-primary text-white flex items-center justify-center font-black text-lg shadow-lg">
+                        {evalItem.reviewerName?.[0] || 'C'}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-black truncate">{evalItem.reviewerName}</p>
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-2 w-2" /> {evalItem.createdAt ? format(evalItem.createdAt.toDate(), "dd MMM yyyy", { locale: es }) : '...'}
+                        <p className="text-sm font-black text-slate-900 truncate uppercase">{evalItem.reviewerName}</p>
+                        <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1.5 mt-0.5">
+                          <Clock className="h-3 w-3" /> {evalItem.createdAt ? format(evalItem.createdAt.toDate(), "dd MMM yyyy", { locale: es }) : '...'}
                         </p>
                       </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-[10px] font-bold uppercase">
-                        <span className="text-muted-foreground">Calidad</span>
-                        <span className="text-primary">{evalItem.ratings.quality}/5</span>
+                    <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 tracking-widest px-1">
+                          <span>Calidad</span>
+                          <span className="text-primary">{evalItem.ratings.quality}/5</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-primary h-full rounded-full" style={{ width: `${(evalItem.ratings.quality / 5) * 100}%` }} />
+                        </div>
                       </div>
-                      <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full" style={{ width: `${(evalItem.ratings.quality / 5) * 100}%` }} />
-                      </div>
-                      <div className="flex justify-between text-[10px] font-bold uppercase">
-                        <span className="text-muted-foreground">Plazos</span>
-                        <span className="text-primary">{evalItem.ratings.timing}/5</span>
-                      </div>
-                      <div className="w-full bg-muted h-1 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full" style={{ width: `${(evalItem.ratings.timing / 5) * 100}%` }} />
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[9px] font-black uppercase text-slate-400 tracking-widest px-1">
+                          <span>Plazos</span>
+                          <span className="text-primary">{evalItem.ratings.timing}/5</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                          <div className="bg-primary h-full rounded-full" style={{ width: `${(evalItem.ratings.timing / 5) * 100}%` }} />
+                        </div>
                       </div>
                     </div>
                     
-                    <Badge variant="outline" className="w-full justify-center bg-white">
-                      OT: {evalItem.workOrderId}
-                    </Badge>
+                    <div className="pt-2">
+                      <Badge variant="outline" className="w-full justify-center bg-white border-slate-200 text-[10px] font-black uppercase py-1.5 rounded-xl text-primary tracking-widest">
+                        OT: {evalItem.workOrderId}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 
-                <CardContent className="md:col-span-3 p-6 space-y-6">
+                <CardContent className="flex-1 p-6 md:p-8 space-y-8">
                   <div className="relative">
-                    <Quote className="absolute -top-2 -left-2 h-8 w-8 text-muted/20 -z-0" />
-                    <p className="text-sm italic text-slate-700 leading-relaxed relative z-10 pl-4">
+                    <Quote className="absolute -top-4 -left-4 h-12 w-12 text-slate-100 -z-0" />
+                    <p className="text-base md:text-lg font-medium text-slate-700 leading-relaxed relative z-10 pl-2 italic">
                       "{evalItem.comment}"
                     </p>
                   </div>
 
                   {evalItem.adminResponse ? (
-                    <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 space-y-2">
+                    <div className="bg-emerald-50/50 p-6 rounded-[2rem] border-2 border-emerald-100/50 space-y-3 relative overflow-hidden animate-in fade-in slide-in-from-top-2">
+                      <div className="absolute top-0 right-0 p-4 opacity-5"><CheckCircle2 className="h-12 w-12 text-emerald-600" /></div>
                       <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-1">
-                          <Reply className="h-3 w-3" /> Nuestra Respuesta
+                        <p className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.2em] flex items-center gap-2">
+                          <Reply className="h-3.5 w-3.5" /> Nuestra Respuesta
                         </p>
-                        <p className="text-[10px] text-emerald-600/60 italic">
+                        <p className="text-[9px] font-bold text-emerald-600/60 uppercase">
                           {evalItem.adminResponseAt ? format(evalItem.adminResponseAt.toDate(), "dd/MM/yyyy HH:mm") : ''}
                         </p>
                       </div>
-                      <p className="text-xs text-emerald-900 font-medium">{evalItem.adminResponse}</p>
+                      <p className="text-sm text-emerald-900 font-bold leading-relaxed">{evalItem.adminResponse}</p>
                     </div>
                   ) : (
-                    <div className="space-y-3 pt-4 border-t border-dashed">
-                      <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Responder al cliente</Label>
-                      <div className="flex gap-2">
+                    <div className="space-y-4 pt-6 border-t border-dashed border-slate-200">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2 flex items-center gap-2">
+                        <MessageSquare className="h-3.5 w-3.5" /> Responder al cliente
+                      </Label>
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <Textarea 
                           placeholder="Agradezca el feedback o responda a sus dudas..." 
-                          className="min-h-[60px] text-xs"
+                          className="min-h-[80px] text-sm rounded-2xl bg-slate-50/50 border-2 border-slate-100 focus:border-primary/30 p-4 font-medium"
                           value={replyText[evalItem.id] || ""}
                           onChange={(e) => setReplyText({ ...replyText, [evalItem.id]: e.target.value })}
                         />
                         <Button 
-                          size="icon" 
-                          className="shrink-0 h-auto"
+                          className="sm:w-14 h-14 sm:h-auto rounded-2xl shadow-lg shrink-0 gap-2 font-black uppercase text-[10px]"
                           onClick={() => handleSendReply(evalItem.id)}
                           disabled={!replyText[evalItem.id]}
                         >
-                          <Send className="h-4 w-4" />
+                          <Send className="h-4 w-4" /> <span className="sm:hidden">Enviar Respuesta</span>
                         </Button>
                       </div>
                     </div>
