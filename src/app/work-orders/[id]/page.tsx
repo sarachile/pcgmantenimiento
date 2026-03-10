@@ -50,7 +50,8 @@ import {
   ExternalLink,
   Mail,
   QrCode,
-  ShieldCheck
+  ShieldCheck,
+  Navigation
 } from "lucide-react";
 import {
   Dialog,
@@ -153,7 +154,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!reportRef.current || !ot) return;
     setIsGeneratingPdf(true);
     try {
-      // Breve espera para asegurar renderizado de imágenes CORS
       await new Promise(r => setTimeout(r, 2500));
       
       const element = reportRef.current;
@@ -171,18 +171,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      // Calcular altura de la imagen escalada al ancho del PDF
       const imgHeight = (canvas.height * pdfWidth) / canvas.width;
       
       let heightLeft = imgHeight;
       let position = 0;
 
-      // Añadir primera página
       pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
       heightLeft -= pdfHeight;
 
-      // Añadir páginas adicionales si el contenido excede una hoja A4
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         pdf.addPage();
@@ -217,7 +213,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const handleVisaOrder = async () => {
     if (!otRef || !profile || !ot) return;
 
-    // VALIDACIÓN DE PROTOCOLO COMPLETO
     const isChecklistComplete = !ot.checklist || ot.checklist.length === 0 || ot.checklist.every(item => item.completed);
     
     if (!isChecklistComplete) {
@@ -568,12 +563,33 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
 
           <Card className="rounded-3xl border-none shadow-sm overflow-hidden">
-            <CardHeader className="bg-primary/5 p-6 border-b"><CardTitle className="text-lg font-black uppercase flex items-center gap-2"><MapIcon className="h-5 w-5 text-primary" /> Ubicación del Servicio</CardTitle></CardHeader>
+            <CardHeader className="bg-primary/5 p-6 border-b">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
+                  <MapIcon className="h-5 w-5 text-primary" /> Ubicación del Servicio
+                </CardTitle>
+              </div>
+            </CardHeader>
             <CardContent className="p-6">
-              <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-700">{ot.street} {ot.streetNumber}{ot.complement ? ', ' + ot.complement : ''}</p>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ot.commune}, {ot.city}, {ot.region}</p>
-                {ot.locationComment && <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-100 text-[9px] font-black uppercase italic">{ot.locationComment}</Badge>}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-1 flex-1">
+                  <p className="text-sm font-bold text-slate-700">{ot.street} {ot.streetNumber}{ot.complement ? ', ' + ot.complement : ''}</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ot.commune}, {ot.city}, {ot.region}</p>
+                  {ot.locationComment && <Badge variant="outline" className="mt-2 bg-blue-50 text-blue-700 border-blue-100 text-[9px] font-black uppercase italic">{ot.locationComment}</Badge>}
+                </div>
+                
+                <div className="flex gap-2 shrink-0">
+                  <Button variant="outline" size="sm" asChild className="rounded-xl border-blue-200 text-blue-700 font-black text-[10px] uppercase gap-2 h-10 px-4">
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${ot.street} ${ot.streetNumber}, ${ot.commune}, ${ot.city}`)}`} target="_blank" rel="noopener noreferrer">
+                      <Globe className="h-3.5 w-3.5" /> Google Maps
+                    </a>
+                  </Button>
+                  <Button variant="outline" size="sm" asChild className="rounded-xl border-blue-400 text-blue-600 bg-blue-50 hover:bg-blue-100 font-black text-[10px] uppercase gap-2 h-10 px-4">
+                    <a href={`https://waze.com/ul?q=${encodeURIComponent(`${ot.street} ${ot.streetNumber}, ${ot.commune}, ${ot.city}`)}&navigate=yes`} target="_blank" rel="noopener noreferrer">
+                      <Navigation className="h-3.5 w-3.5 fill-blue-600" /> Waze
+                    </a>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
