@@ -132,7 +132,7 @@ export default function ClientsPage() {
       return;
     }
 
-    const fullAddress = `${formData.street} ${formData.streetNumber}${formData.complement ? ', ' + formData.complement : ''}, ${formData.commune}, ${formData.region}`;
+    const fullAddress = `${formData.street} ${formData.streetNumber}${formData.complement ? ', ' + formData.complement : ''}, ${formData.commune}, ${formData.city}, ${formData.region}`;
 
     const dataToSave = {
       ...formData,
@@ -195,14 +195,7 @@ export default function ClientsPage() {
 
   const getPortalUrl = (client: Client) => {
     if (!profile?.companyId) return "";
-    // FORCE PRODUCTION DOMAIN TO AVOID 401 DEV ERRORS
     return `https://www.pcgmantenimiento.com/request/${client.id}?c=${profile.companyId}`;
-  };
-
-  const handleCopyLink = (client: Client) => {
-    const url = getPortalUrl(client);
-    navigator.clipboard.writeText(url);
-    toast({ title: "Link Copiado" });
   };
 
   const handleSendPortalEmail = async (client: Client) => {
@@ -324,14 +317,14 @@ export default function ClientsPage() {
                 </div>
 
                 <div className="space-y-4 border-t pt-6">
-                  <p className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2"><Globe className="h-4 w-4" /> Dirección Matriz Obligatoria</p>
+                  <p className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2"><Globe className="h-4 w-4" /> Ubicación Matriz Obligatoria</p>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-slate-400">Región *</Label>
-                      <Select value={formData.region} onValueChange={(v) => setFormData({...formData, region: v, commune: ""})}>
+                      <Select value={formData.region} onValueChange={(v) => setFormData({...formData, region: v, city: "", commune: ""})}>
                         <SelectTrigger className="h-12 border-2 rounded-xl">
-                          <SelectValue placeholder="Seleccione Región" />
+                          <SelectValue placeholder="Región" />
                         </SelectTrigger>
                         <SelectContent>
                           {CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
@@ -339,10 +332,21 @@ export default function ClientsPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">Comuna *</Label>
-                      <Select value={formData.commune} onValueChange={(v) => setFormData({...formData, commune: v})} disabled={!formData.region}>
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Ciudad *</Label>
+                      <Select key={`city-${formData.region}`} value={formData.city} onValueChange={(v) => setFormData({...formData, city: v, commune: ""})} disabled={!formData.region}>
                         <SelectTrigger className="h-12 border-2 rounded-xl">
-                          <SelectValue placeholder="Seleccione Comuna" />
+                          <SelectValue placeholder="Ciudad" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {selectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Comuna *</Label>
+                      <Select key={`commune-${formData.city}`} value={formData.commune} onValueChange={(v) => setFormData({...formData, commune: v})} disabled={!formData.city}>
+                        <SelectTrigger className="h-12 border-2 rounded-xl">
+                          <SelectValue placeholder="Comuna" />
                         </SelectTrigger>
                         <SelectContent>
                           {selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -431,7 +435,7 @@ export default function ClientsPage() {
                             <MapPin className="h-3.5 w-3.5 text-slate-400" />
                             <span className="truncate">{client.street} {client.streetNumber}</span>
                           </div>
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-5">{client.commune}, {client.region}</span>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-5">{client.commune}, {client.city}, {client.region}</span>
                         </div>
                       </TableCell>
                       <TableCell>

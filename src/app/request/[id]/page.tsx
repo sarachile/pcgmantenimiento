@@ -89,6 +89,7 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
 
   // Address State
   const [region, setRegion] = useState("");
+  const [city, setCity] = useState("");
   const [commune, setCommune] = useState("");
   const [street, setStreet] = useState("");
   const [streetNumber, setStreetNumber] = useState("");
@@ -110,6 +111,7 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
             setClient(d);
             setRequestedByName(d.contactName || "");
             setRegion(d.region || "");
+            setCity(d.city || "");
             setCommune(d.commune || "");
             setStreet(d.street || "");
             setStreetNumber(d.streetNumber || "");
@@ -144,17 +146,17 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
 
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyId || !clientId || !description.trim() || !region || !commune || !streetNumber || !firestore) return;
+    if (!companyId || !clientId || !description.trim() || !region || !city || !commune || !streetNumber || !firestore) return;
 
     setIsSubmitting(true);
     try {
       const shortId = `OT-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-      const fullAddress = `${street} ${streetNumber}${complement ? ', ' + complement : ''}, ${commune}, ${region}`;
+      const fullAddress = `${street} ${streetNumber}${complement ? ', ' + complement : ''}, ${commune}, ${city}, ${region}`;
       const pin = Math.floor(100000 + Math.random() * 900000).toString();
 
       await setDoc(doc(firestore, "companies", companyId, "workOrders", shortId), {
         id: shortId, companyId, clientId, description: description.trim(),
-        serviceLocation: fullAddress, region, commune, street, streetNumber, complement, locationComment,
+        serviceLocation: fullAddress, region, city, commune, street, streetNumber, complement, locationComment,
         requestedByName: requestedByName.trim(), status: "solicitada", source: "external",
         requestedByEmail: emailInput, urgency, checklist: [], evidenceUrls, approvalPin: pin,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
@@ -234,9 +236,10 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
                   <form onSubmit={handleCreateRequest} className="space-y-8">
                     <div className="space-y-6 bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
                       <p className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2"><Globe className="h-4 w-4" /> Confirmar Ubicación del Servicio</p>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Región *</Label><Select value={region} onValueChange={v => { setRegion(v); setCommune(""); }}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue /></SelectTrigger><SelectContent>{CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}</SelectContent></Select></div>
-                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Comuna *</Label><Select value={commune} onValueChange={setCommune} disabled={!region}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue /></SelectTrigger><SelectContent>{selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Región *</Label><Select value={region} onValueChange={v => { setRegion(v); setCity(""); setCommune(""); }}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue placeholder="Región" /></SelectTrigger><SelectContent>{CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}</SelectContent></Select></div>
+                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Ciudad *</Label><Select key={`city-${region}`} value={city} onValueChange={v => { setCity(v); setCommune(""); }} disabled={!region}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue placeholder="Ciudad" /></SelectTrigger><SelectContent>{selectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Comuna *</Label><Select key={`commune-${city}`} value={commune} onValueChange={setCommune} disabled={!city}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue placeholder="Comuna" /></SelectTrigger><SelectContent>{selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
                       </div>
                       <div className="grid grid-cols-3 gap-4">
                         <div className="col-span-2 space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Calle *</Label><Input value={street} onChange={e => setStreet(e.target.value)} className="h-12 border-2 rounded-xl bg-white" required /></div>

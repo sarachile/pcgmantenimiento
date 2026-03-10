@@ -62,7 +62,7 @@ function NewWorkOrderContent() {
   
   // Direccionamiento Estructurado
   const [region, setRegion] = useState("");
-  const [city, setCity] = useState(""); // Representa Provincia/Ciudad principal
+  const [city, setCity] = useState(""); 
   const [commune, setCommune] = useState("");
   const [street, setStreet] = useState("");
   const [streetNumber, setStreetNumber] = useState("");
@@ -106,6 +106,7 @@ function NewWorkOrderContent() {
       const selectedClient = clients.find(c => c.id === clientId);
       if (selectedClient) {
         setRegion(selectedClient.region || "");
+        setCity(selectedClient.city || "");
         setCommune(selectedClient.commune || "");
         setStreet(selectedClient.street || "");
         setStreetNumber(selectedClient.streetNumber || "");
@@ -130,6 +131,7 @@ function NewWorkOrderContent() {
             setClientId(data.clientId || "");
             setAssetId(data.assetId === 'none' ? "" : (data.assetId || ""));
             setRegion(data.region || "");
+            setCity(data.city || "");
             setCommune(data.commune || "");
             setStreet(data.street || "");
             setStreetNumber(data.streetNumber || "");
@@ -158,20 +160,20 @@ function NewWorkOrderContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim() || !clientId || !region || !commune || !streetNumber || !profile) {
+    if (!description.trim() || !clientId || !region || !city || !commune || !streetNumber || !profile) {
       toast({ title: "Faltan campos obligatorios", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const fullAddress = `${street} ${streetNumber}${complement ? ', ' + complement : ''}, ${commune}, ${region}`;
+      const fullAddress = `${street} ${streetNumber}${complement ? ', ' + complement : ''}, ${commune}, ${city}, ${region}`;
       const commonData = {
         clientId,
         assetId: assetId === 'none' ? null : (assetId || null),
         description: description.trim(),
         serviceLocation: fullAddress,
-        region, commune, street, streetNumber, complement, locationComment,
+        region, city, commune, street, streetNumber, complement, locationComment,
         requestedByName: requestedByName.trim(),
         assignedToStaffIds,
         assignedTeamId: assignmentMode === 'team' ? assignedTeamId : null,
@@ -248,18 +250,25 @@ function NewWorkOrderContent() {
 
             <div className="space-y-6 bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
               <div className="flex items-center gap-2"><Globe className="h-4 w-4 text-primary" /><p className="text-[10px] font-black uppercase text-primary tracking-widest">Direccionamiento Estructurado</p></div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Región *</Label>
-                  <Select value={region} onValueChange={(v) => { setRegion(v); setCommune(""); }}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white"><SelectValue /></SelectTrigger>
+                  <Select value={region} onValueChange={(v) => { setRegion(v); setCity(""); setCommune(""); }}>
+                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white"><SelectValue placeholder="Región" /></SelectTrigger>
                     <SelectContent>{CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Ciudad *</Label>
+                  <Select key={`city-${region}`} value={city} onValueChange={(v) => { setCity(v); setCommune(""); }} disabled={!region}>
+                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white"><SelectValue placeholder="Ciudad" /></SelectTrigger>
+                    <SelectContent>{selectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Comuna *</Label>
-                  <Select value={commune} onValueChange={setCommune} disabled={!region}>
-                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white"><SelectValue /></SelectTrigger>
+                  <Select key={`commune-${city}`} value={commune} onValueChange={setCommune} disabled={!city}>
+                    <SelectTrigger className="h-12 rounded-xl border-2 bg-white"><SelectValue placeholder="Comuna" /></SelectTrigger>
                     <SelectContent>{selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
@@ -306,7 +315,6 @@ function NewWorkOrderContent() {
           </CardContent>
         </Card>
 
-        {/* REUTILIZAMOS SECCIONES EXISTENTES (TECNICOS, PROTOCOLOS, CIERRE) */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className="bg-primary p-8"><CardTitle className="flex items-center gap-3 text-xl font-black text-white uppercase tracking-tighter italic"><Users className="h-6 w-6" /> 2. Personal Técnico</CardTitle></CardHeader>
           <CardContent className="p-8">
@@ -335,9 +343,11 @@ function NewWorkOrderContent() {
           <CardHeader className="p-8 pb-4">
             <div className="flex justify-between items-center">
               <CardTitle className="text-xl font-black italic tracking-tighter uppercase flex items-center gap-3 text-slate-900"><ShieldCheck className="h-6 w-6 text-emerald-600" /> 4. Cierre y Validación</CardTitle>
-              {(reviewerRequired || evaluationRequired) && (
-                <Badge className="bg-indigo-600 text-white font-black text-[8px] uppercase tracking-[0.2em] animate-pulse">Interacción con Cliente Activa</Badge>
-              )}
+              <div className="flex gap-2">
+                {(reviewerRequired || evaluationRequired) && (
+                  <Badge className="bg-indigo-600 text-white font-black text-[8px] uppercase tracking-[0.2em] animate-pulse">Interacción con Cliente Activa</Badge>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-8 pt-0 space-y-8">
