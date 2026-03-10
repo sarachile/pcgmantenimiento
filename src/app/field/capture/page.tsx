@@ -122,11 +122,16 @@ export default function FieldCapturePage() {
     });
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
-  const openNavigation = (app: 'waze' | 'google', address: string) => {
+  // AUTO-SELECCIÓN SI HAY UNA SOLA OT
+  useEffect(() => {
+    if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
+      setSelectedOT(filtered[0]);
+    }
+  }, [filtered, isOrdersLoading, selectedOT, searchTerm]);
+
+  const openNavigation = (address: string) => {
     const encoded = encodeURIComponent(address);
-    const url = app === 'waze' 
-      ? `https://waze.com/ul?q=${encoded}&navigate=yes` 
-      : `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
     window.open(url, "_blank");
   };
 
@@ -134,7 +139,7 @@ export default function FieldCapturePage() {
     if (!selectedOT || !db || !profile?.companyId || !profile) return;
     
     setIsSaving(true);
-    getPosition(); // Refrescar GPS
+    getPosition();
 
     if (logComment.trim()) {
       await addDoc(collection(db, "companies", profile.companyId, "workOrders", selectedOT.id, "digitalLogbookEntries"), {
@@ -164,7 +169,7 @@ export default function FieldCapturePage() {
     if (!file || !selectedOT || !profile?.companyId || !storage || !db || !profile) return;
 
     setIsUploading(true);
-    getPosition(); // Refrescar GPS
+    getPosition();
 
     try {
       const path = `companies/${profile.companyId}/workOrders/${selectedOT.id}/field_evidence_${Date.now()}`;
@@ -206,13 +211,13 @@ export default function FieldCapturePage() {
         longitude: coords?.lng || null
       });
 
-      toast({ title: "Evidencia Guardada", description: "Posición GPS registrada correctamente." });
+      toast({ title: "Evidencia Guardada" });
       setSelectedChecklistItemId(null);
       setLogComment("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       
     } catch (error: any) {
-      toast({ title: "Error al registrar", description: error.message, variant: "destructive" });
+      toast({ title: "Error al registrar", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -222,7 +227,7 @@ export default function FieldCapturePage() {
     if (!selectedOT || !db || !profile?.companyId || !profile) return;
     
     setIsFinalizing(true);
-    getPosition(); // Refrescar GPS
+    getPosition();
 
     try {
       const techCode = `TCH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -251,10 +256,10 @@ export default function FieldCapturePage() {
         longitude: coords?.lng || null
       });
 
-      toast({ title: "Trabajo Finalizado", description: "Orden enviada con sello GPS." });
+      toast({ title: "Trabajo Finalizado", description: "Orden enviada a revisión." });
       setSelectedOT(null);
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setIsFinalizing(false);
     }
@@ -262,7 +267,6 @@ export default function FieldCapturePage() {
 
   const getApprovalUrl = () => {
     if (!selectedOT || !profile?.companyId) return "";
-    // FORCE PRODUCTION DOMAIN TO AVOID 401 DEV ERRORS
     return `https://www.pcgmantenimiento.com/portal/approve/${selectedOT.id}?c=${profile.companyId}`;
   };
 
@@ -311,7 +315,6 @@ export default function FieldCapturePage() {
               ) : (
                 filtered.map(ot => {
                   const client = clients?.find(c => c.id === ot.clientId);
-                  
                   return (
                     <button 
                       key={ot.id}
@@ -352,64 +355,45 @@ export default function FieldCapturePage() {
               </CardHeader>
               <CardContent className="p-8 space-y-8">
                 
-                {/* NAVEGACIÓN GPS */}
                 <div className="bg-blue-50 p-6 rounded-[2rem] border border-blue-100 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Compass className="h-5 w-5 text-blue-600" />
-                      <span className="text-[10px] font-black uppercase text-blue-900 tracking-widest">Navegación al Sitio</span>
+                      <span className="text-[10px] font-black uppercase text-blue-900 tracking-widest">Navegación</span>
                     </div>
                     {coords && <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[8px] font-black">GPS ACTIVO</Badge>}
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button 
-                      variant="outline" 
-                      className="bg-white border-2 border-slate-100 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest gap-2"
-                      onClick={() => openNavigation('google', selectedOT.serviceLocation || clients?.find(c => c.id === selectedOT.clientId)?.address || "")}
-                    >
-                      <img src="/maps.png" className="h-5 w-5 object-contain" alt="Maps" />
-                      Google Maps
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      className="bg-white border-2 border-slate-100 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest gap-2"
-                      onClick={() => openNavigation('waze', selectedOT.serviceLocation || clients?.find(c => c.id === selectedOT.clientId)?.address || "")}
-                    >
-                      <img src="/waze.png" className="h-5 w-5 object-contain" alt="Waze" />
-                      Waze
-                    </Button>
-                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full bg-white border-2 border-slate-100 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest gap-2"
+                    onClick={() => openNavigation(selectedOT.serviceLocation || clients?.find(c => c.id === selectedOT.clientId)?.address || "")}
+                  >
+                    Abrir en Google Maps
+                  </Button>
                 </div>
 
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
-                      <ListChecks className="h-4 w-4 text-primary" /> Protocolos de Servicio
-                    </Label>
-                  </div>
-                  
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                    <ListChecks className="h-4 w-4 text-primary" /> Protocolos de Servicio
+                  </Label>
                   <div className="space-y-2">
-                    {selectedOT.checklist && selectedOT.checklist.length > 0 ? (
-                      selectedOT.checklist.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setSelectedChecklistItemId(selectedChecklistItemId === item.id ? null : item.id)}
-                          className={cn(
-                            "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between",
-                            selectedChecklistItemId === item.id ? "border-primary bg-primary/5" : 
-                            item.completed ? "border-emerald-100 bg-emerald-50/30" : "border-slate-100 bg-slate-50/50"
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            {item.completed && <div className="bg-emerald-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>}
-                            <span className={cn("text-xs font-bold", item.completed ? "text-emerald-700" : "text-slate-700")}>{item.task}</span>
-                          </div>
-                          {selectedChecklistItemId === item.id ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <ChevronRight className="h-3 w-3 text-slate-300" />}
-                        </button>
-                      ))
-                    ) : (
-                      <p className="text-xs text-slate-400 italic text-center py-4">Sin puntos de inspección definidos.</p>
-                    )}
+                    {selectedOT.checklist?.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setSelectedChecklistItemId(selectedChecklistItemId === item.id ? null : item.id)}
+                        className={cn(
+                          "w-full text-left p-4 rounded-2xl border-2 transition-all flex items-center justify-between",
+                          selectedChecklistItemId === item.id ? "border-primary bg-primary/5" : 
+                          item.completed ? "border-emerald-100 bg-emerald-50/30" : "border-slate-100 bg-slate-50/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          {item.completed && <div className="bg-emerald-500 rounded-full p-1"><Check className="h-3 w-3 text-white" /></div>}
+                          <span className={cn("text-xs font-bold", item.completed ? "text-emerald-700" : "text-slate-700")}>{item.task}</span>
+                        </div>
+                        {selectedChecklistItemId === item.id ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <ChevronRight className="h-3 w-3 text-slate-300" />}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -418,32 +402,30 @@ export default function FieldCapturePage() {
                     <MessageSquare className="h-4 w-4 text-blue-500" /> Nota de Bitácora
                   </Label>
                   <Textarea 
-                    placeholder={selectedChecklistItemId ? "Añade una nota para esta tarea específica..." : "Detalles generales del hallazgo..."} 
+                    placeholder={selectedChecklistItemId ? "Añade una nota para esta tarea..." : "Detalles del hallazgo..."} 
                     className="rounded-2xl min-h-[80px] border-2 bg-slate-50/50 text-sm"
                     value={logComment}
                     onChange={(e) => setLogComment(e.target.value)}
                   />
                   
-                  <div className="flex flex-col gap-3">
-                    <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-                    <Button 
-                      className={cn(
-                        "w-full h-24 rounded-3xl shadow-xl flex flex-col gap-2 transition-all",
-                        selectedChecklistItemId ? "bg-primary text-white" : "bg-slate-100 text-slate-600 border-2 border-dashed border-slate-300"
-                      )}
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                    >
-                      {isUploading ? <Loader2 className="animate-spin" /> : (
-                        <>
-                          <Camera className="h-8 w-8" />
-                          <span className="text-sm font-black uppercase italic">
-                            {selectedChecklistItemId ? "Subir Foto con GPS" : "Evidencia General con GPS"}
-                          </span>
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                  <Button 
+                    className={cn(
+                      "w-full h-24 rounded-3xl shadow-xl flex flex-col gap-2 transition-all",
+                      selectedChecklistItemId ? "bg-primary text-white" : "bg-slate-100 text-slate-600 border-2 border-dashed border-slate-300"
+                    )}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? <Loader2 className="animate-spin" /> : (
+                      <>
+                        <Camera className="h-8 w-8" />
+                        <span className="text-sm font-black uppercase italic">
+                          {selectedChecklistItemId ? "Subir Foto con GPS" : "Evidencia General con GPS"}
+                        </span>
+                      </>
+                    )}
+                  </Button>
                 </div>
 
                 <div className="pt-8 border-t-2 border-dashed space-y-4">
@@ -468,43 +450,24 @@ export default function FieldCapturePage() {
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-[425px] rounded-[3rem]">
                         <DialogHeader>
-                          <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-center">Aprobación del Cliente</DialogTitle>
-                          <DialogDescription className="text-center font-bold">Pida al cliente que escanee el código para validar el servicio.</DialogDescription>
+                          <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-center">Aprobación Digital</DialogTitle>
+                          <DialogDescription className="text-center font-bold">El cliente debe escanear para validar.</DialogDescription>
                         </DialogHeader>
                         <div className="flex flex-col items-center justify-center p-6 space-y-8">
                           <div className="bg-white p-4 rounded-3xl shadow-2xl border-2 border-slate-50 relative overflow-hidden">
                             <img src={qrImageUrl} alt="QR de Aprobación" className="w-64 h-64" />
-                            <div className="absolute inset-0 bg-indigo-600/5 pointer-events-none" />
                           </div>
-                          
                           <div className="w-full space-y-4">
                             <div className="bg-slate-900 text-white p-6 rounded-3xl space-y-2 text-center relative overflow-hidden">
-                              <div className="absolute left-0 top-0 p-4 opacity-10"><Lock className="h-12 w-12" /></div>
                               <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.3em]">PIN de Verificación</p>
                               <p className="text-4xl font-black italic tracking-[0.5em]">{selectedOT.approvalPin || '------'}</p>
                             </div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase text-center leading-relaxed">
-                              El cliente deberá ingresar este PIN en su celular <br />para emitir el sello digital.
-                            </p>
                           </div>
-                        </div>
-                        <div className="flex justify-center pb-4">
-                          <Button variant="ghost" className="text-[10px] font-black uppercase tracking-widest" onClick={() => setIsQrOpen(false)}>Cerrar Ventana</Button>
                         </div>
                       </DialogContent>
                     </Dialog>
                   </div>
 
-                  <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100 flex gap-3">
-                    <Fingerprint className="h-6 w-6 text-blue-600 shrink-0" />
-                    <div>
-                      <p className="text-xs font-black text-blue-900 uppercase">Sello de Finalización GPS</p>
-                      <p className="text-[10px] text-blue-700/70 font-medium leading-relaxed">
-                        Al finalizar, se registrará su posición satelital como comprobante de ejecución en terreno.
-                      </p>
-                    </div>
-                  </div>
-                  
                   <Button 
                     className="w-full h-16 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest gap-2 shadow-2xl"
                     onClick={handleFinalizeWork}
