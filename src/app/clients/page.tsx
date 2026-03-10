@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -54,7 +53,7 @@ import {
   ShieldCheck,
   User,
   Globe
-} from "lucide-center";
+} from "lucide-react";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
