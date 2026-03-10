@@ -325,41 +325,88 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
     setIsSendingEmail(true);
     try {
+      // 1. Construir HTML de Protocolos
+      const protocolsHtml = ot.checklist && ot.checklist.length > 0 
+        ? `<div style="margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+            <p style="font-weight: 900; color: #1e3a8a; font-size: 12px; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px;">Protocolos Técnicos Verificados:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+              ${ot.checklist.map(item => `
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f8fafc; vertical-align: top; width: 24px;">
+                    <span style="color: #10b981; font-size: 16px;">✓</span>
+                  </td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #f8fafc; font-size: 13px; color: #475569;">
+                    ${item.task}
+                  </td>
+                </tr>
+              `).join('')}
+            </table>
+           </div>`
+        : '';
+
+      // 2. Construir HTML de Partidas/Magnitudes
+      const itemsHtml = ot.serviceItems && ot.serviceItems.length > 0
+        ? `<div style="margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+            <p style="font-weight: 900; color: #1e3a8a; font-size: 12px; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px;">Desglose de Partidas:</p>
+            <table style="width: 100%; font-size: 12px; border-collapse: collapse; background-color: #f8fafc; border-radius: 12px;">
+              ${ot.serviceItems.map(item => `
+                <tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #ffffff; color: #475569;">${item.description}</td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #ffffff; text-align: right; font-weight: 900; color: #1e293b;">${item.quantity} ${item.unit}</td>
+                </tr>
+              `).join('')}
+            </table>
+           </div>`
+        : '';
+
       const result = await sendSystemEmail({
         to: client.contactEmail,
         subject: `APROBACIÓN DE SERVICIO - ${company?.name || 'PCGMANTENIMIENTO'}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 40px; border: 1px solid #e2e8f0; border-radius: 24px; background-color: #ffffff; color: #1e293b;">
             <div style="text-align: center; margin-bottom: 32px;">
-              <h1 style="color: #1e3a8a; margin: 0; text-transform: uppercase; letter-spacing: -1px;">${company?.name || 'PCGMANTENIMIENTO'}</h1>
-              <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Servicios Industriales Avanzados</p>
+              <h1 style="color: #1e3a8a; margin: 0; text-transform: uppercase; letter-spacing: -1px; font-size: 24px; font-weight: 900;">${company?.name || 'PCGMANTENIMIENTO'}</h1>
+              <p style="color: #64748b; font-size: 14px; margin-top: 4px; font-weight: 600;">Servicios Industriales Avanzados</p>
             </div>
             
-            <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; font-weight: 800;">Solicitud de Aprobación Digital</h2>
+            <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 24px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; font-weight: 800; italic: true;">Solicitud de Aprobación Digital</h2>
             
             <p style="font-size: 15px; line-height: 1.6;">Estimados <strong>${client.name}</strong>,</p>
-            <p style="font-size: 15px; line-height: 1.6;">Los trabajos correspondientes a la Orden de Trabajo <strong>${ot.id}</strong> han sido finalizados técnicamente.</p>
+            <p style="font-size: 15px; line-height: 1.6;">Le informamos que los servicios técnicos correspondientes a la <strong>Orden de Trabajo ${ot.id}</strong> han sido completados según el protocolo establecido. A continuación se detalla la ejecución para su validación conforme:</p>
             
-            <p style="font-size: 15px; line-height: 1.6;">Para cerrar el ciclo y generar su certificado de recepción conforme, por favor ingrese al siguiente portal:</p>
+            <div style="background-color: #f8fafc; border-radius: 20px; padding: 24px; margin: 24px 0; border: 1px solid #e2e8f0;">
+              <p style="margin-top: 0; font-weight: 900; color: #1e3a8a; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Misión del Servicio:</p>
+              <p style="font-size: 14px; color: #475569; font-style: italic; margin-bottom: 0; line-height: 1.6;">"${ot.description}"</p>
+              
+              <div style="margin-top: 16px;">
+                <p style="margin-bottom: 4px; font-weight: 900; color: #1e3a8a; text-transform: uppercase; font-size: 12px; letter-spacing: 1px;">Ubicación:</p>
+                <p style="font-size: 13px; color: #64748b; margin: 0;">${ot.street} ${ot.streetNumber}, ${ot.commune}</p>
+              </div>
+
+              ${protocolsHtml}
+              ${itemsHtml}
+            </div>
+
+            <p style="font-size: 15px; line-height: 1.6; font-weight: 600;">Para generar su certificado de recepción técnica conforme, por favor ingrese al siguiente portal seguro:</p>
             
-            <div style="text-align: center; margin: 32px 0;">
-              <a href="${currentUrl}" style="background-color: #1e3a8a; color: #ffffff; padding: 20px 40px; text-decoration: none; border-radius: 14px; font-weight: 900; font-size: 16px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);">
-                REVISAR Y APROBAR SERVICIO
+            <div style="text-align: center; margin: 40px 0;">
+              <a href="${currentUrl}" style="background-color: #1e3a8a; color: #ffffff; padding: 20px 48px; text-decoration: none; border-radius: 16px; font-weight: 900; font-size: 16px; display: inline-block; box-shadow: 0 10px 25px -3px rgba(30, 58, 138, 0.3); text-transform: uppercase;">
+                REVISAR Y FIRMAR DIGITALMENTE
               </a>
             </div>
 
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 24px; border-radius: 16px; margin-bottom: 24px; text-align: center;">
-              <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 1px;">Código PIN de Verificación</p>
-              <div style="font-size: 32px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 6px; background: #ffffff; border: 2px dashed #cbd5e1; padding: 12px; display: inline-block; border-radius: 8px;">
+            <div style="background-color: #f1f5f9; border: 2px dashed #cbd5e1; padding: 32px; border-radius: 20px; margin-bottom: 24px; text-align: center;">
+              <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 2px;">PIN Único de Verificación</p>
+              <div style="font-size: 42px; font-family: 'Courier New', monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 10px; background: #ffffff; border: 1px solid #e2e8f0; padding: 16px; display: inline-block; border-radius: 12px; box-shadow: inset 0 2px 4px 0 rgba(0,0,0,0.06);">
                 ${ot.approvalPin}
               </div>
-              <p style="color: #64748b; font-size: 11px; margin-top: 12px; font-weight: 600;">
-                * Utilice este código único para firmar digitalmente su conformidad técnica.
+              <p style="color: #64748b; font-size: 11px; margin-top: 16px; font-weight: 700; line-height: 1.4;">
+                * Este código es obligatorio para validar su identidad en el portal.<br/>Garantiza la trazabilidad legal de su aprobación.
               </p>
             </div>
             
             <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
-            <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">Este es un mensaje automatizado enviado vía PCGMANTENIMIENTO ERP.</p>
+            <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">Este es un mensaje automatizado de auditoría técnica enviado vía PCGMANTENIMIENTO ERP.</p>
           </div>
         `
       });
@@ -371,7 +418,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           companyId,
           timestamp: serverTimestamp(),
           eventType: 'system_alert',
-          eventDetails: `Se envió link de aprobación al cliente (${client.contactEmail}) vía email.`,
+          eventDetails: `Se envió reporte detallado y link de aprobación al cliente (${client.contactEmail}) vía email. Incluye protocolos y partidas.`,
           actor: profile?.id || 'system'
         });
       } else {
