@@ -422,6 +422,30 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* GUÍA DE ACTIVACIÓN - AHORA ANTES DE LOS ACCESOS DIRECTOS */}
+      {!allStepsCompleted && (
+        <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
+          <div className="grid md:grid-cols-3">
+            <div className="p-10 space-y-6 bg-blue-600/10 border-r border-white/5">
+              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40"><Zap className="h-6 w-6 text-white fill-white" /></div>
+              <h3 className="text-2xl font-black tracking-tighter italic uppercase leading-none">Guía de <br />Activación</h3>
+              <p className="text-xs text-slate-400 font-bold uppercase">Pasos críticos para configurar tu entorno</p>
+              <Progress value={(onboardingSteps.filter(s => s.completed).length / 4) * 100} className="h-2 bg-white/10" />
+            </div>
+            <div className="md:col-span-2 p-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {onboardingSteps.map((step) => (
+                <Link key={step.id} href={step.href}>
+                  <div className={cn("group p-5 rounded-[1.5rem] border-2 transition-all flex items-center justify-between h-full", step.completed ? "border-emerald-500/20 bg-emerald-500/5 opacity-60" : "border-white/10 bg-white/5 hover:border-blue-500/50")}>
+                    <div className="space-y-1"><p className={cn("text-xs font-black uppercase tracking-widest", step.completed ? "text-emerald-400" : "text-blue-400")}>{step.label}</p><p className="text-[11px] text-slate-400 font-medium">{step.desc}</p></div>
+                    {step.completed ? <Check className="h-4 w-4 text-emerald-400" /> : <ChevronRight className="h-4 w-4 text-white/20" />}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* GESTIÓN DE INFRAESTRUCTURA */}
       <div className="grid gap-6 md:grid-cols-2">
         <Link href="/clients" className="block group">
@@ -462,29 +486,6 @@ export default function DashboardPage() {
           </Card>
         </Link>
       </div>
-
-      {!allStepsCompleted && (
-        <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
-          <div className="grid md:grid-cols-3">
-            <div className="p-10 space-y-6 bg-blue-600/10 border-r border-white/5">
-              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/40"><Zap className="h-6 w-6 text-white fill-white" /></div>
-              <h3 className="text-2xl font-black tracking-tighter italic uppercase leading-none">Guía de <br />Activación</h3>
-              <p className="text-xs text-slate-400 font-bold uppercase">Pasos críticos para configurar tu entorno</p>
-              <Progress value={(onboardingSteps.filter(s => s.completed).length / 4) * 100} className="h-2 bg-white/10" />
-            </div>
-            <div className="md:col-span-2 p-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {onboardingSteps.map((step) => (
-                <Link key={step.id} href={step.href}>
-                  <div className={cn("group p-5 rounded-[1.5rem] border-2 transition-all flex items-center justify-between h-full", step.completed ? "border-emerald-500/20 bg-emerald-500/5 opacity-60" : "border-white/10 bg-white/5 hover:border-blue-500/50")}>
-                    <div className="space-y-1"><p className={cn("text-xs font-black uppercase tracking-widest", step.completed ? "text-emerald-400" : "text-blue-400")}>{step.label}</p><p className="text-[11px] text-slate-400 font-medium">{step.desc}</p></div>
-                    {step.completed ? <Check className="h-4 w-4 text-emerald-400" /> : <ChevronRight className="h-4 w-4 text-white/20" />}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </Card>
-      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {[
