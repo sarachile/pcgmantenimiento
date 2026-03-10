@@ -166,7 +166,7 @@ export default function SuperadminDashboardPage() {
                   </div>
                   <Badge className={cn(
                     "text-[9px] font-black uppercase",
-                    diff <= 3 ? "bg-rose-500" : "bg-blue-600"
+                    diff <= 3 ? "bg-rose-50" : "bg-blue-600"
                   )}>
                     {diff < 0 ? "Expirado" : `${diff} Días`}
                   </Badge>
