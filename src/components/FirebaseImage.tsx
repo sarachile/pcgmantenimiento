@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { Loader2, ImageOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -13,9 +12,8 @@ interface FirebaseImageProps {
 }
 
 /**
- * Componente optimizado para renderizar imágenes de Firebase Storage.
- * Utiliza next/image con unoptimized={true} para evitar conflictos de dominio y CORS
- * mientras mantiene los beneficios de lazy-loading intrínseco.
+ * Componente optimizado para reportes PDF y visualización web.
+ * Usa etiqueta img estándar para asegurar compatibilidad total con html2canvas y CORS.
  */
 export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: FirebaseImageProps) {
   const [loading, setLoading] = useState(true);
@@ -26,21 +24,10 @@ export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: Fir
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (url) {
-      setLoading(true);
-      setError(false);
-    } else {
-      setLoading(false);
-      setError(false);
-    }
-  }, [url]);
-
   if (!mounted) {
     return <div className={cn("bg-muted/10 animate-pulse rounded-xl", className)} />;
   }
 
-  // Si no hay URL o hay error persistente, mostramos placeholder neutro
   if (!url || error) {
     return (
       <div className={cn("flex flex-col items-center justify-center bg-slate-100 border border-dashed rounded-xl p-4 text-slate-300", className)}>
@@ -58,18 +45,16 @@ export function FirebaseImage({ url, alt = "Imagen de Terreno", className }: Fir
         </div>
       )}
       
-      <Image
+      <img
         src={url}
         alt={alt}
-        fill
         className={cn(
-          "object-cover transition-all duration-500", 
-          loading ? "opacity-0 scale-105" : "opacity-100 scale-100"
+          "w-full h-full object-cover transition-opacity duration-500", 
+          loading ? "opacity-0" : "opacity-100"
         )}
-        unoptimized={true} // Obligatorio para URLs externas dinámicas de Firebase en modo prototipo
+        crossOrigin="anonymous"
         onLoad={() => setLoading(false)}
-        onError={(e) => {
-          console.error("Fallo carga imagen Firebase:", url);
+        onError={() => {
           setLoading(false);
           setError(true);
         }}

@@ -1,10 +1,11 @@
+
 "use client";
 
 import React from "react";
 import { Company, WorkOrder, Client, Asset, DigitalLogbookEntry, PartUsage, StaffMember } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar, User, Building2, Globe, Layers } from "lucide-react";
+import { ShieldCheck, HardHat, MapPin, CheckCircle2, Users, Fingerprint, Camera, Check, Hash, Calendar, User, Building2, Globe, Layers, History } from "lucide-react";
 import { FirebaseImage } from "@/components/FirebaseImage";
 
 interface WorkOrderReportProps {
@@ -102,11 +103,35 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
       </div>
 
+      {logbook && logbook.length > 0 && (
+        <div className="mb-10">
+          <h3 className="text-[10px] font-black uppercase text-slate-400 border-b-2 pb-2 mb-4 flex items-center gap-2">
+            <History className="h-4 w-4" /> BITÁCORA TÉCNICA DE TRAZABILIDAD
+          </h3>
+          <div className="space-y-3 bg-slate-50 p-6 rounded-2xl border">
+            {logbook.slice(0, 10).map(entry => (
+              <div key={entry.id} className="flex gap-4 border-b border-slate-200 pb-2 last:border-0 last:pb-0">
+                <span className="text-[8px] font-black text-slate-400 w-24 shrink-0 uppercase">{formatDateLabel(entry.timestamp)}</span>
+                <div className="flex-1">
+                  <p className="text-[9px] font-black uppercase text-slate-900 mb-0.5">{entry.eventType.replace('_', ' ')}</p>
+                  <p className="text-[10px] text-slate-600 font-medium leading-tight">{entry.eventDetails}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="mt-auto pt-16 border-t-2 border-slate-100 grid grid-cols-2 gap-20">
         <div className="text-center space-y-4">
           <div className="h-32 border-2 border-slate-900 flex flex-col items-center justify-center bg-slate-50/30 p-4 rounded-xl">
             {workOrder.technicianApprovalCode ? (
-              <><Check className="h-8 w-8 text-emerald-600 mb-2" /><p className="text-[10px] font-black uppercase">VALIDACIÓN TÉCNICA</p><p className="text-[8px] font-mono text-slate-400">CÓD: {workOrder.technicianApprovalCode}</p></>
+              <>
+                <Check className="h-8 w-8 text-emerald-600 mb-2" />
+                <p className="text-[10px] font-black uppercase text-slate-900 leading-tight mb-1">{workOrder.technicianApprovalName}</p>
+                <p className="text-[10px] font-black uppercase text-emerald-600">VALIDACIÓN TÉCNICA</p>
+                <p className="text-[8px] font-mono text-slate-400 mt-1">CÓD: {workOrder.technicianApprovalCode}</p>
+              </>
             ) : <span className="text-[9px] text-slate-300 italic font-bold">Pendiente</span>}
           </div>
           <p className="text-[11px] font-black text-slate-900 uppercase">Firma Técnico Responsable</p>
@@ -114,7 +139,12 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         <div className="text-center space-y-4">
           <div className="h-32 border-2 border-slate-900 flex flex-col items-center justify-center bg-slate-50/50 p-4 rounded-xl">
             {workOrder.clientApprovalCode ? (
-              <><Fingerprint className="h-8 w-8 text-slate-900 mb-2" /><p className="text-[10px] font-black uppercase">APROBACIÓN DIGITAL</p><p className="text-[8px] font-mono text-slate-400">ID: {workOrder.clientApprovalCode}</p></>
+              <>
+                <Fingerprint className="h-8 w-8 text-slate-900 mb-2" />
+                <p className="text-[10px] font-black uppercase text-slate-900 leading-tight mb-1">{workOrder.clientApprovalName}</p>
+                <p className="text-[10px] font-black uppercase text-slate-900">APROBACIÓN DIGITAL</p>
+                <p className="text-[8px] font-mono text-slate-400 mt-1">ID: {workOrder.clientApprovalCode}</p>
+              </>
             ) : <span className="text-[9px] text-slate-300 italic font-bold">Pendiente</span>}
           </div>
           <p className="text-[11px] font-black text-slate-900 uppercase">Validación Recepción Cliente</p>
