@@ -81,6 +81,7 @@ const businessItems: NavItem[] = [
 const settingsItems: NavItem[] = [
   { title: "Mi Empresa", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor'] },
   { title: "Equipo Técnico", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Centro de Soporte", href: "/support", icon: LifeBuoy },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
 ];
 
