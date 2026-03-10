@@ -2,62 +2,37 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // 1. REGLAS DE SOPORTE (Propiedad estricta)
+    // 1. SOPORTE TÉCNICO
+    // Permite a usuarios autenticados gestionar sus propios tickets
     match /supportTickets/{ticketId} {
-      // El usuario puede leer si es el dueño o si es superadmin
-      allow read: if request.auth != null && (
+      allow create: if request.auth != null;
+      allow read, update: if request.auth != null && (
         resource.data.userId == request.auth.uid || 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
       );
       
-      // El usuario puede crear si se identifica correctamente
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      
-      // Actualización permitida para dueños o admins
-      allow update: if request.auth != null && (
-        resource.data.userId == request.auth.uid || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
-      );
-
-      // Mensajes del ticket
       match /messages/{messageId} {
         allow read, write: if request.auth != null;
       }
     }
 
-    // 2. OPERACIÓN Y PORTAL QR (Acceso controlado pero flexible para clientes)
+    // 2. OPERACIÓN EMPRESARIAL Y PORTAL QR (Apertura Total solicitada)
+    // Se habilita acceso total para asegurar que técnicos y clientes (QR) operen sin bloqueos
     match /companies/{companyId} {
-      allow read: if true; // Necesario para el portal QR
-      allow write: if request.auth != null;
+      allow read, write: if true;
 
-      match /workOrders/{orderId} {
-        allow read: if true; // Necesario para que el cliente firme vía QR
-        allow write: if request.auth != null;
-        
-        match /digitalLogbookEntries/{entryId} {
-          allow read: if true;
-          allow write: if request.auth != null;
-        }
-      }
-      
-      match /clients/{clientId} {
-        allow read: if true;
-        allow write: if request.auth != null;
-      }
-      
-      match /assets/{assetId} {
-        allow read: if true;
-        allow write: if request.auth != null;
+      // Abre todas las subcolecciones: staff, workOrders, clients, assets, spareParts, teams, evaluations
+      match /{allSubcollections=**} {
+        allow read, write: if true;
       }
     }
 
-    // 3. PERFILES DE USUARIO
+    // 3. PERFILES DE USUARIO Y PERSONAL
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if true;
     }
 
-    // 4. CORREOS
+    // 4. SISTEMA DE CORREOS
     match /mail/{document=**} {
       allow read, write: if request.auth != null;
     }
