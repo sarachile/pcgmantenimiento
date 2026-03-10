@@ -55,7 +55,8 @@ export default function FieldCapturePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedOT, setSelectedOT] = useState<WorkOrder | null>(null);
+  // IMPORTANTE: Guardamos el ID para mantener reactividad total con la colección
+  const [selectedOTId, setSelectedOTId] = useState<string | null>(null);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -69,10 +70,6 @@ export default function FieldCapturePage() {
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
-
-  useEffect(() => {
-    getPosition();
-  }, [selectedOT]);
 
   const workOrdersQuery = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -90,6 +87,12 @@ export default function FieldCapturePage() {
   }, [db, profile?.companyId]);
 
   const { data: clients } = useCollection<Client>(clientsQuery);
+
+  // OT Seleccionada derivada de la colección (REACTIVA)
+  const selectedOT = useMemo(() => {
+    if (!selectedOTId || !workOrders) return null;
+    return workOrders.find(ot => ot.id === selectedOTId) || null;
+  }, [workOrders, selectedOTId]);
 
   const filtered = useMemo(() => {
     let list = (workOrders || []).filter(ot => ot.status !== 'aprobada' && !ot.isDeleted);
@@ -110,12 +113,10 @@ export default function FieldCapturePage() {
   }, [workOrders, clients, searchTerm, isTechnician, profile]);
 
   useEffect(() => {
-    if (!isOrdersLoading && !selectedOT && filtered.length === 1 && searchTerm === "") {
-      setSelectedOT(filtered[0]);
-    }
-  }, [filtered, isOrdersLoading, selectedOT, searchTerm]);
+    getPosition();
+  }, [selectedOTId]);
 
-  // REQUISITO: Todos los puntos marcados (completed === true)
+  // REQUISITO: Todos los puntos marcados como OK
   const isChecklistComplete = useMemo(() => {
     if (!selectedOT || !selectedOT.checklist) return false;
     if (selectedOT.checklist.length === 0) return true;
@@ -144,6 +145,7 @@ export default function FieldCapturePage() {
       return item;
     });
 
+    // Actualización instantánea en caché local
     updateDocumentNonBlocking(otRef, {
       checklist: updatedChecklist,
       updatedAt: serverTimestamp(),
@@ -294,8 +296,21 @@ export default function FieldCapturePage() {
             <div className="bg-blue-600 text-white p-6 rounded-[2rem] shadow-lg flex items-center gap-4">
               <div className="bg-white/20 p-3 rounded-2xl"><Info className="h-6 w-6" /></div>
               <div>
-                <p className="font-black uppercase italic tracking-tight">Instrucciones</p>
-                <p className="text-[11px] font-medium text-blue-100 leading-tight">Marque los puntos realizados. Si desea adjuntar fotos por tarea, pulse la descripción.</p>
+                <p className="font-black uppercase italic tracking-tight text-sm">Guía de Uso Rápida</p>
+                <div className="space-y-1 mt-1">
+                  <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest flex items-center gap-2">
+                    <span className="h-4 w-4 rounded-full bg-white text-blue-600 flex items-center justify-center text-[8px]">1</span>
+                    Pulsa el círculo para marcar como OK
+                  </p>
+                  <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest flex items-center gap-2">
+                    <span className="h-4 w-4 rounded-full bg-white text-blue-600 flex items-center justify-center text-[8px]">2</span>
+                    Toca la descripción para abrir cámara
+                  </p>
+                  <p className="text-[10px] font-black text-blue-100 uppercase tracking-widest flex items-center gap-2">
+                    <span className="h-4 w-4 rounded-full bg-white text-blue-600 flex items-center justify-center text-[8px]">3</span>
+                    Finaliza para enviar al supervisor
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -319,7 +334,7 @@ export default function FieldCapturePage() {
                 filtered.map(ot => (
                   <button 
                     key={ot.id}
-                    onClick={() => setSelectedOT(ot)}
+                    onClick={() => setSelectedOTId(ot.id)}
                     className="w-full text-left bg-white p-6 rounded-[2rem] shadow-sm border-2 border-transparent active:scale-95 active:border-primary transition-all flex items-center justify-between"
                   >
                     <div>
@@ -349,7 +364,7 @@ export default function FieldCapturePage() {
                       {clients?.find(c => c.id === selectedOT.clientId)?.name}
                     </CardDescription>
                   </div>
-                  <Button variant="outline" size="sm" className="border-white/20 text-white bg-white/5 rounded-xl h-8 text-[9px] font-black uppercase" onClick={() => setSelectedOT(null)}>Cambiar OT</Button>
+                  <Button variant="outline" size="sm" className="border-white/20 text-white bg-white/5 rounded-xl h-8 text-[9px] font-black uppercase" onClick={() => setSelectedOTId(null)}>Cambiar OT</Button>
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-8">
@@ -385,7 +400,7 @@ export default function FieldCapturePage() {
                               ? "border-emerald-100 bg-emerald-50/20" 
                               : "border-slate-100 bg-white hover:border-primary/30 shadow-sm"
                           )}>
-                            {/* BOTÓN CHECK INDEPENDIENTE */}
+                            {/* BOTÓN CHECK INDEPENDIENTE Y REACTIVO */}
                             <button 
                               onClick={() => handleToggleTask(item.id, item.completed)}
                               className={cn(
@@ -396,7 +411,7 @@ export default function FieldCapturePage() {
                               )}
                               title="Marcar como realizado"
                             >
-                              <Check className={cn("h-7 w-7", !item.completed && "opacity-0")} />
+                              <Check className={cn("h-7 w-7 transition-opacity", !item.completed && "opacity-0")} />
                             </button>
 
                             {/* ZONA DE TEXTO Y CÁMARA */}
@@ -412,13 +427,13 @@ export default function FieldCapturePage() {
                                 {item.task}
                               </span>
                               <span className={cn(
-                                "text-[9px] font-bold uppercase mt-1.5 flex items-center gap-1.5",
+                                "text-[9px] font-black uppercase mt-1.5 flex items-center gap-1.5 animate-pulse",
                                 photos.length > 0 ? "text-emerald-600" : "text-primary"
                               )}>
                                 <Camera className="h-3 w-3" /> 
                                 {photos.length > 0 
                                   ? `EVIDENCIA: ${photos.length} FOTOS` 
-                                  : "ADJUNTAR FOTO (OPCIONAL)"}
+                                  : "PULSAR PARA ABRIR CÁMARA"}
                               </span>
                             </button>
 
@@ -442,7 +457,7 @@ export default function FieldCapturePage() {
                   </div>
                 </div>
 
-                {/* EVIDENCIA GENERAL - MEJORADA */}
+                {/* EVIDENCIA GENERAL */}
                 <div className="pt-6 border-t-2 border-dashed border-slate-100 space-y-4">
                   <div className="flex items-center justify-between px-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
@@ -457,7 +472,7 @@ export default function FieldCapturePage() {
                     onClick={() => { setActiveTaskId(null); fileInputRef.current?.click(); }}
                     disabled={isUploading}
                   >
-                    {isUploading && !activeTaskId ? <Loader2 className="animate-spin h-5 w-5" /> : <><PlusCircle className="h-5 w-5" /> Sube una foto del trabajo terminado</>}
+                    {isUploading && !activeTaskId ? <Loader2 className="animate-spin h-5 w-5" /> : <><PlusCircle className="h-5 w-5" /> Subir Registro Fotográfico Final</>}
                   </Button>
                   
                   {selectedOT.evidenceUrls && selectedOT.evidenceUrls.length > 0 && (
