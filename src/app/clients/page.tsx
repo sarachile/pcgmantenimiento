@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -333,7 +334,7 @@ export default function ClientsPage() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-slate-400">Ciudad *</Label>
-                      <Select key={`city-${formData.region}`} value={formData.city} onValueChange={(v) => setFormData({...formData, city: v, commune: ""})} disabled={!formData.region}>
+                      <Select key={`city-${formData.region}`} value={formData.city} onValueChange={(v) => setFormData({...formData, city: v})} disabled={!formData.region}>
                         <SelectTrigger className="h-12 border-2 rounded-xl">
                           <SelectValue placeholder="Ciudad" />
                         </SelectTrigger>
@@ -344,7 +345,7 @@ export default function ClientsPage() {
                     </div>
                     <div className="space-y-2">
                       <Label className="text-[10px] font-black uppercase text-slate-400">Comuna *</Label>
-                      <Select key={`commune-${formData.city}`} value={formData.commune} onValueChange={(v) => setFormData({...formData, commune: v})} disabled={!formData.city}>
+                      <Select key={`commune-${formData.region}`} value={formData.commune} onValueChange={(v) => setFormData({...formData, commune: v})} disabled={!formData.region}>
                         <SelectTrigger className="h-12 border-2 rounded-xl">
                           <SelectValue placeholder="Comuna" />
                         </SelectTrigger>

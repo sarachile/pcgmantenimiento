@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, Suspense, useRef, useMemo } from "react";
@@ -238,8 +239,8 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
                       <p className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-2"><Globe className="h-4 w-4" /> Confirmar Ubicación del Servicio</p>
                       <div className="grid grid-cols-3 gap-4">
                         <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Región *</Label><Select value={region} onValueChange={v => { setRegion(v); setCity(""); setCommune(""); }}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue placeholder="Región" /></SelectTrigger><SelectContent>{CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}</SelectContent></Select></div>
-                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Ciudad *</Label><Select key={`city-${region}`} value={city} onValueChange={v => { setCity(v); setCommune(""); }} disabled={!region}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue placeholder="Ciudad" /></SelectTrigger><SelectContent>{selectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Comuna *</Label><Select key={`commune-${city}`} value={commune} onValueChange={setCommune} disabled={!city}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue placeholder="Comuna" /></SelectTrigger><SelectContent>{selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Ciudad *</Label><Select key={`city-${region}`} value={city} onValueChange={v => setCity(v)} disabled={!region}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue placeholder="Ciudad" /></SelectTrigger><SelectContent>{selectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                        <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Comuna *</Label><Select key={`commune-${region}`} value={commune} onValueChange={setCommune} disabled={!region}><SelectTrigger className="h-12 border-2 rounded-xl bg-white"><SelectValue placeholder="Comuna" /></SelectTrigger><SelectContent>{selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
                       </div>
                       <div className="grid grid-cols-3 gap-4">
                         <div className="col-span-2 space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Calle *</Label><Input value={street} onChange={e => setStreet(e.target.value)} className="h-12 border-2 rounded-xl bg-white" required /></div>

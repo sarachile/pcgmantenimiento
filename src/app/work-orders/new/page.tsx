@@ -101,19 +101,14 @@ function NewWorkOrderContent() {
     if (!isEditing && !duplicateFrom && clientId && clients) {
       const selectedClient = clients.find(c => c.id === clientId);
       if (selectedClient) {
-        // Establecer región primero para habilitar el resto de la cascada
         setRegion(selectedClient.region || "");
-        
-        // Timeout breve para asegurar que los selectores de ciudad y comuna se habiliten
-        setTimeout(() => {
-          setCity(selectedClient.city || "");
-          setCommune(selectedClient.commune || "");
-          setStreet(selectedClient.street || "");
-          setStreetNumber(selectedClient.streetNumber || "");
-          setComplement(selectedClient.complement || "");
-          setRequestedByName(selectedClient.contactName || "");
-          toast({ title: "Dirección cargada", description: "Datos heredados de la ficha del cliente." });
-        }, 150);
+        setCity(selectedClient.city || "");
+        setCommune(selectedClient.commune || "");
+        setStreet(selectedClient.street || "");
+        setStreetNumber(selectedClient.streetNumber || "");
+        setComplement(selectedClient.complement || "");
+        setRequestedByName(selectedClient.contactName || "");
+        toast({ title: "Dirección cargada", description: "Datos heredados de la ficha del cliente." });
       }
     }
   }, [clientId, clients, isEditing, duplicateFrom, toast]);
@@ -162,7 +157,6 @@ function NewWorkOrderContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // VALIDACIÓN GRANULAR EXHAUSTIVA
     const missingFields = [];
     if (!description.trim()) missingFields.push("Descripción técnica");
     if (!clientId) missingFields.push("Cliente");
@@ -281,14 +275,14 @@ function NewWorkOrderContent() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Ciudad *</Label>
-                  <Select key={`city-${region}`} value={city} onValueChange={(v) => { setCity(v); setCommune(""); }} disabled={!region}>
+                  <Select key={`city-${region}`} value={city} onValueChange={(v) => setCity(v)} disabled={!region}>
                     <SelectTrigger className="h-12 rounded-xl border-2 bg-white"><SelectValue placeholder="Ciudad" /></SelectTrigger>
                     <SelectContent>{selectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-slate-400">Comuna *</Label>
-                  <Select key={`commune-${city}`} value={commune} onValueChange={setCommune} disabled={!city}>
+                  <Select key={`commune-${region}`} value={commune} onValueChange={setCommune} disabled={!region}>
                     <SelectTrigger className="h-12 rounded-xl border-2 bg-white"><SelectValue placeholder="Comuna" /></SelectTrigger>
                     <SelectContent>{selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
