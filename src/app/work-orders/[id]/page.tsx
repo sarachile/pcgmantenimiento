@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -97,8 +98,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [currentUrl, setCurrentUrl] = useState("");
 
   useEffect(() => {
-    if (typeof window !== "undefined" && profile?.companyId) {
-      const baseUrl = window.location.origin;
+    if (profile?.companyId) {
+      // FORCE PRODUCTION DOMAIN TO AVOID 401 DEV ERRORS
+      const baseUrl = "https://www.pcgmantenimiento.com";
       setCurrentUrl(`${baseUrl}/portal/approve/${otId}?c=${profile.companyId}`);
     }
   }, [otId, profile?.companyId]);

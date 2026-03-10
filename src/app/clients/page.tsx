@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -53,7 +54,7 @@ import {
   ShieldCheck,
   User,
   Globe
-} from "lucide-react";
+} from "lucide-center";
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
 import Link from "next/link";
@@ -194,8 +195,9 @@ export default function ClientsPage() {
   };
 
   const getPortalUrl = (client: Client) => {
-    if (typeof window === "undefined" || !profile?.companyId) return "";
-    return `${window.location.origin}/request/${client.id}?c=${profile.companyId}`;
+    if (!profile?.companyId) return "";
+    // FORCE PRODUCTION DOMAIN TO AVOID 401 DEV ERRORS
+    return `https://www.pcgmantenimiento.com/request/${client.id}?c=${profile.companyId}`;
   };
 
   const handleCopyLink = (client: Client) => {

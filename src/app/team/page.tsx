@@ -209,8 +209,9 @@ export default function TeamPage() {
 
   // --- UTILS ---
   const getInvitationLink = (staffId: string) => {
-    if (typeof window === "undefined" || !profile?.companyId) return "";
-    return `${window.location.origin}/staff/setup/${staffId}?c=${profile.companyId}`;
+    if (!profile?.companyId) return "";
+    // FORCE PRODUCTION DOMAIN TO AVOID 401 DEV ERRORS
+    return `https://www.pcgmantenimiento.com/staff/setup/${staffId}?c=${profile.companyId}`;
   };
 
   const handleCopyLink = (staffId: string) => {

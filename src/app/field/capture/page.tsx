@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useMemo, useEffect } from "react";
@@ -261,8 +262,8 @@ export default function FieldCapturePage() {
 
   const getApprovalUrl = () => {
     if (!selectedOT || !profile?.companyId) return "";
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/portal/approve/${selectedOT.id}?c=${profile.companyId}`;
+    // FORCE PRODUCTION DOMAIN TO AVOID 401 DEV ERRORS
+    return `https://www.pcgmantenimiento.com/portal/approve/${selectedOT.id}?c=${profile.companyId}`;
   };
 
   const qrImageUrl = useMemo(() => {
