@@ -51,7 +51,10 @@ import {
   Mail,
   QrCode,
   ShieldCheck,
-  Navigation
+  Navigation,
+  Download,
+  Maximize2,
+  Map as MapLucide
 } from "lucide-react";
 import {
   Dialog,
@@ -102,6 +105,14 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [currentUrl, setCurrentUrl] = useState("");
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+
+  // ImageViewer State
+  const [selectedImage, setSelectedImage] = useState<{
+    url: string;
+    task?: string;
+    lat?: number;
+    lng?: number;
+  } | null>(null);
 
   useEffect(() => {
     if (profile?.companyId) {
@@ -325,7 +336,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
     setIsSendingEmail(true);
     try {
-      // 1. Construir HTML de Protocolos
       const protocolsHtml = ot.checklist && ot.checklist.length > 0 
         ? `<div style="margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
             <p style="font-weight: 900; color: #1e3a8a; font-size: 12px; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px;">Protocolos Técnicos Verificados:</p>
@@ -344,7 +354,6 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
            </div>`
         : '';
 
-      // 2. Construir HTML de Partidas/Magnitudes
       const itemsHtml = ot.serviceItems && ot.serviceItems.length > 0
         ? `<div style="margin-top: 24px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
             <p style="font-weight: 900; color: #1e3a8a; font-size: 12px; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px;">Desglose de Partidas:</p>
@@ -428,6 +437,23 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
       toast({ title: "Error en envío", description: e.message, variant: "destructive" });
     } finally {
       setIsSendingEmail(false);
+    }
+  };
+
+  const handleDownloadImage = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `evidencia_${otId}_${Date.now()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      toast({ title: "Error al descargar", variant: "destructive" });
     }
   };
 
@@ -613,7 +639,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <CardHeader className="bg-primary/5 p-6 border-b">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-black uppercase flex items-center gap-2">
-                  <MapIcon className="h-5 w-5 text-primary" /> Ubicación del Servicio
+                  <MapLucide className="h-5 w-5 text-primary" /> Ubicación del Servicio
                 </CardTitle>
               </div>
             </CardHeader>
@@ -686,8 +712,15 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                       {photos.length > 0 && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                           {photos.map((url, i) => (
-                            <div key={i} className="aspect-video rounded-xl overflow-hidden shadow-sm border bg-slate-50 relative group/img">
-                              <FirebaseImage url={url} className="w-full h-full object-cover" />
+                            <div 
+                              key={i} 
+                              className="aspect-video rounded-xl overflow-hidden shadow-sm border bg-slate-50 relative group/img cursor-pointer"
+                              onClick={() => setSelectedImage({ url, task: item.task, lat: item.latitude, lng: item.longitude })}
+                            >
+                              <FirebaseImage url={url} className="w-full h-full object-cover transition-transform group-hover/img:scale-110" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                <Maximize2 className="text-white h-6 w-6" />
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -702,7 +735,16 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
                   <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2"><Images className="h-4 w-4" /> Galería General de Terreno</Label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {ot.evidenceUrls.map((url, i) => (
-                      <div key={i} className="aspect-video rounded-xl overflow-hidden border-2 shadow-sm group bg-slate-50"><FirebaseImage url={url} className="w-full h-full transition-transform group-hover:scale-110" /></div>
+                      <div 
+                        key={i} 
+                        className="aspect-video rounded-xl overflow-hidden border-2 shadow-sm group bg-slate-50 cursor-pointer relative"
+                        onClick={() => setSelectedImage({ url, task: "Evidencia General" })}
+                      >
+                        <FirebaseImage url={url} className="w-full h-full transition-transform group-hover:scale-110" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Maximize2 className="text-white h-6 w-6" />
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -729,6 +771,83 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
           </Card>
         </div>
       </div>
+
+      {/* MODAL VISOR DE IMAGEN AVANZADO */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="sm:max-w-[90vw] md:max-w-[800px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-black/95">
+          {selectedImage && (
+            <div className="relative flex flex-col">
+              <div className="p-6 flex items-center justify-between text-white border-b border-white/10">
+                <div className="space-y-1">
+                  <DialogTitle className="text-lg font-black uppercase italic tracking-tighter text-blue-400">
+                    Inspección de Evidencia
+                  </DialogTitle>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {selectedImage.task}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    className="text-white hover:bg-white/10 rounded-xl font-black text-[10px] uppercase gap-2"
+                    onClick={() => handleDownloadImage(selectedImage.url)}
+                  >
+                    <Download className="h-4 w-4" /> Descargar Original
+                  </Button>
+                </div>
+              </div>
+
+              <div className="relative aspect-video w-full bg-slate-900 flex items-center justify-center">
+                <img 
+                  src={selectedImage.url} 
+                  alt="Evidencia Full" 
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+
+              <div className="p-8 bg-slate-900 text-white space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {selectedImage.lat && selectedImage.lng ? (
+                    <div className="bg-white/5 p-5 rounded-2xl border border-white/10 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 p-2 rounded-lg"><Navigation className="h-4 w-4" /></div>
+                        <div>
+                          <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Georreferencia GPS</p>
+                          <p className="text-xs font-mono font-bold">{selectedImage.lat.toFixed(6)}, {selectedImage.lng.toFixed(6)}</p>
+                        </div>
+                      </div>
+                      <Button asChild variant="outline" className="w-full h-9 border-white/20 text-white hover:bg-white/10 text-[9px] font-black uppercase">
+                        <a 
+                          href={`https://www.google.com/maps/search/?api=1&query=${selectedImage.lat},${selectedImage.lng}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          <Globe className="h-3 w-3 mr-2" /> Abrir en Google Maps
+                        </a>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="bg-white/5 p-5 rounded-2xl border border-white/10 flex items-center gap-3 opacity-50">
+                      <MapPin className="h-5 w-5 text-slate-500" />
+                      <p className="text-[10px] font-black uppercase text-slate-500">Sin datos GPS registrados</p>
+                    </div>
+                  )}
+
+                  <div className="bg-white/5 p-5 rounded-2xl border border-white/10 space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Orden de Trabajo</p>
+                    <p className="text-lg font-black italic text-white">{otId}</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">{client?.name}</p>
+                  </div>
+                </div>
+                
+                <p className="text-[9px] text-slate-500 text-center uppercase font-bold tracking-[0.2em]">
+                  Certificación de Evidencia Técnica - PCGMANTENIMIENTO ERP
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <input 
         type="file" 
