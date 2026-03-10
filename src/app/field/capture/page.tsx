@@ -229,7 +229,7 @@ export default function FieldCapturePage() {
       });
 
       toast({ title: "Trabajo Enviado", description: "La orden pasó a revisión administrativa." });
-      setSelectedOT(null);
+      router.push('/dashboard');
     } catch (e) {
       toast({ title: "Error", variant: "destructive" });
     } finally {
@@ -238,8 +238,8 @@ export default function FieldCapturePage() {
   };
 
   const handleSaveProgress = () => {
-    setSelectedOT(null);
     toast({ title: "Progreso Guardado" });
+    router.push('/dashboard');
   };
 
   if (isUserLoading || isOrdersLoading) {
