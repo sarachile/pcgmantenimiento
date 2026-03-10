@@ -41,7 +41,8 @@ import {
   Images,
   QrCode,
   UserCheck,
-  Navigation
+  Navigation,
+  ShieldCheck
 } from "lucide-react";
 import {
   Dialog,
