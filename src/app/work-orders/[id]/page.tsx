@@ -142,7 +142,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!date) return "...";
     try {
       const d = date.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
-      return format(d, "dd MMM yyyy HH:mm", { locale: es });
+      return format(d, "dd/MM/yyyy HH:mm", { locale: es });
     } catch (e) { return "N/A"; }
   };
 
@@ -363,6 +363,15 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <Button onClick={handleVisaOrder} disabled={isUpdating} className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg">
               {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} 
               {ot.reviewerRequired ? "Visar y Habilitar Cliente" : "Visar y Aprobar"}
+            </Button>
+          )}
+          {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+            <Button 
+              variant="outline" 
+              onClick={() => { toast({ title: "Avance Guardado" }); router.push("/work-orders"); }} 
+              className="rounded-xl h-11 border-slate-200 font-bold"
+            >
+              <Save className="h-4 w-4 mr-2" /> Guardar Avance
             </Button>
           )}
           {isAdminOrSupervisor && <Button variant="outline" size="sm" asChild className="rounded-xl h-11 border-amber-200 text-amber-700 font-bold" disabled={ot.status === 'aprobada'}><Link href={`/work-orders/new?editId=${ot.id}`}><Edit2 className="h-4 w-4 mr-2" /> Editar</Link></Button>}
