@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -152,24 +153,45 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!reportRef.current || !ot) return;
     setIsGeneratingPdf(true);
     try {
-      await new Promise(r => setTimeout(r, 2000));
+      // Breve espera para asegurar renderizado de imágenes CORS
+      await new Promise(r => setTimeout(r, 2500));
+      
       const element = reportRef.current;
       const canvas = await html2canvas(element, { 
         scale: 2, 
         useCORS: true, 
         backgroundColor: "#ffffff",
         logging: false,
-        height: element.scrollHeight,
         width: element.scrollWidth,
+        height: element.scrollHeight,
         windowWidth: 1000
       });
+
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Calcular altura de la imagen escalada al ancho del PDF
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Añadir primera página
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Añadir páginas adicionales si el contenido excede una hoja A4
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
       pdf.save(`INFORME_TECNICO_${ot.id}.pdf`);
-      toast({ title: "Reporte Generado", description: "El PDF se ha descargado exitosamente." });
+      toast({ title: "Reporte Generado", description: "El informe multicanal se ha descargado." });
     } catch (e) { 
       console.error("Error PDF:", e);
       toast({ title: "Error al generar PDF", variant: "destructive" }); 
@@ -182,7 +204,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!certRef.current || !ot || ot.status !== 'aprobada') return;
     setIsGeneratingCert(true);
     try {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 1500));
       const canv = await html2canvas(certRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
       const imgData = canv.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");

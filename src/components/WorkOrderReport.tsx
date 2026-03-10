@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -34,7 +35,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
   return (
     <div 
       ref={forwardedRef} 
-      className="bg-white p-10 text-slate-900 w-[850px] mx-auto shadow-none flex flex-col" 
+      className="bg-white p-10 text-slate-900 w-[850px] mx-auto shadow-none flex flex-col overflow-visible" 
       id="work-order-report" 
       style={{ fontFamily: 'Inter, sans-serif' }}
     >
@@ -56,9 +57,9 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
       </div>
 
       {/* Contenido Principal con flujo dinámico */}
-      <div className="flex-1 space-y-8">
+      <div className="space-y-8 pb-10">
         {/* Información Matriz */}
-        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-2 gap-8">
+        <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-2 gap-8 page-break-inside-avoid">
           <div className="space-y-3">
             <h3 className="text-[9px] font-black uppercase text-primary tracking-[0.2em] flex items-center gap-2">
               <Building2 className="h-3.5 w-3.5" /> Entidad Mandante
@@ -80,7 +81,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         </div>
 
         {/* Alcance Técnico */}
-        <div>
+        <div className="page-break-inside-avoid">
           <h3 className="text-[9px] font-black uppercase text-slate-400 border-b pb-2 mb-3 tracking-widest flex items-center gap-2">
             <ClipboardList className="h-3.5 w-3.5" /> Alcance del Requerimiento
           </h3>
@@ -109,7 +110,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
         )}
 
         {/* Protocolos y Evidencias (Checklist) */}
-        <div>
+        <div className="space-y-4">
           <h3 className="text-[9px] font-black uppercase text-slate-400 border-b pb-2 mb-4 tracking-widest flex items-center gap-2">
             <CheckCircle2 className="h-3.5 w-3.5" /> Protocolos de Verificación & Evidencias
           </h3>
@@ -149,7 +150,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
               <History className="h-3.5 w-3.5" /> Trazabilidad de Eventos (Bitácora)
             </h3>
             <div className="bg-slate-50 p-4 rounded-xl border space-y-2">
-              {logbook.slice(0, 20).map(entry => (
+              {logbook.slice(0, 30).map(entry => (
                 <div key={entry.id} className="flex gap-3 text-[9px] border-b border-slate-200 pb-1.5 last:border-0 last:pb-0">
                   <span className="text-slate-400 w-24 shrink-0 font-bold">{formatDateLabel(entry.timestamp)}</span>
                   <div className="flex-1">
@@ -197,7 +198,7 @@ export const WorkOrderReport: React.FC<WorkOrderReportProps> = ({
       </div>
 
       {/* Footer del PDF */}
-      <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center opacity-40 shrink-0">
+      <div className="mt-auto pt-6 border-t border-slate-100 flex justify-between items-center opacity-40 shrink-0">
         <p className="text-[8px] font-black uppercase tracking-[0.3em]">Respaldo generado vía PCGMANTENIMIENTO ERP</p>
         <p className="text-[8px] font-bold uppercase">{format(new Date(), "dd/MM/yyyy HH:mm")}</p>
       </div>
