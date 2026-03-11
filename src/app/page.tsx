@@ -51,7 +51,8 @@ import {
   AlertTriangle,
   TrendingDown,
   Scale,
-  Users
+  Users,
+  Timer
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,8 +67,21 @@ export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // Estados para el simulador de fuga
+  const [litersLost, setLitersLost] = useState(0);
+  const [moneyLost, setMoneyLost] = useState(0);
+
   useEffect(() => {
     setMounted(true);
+    
+    // Simular pérdida de agua en tiempo real (Riego defectuoso ~1500L/hora = ~0.41L/segundo)
+    const interval = setInterval(() => {
+      setLitersLost(prev => prev + 0.41);
+      // Costo aproximado en Chile: $1.800 por m3 ($1.8 por litro)
+      setMoneyLost(prev => prev + (0.41 * 1.8));
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   if (!mounted) {
@@ -259,8 +273,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* Análisis de Valor - ¿Por qué es importante ahora? */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+          {/* Análisis de Valor Operativo */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {[
               { 
                 icon: TrendingDown, 
@@ -299,6 +313,80 @@ export default function HomePage() {
                 <p className="text-xs text-slate-500 leading-relaxed font-medium">{item.desc}</p>
               </div>
             ))}
+          </div>
+
+          {/* SIMULADOR DE FUGA ANIMADO */}
+          <div className="mb-20">
+            <Card className="rounded-[3rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden relative">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.1),transparent_50%)]" />
+              <div className="grid lg:grid-cols-2 gap-0 relative z-10">
+                
+                {/* Visualización Animada */}
+                <div className="p-10 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-r border-white/10 bg-white/5 backdrop-blur-sm">
+                  <div className="relative mb-12">
+                    {/* El Artefacto (Riego defectuoso) */}
+                    <div className="bg-slate-800 p-6 rounded-[2rem] border-2 border-blue-500/30 relative z-20 shadow-2xl">
+                      <Wind className="h-16 w-16 text-blue-400 rotate-180" />
+                    </div>
+                    {/* Animación de gotas cayendo */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 space-y-4 pt-4">
+                      <Droplets className="h-8 w-8 text-blue-500 animate-drop opacity-0" />
+                      <Droplets className="h-6 w-6 text-blue-400 animate-drop delay-300 opacity-0" />
+                      <Droplets className="h-10 w-10 text-blue-600 animate-drop delay-700 opacity-0" />
+                    </div>
+                    {/* El charco / Pérdida */}
+                    <div className="absolute top-[180px] left-1/2 -translate-x-1/2 w-32 h-4 bg-blue-600/20 blur-xl rounded-full" />
+                  </div>
+                  
+                  <div className="text-center space-y-2 mt-12">
+                    <Badge className="bg-rose-600 text-white font-black px-3 py-1 uppercase tracking-widest animate-pulse">Alerta: Fuga en Riego Detectada</Badge>
+                    <p className="text-slate-400 text-sm font-medium">Simulando desperdicio por zona de riego abierta</p>
+                  </div>
+                </div>
+
+                {/* Cálculo de Gasto */}
+                <div className="p-10 space-y-8 flex flex-col justify-center">
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter text-blue-400 flex items-center gap-3">
+                      <Scale className="h-6 w-6" /> Impacto de la Ineficiencia
+                    </h3>
+                    <p className="text-slate-400 text-sm leading-relaxed">
+                      Una zona de riego defectuosa o una rotura de tubería puede pasar desapercibida por semanas. Mira cuánto dinero estás perdiendo **ahora mismo**:
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 shadow-inner">
+                      <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest mb-2">Agua Perdida (Lts)</p>
+                      <p className="text-4xl font-black italic tracking-tighter tabular-nums">{litersLost.toFixed(1)}</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-1">Incremento Live</p>
+                    </div>
+                    <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 shadow-inner">
+                      <p className="text-[10px] font-black uppercase text-rose-400 tracking-widest mb-2">Gasto Estimado (CLP)</p>
+                      <p className="text-4xl font-black italic tracking-tighter tabular-nums text-rose-100">$ {moneyLost.toFixed(0)}</p>
+                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-1">Acumulado en Sesión</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-blue-600/10 p-6 rounded-[2.5rem] border-2 border-blue-500/20 space-y-4">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400 font-bold uppercase">Proyección Diaria (24h)</span>
+                      <span className="font-black text-blue-400">36.000 Litros</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-white/5 pt-4">
+                      <span className="text-sm font-black uppercase italic text-white flex items-center gap-2">
+                        <TrendingDown className="h-4 w-4 text-rose-500" /> Pérdida Mensual Estimada:
+                      </span>
+                      <span className="text-2xl font-black text-rose-500">$ 1.944.000</span>
+                    </div>
+                    <p className="text-[9px] text-slate-500 italic leading-tight pt-2">
+                      * Cálculo basado en tarifa promedio de $1.800/m3 (Agua + Alcantarillado). 
+                      Muchos edificios pagan más de $5M mensuales por fugas que el sistema PCG detecta al instante.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -455,7 +543,7 @@ export default function HomePage() {
 
             <Card className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
               <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce">
-                <Zap className="h-6 w-6 text-black" />
+                <zap className="h-6 w-6 text-black" />
               </div>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-black italic">Blindaje de Operación</h3>
