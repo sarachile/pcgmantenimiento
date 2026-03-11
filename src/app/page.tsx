@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -38,7 +39,15 @@ import {
   Building2,
   Briefcase,
   Truck,
-  Bug
+  Bug,
+  Droplets,
+  Radio,
+  Signal,
+  Battery,
+  ShieldAlert,
+  Infinity,
+  Router,
+  BellRing
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,7 +103,7 @@ export default function HomePage() {
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
               <a href="#plataforma" className="hover:text-primary transition-colors">La Plataforma</a>
-              <a href="#solucion" className="hover:text-primary transition-colors">Trazabilidad</a>
+              <a href="#agua" className="hover:text-primary transition-colors">Gestión Agua</a>
               <a href="#solar" className="hover:text-primary transition-colors">Energía Solar</a>
               <a href="#iot" className="hover:text-primary transition-colors">Ecosistema IoT</a>
               {isAuthenticated ? (
@@ -124,7 +133,7 @@ export default function HomePage() {
         {isMenuOpen && (
           <div className="md:hidden bg-white border-b p-4 space-y-4 flex flex-col animate-in slide-in-from-top-2">
             <a href="#plataforma" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>La Plataforma</a>
-            <a href="#solucion" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Trazabilidad</a>
+            <a href="#agua" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Gestión Agua</a>
             <a href="#solar" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Energía Solar</a>
             <a href="#iot" className="font-bold text-slate-600 px-4" onClick={() => setIsMenuOpen(false)}>Ecosistema IoT</a>
             <hr />
@@ -155,7 +164,7 @@ export default function HomePage() {
               <Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
             <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2">
-              <a href="#solar">Ver Solución Solar</a>
+              <a href="#agua">Solución de Agua</a>
             </Button>
           </div>
         </div>
@@ -173,7 +182,7 @@ export default function HomePage() {
             {[...applications, ...applications].map((app, i) => (
               <div key={i} className="mx-4 flex items-center gap-6 p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 transition-all cursor-default">
                 <div className={cn("p-4 rounded-2xl", app.bg)}>
-                  <app.icon className={cn("h-8 w-8", app.color)} />
+                  <app.icon className={cn("h-8 w-8", app.icon.name === 'Water' ? 'text-blue-500' : app.color)} />
                 </div>
                 <span className="text-lg font-black uppercase tracking-tighter text-slate-800 pr-4">{app.title}</span>
               </div>
@@ -281,6 +290,136 @@ export default function HomePage() {
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fugas de Información</p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* NEW WATER MONITORING SECTION */}
+      <section id="agua" className="py-24 bg-white relative overflow-hidden border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16 space-y-4">
+            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full">Solución Inteligente para Condominios y Edificios</Badge>
+            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 uppercase italic">
+              Sistema de Monitoreo de Agua <br />
+              <span className="text-blue-600">en Tiempo Real</span>
+            </h2>
+            <p className="text-slate-500 text-lg font-medium max-w-3xl mx-auto">
+              Control total y ahorro garantizado con tecnología ultrasónica avanzada. Disponible en todo el territorio nacional.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* ZONA DE CASA */}
+            <Card className="rounded-[2.5rem] border-2 border-slate-100 shadow-xl overflow-hidden bg-white group hover:border-blue-200 transition-all">
+              <CardHeader className="bg-blue-50 p-8 border-b">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-lg shadow-blue-200">
+                    <Droplets className="h-6 w-6" />
+                  </div>
+                  <Badge variant="outline" className="border-blue-200 text-blue-600 font-black uppercase text-[10px]">Zona de Casa</Badge>
+                </div>
+                <CardTitle className="text-xl font-black italic uppercase text-slate-900">Kit de Instalación PCG</CardTitle>
+                <CardDescription className="font-bold text-blue-600/70">Medidor Ultrasónico Inteligente</CardDescription>
+              </CardHeader>
+              <CardContent className="p-8 space-y-4">
+                <ul className="space-y-3">
+                  {[
+                    { icon: Zap, text: "Sin piezas móviles (no se gasta con sarro)" },
+                    { icon: Droplets, text: "Detección de goteos mínimos" },
+                    { icon: Infinity, text: "Batería de larga duración (16 años)" },
+                    { icon: ShieldCheck, text: "Sello de seguridad antifraude" },
+                    { icon: Signal, text: "Independiente de Wi-Fi del vecino" }
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600">
+                      <item.icon className="h-4 w-4 text-blue-500 shrink-0" />
+                      <span>{item.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* ZONA COMÚN */}
+            <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-slate-900 text-white group scale-105 z-10">
+              <CardHeader className="bg-white/5 p-8 border-b border-white/10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="bg-blue-500 p-3 rounded-2xl text-white shadow-lg shadow-blue-900">
+                    <Radio className="h-6 w-6" />
+                  </div>
+                  <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] border-none">Zona Común</Badge>
+                </div>
+                <CardTitle className="text-xl font-black italic uppercase">Red de Radio Centralizada</CardTitle>
+                <CardDescription className="font-bold text-blue-400">Infraestructura LoRaWAN/Sigfox</CardDescription>
+              </CardHeader>
+              <CardContent className="p-8 space-y-4">
+                <ul className="space-y-3">
+                  {[
+                    { icon: Signal, text: "Antena Receptora Maestra PCG" },
+                    { icon: CloudLightning, text: "Señal de radio privada y segura" },
+                    { icon: Router, text: "Gateway Central (Conserjería)" },
+                    { icon: Globe, text: "Conexión 4G o Fibra dedicada" },
+                    { icon: Layers, text: "Sistema escalable para múltiples unidades" }
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-300">
+                      <item.icon className="h-4 w-4 text-blue-400 shrink-0" />
+                      <span>{item.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* ADMINISTRACIÓN Y CRM */}
+            <Card className="rounded-[2.5rem] border-2 border-slate-100 shadow-xl overflow-hidden bg-white group hover:border-blue-200 transition-all">
+              <CardHeader className="bg-blue-50 p-8 border-b">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="bg-slate-900 p-3 rounded-2xl text-white shadow-lg">
+                    <LayoutDashboard className="h-6 w-6" />
+                  </div>
+                  <Badge variant="outline" className="border-slate-200 text-slate-900 font-black uppercase text-[10px]">Gestión Digital</Badge>
+                </div>
+                <CardTitle className="text-xl font-black italic uppercase text-slate-900">Administración y CRM</CardTitle>
+                <CardDescription className="font-bold text-slate-500">Inteligencia PCGoperacion</CardDescription>
+              </CardHeader>
+              <CardContent className="p-8 space-y-4">
+                <ul className="space-y-3">
+                  {[
+                    { icon: ShieldAlert, text: "Alertas de manipulación y fraude" },
+                    { icon: BellRing, text: "Alerta de fugas (consumo nocturno)" },
+                    { icon: BarChart3, text: "Reporte detallado de picos de consumo" },
+                    { icon: Battery, text: "Monitoreo de estado del nodo y batería" },
+                    { icon: Zap, text: "Optimización de riego y gestión del agua" }
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600">
+                      <item.icon className="h-4 w-4 text-blue-500 shrink-0" />
+                      <span>{item.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-16 bg-blue-50 rounded-[3rem] p-10 border-2 border-blue-100 text-center relative overflow-hidden">
+            <div className="absolute -right-10 -bottom-10 opacity-10"><Waves className="h-48 w-48 text-blue-600" /></div>
+            <h3 className="text-2xl font-black italic uppercase text-slate-900 mb-2">Balance de Agua Instantáneo</h3>
+            <p className="text-slate-600 font-medium max-w-2xl mx-auto mb-8">
+              Nuestra plataforma realiza un balance automático entre el medidor matriz y los remarcadores de cada unidad, detectando pérdidas en la red matriz de forma inmediata.
+            </p>
+            <div className="flex justify-center gap-12 flex-wrap">
+              <div className="text-center">
+                <p className="text-4xl font-black text-blue-600 italic leading-none">99.9%</p>
+                <p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest">Precisión Ultrasónica</p>
+              </div>
+              <div className="text-center">
+                <p className="text-4xl font-black text-blue-600 italic leading-none">24/7</p>
+                <p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest">Monitoreo Live</p>
+              </div>
+              <div className="text-center">
+                <p className="text-4xl font-black text-blue-600 italic leading-none">0%</p>
+                <p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest">Wi-Fi Dependencia</p>
               </div>
             </div>
           </div>
