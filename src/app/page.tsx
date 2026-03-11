@@ -269,24 +269,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-            {[
-              { icon: TrendingDown, title: "Ahorro Directo", desc: "Reduce hasta un 30% el gasto común mediante la facturación exacta.", color: "text-blue-600", bg: "bg-blue-50" },
-              { icon: AlertTriangle, title: "Fugas Invisibles", desc: "Detecta goteos en WC y filtraciones internas en tiempo real.", color: "text-rose-600", bg: "bg-rose-50" },
-              { icon: Users, title: "Paz Vecinal", desc: "Elimina los conflictos vecinales gracias a la transparencia total de datos.", color: "text-emerald-600", bg: "bg-emerald-50" },
-              { icon: Scale, title: "Justicia Hídrica", desc: "Asegura que cada unidad pague exactamente lo que consume.", color: "text-slate-900", bg: "bg-slate-100" }
-            ].map((item, i) => (
-              <div key={i} className="p-8 rounded-[2rem] border-2 border-white/50 hover:border-blue-200 transition-all group bg-white/80 backdrop-blur-sm shadow-xl">
-                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm", item.bg, item.color)}>
-                  <item.icon className="h-6 w-6" />
-                </div>
-                <h4 className="font-black text-slate-900 uppercase italic tracking-tight mb-2">{item.title}</h4>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* SIMULADOR DE FUGA */}
+          {/* SIMULADOR DE FUGA (AHORA PRIMERO) */}
           <div className="mb-20">
             <Card className="rounded-[3rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden relative">
               <div className="grid lg:grid-cols-2 gap-0 relative z-10">
@@ -330,6 +313,24 @@ export default function HomePage() {
                 </div>
               </div>
             </Card>
+          </div>
+
+          {/* TARJETAS DE VALOR (AHORA BAJO LA ANIMACIÓN) */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+            {[
+              { icon: TrendingDown, title: "Ahorro Directo", desc: "Reduce hasta un 30% el gasto común mediante la facturación exacta.", color: "text-blue-600", bg: "bg-blue-50" },
+              { icon: AlertTriangle, title: "Fugas Invisibles", desc: "Detecta goteos en WC y filtraciones internas en tiempo real.", color: "text-rose-600", bg: "bg-rose-50" },
+              { icon: Users, title: "Paz Vecinal", desc: "Elimina los conflictos vecinales gracias a la transparencia total de datos.", color: "text-emerald-600", bg: "bg-emerald-50" },
+              { icon: Scale, title: "Justicia Hídrica", desc: "Asegura que cada unidad pague exactamente lo que consume.", color: "text-slate-900", bg: "bg-slate-100" }
+            ].map((item, i) => (
+              <div key={i} className="p-8 rounded-[2rem] border-2 border-white/50 hover:border-blue-200 transition-all group bg-white/80 backdrop-blur-sm shadow-xl">
+                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm", item.bg, item.color)}>
+                  <item.icon className="h-6 w-6" />
+                </div>
+                <h4 className="font-black text-slate-900 uppercase italic tracking-tight mb-2">{item.title}</h4>
+                <p className="text-xs text-slate-500 leading-relaxed font-medium">{item.desc}</p>
+              </div>
+            ))}
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
