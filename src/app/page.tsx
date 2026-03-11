@@ -54,7 +54,8 @@ import {
   Scale,
   Users,
   Timer,
-  ChevronDown
+  ChevronDown,
+  MessageCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -108,6 +109,21 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
+      {/* Botón Flotante WhatsApp */}
+      <div className="fixed bottom-8 right-8 z-[60] animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
+        <a 
+          href="https://wa.me/56941245316" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="bg-emerald-500 hover:bg-emerald-600 text-white p-4 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
+        >
+          <MessageCircle className="h-8 w-8 fill-white" />
+          <span className="max-w-0 overflow-hidden group-hover:max-w-xs group-hover:ml-3 transition-all duration-500 font-black uppercase text-xs tracking-widest whitespace-nowrap">
+            Hablar con Ventas
+          </span>
+        </a>
+      </div>
+
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -180,8 +196,10 @@ export default function HomePage() {
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
               <Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
-            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2">
-              <a href="#agua">Solución de Agua</a>
+            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2" asChild>
+              <a href="https://wa.me/56941245316" target="_blank" rel="noopener noreferrer" className="gap-2">
+                <MessageCircle className="h-5 w-5 text-emerald-500" /> WhatsApp Directo
+              </a>
             </Button>
           </div>
         </div>
@@ -575,6 +593,11 @@ export default function HomePage() {
                 Empezar gratis ahora <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
               </Link>
             </Button>
+            <Button variant="outline" size="lg" className="h-20 px-12 rounded-[2rem] text-xl font-bold border-2 gap-3" asChild>
+              <a href="https://wa.me/56941245316" target="_blank" rel="noopener noreferrer">
+                <MessageCircle className="h-6 w-6 text-emerald-500" /> WhatsApp
+              </a>
+            </Button>
           </div>
         </div>
       </section>
@@ -582,9 +605,14 @@ export default function HomePage() {
       <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
           <img src="/logoweb.png" alt="Logo" className="h-6 w-auto object-contain opacity-50" />
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-            © {new Date().getFullYear()} - Todos los derechos reservados.
-          </p>
+          <div className="flex items-center gap-4">
+            <a href="https://wa.me/56941245316" className="text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors flex items-center gap-1">
+              <MessageCircle className="h-4 w-4" /> +56 9 4124 5316
+            </a>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+              © {new Date().getFullYear()} - Todos los derechos reservados.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
