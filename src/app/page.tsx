@@ -53,7 +53,8 @@ import {
   TrendingDown,
   Scale,
   Users,
-  Timer
+  Timer,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -248,6 +249,31 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* IMPACTFUL TRANSITION SECTION */}
+      <section className="py-24 bg-slate-900 text-white overflow-hidden relative border-y border-white/5">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-transparent pointer-events-none" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <div className="space-y-6">
+            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg mb-8 animate-pulse">
+              INTELIGENCIA OPERATIVA LIVE
+            </Badge>
+            <h2 className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-[0.8] mb-10">
+              DOMINA CADA GOTA, <br />
+              <span className="text-blue-400">CADA VOLTIO,</span> <br />
+              CADA SEGUNDO.
+            </h2>
+            <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed mb-12">
+              Hemos diseñado soluciones específicas que conectan tus activos críticos directamente a tu pantalla. La visibilidad total ya no es una opción, es una ventaja competitiva.
+            </p>
+            <div className="flex justify-center">
+              <div className="animate-bounce p-4 rounded-full bg-white/5 border border-white/10">
+                <ChevronDown className="h-8 w-8 text-blue-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* WATER MONITORING SECTION */}
       <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
         <div className="absolute top-0 right-0 p-20 opacity-[0.03] pointer-events-none select-none">
@@ -368,10 +394,16 @@ export default function HomePage() {
               </CardHeader>
               <CardContent className="p-8 space-y-4">
                 <ul className="space-y-3">
-                  {["Antena Maestra PCG", "Señal de radio privada", "Gateway Central", "Conexión 4G/Fibra"].map((text, i) => (
+                  {[
+                    { icon: Radio, text: "Antena Maestra PCG" },
+                    { icon: CloudLightning, text: "Señal de radio privada y segura" },
+                    { icon: Router, text: "Gateway Central (Conserjería)" },
+                    { icon: Globe, text: "Conexión 4G o Fibra dedicada" },
+                    { icon: Layers, text: "Sistema escalable para múltiples unidades" }
+                  ].map((item, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-300">
-                      <Signal className="h-4 w-4 text-blue-400" />
-                      <span>{text}</span>
+                      <item.icon className="h-4 w-4 text-blue-400" />
+                      <span>{item.text}</span>
                     </li>
                   ))}
                 </ul>
