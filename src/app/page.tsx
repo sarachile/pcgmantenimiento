@@ -47,7 +47,11 @@ import {
   Infinity,
   Router,
   BellRing,
-  Globe
+  Globe,
+  AlertTriangle,
+  TrendingDown,
+  Scale,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -232,70 +236,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Trazabilidad Section */}
-      <section id="solucion" className="py-24 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="relative aspect-square md:aspect-video lg:aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl border border-slate-200 bg-white p-2">
-              <div className="relative w-full h-full rounded-[2rem] overflow-hidden">
-                <Image 
-                  src="/imagen3.png" 
-                  alt="Gestión Operativa PCGMANTENIMIENTO" 
-                  fill 
-                  className="object-cover"
-                  data-ai-hint="industrial maintenance"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-10">
-              <div className="space-y-4">
-                <h2 className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
-                  Trazabilidad blindada:<br />
-                  <span className="text-primary">Evidencia real que respalda tu marca.</span>
-                </h2>
-              </div>
-
-              <div className="space-y-6">
-                {[
-                  { icon: XCircle, title: "Fin del Caos", desc: "Dile adiós a los reportes en papel que se pierden, se mojan o nunca se actualizan." },
-                  { icon: History, title: "Certificación Inalterable", desc: "Marcas de tiempo y GPS de cada intervención para auditorías técnicas sin dudas." },
-                  { icon: Zap, title: "Informes al Instante", desc: "Genera el informe técnico PDF y el certificado de experiencia en un clic." }
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-4 group">
-                    <div className="bg-white p-3 rounded-xl h-fit border group-hover:border-primary/30 shadow-sm transition-colors">
-                      <item.icon className="text-primary h-6 w-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-xl mb-1 text-slate-900">{item.title}</h3>
-                      <p className="text-slate-600 leading-relaxed">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-5">
-                  <img src="/logoweb.png" alt="PCG" className="h-24 w-auto object-contain grayscale" />
-                </div>
-                <h3 className="text-2xl font-black italic mb-2 text-slate-900">"Lo que no se registra, no existe"</h3>
-                <p className="text-slate-500 font-medium mb-8">Centraliza toda tu operación en una herramienta diseñada para el rigor del terreno y la confianza del cliente.</p>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <p className="text-4xl font-black text-primary tracking-tighter">100%</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trazabilidad de Activos</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-4xl font-black text-primary tracking-tighter">0</p>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Fugas de Información</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* WATER MONITORING SECTION */}
       <section id="agua" className="py-24 bg-white relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -308,6 +248,48 @@ export default function HomePage() {
             <p className="text-slate-500 text-lg font-medium max-w-3xl mx-auto">
               Control total y ahorro garantizado con tecnología ultrasónica avanzada. Disponible en todo el territorio nacional.
             </p>
+          </div>
+
+          {/* Análisis de Valor - ¿Por qué es importante ahora? */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+            {[
+              { 
+                icon: TrendingDown, 
+                title: "Ahorro Directo", 
+                desc: "Reduce hasta un 30% el gasto común mediante la facturación exacta y la eliminación de cobros estimados.",
+                color: "text-blue-600",
+                bg: "bg-blue-50"
+              },
+              { 
+                icon: AlertTriangle, 
+                title: "Fugas Invisibles", 
+                desc: "Detecta goteos en WC y filtraciones internas que pasan desapercibidas para el ojo humano.",
+                color: "text-rose-600",
+                bg: "bg-rose-50"
+              },
+              { 
+                icon: Users, 
+                title: "Paz Vecinal", 
+                desc: "Elimina los conflictos entre vecinos y administración gracias a la transparencia total de datos en la nube.",
+                color: "text-emerald-600",
+                bg: "bg-emerald-50"
+              },
+              { 
+                icon: Scale, 
+                title: "Justicia Hídrica", 
+                desc: "Asegura que cada unidad pague exactamente lo que consume, sin subsidiar pérdidas de la red matriz.",
+                color: "text-slate-900",
+                bg: "bg-slate-100"
+              }
+            ].map((item, i) => (
+              <div key={i} className="p-8 rounded-[2rem] border-2 border-slate-100 hover:border-blue-200 transition-all group bg-white shadow-sm">
+                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm", item.bg, item.color)}>
+                  <item.icon className="h-6 w-6" />
+                </div>
+                <h4 className="font-black text-slate-900 uppercase italic tracking-tight mb-2">{item.title}</h4>
+                <p className="text-xs text-slate-500 leading-relaxed font-medium">{item.desc}</p>
+              </div>
+            ))}
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
