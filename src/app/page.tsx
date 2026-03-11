@@ -261,9 +261,12 @@ export default function HomePage() {
               DOMINA CADA GOTA, <br />
               <span className="text-blue-400">CADA VOLTIO,</span> <br />
               CADA SEGUNDO.
+              <span className="block text-2xl md:text-4xl mt-10 text-white/40 tracking-[0.3em] not-italic">
+                ESTO ES MANTENCIÓN PREVENTIVA
+              </span>
             </h2>
             <p className="text-xl md:text-2xl text-slate-400 max-w-3xl mx-auto font-medium leading-relaxed mb-12">
-              Hemos diseñado soluciones específicas que conectan tus activos críticos directamente a tu pantalla. La visibilidad total ya no es una opción, es una ventaja competitiva.
+              Hemos diseñado soluciones específicas que conectan tus activos críticos directamente a tu pantalla. La visibilidad total ya no es una opción, es una ventaja competitiva basada en la prevención activa.
             </p>
             <div className="flex justify-center">
               <div className="animate-bounce p-4 rounded-full bg-white/5 border border-white/10">
@@ -295,7 +298,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          {/* SIMULADOR DE FUGA (AHORA PRIMERO) */}
+          {/* SIMULADOR DE FUGA */}
           <div className="mb-20">
             <Card className="rounded-[3rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden relative">
               <div className="grid lg:grid-cols-2 gap-0 relative z-10">
@@ -341,7 +344,7 @@ export default function HomePage() {
             </Card>
           </div>
 
-          {/* TARJETAS DE VALOR (AHORA BAJO LA ANIMACIÓN) */}
+          {/* TARJETAS DE VALOR */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {[
               { icon: TrendingDown, title: "Ahorro Directo", desc: "Reduce hasta un 30% el gasto común mediante la facturación exacta.", color: "text-blue-600", bg: "bg-blue-50" },
