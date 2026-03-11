@@ -296,7 +296,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* NEW WATER MONITORING SECTION */}
+      {/* WATER MONITORING SECTION */}
       <section id="agua" className="py-24 bg-white relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 space-y-4">
@@ -381,7 +381,7 @@ export default function HomePage() {
                   <Badge variant="outline" className="border-slate-200 text-slate-900 font-black uppercase text-[10px]">Gestión Digital</Badge>
                 </div>
                 <CardTitle className="text-xl font-black italic uppercase text-slate-900">Administración y CRM</CardTitle>
-                <CardDescription className="font-bold text-slate-50">Inteligencia PCGoperacion</CardDescription>
+                <CardDescription className="font-bold text-slate-500">Inteligencia PCGoperacion</CardDescription>
               </CardHeader>
               <CardContent className="p-8 space-y-4">
                 <ul className="space-y-3">
