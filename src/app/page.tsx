@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from "react";
@@ -47,7 +46,8 @@ import {
   ShieldAlert,
   Infinity,
   Router,
-  BellRing
+  BellRing,
+  Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -381,7 +381,7 @@ export default function HomePage() {
                   <Badge variant="outline" className="border-slate-200 text-slate-900 font-black uppercase text-[10px]">Gestión Digital</Badge>
                 </div>
                 <CardTitle className="text-xl font-black italic uppercase text-slate-900">Administración y CRM</CardTitle>
-                <CardDescription className="font-bold text-slate-500">Inteligencia PCGoperacion</CardDescription>
+                <CardDescription className="font-bold text-slate-50">Inteligencia PCGoperacion</CardDescription>
               </CardHeader>
               <CardContent className="p-8 space-y-4">
                 <ul className="space-y-3">
