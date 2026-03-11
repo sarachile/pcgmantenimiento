@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -57,10 +58,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-
-export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
   const { isAuthenticated } = useUser();
@@ -200,7 +198,7 @@ export default function HomePage() {
             {[...applications, ...applications].map((app, i) => (
               <div key={i} className="mx-4 flex items-center gap-6 p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-xl hover:border-primary/20 hover:-translate-y-1 transition-all cursor-default">
                 <div className={cn("p-4 rounded-2xl", app.bg)}>
-                  <app.icon className={cn("h-8 w-8", app.icon.name === 'Water' ? 'text-blue-500' : app.color)} />
+                  <app.icon className={cn("h-8 w-8", app.color)} />
                 </div>
                 <span className="text-lg font-black uppercase tracking-tighter text-slate-800 pr-4">{app.title}</span>
               </div>
@@ -252,58 +250,31 @@ export default function HomePage() {
 
       {/* WATER MONITORING SECTION */}
       <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
-        {/* Decorative Water Patterns */}
         <div className="absolute top-0 right-0 p-20 opacity-[0.03] pointer-events-none select-none">
           <Waves className="h-96 w-96 text-blue-600 rotate-12" />
         </div>
         <div className="absolute bottom-0 left-0 p-20 opacity-[0.03] pointer-events-none select-none">
           <Droplets className="h-80 w-80 text-blue-600 -rotate-12" />
         </div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05)_0%,transparent_70%)] pointer-events-none" />
-
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-16 space-y-4">
-            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg shadow-blue-900/20">Solución Inteligente para Condominios y Edificios</Badge>
+            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg">Solución Inteligente para Condominios</Badge>
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 uppercase italic">
               Sistema de Monitoreo de Agua <br />
               <span className="text-blue-600">en Tiempo Real</span>
             </h2>
             <p className="text-slate-500 text-lg font-medium max-w-3xl mx-auto">
-              Control total y ahorro garantizado con tecnología ultrasónica avanzada. Disponible en todo el territorio nacional.
+              Control total y ahorro garantizado con tecnología ultrasónica avanzada.
             </p>
           </div>
 
-          {/* Análisis de Valor Operativo */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {[
-              { 
-                icon: TrendingDown, 
-                title: "Ahorro Directo", 
-                desc: "Reduce hasta un 30% el gasto común mediante la facturación exacta y la eliminación de cobros estimados.",
-                color: "text-blue-600",
-                bg: "bg-blue-50"
-              },
-              { 
-                icon: AlertTriangle, 
-                title: "Fugas Invisibles", 
-                desc: "Detecta goteos en WC y filtraciones internas que pasan desapercibidas para el ojo humano.",
-                color: "text-rose-600",
-                bg: "bg-rose-50"
-              },
-              { 
-                icon: Users, 
-                title: "Paz Vecinal", 
-                desc: "Elimina los conflictos entre vecinos y administración gracias a la transparencia total de datos en la nube.",
-                color: "text-emerald-600",
-                bg: "bg-emerald-50"
-              },
-              { 
-                icon: Scale, 
-                title: "Justicia Hídrica", 
-                desc: "Asegura que cada unidad pague exactamente lo que consume, sin subsidiar pérdidas de la red matriz.",
-                color: "text-slate-900",
-                bg: "bg-slate-100"
-              }
+              { icon: TrendingDown, title: "Ahorro Directo", desc: "Reduce hasta un 30% el gasto común mediante la facturación exacta.", color: "text-blue-600", bg: "bg-blue-50" },
+              { icon: AlertTriangle, title: "Fugas Invisibles", desc: "Detecta goteos en WC y filtraciones internas en tiempo real.", color: "text-rose-600", bg: "bg-rose-50" },
+              { icon: Users, title: "Paz Vecinal", desc: "Elimina los conflictos vecinales gracias a la transparencia total de datos.", color: "text-emerald-600", bg: "bg-emerald-50" },
+              { icon: Scale, title: "Justicia Hídrica", desc: "Asegura que cada unidad pague exactamente lo que consume.", color: "text-slate-900", bg: "bg-slate-100" }
             ].map((item, i) => (
               <div key={i} className="p-8 rounded-[2rem] border-2 border-white/50 hover:border-blue-200 transition-all group bg-white/80 backdrop-blur-sm shadow-xl">
                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm", item.bg, item.color)}>
@@ -315,43 +286,34 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* SIMULADOR DE FUGA ANIMADO */}
+          {/* SIMULADOR DE FUGA */}
           <div className="mb-20">
             <Card className="rounded-[3rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden relative">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.1),transparent_50%)]" />
               <div className="grid lg:grid-cols-2 gap-0 relative z-10">
-                
-                {/* Visualización Animada */}
-                <div className="p-10 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-r border-white/10 bg-white/5 backdrop-blur-sm">
+                <div className="p-10 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-r border-white/10 bg-white/5">
                   <div className="relative mb-12">
-                    {/* El Artefacto (Riego defectuoso) */}
                     <div className="bg-slate-800 p-6 rounded-[2rem] border-2 border-blue-500/30 relative z-20 shadow-2xl">
                       <Wind className="h-16 w-16 text-blue-400 rotate-180" />
                     </div>
-                    {/* Animación de gotas cayendo */}
                     <div className="absolute top-full left-1/2 -translate-x-1/2 space-y-4 pt-4">
                       <Droplets className="h-8 w-8 text-blue-500 animate-drop opacity-0" />
                       <Droplets className="h-6 w-6 text-blue-400 animate-drop delay-300 opacity-0" />
                       <Droplets className="h-10 w-10 text-blue-600 animate-drop delay-700 opacity-0" />
                     </div>
-                    {/* El charco / Pérdida */}
-                    <div className="absolute top-[180px] left-1/2 -translate-x-1/2 w-32 h-4 bg-blue-600/20 blur-xl rounded-full" />
                   </div>
-                  
                   <div className="text-center space-y-2 mt-12">
-                    <Badge className="bg-rose-600 text-white font-black px-3 py-1 uppercase tracking-widest animate-pulse">Alerta: Fuga en Riego Detectada</Badge>
-                    <p className="text-slate-400 text-sm font-medium">Simulando desperdicio por zona de riego abierta</p>
+                    <Badge className="bg-rose-600 text-white font-black px-3 py-1 uppercase tracking-widest animate-pulse">Alerta: Fuga Detectada</Badge>
+                    <p className="text-slate-400 text-sm font-medium">Simulando desperdicio por riego defectuoso</p>
                   </div>
                 </div>
 
-                {/* Cálculo de Gasto */}
                 <div className="p-10 space-y-8 flex flex-col justify-center">
                   <div className="space-y-4">
                     <h3 className="text-2xl font-black italic uppercase tracking-tighter text-blue-400 flex items-center gap-3">
                       <Scale className="h-6 w-6" /> Impacto de la Ineficiencia
                     </h3>
                     <p className="text-slate-400 text-sm leading-relaxed">
-                      Una zona de riego defectuosa o una rotura de tubería puede pasar desapercibida por semanas. Mira cuánto dinero estás perdiendo **ahora mismo**:
+                      Mira cuánto dinero se pierde por una fuga no detectada en tiempo real:
                     </p>
                   </div>
 
@@ -359,30 +321,11 @@ export default function HomePage() {
                     <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 shadow-inner">
                       <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest mb-2">Agua Perdida (Lts)</p>
                       <p className="text-4xl font-black italic tracking-tighter tabular-nums">{litersLost.toFixed(1)}</p>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-1">Incremento Live</p>
                     </div>
                     <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 shadow-inner">
                       <p className="text-[10px] font-black uppercase text-rose-400 tracking-widest mb-2">Gasto Estimado (CLP)</p>
                       <p className="text-4xl font-black italic tracking-tighter tabular-nums text-rose-100">$ {moneyLost.toFixed(0)}</p>
-                      <p className="text-[9px] font-bold text-slate-500 uppercase mt-1">Acumulado en Sesión</p>
                     </div>
-                  </div>
-
-                  <div className="bg-blue-600/10 p-6 rounded-[2.5rem] border-2 border-blue-500/20 space-y-4">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-400 font-bold uppercase">Proyección Diaria (24h)</span>
-                      <span className="font-black text-blue-400">36.000 Litros</span>
-                    </div>
-                    <div className="flex justify-between items-center border-t border-white/5 pt-4">
-                      <span className="text-sm font-black uppercase italic text-white flex items-center gap-2">
-                        <TrendingDown className="h-4 w-4 text-rose-500" /> Pérdida Mensual Estimada:
-                      </span>
-                      <span className="text-2xl font-black text-rose-500">$ 1.944.000</span>
-                    </div>
-                    <p className="text-[9px] text-slate-500 italic leading-tight pt-2">
-                      * Cálculo basado en tarifa promedio de $1.800/m3 (Agua + Alcantarillado). 
-                      Muchos edificios pagan más de $5M mensuales por fugas que el sistema PCG detecta al instante.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -390,68 +333,51 @@ export default function HomePage() {
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* ZONA DE CASA */}
-            <Card className="rounded-[2.5rem] border-2 border-blue-100/50 shadow-2xl overflow-hidden bg-white/90 backdrop-blur-md group hover:border-blue-300 transition-all">
+            <Card className="rounded-[2.5rem] border-2 border-blue-100/50 shadow-2xl overflow-hidden bg-white/90 group hover:border-blue-300 transition-all">
               <CardHeader className="bg-blue-50/50 p-8 border-b">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-lg shadow-blue-200">
+                  <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-lg">
                     <Droplets className="h-6 w-6" />
                   </div>
                   <Badge variant="outline" className="border-blue-200 text-blue-600 font-black uppercase text-[10px]">Zona de Casa</Badge>
                 </div>
-                <CardTitle className="text-xl font-black italic uppercase text-slate-900">Kit de Instalación PCG</CardTitle>
-                <CardDescription className="font-bold text-blue-600/70">Medidor Ultrasónico Inteligente</CardDescription>
+                <CardTitle className="text-xl font-black italic uppercase text-slate-900">Kit Medidor Ultrasónico</CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-4">
                 <ul className="space-y-3">
-                  {[
-                    { icon: Zap, text: "Sin piezas móviles (no se gasta con sarro)" },
-                    { icon: Droplets, text: "Detección de goteos mínimos" },
-                    { icon: Infinity, text: "Batería de larga duración (16 años)" },
-                    { icon: ShieldCheck, text: "Sello de seguridad antifraude" },
-                    { icon: Signal, text: "Independiente de Wi-Fi del vecino" }
-                  ].map((item, i) => (
+                  {["Sin piezas móviles", "Detección de goteos mínimos", "Batería 16 años", "Independiente de Wi-Fi"].map((text, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600">
-                      <item.icon className="h-4 w-4 text-blue-500 shrink-0" />
-                      <span>{item.text}</span>
+                      <CheckCircle2 className="h-4 w-4 text-blue-500" />
+                      <span>{text}</span>
                     </li>
                   ))}
                 </ul>
               </CardContent>
             </Card>
 
-            {/* ZONA COMÚN */}
             <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-slate-900 text-white group scale-105 z-10">
               <CardHeader className="bg-white/5 p-8 border-b border-white/10">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="bg-blue-500 p-3 rounded-2xl text-white shadow-lg shadow-blue-900">
+                  <div className="bg-blue-500 p-3 rounded-2xl text-white shadow-lg">
                     <Radio className="h-6 w-6" />
                   </div>
-                  <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] border-none">Zona Común</Badge>
+                  <Badge className="bg-blue-600 text-white font-black uppercase text-[10px]">Zona Común</Badge>
                 </div>
-                <CardTitle className="text-xl font-black italic uppercase">Red de Radio Centralizada</CardTitle>
-                <CardDescription className="font-bold text-blue-400">Infraestructura LoRaWAN/Sigfox</CardDescription>
+                <CardTitle className="text-xl font-black italic uppercase">Red LoRaWAN Central</CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-4">
                 <ul className="space-y-3">
-                  {[
-                    { icon: Signal, text: "Antena Receptora Maestra PCG" },
-                    { icon: CloudLightning, text: "Señal de radio privada y segura" },
-                    { icon: Router, text: "Gateway Central (Conserjería)" },
-                    { icon: Globe, text: "Conexión 4G o Fibra dedicada" },
-                    { icon: Layers, text: "Sistema escalable para múltiples unidades" }
-                  ].map((item, i) => (
+                  {["Antena Maestra PCG", "Señal de radio privada", "Gateway Central", "Conexión 4G/Fibra"].map((text, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-300">
-                      <item.icon className="h-4 w-4 text-blue-400 shrink-0" />
-                      <span>{item.text}</span>
+                      <Signal className="h-4 w-4 text-blue-400" />
+                      <span>{text}</span>
                     </li>
                   ))}
                 </ul>
               </CardContent>
             </Card>
 
-            {/* ADMINISTRACIÓN Y CRM */}
-            <Card className="rounded-[2.5rem] border-2 border-blue-100/50 shadow-2xl overflow-hidden bg-white/90 backdrop-blur-md group hover:border-blue-300 transition-all">
+            <Card className="rounded-[2.5rem] border-2 border-blue-100/50 shadow-2xl overflow-hidden bg-white/90 group hover:border-blue-300 transition-all">
               <CardHeader className="bg-blue-50/50 p-8 border-b">
                 <div className="flex items-center justify-between mb-4">
                   <div className="bg-slate-900 p-3 rounded-2xl text-white shadow-lg">
@@ -459,49 +385,19 @@ export default function HomePage() {
                   </div>
                   <Badge variant="outline" className="border-slate-200 text-slate-900 font-black uppercase text-[10px]">Gestión Digital</Badge>
                 </div>
-                <CardTitle className="text-xl font-black italic uppercase text-slate-900">Administración y CRM</CardTitle>
-                <CardDescription className="font-bold text-slate-500">Inteligencia PCGoperacion</CardDescription>
+                <CardTitle className="text-xl font-black italic uppercase text-slate-900">CRM & Dashboard</CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-4">
                 <ul className="space-y-3">
-                  {[
-                    { icon: ShieldAlert, text: "Alertas de manipulación y fraude" },
-                    { icon: BellRing, text: "Alerta de fugas (consumo nocturno)" },
-                    { icon: BarChart3, text: "Reporte detallado de picos de consumo" },
-                    { icon: Battery, text: "Monitoreo de estado del nodo y batería" },
-                    { icon: Zap, text: "Optimización de riego y gestión del agua" }
-                  ].map((item, i) => (
+                  {["Alertas de fraude", "Alerta de fugas nocturnas", "Reporte de picos", "Balance instantáneo"].map((text, i) => (
                     <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600">
-                      <item.icon className="h-4 w-4 text-blue-500 shrink-0" />
-                      <span>{item.text}</span>
+                      <BarChart3 className="h-4 w-4 text-blue-500" />
+                      <span>{text}</span>
                     </li>
                   ))}
                 </ul>
               </CardContent>
             </Card>
-          </div>
-
-          <div className="mt-16 bg-blue-600 rounded-[3rem] p-10 text-center relative overflow-hidden shadow-2xl shadow-blue-900/20 border-2 border-blue-400/30">
-            <div className="absolute -right-10 -bottom-10 opacity-20"><Waves className="h-64 w-64 text-white" /></div>
-            <div className="absolute -left-10 -top-10 opacity-10"><Droplets className="h-48 w-48 text-white" /></div>
-            <h3 className="text-3xl font-black italic uppercase text-white mb-2 relative z-10">Balance de Agua Instantáneo</h3>
-            <p className="text-blue-100 font-medium max-w-2xl mx-auto mb-8 relative z-10">
-              Nuestra plataforma realiza un balance automático entre el medidor matriz y los remarcadores de cada unidad, detectando pérdidas en la red matriz de forma inmediata.
-            </p>
-            <div className="flex justify-center gap-12 flex-wrap relative z-10">
-              <div className="text-center">
-                <p className="text-5xl font-black text-white italic leading-none">99.9%</p>
-                <p className="text-[10px] font-black uppercase text-blue-200 mt-2 tracking-widest">Precisión Ultrasónica</p>
-              </div>
-              <div className="text-center">
-                <p className="text-5xl font-black text-white italic leading-none">24/7</p>
-                <p className="text-[10px] font-black uppercase text-blue-200 mt-2 tracking-widest">Monitoreo Live</p>
-              </div>
-              <div className="text-center">
-                <p className="text-5xl font-black text-white italic leading-none">0%</p>
-                <p className="text-[10px] font-black uppercase text-blue-200 mt-2 tracking-widest">Wi-Fi Dependencia</p>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -518,15 +414,15 @@ export default function HomePage() {
                 <span className="text-amber-400">solar realmente usará.</span>
               </h2>
               <p className="text-slate-400 text-lg leading-relaxed">
-                Sabemos que en la energía solar, la continuidad operativa es dinero. Nuestra plataforma utiliza sensores inteligentes para monitorear cada panel e inversor, detectando remotamente fallas, suciedad o caídas de tensión antes de que afecten el ahorro del cliente.
+                Sabemos que en la energía solar, la continuidad operativa es dinero. Nuestra plataforma utiliza sensores inteligentes para monitorear cada panel e inversor.
               </p>
               
               <div className="grid sm:grid-cols-2 gap-6">
                 {[
-                  { icon: Sun, title: "Protocolos Fotovoltaicos", desc: "Checklists específicos para inversores, cableado y anclajes." },
-                  { icon: Fingerprint, title: "Sello de Recepción", desc: "El cliente firma en terreno vía QR para evitar disputas de pago." },
-                  { icon: Activity, title: "Tu Ahorro en Vivo", desc: "Tu cliente ve en vivo cómo sus paneles generan dinero, asegurando su inversión segundo a segundo." },
-                  { icon: Bell, title: "Alertas Preventivas", desc: "Detección automática de caídas de tensión o suciedad extrema." }
+                  { icon: Sun, title: "Protocolos Fotovoltaicos", desc: "Checklists específicos para inversores y anclajes." },
+                  { icon: Fingerprint, title: "Sello de Recepción", desc: "El cliente firma en terreno vía QR." },
+                  { icon: Activity, title: "Tu Ahorro en Vivo", desc: "Visualización de generación en tiempo real." },
+                  { icon: Bell, title: "Alertas Preventivas", desc: "Detección de caídas de tensión." }
                 ].map((f, i) => (
                   <div key={i} className="flex gap-3">
                     <div className="bg-white/5 p-2 rounded-lg h-fit border border-white/10">
@@ -543,26 +439,21 @@ export default function HomePage() {
 
             <Card className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
               <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce">
-                <zap className="h-6 w-6 text-black" />
+                <Zap className="h-6 w-6 text-black" />
               </div>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-black italic">Blindaje de Operación</h3>
                 <div className="flex items-center gap-2 bg-emerald-500/20 px-3 py-1 rounded-full border border-emerald-500/30">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Monitor Live</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">Monitor Live</span>
                 </div>
               </div>
               
               <div className="mb-8 p-6 bg-blue-600/20 rounded-[2rem] border border-blue-500/30 relative overflow-hidden">
-                <div className="absolute -right-4 -bottom-4 opacity-20"><Waves className="h-24 w-24 text-blue-400" /></div>
                 <div className="flex justify-between items-end relative z-10">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Eficiencia Real-Time</p>
                     <p className="text-4xl font-black italic tracking-tighter text-blue-100">98.4%</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[8px] font-black uppercase text-slate-500">Última lectura</p>
-                    <p className="text-[10px] font-bold text-emerald-400">Hace 2 segundos</p>
                   </div>
                 </div>
               </div>
@@ -571,10 +462,7 @@ export default function HomePage() {
                 {[
                   { label: "Generación Hoy", value: "Lectura Real-Time", highlight: true },
                   { label: "Ahorro Mensual", value: "$ USD en vivo", highlight: true },
-                  { label: "Diagnóstico Remoto", value: "Vía Sensores IoT", highlight: true },
-                  { label: "Necesidad Mantención", value: "Alerta Automática", highlight: true },
-                  { label: "Evidencia de Inversores", value: "Fotos Obligatorias" },
-                  { label: "Sincronización API", value: "Listo para tu CRM" }
+                  { label: "Diagnóstico Remoto", value: "Vía Sensores IoT", highlight: true }
                 ].map((row, i) => (
                   <div key={i} className={cn(
                     "flex justify-between items-center py-3 border-b border-white/5 text-xs",
@@ -600,39 +488,36 @@ export default function HomePage() {
               Conectividad Industrial
             </Badge>
             <h2 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-900 uppercase italic">Tu Servicio en la Nube IoT</h2>
-            <p className="text-slate-500 text-lg max-w-2xl mx-auto font-medium">
-              No esperes a que el cliente te llame. Deja que tus activos hablen por ti.
-            </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             <Card className="p-8 rounded-[2.5rem] border-none shadow-xl bg-white space-y-6">
-              <div className="bg-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-200">
+              <div className="bg-blue-600 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg">
                 <Waves className="text-white h-8 w-8" />
               </div>
               <h3 className="text-2xl font-black italic uppercase tracking-tight">Monitoreo 24/7</h3>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Integramos sensores de corriente, presión y temperatura. Si un parámetro sale de rango, el ERP crea una **Orden de Trabajo automática**.
+                Integramos sensores de corriente y presión. Si un parámetro sale de rango, el ERP crea una **Orden de Trabajo automática**.
               </p>
             </Card>
 
             <Card className="p-8 rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white space-y-6">
-              <div className="bg-blue-500 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900">
+              <div className="bg-blue-500 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg">
                 <Database className="text-white h-8 w-8" />
               </div>
               <h3 className="text-2xl font-black italic uppercase tracking-tight">API Gateway</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
-                ¿Usas SAP o Softland? Nuestra API abierta sincroniza clientes, facturas y personal, eliminando la doble digitación.
+                ¿Usas SAP o Softland? Nuestra API abierta sincroniza clientes y facturas eliminando la doble digitación.
               </p>
             </Card>
 
             <Card className="p-8 rounded-[2.5rem] border-none shadow-xl bg-white space-y-6">
-              <div className="bg-emerald-500 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-100">
+              <div className="bg-emerald-500 w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg">
                 <Check className="text-white h-8 w-8" />
               </div>
-              <h3 className="text-2xl font-black italic uppercase tracking-tight">Mantenimiento Predictivo</h3>
+              <h3 className="text-2xl font-black italic uppercase tracking-tight">Predictivo</h3>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Anticípate a las fallas. Recibe alertas en tu panel de control antes de que el equipo del cliente se detenga.
+                Anticípate a las fallas. Recibe alertas antes de que el equipo del cliente se detenga por completo.
               </p>
             </Card>
           </div>
@@ -646,55 +531,24 @@ export default function HomePage() {
             <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 uppercase italic leading-none">
               ¿Listo para ordenar <br />tu gestión técnica?
             </h2>
-            <p className="text-slate-500 text-xl font-medium">Únete a las empresas que ya digitalizaron su confianza operativa.</p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <Button asChild size="lg" className="h-20 px-12 rounded-[2rem] text-xl font-black shadow-2xl shadow-primary/20 group">
+            <Button asChild size="lg" className="h-20 px-12 rounded-[2rem] text-xl font-black shadow-2xl group">
               <Link href="/auth/signup">
                 Empezar gratis ahora <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
               </Link>
             </Button>
-            <div className="text-left">
-              <p className="text-sm font-black text-slate-900 uppercase">Sin tarjetas de crédito</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Activa tu cuadrilla en 5 minutos</p>
-            </div>
-          </div>
-
-          <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-8 opacity-40 grayscale">
-            <div className="flex flex-col items-center gap-2">
-              <img src="/logoweb.png" alt="Seguridad" className="h-10 w-auto object-contain" />
-              <span className="text-[10px] font-black uppercase">Seguridad SSL</span>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <CloudLightning className="h-8 w-8" />
-              <span className="text-[10px] font-black uppercase">Cloud Native</span>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <Search className="h-8 w-8" />
-              <span className="text-[10px] font-black uppercase">Auditable 100%</span>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <MessageSquare className="h-8 w-8" />
-              <span className="text-[10px] font-black uppercase">Feedback Directo</span>
-            </div>
           </div>
         </div>
       </section>
 
       <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-3 opacity-50">
-            <img src="/logoweb.png" alt="Logo" className="h-6 w-auto object-contain" />
-          </div>
+          <img src="/logoweb.png" alt="Logo" className="h-6 w-auto object-contain opacity-50" />
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
             © {new Date().getFullYear()} - Todos los derechos reservados.
           </p>
-          <div className="flex gap-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-            <Link href="/terms" className="hover:text-primary transition-colors">Términos</Link>
-            <a href="#" className="hover:text-primary transition-colors">Privacidad</a>
-            <Link href="/support" className="hover:text-primary transition-colors">Soporte</Link>
-          </div>
         </div>
       </footer>
     </div>
