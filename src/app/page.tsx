@@ -237,10 +237,19 @@ export default function HomePage() {
       </section>
 
       {/* WATER MONITORING SECTION */}
-      <section id="agua" className="py-24 bg-white relative overflow-hidden border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
+        {/* Decorative Water Patterns */}
+        <div className="absolute top-0 right-0 p-20 opacity-[0.03] pointer-events-none select-none">
+          <Waves className="h-96 w-96 text-blue-600 rotate-12" />
+        </div>
+        <div className="absolute bottom-0 left-0 p-20 opacity-[0.03] pointer-events-none select-none">
+          <Droplets className="h-80 w-80 text-blue-600 -rotate-12" />
+        </div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05)_0%,transparent_70%)] pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-16 space-y-4">
-            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full">Solución Inteligente para Condominios y Edificios</Badge>
+            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg shadow-blue-900/20">Solución Inteligente para Condominios y Edificios</Badge>
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 uppercase italic">
               Sistema de Monitoreo de Agua <br />
               <span className="text-blue-600">en Tiempo Real</span>
@@ -282,7 +291,7 @@ export default function HomePage() {
                 bg: "bg-slate-100"
               }
             ].map((item, i) => (
-              <div key={i} className="p-8 rounded-[2rem] border-2 border-slate-100 hover:border-blue-200 transition-all group bg-white shadow-sm">
+              <div key={i} className="p-8 rounded-[2rem] border-2 border-white/50 hover:border-blue-200 transition-all group bg-white/80 backdrop-blur-sm shadow-xl">
                 <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm", item.bg, item.color)}>
                   <item.icon className="h-6 w-6" />
                 </div>
@@ -294,8 +303,8 @@ export default function HomePage() {
 
           <div className="grid lg:grid-cols-3 gap-8">
             {/* ZONA DE CASA */}
-            <Card className="rounded-[2.5rem] border-2 border-slate-100 shadow-xl overflow-hidden bg-white group hover:border-blue-200 transition-all">
-              <CardHeader className="bg-blue-50 p-8 border-b">
+            <Card className="rounded-[2.5rem] border-2 border-blue-100/50 shadow-2xl overflow-hidden bg-white/90 backdrop-blur-md group hover:border-blue-300 transition-all">
+              <CardHeader className="bg-blue-50/50 p-8 border-b">
                 <div className="flex items-center justify-between mb-4">
                   <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-lg shadow-blue-200">
                     <Droplets className="h-6 w-6" />
@@ -354,8 +363,8 @@ export default function HomePage() {
             </Card>
 
             {/* ADMINISTRACIÓN Y CRM */}
-            <Card className="rounded-[2.5rem] border-2 border-slate-100 shadow-xl overflow-hidden bg-white group hover:border-blue-200 transition-all">
-              <CardHeader className="bg-blue-50 p-8 border-b">
+            <Card className="rounded-[2.5rem] border-2 border-blue-100/50 shadow-2xl overflow-hidden bg-white/90 backdrop-blur-md group hover:border-blue-300 transition-all">
+              <CardHeader className="bg-blue-50/50 p-8 border-b">
                 <div className="flex items-center justify-between mb-4">
                   <div className="bg-slate-900 p-3 rounded-2xl text-white shadow-lg">
                     <LayoutDashboard className="h-6 w-6" />
@@ -384,24 +393,25 @@ export default function HomePage() {
             </Card>
           </div>
 
-          <div className="mt-16 bg-blue-50 rounded-[3rem] p-10 border-2 border-blue-100 text-center relative overflow-hidden">
-            <div className="absolute -right-10 -bottom-10 opacity-10"><Waves className="h-48 w-48 text-blue-600" /></div>
-            <h3 className="text-2xl font-black italic uppercase text-slate-900 mb-2">Balance de Agua Instantáneo</h3>
-            <p className="text-slate-600 font-medium max-w-2xl mx-auto mb-8">
+          <div className="mt-16 bg-blue-600 rounded-[3rem] p-10 text-center relative overflow-hidden shadow-2xl shadow-blue-900/20 border-2 border-blue-400/30">
+            <div className="absolute -right-10 -bottom-10 opacity-20"><Waves className="h-64 w-64 text-white" /></div>
+            <div className="absolute -left-10 -top-10 opacity-10"><Droplets className="h-48 w-48 text-white" /></div>
+            <h3 className="text-3xl font-black italic uppercase text-white mb-2 relative z-10">Balance de Agua Instantáneo</h3>
+            <p className="text-blue-100 font-medium max-w-2xl mx-auto mb-8 relative z-10">
               Nuestra plataforma realiza un balance automático entre el medidor matriz y los remarcadores de cada unidad, detectando pérdidas en la red matriz de forma inmediata.
             </p>
-            <div className="flex justify-center gap-12 flex-wrap">
+            <div className="flex justify-center gap-12 flex-wrap relative z-10">
               <div className="text-center">
-                <p className="text-4xl font-black text-blue-600 italic leading-none">99.9%</p>
-                <p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest">Precisión Ultrasónica</p>
+                <p className="text-5xl font-black text-white italic leading-none">99.9%</p>
+                <p className="text-[10px] font-black uppercase text-blue-200 mt-2 tracking-widest">Precisión Ultrasónica</p>
               </div>
               <div className="text-center">
-                <p className="text-4xl font-black text-blue-600 italic leading-none">24/7</p>
-                <p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest">Monitoreo Live</p>
+                <p className="text-5xl font-black text-white italic leading-none">24/7</p>
+                <p className="text-[10px] font-black uppercase text-blue-200 mt-2 tracking-widest">Monitoreo Live</p>
               </div>
               <div className="text-center">
-                <p className="text-4xl font-black text-blue-600 italic leading-none">0%</p>
-                <p className="text-[10px] font-black uppercase text-slate-400 mt-2 tracking-widest">Wi-Fi Dependencia</p>
+                <p className="text-5xl font-black text-white italic leading-none">0%</p>
+                <p className="text-[10px] font-black uppercase text-blue-200 mt-2 tracking-widest">Wi-Fi Dependencia</p>
               </div>
             </div>
           </div>
