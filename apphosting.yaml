@@ -1,6 +1,12 @@
-# Configuración para Firebase App Hosting
-# Documentación: https://firebase.google.com/docs/app-hosting/configure
+# Configuración optimizada para Next.js 15 en producción
+# Se aumenta potencia para procesar el alto volumen de tráfico y evitar error 400
 
 runConfig:
-  # Aumentamos memoria para asegurar compilación exitosa de Next.js 15
   memoryMiB: 1024
+  cpu: 1
+  minInstances: 1
+  maxInstances: 10
+
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: studio-1862261800-55e9f

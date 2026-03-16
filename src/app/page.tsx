@@ -39,7 +39,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const WHATSAPP_URL = "https://wa.me/56941245316?text=Hola,%20me%20interesa%20saber%20m%C3%A1s%20sobre%20PCGMANTENIMIENTO.";
@@ -70,7 +69,7 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-pulse">
-          <img src="/logoweb.png" alt="Cargando..." className="h-12 w-auto object-contain" />
+          <p className="text-sm font-black uppercase tracking-widest text-slate-400">PCGMANTENIMIENTO</p>
         </div>
       </div>
     );
@@ -111,7 +110,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-3">
-              <img src="/logoweb.png" alt="PCGMANTENIMIENTO" className="h-10 w-auto object-contain" />
+              <span className="font-black text-xl tracking-tighter text-slate-900 uppercase italic">PCGMANTENIMIENTO</span>
             </div>
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
@@ -230,29 +229,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* TRANSITION IMPACT SECTION */}
-      <section className="py-24 bg-slate-900 text-white overflow-hidden relative border-y border-white/5">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-transparent pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg mb-8 animate-pulse border-none">
-            INTELIGENCIA OPERATIVA LIVE
-          </Badge>
-          <h2 className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-[0.8] mb-10">
-            DOMINA CADA GOTA, <br />
-            <span className="text-blue-400">CADA VOLTIO,</span> <br />
-            CADA SEGUNDO.
-            <span className="block text-2xl md:text-4xl mt-10 text-white/40 tracking-[0.3em] not-italic">
-              ESTO ES MANTENCIÓN PREVENTIVA
-            </span>
-          </h2>
-          <div className="flex justify-center mt-12">
-            <div className="animate-bounce p-4 rounded-full bg-white/5 border border-white/10">
-              <ChevronDown className="h-8 w-8 text-blue-400" />
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* WATER MONITORING SECTION - WC LEAK FOCUS */}
       <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -276,12 +252,6 @@ export default function HomePage() {
                 <div className="relative mb-12">
                   <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)] relative z-10">
                     <Droplets className="h-20 w-20 text-blue-400" />
-                  </div>
-                  {/* Animación de goteo constante */}
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4">
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-drop opacity-0 mb-2" style={{ animationDelay: '0s' }} />
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-drop opacity-0 mb-2" style={{ animationDelay: '0.5s' }} />
-                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-drop opacity-0 mb-2" style={{ animationDelay: '1s' }} />
                   </div>
                 </div>
                 <div className="space-y-3 text-center">
@@ -337,64 +307,6 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
-          {/* TARJETAS DE VALOR BAJO SIMULACIÓN */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-            {[
-              { icon: TrendingDown, title: "Ahorro Directo", desc: "Reduce hasta un 30% el gasto común mediante detección temprana.", color: "text-blue-600", bg: "bg-blue-50" },
-              { icon: AlertTriangle, title: "Fugas Invisibles", desc: "El oído no detecta un goteo de WC, nuestro sensor ultrasónico sí.", color: "text-rose-600", bg: "bg-rose-50" },
-              { icon: Users, title: "Justicia Hídrica", desc: "Identifica fugas por departamento para que cada unidad pague lo justo.", color: "text-emerald-600", bg: "bg-emerald-50" },
-              { icon: Scale, title: "ROI Inmediato", desc: "El sistema se paga solo al eliminar las primeras 3 fugas mayores.", color: "text-slate-900", bg: "bg-slate-100" }
-            ].map((item, i) => (
-              <div key={i} className="p-8 rounded-[2.5rem] border-2 border-white bg-white/80 backdrop-blur-sm shadow-xl hover:border-blue-200 hover:scale-105 transition-all duration-300">
-                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-sm", item.bg, item.color)}>
-                  <item.icon className="h-6 w-6" />
-                </div>
-                <h4 className="font-black text-slate-900 uppercase italic tracking-tight mb-3">{item.title}</h4>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* SOLAR SECTION */}
-      <section id="solar" className="py-24 bg-slate-900 text-white overflow-hidden relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <Badge className="bg-amber-500 text-black font-black px-4 py-1 uppercase tracking-widest border-none">Energía Solar Pro</Badge>
-              <h2 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-none">
-                El ERP que tu cuadrilla <br />
-                <span className="text-amber-400">solar realmente usará.</span>
-              </h2>
-              <div className="grid sm:grid-cols-2 gap-6">
-                {[
-                  { icon: Sun, title: "Protocolos PV", desc: "Checklists específicos inversores." },
-                  { icon: CheckCircle2, title: "Sello Digital", desc: "Firma en terreno vía QR." },
-                  { icon: Activity, title: "Generación Live", desc: "Ahorro visible en tiempo real." },
-                  { icon: AlertTriangle, title: "Alertas", desc: "Detección de caídas de tensión." }
-                ].map((f, i) => (
-                  <div key={i} className="flex gap-3">
-                    <div className="bg-white/5 p-2 rounded-lg border border-white/10"><f.icon className="h-5 w-5 text-amber-400" /></div>
-                    <div><h4 className="font-bold text-white text-sm">{f.title}</h4><p className="text-slate-500 text-[11px] mt-1">{f.desc}</p></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
-              <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce text-black">
-                <Zap className="h-6 w-6" />
-              </div>
-              <h3 className="text-2xl font-black italic mb-6 uppercase tracking-tighter">Blindaje Operativo</h3>
-              <div className="space-y-4">
-                <div className="p-6 bg-blue-600/20 rounded-[2rem] border border-blue-500/30">
-                  <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Eficiencia Real-Time</p>
-                  <p className="text-4xl font-black italic tracking-tighter text-blue-100">98.4%</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -421,15 +333,9 @@ export default function HomePage() {
 
       <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
-          <img src="/logoweb.png" alt="Logo" className="h-6 w-auto object-contain opacity-50" />
-          <div className="flex items-center gap-4">
-            <a href={WHATSAPP_URL} className="text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors flex items-center gap-1">
-              <MessageCircle className="h-4 w-4" /> +56 9 4124 5316
-            </a>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-              © {new Date().getFullYear()} - Todos los derechos reservados.
-            </p>
-          </div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+            © {new Date().getFullYear()} - PCGMANTENIMIENTO ERP
+          </p>
         </div>
       </footer>
     </div>
