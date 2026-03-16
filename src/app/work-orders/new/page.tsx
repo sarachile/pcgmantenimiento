@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, Suspense } from "react";
@@ -43,7 +44,10 @@ import {
   MapPin,
   Smartphone,
   Mail,
-  HelpCircle
+  HelpCircle,
+  AlertTriangle,
+  Zap,
+  ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -287,7 +291,7 @@ function NewWorkOrderContent() {
           task: item.task, 
           completed: item.completed || false 
         })),
-        status: status || 'creada',
+        status: (status === 'solicitada') ? 'asignada' : (status || 'creada'),
         updatedAt: serverTimestamp(),
       };
 
@@ -308,6 +312,8 @@ function NewWorkOrderContent() {
     } finally { setIsSubmitting(false); }
   };
 
+  const isTriage = isEditing && status === 'solicitada';
+
   if (isUserLoading || isLoadingData) return <div className="flex h-[400px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
@@ -316,17 +322,47 @@ function NewWorkOrderContent() {
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild><Link href={isEditing ? `/work-orders/${editId}` : "/work-orders"}><ArrowLeft className="h-4 w-4" /></Link></Button>
           <div>
-            <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">{isEditing ? "Editar Orden" : "Generar Orden"}</h2>
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">Gestión de Partidas y Trazabilidad Geográfica</p>
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 italic leading-none">
+              {isTriage ? "Triaje de Solicitud" : (isEditing ? "Editar Orden" : "Generar Orden")}
+            </h2>
+            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mt-2">
+              {isTriage ? "Validación técnica de requerimiento externo" : "Gestión de Partidas y Trazabilidad Geográfica"}
+            </p>
           </div>
         </div>
         <WorkOrderHelp />
       </div>
 
+      {isTriage && (
+        <Card className="rounded-[2rem] border-none bg-indigo-600 text-white shadow-xl overflow-hidden animate-in slide-in-from-top-4">
+          <CardContent className="p-8 flex items-start gap-6">
+            <div className="bg-white/20 p-4 rounded-3xl"><Zap className="h-8 w-8 text-blue-300" /></div>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-xl font-black uppercase italic tracking-tighter">Modo de Triaje Activo</h3>
+                <p className="text-sm font-medium text-indigo-100 mt-1">Transforme esta solicitud del cliente en una orden operativa siguiendo estos pasos:</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  "1. Clasifique: Asocie equipo/activo.",
+                  "2. Protocolo: Defina checklist técnico.",
+                  "3. Recursos: Indique magnitudes/partidas.",
+                  "4. Despacho: Asigne personal y fecha."
+                ].map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest bg-white/10 px-3 py-2 rounded-xl">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-blue-300" /> {s}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-10">
         {/* 1. DATOS DEL SERVICIO */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className={cn("text-white p-8", isEditing ? "bg-amber-600" : "bg-slate-900")}>
+          <CardHeader className={cn("text-white p-8", isTriage ? "bg-indigo-900" : (isEditing ? "bg-amber-600" : "bg-slate-900"))}>
             <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
               {isEditing ? <Edit2 className="h-6 w-6" /> : <ClipboardPlus className="h-6 w-6 text-blue-400" />} 1. Datos del Servicio
             </CardTitle>
@@ -422,14 +458,18 @@ function NewWorkOrderContent() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Equipo / Activo</Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Equipo / Activo</Label>
+                  {isTriage && !assetId && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                </div>
                 <Select value={assetId} onValueChange={setAssetId}>
-                  <SelectTrigger className="h-12 rounded-xl border-2"><SelectValue placeholder="Seleccione equipo..." /></SelectTrigger>
+                  <SelectTrigger className={cn("h-12 rounded-xl border-2", isTriage && !assetId && "border-amber-300 bg-amber-50/20")}><SelectValue placeholder="Seleccione equipo..." /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">Sin activo específico</SelectItem>
                     {assets?.map(a => <SelectItem key={a.id} value={a.id} className="font-bold">{a.name} [{a.code}]</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {isTriage && !assetId && <p className="text-[9px] text-amber-600 font-bold uppercase mt-1">Recomendado: Vincular a un equipo para trazabilidad</p>}
               </div>
             </div>
 
@@ -484,11 +524,13 @@ function NewWorkOrderContent() {
 
         {/* 2. MAGNITUDES Y PARTIDAS */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="bg-indigo-600 text-white p-8">
+          <CardHeader className={cn("text-white p-8", isTriage && serviceItems.length === 0 ? "bg-indigo-600 animate-pulse" : "bg-indigo-600")}>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
-                <Layers className="h-6 w-6" /> 2. Magnitudes y Partidas
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                <Layers className="h-6 w-6" /> 
+                <CardTitle className="text-xl font-black uppercase tracking-tighter italic">2. Magnitudes y Partidas</CardTitle>
+                {isTriage && serviceItems.length === 0 && <AlertTriangle className="h-5 w-5 text-amber-300" />}
+              </div>
               <Button type="button" variant="outline" size="sm" onClick={handleAddServiceItem} className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-black text-[10px] uppercase h-10 rounded-xl px-4 gap-2">
                 <Plus className="h-4 w-4" /> Añadir Partida
               </Button>
@@ -496,8 +538,9 @@ function NewWorkOrderContent() {
           </CardHeader>
           <CardContent className="p-8 space-y-4">
             {serviceItems.length === 0 ? (
-              <div className="py-10 text-center border-2 border-dashed rounded-3xl opacity-40 italic text-sm">
-                No hay magnitudes registradas. Use el botón superior para añadir ítems de medición (m2, m3, visitas, etc).
+              <div className="py-10 text-center border-2 border-dashed rounded-3xl opacity-40 italic text-sm space-y-2">
+                <p>No hay magnitudes registradas.</p>
+                {isTriage && <p className="text-[9px] font-black text-indigo-600 uppercase">Paso Crítico: Indique qué se cobrará (ej: 1 Visita, 10m2 Pintura)</p>}
               </div>
             ) : (
               <div className="space-y-3">
@@ -546,12 +589,19 @@ function NewWorkOrderContent() {
 
         {/* 3. PERSONAL TÉCNICO */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="bg-primary p-8">
+          <CardHeader className={cn("text-white p-8", isTriage && assignedToStaffIds.length === 0 ? "bg-primary animate-pulse" : "bg-primary")}>
             <CardTitle className="flex items-center gap-3 text-xl font-black text-white uppercase tracking-tighter italic">
               <Users className="h-6 w-6" /> 3. Personal Técnico *
+              {isTriage && assignedToStaffIds.length === 0 && <AlertTriangle className="h-5 w-5 text-blue-200" />}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-8">
+            {assignedToStaffIds.length === 0 && isTriage && (
+              <div className="mb-6 bg-blue-50 p-4 rounded-2xl border-2 border-blue-100 flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-primary" />
+                <p className="text-[10px] font-black uppercase text-primary tracking-widest">Debe asignar al menos un técnico para despachar la orden.</p>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[250px] overflow-y-auto">
               {staffMembers?.map(s => (
                 <label key={s.id} className={cn("flex items-center gap-4 p-4 rounded-2xl border-2 cursor-pointer transition-all", assignedToStaffIds.includes(s.id) ? "border-primary bg-primary/5" : "border-slate-100 bg-white")}>
@@ -565,18 +615,21 @@ function NewWorkOrderContent() {
 
         {/* 4. PROTOCOLOS */}
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="bg-slate-900 text-white p-8">
+          <CardHeader className={cn("text-white p-8", isTriage && checklist.length === 0 ? "bg-slate-900 animate-pulse" : "bg-slate-900")}>
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-3 text-xl font-black uppercase tracking-tighter italic">
-                <LayoutList className="h-6 w-6 text-amber-400" /> 4. Protocolos Técnicos
-              </CardTitle>
+              <div className="flex items-center gap-3">
+                <LayoutList className="h-6 w-6 text-amber-400" /> 
+                <CardTitle className="text-xl font-black uppercase tracking-tighter italic">4. Protocolos Técnicos</CardTitle>
+                {isTriage && checklist.length === 0 && <AlertTriangle className="h-5 w-5 text-amber-400" />}
+              </div>
               <Button type="button" variant="outline" size="sm" onClick={() => setChecklist([...checklist, { task: "", completed: false, id: `task-new-${Date.now()}` }])} className="h-10 rounded-xl font-black text-[10px] uppercase gap-2 border-white/20 text-white bg-white/10"><Plus className="h-4 w-4" /> Añadir Punto</Button>
             </div>
           </CardHeader>
           <CardContent className="p-8 space-y-4">
             {checklist.length === 0 ? (
-              <div className="py-10 text-center border-2 border-dashed rounded-3xl opacity-40 italic text-sm">
-                No hay puntos de control registrados.
+              <div className="py-10 text-center border-2 border-dashed rounded-3xl opacity-40 italic text-sm space-y-2">
+                <p>No hay puntos de control registrados.</p>
+                {isTriage && <p className="text-[9px] font-black text-amber-600 uppercase">Defina qué pasos debe certificar el técnico en terreno.</p>}
               </div>
             ) : (
               checklist.map((item, idx) => (
@@ -617,7 +670,7 @@ function NewWorkOrderContent() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="solicitada">Solicitada</SelectItem>
+                    <SelectItem value="solicitada">Solicitada (Mandante)</SelectItem>
                     <SelectItem value="creada">Creada</SelectItem>
                     <SelectItem value="asignada">Asignada</SelectItem>
                     <SelectItem value="en proceso">En Proceso</SelectItem>
@@ -629,8 +682,11 @@ function NewWorkOrderContent() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400">Inicio Programado</Label>
-                <Input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className="h-12 border-2 rounded-xl font-bold" />
+                <div className="flex items-center gap-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Inicio Programado</Label>
+                  {isTriage && !scheduledDate && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                </div>
+                <Input type="date" value={scheduledDate} onChange={e => setScheduledDate(e.target.value)} className={cn("h-12 border-2 rounded-xl font-bold", isTriage && !scheduledDate && "border-amber-300")} />
               </div>
             </div>
             
@@ -639,8 +695,8 @@ function NewWorkOrderContent() {
             </div>
           </CardContent>
           <CardFooter className="p-8 pt-0">
-            <Button type="submit" disabled={isSubmitting} className={cn("w-full h-20 rounded-[2rem] text-white font-black text-xl uppercase tracking-widest shadow-2xl transition-all", isEditing ? "bg-amber-600 shadow-amber-900/20" : "bg-primary shadow-primary/20 hover:scale-[1.02]")}>
-              {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : (isEditing ? <Edit2 className="h-8 w-8 mr-2" /> : <Plus className="h-8 w-8 mr-2" />) + (isEditing ? "Actualizar Orden" : "Activar Orden")}
+            <Button type="submit" disabled={isSubmitting} className={cn("w-full h-20 rounded-[2rem] text-white font-black text-xl uppercase tracking-widest shadow-2xl transition-all", isTriage ? "bg-indigo-600 shadow-indigo-900/40" : (isEditing ? "bg-amber-600 shadow-amber-900/20" : "bg-primary shadow-primary/20 hover:scale-[1.02]"))}>
+              {isSubmitting ? <Loader2 className="animate-spin h-8 w-8" /> : (isTriage ? <><Zap className="h-8 w-8 mr-2" /> Validar y Despachar a Terreno</> : (isEditing ? <Edit2 className="h-8 w-8 mr-2" /> : <Plus className="h-8 w-8 mr-2" />) + (isEditing ? "Actualizar Orden" : "Activar Orden"))}
             </Button>
           </CardFooter>
         </Card>

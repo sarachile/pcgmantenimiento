@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useRef, useMemo } from "react";
@@ -54,7 +55,8 @@ import {
   Download,
   Maximize2,
   Map as MapLucide,
-  Play
+  Play,
+  Settings2
 } from "lucide-react";
 import {
   Dialog,
@@ -507,20 +509,27 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
         </div>
         <div className="flex flex-wrap gap-2">
           <WorkOrderHelp />
-          {isTechnician && ot.status !== 'aprobada' && (
+          {ot.status === 'solicitada' && isAdminOrSupervisor && (
+            <Button asChild className="rounded-xl h-11 bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg animate-pulse">
+              <Link href={`/work-orders/new?editId=${ot.id}`}>
+                <Settings2 className="h-4 w-4" /> Procesar Solicitud Mandante
+              </Link>
+            </Button>
+          )}
+          {isTechnician && ot.status !== 'aprobada' && ot.status !== 'solicitada' && (
             <Button asChild className="rounded-xl h-11 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg">
               <Link href={`/field/capture?otId=${ot.id}`}>
                 <Play className="h-4 w-4" /> Ejecutar OT / Reporte Terreno
               </Link>
             </Button>
           )}
-          {isAdminOrSupervisor && ot.status !== 'aprobada' && ot.status !== 'pendiente cliente' && (
+          {isAdminOrSupervisor && ot.status !== 'aprobada' && ot.status !== 'pendiente cliente' && ot.status !== 'solicitada' && (
             <Button onClick={handleVisaOrder} disabled={isUpdating} className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg">
               {isUpdating ? <Loader2 className="animate-spin h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />} 
               {ot.reviewerRequired ? "Visar y Habilitar Cliente" : "Visar y Aprobar"}
             </Button>
           )}
-          {isAdminOrSupervisor && ot.status !== 'aprobada' && (
+          {isAdminOrSupervisor && ot.status !== 'aprobada' && ot.status !== 'solicitada' && (
             <Button 
               variant="outline" 
               onClick={() => { toast({ title: "Avance Guardado" }); router.push("/work-orders"); }} 
@@ -644,7 +653,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             <CardContent className="p-8">
               <p className="text-lg font-medium leading-relaxed italic text-blue-50">"{ot.description}"</p>
               
-              {isTechnician && ot.status !== 'aprobada' && (
+              {isTechnician && ot.status !== 'aprobada' && ot.status !== 'solicitada' && (
                 <div className="mt-8 pt-8 border-t border-white/10">
                   <Button asChild className="w-full h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest gap-3 shadow-2xl animate-in fade-in slide-in-from-top-4 duration-1000">
                     <Link href={`/field/capture?otId=${ot.id}`}>
