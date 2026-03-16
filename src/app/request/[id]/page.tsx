@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, Suspense, useRef, useMemo } from "react";
@@ -42,7 +41,8 @@ import {
   Globe,
   Activity,
   Trophy,
-  AlertTriangle
+  AlertTriangle,
+  Inbox
 } from "lucide-react";
 import {
   Dialog,
@@ -104,10 +104,10 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
 
   // Indicadores de Estado para el Cliente
   const historyStats = useMemo(() => {
-    const pending = history.filter(ot => ot.status !== 'aprobada' && ot.status !== 'rechazada').length;
-    const completed = history.filter(ot => ot.status === 'aprobada').length;
     const total = history.length;
-    return { pending, completed, total };
+    const completed = history.filter(ot => ot.status === 'aprobada').length;
+    const active = history.filter(ot => ot.status !== 'aprobada' && ot.status !== 'rechazada').length;
+    return { total, completed, active };
   }, [history]);
 
   useEffect(() => {
@@ -148,7 +148,6 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
       setHistory(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
     } catch (e) { 
       console.error(e); 
-      // Si falla por falta de índice, al menos cargamos sin orden para no bloquear al usuario
       const qSimple = query(collection(firestore, "companies", companyId, "workOrders"), where("clientId", "==", clientId));
       const snapSimple = await getDocs(qSimple);
       setHistory(snapSimple.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
@@ -324,19 +323,20 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
             </TabsContent>
 
             <TabsContent value="history" className="space-y-6">
+              {/* KPIs de Resumen para el Cliente */}
               <div className="grid grid-cols-3 gap-4">
-                <Card className="rounded-3xl border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
-                  <div className="bg-blue-50 p-3 rounded-2xl mb-2"><Activity className="h-5 w-5 text-blue-600" /></div>
+                <Card className="rounded-[2rem] border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
+                  <div className="bg-slate-100 p-3 rounded-2xl mb-2 text-slate-600"><Inbox className="h-5 w-5" /></div>
                   <p className="text-2xl font-black text-slate-900 leading-none">{historyStats.total}</p>
                   <p className="text-[8px] font-black uppercase text-slate-400 mt-1 tracking-widest">Totales</p>
                 </Card>
-                <Card className="rounded-3xl border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
-                  <div className="bg-amber-50 p-3 rounded-2xl mb-2"><Clock className="h-5 w-5 text-amber-600" /></div>
-                  <p className="text-2xl font-black text-slate-900 leading-none">{historyStats.pending}</p>
+                <Card className="rounded-[2rem] border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
+                  <div className="bg-blue-50 p-3 rounded-2xl mb-2 text-blue-600"><Activity className="h-5 w-5" /></div>
+                  <p className="text-2xl font-black text-slate-900 leading-none">{historyStats.active}</p>
                   <p className="text-[8px] font-black uppercase text-slate-400 mt-1 tracking-widest">En Curso</p>
                 </Card>
-                <Card className="rounded-3xl border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
-                  <div className="bg-emerald-50 p-3 rounded-2xl mb-2"><Trophy className="h-5 w-5 text-emerald-600" /></div>
+                <Card className="rounded-[2rem] border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
+                  <div className="bg-emerald-50 p-3 rounded-2xl mb-2 text-emerald-600"><Trophy className="h-5 w-5" /></div>
                   <p className="text-2xl font-black text-slate-900 leading-none">{historyStats.completed}</p>
                   <p className="text-[8px] font-black uppercase text-slate-400 mt-1 tracking-widest">Finalizados</p>
                 </Card>

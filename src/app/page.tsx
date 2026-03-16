@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from "react";
@@ -163,9 +162,9 @@ export default function HomePage() {
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
               <Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
-            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2" asChild>
+            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-xl font-bold border-2" asChild>
               <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="gap-2">
-                <MessageCircle className="h-5 w-5 text-emerald-500" /> WhatsApp Directo
+                <MessageCircle className="h-6 w-6 text-emerald-500" /> WhatsApp
               </a>
             </Button>
           </div>
@@ -175,8 +174,8 @@ export default function HomePage() {
       {/* Áreas de Aplicación Section */}
       <section className="py-20 bg-slate-50/50 overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 text-center">
-          <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.4em] mb-4">Industrias Digitalizadas</p>
-          <h3 className="text-2xl font-black italic tracking-tighter uppercase text-slate-900">Sectores que potencian su valor con nuestra tecnología</h3>
+          <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.4em] mb-4">Sectores Digitalizados</p>
+          <h3 className="text-2xl font-black italic tracking-tighter uppercase text-slate-900">Industrias que potencian su valor con nuestra tecnología</h3>
         </div>
         <div className="relative flex overflow-x-hidden">
           <div className="animate-marquee hover:[animation-play-state:paused] whitespace-nowrap flex py-4">
@@ -192,7 +191,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Description Section */}
+      {/* El Sistema Nervioso Section */}
       <section id="plataforma" className="py-32 bg-white relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-20 space-y-6">
@@ -235,7 +234,7 @@ export default function HomePage() {
       <section className="py-24 bg-slate-900 text-white overflow-hidden relative border-y border-white/5">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg mb-8 animate-pulse">
+          <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg mb-8 animate-pulse border-none">
             INTELIGENCIA OPERATIVA LIVE
           </Badge>
           <h2 className="text-6xl md:text-9xl font-black tracking-tighter uppercase italic leading-[0.8] mb-10">
@@ -258,13 +257,13 @@ export default function HomePage() {
       <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-16 space-y-4">
-            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg">Gestión de Activos Críticos</Badge>
+            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg border-none">Gestión de Activos Críticos</Badge>
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 uppercase italic">
               El Silencio que <br />
               <span className="text-blue-600">Vacía tu Caja Común</span>
             </h2>
-            <p className="text-slate-500 font-medium max-w-2xl mx-auto">
-              Una fuga silenciosa en un WC puede perder hasta **30 litros por hora**. En un edificio, esto significa millones de pesos anuales en gastos comunes innecesarios.
+            <p className="text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
+              Una fuga silenciosa en un WC puede perder hasta **30 litros por hora**. En un edificio de 100 departamentos, esto se traduce en millones de pesos anuales en agua que nadie usó.
             </p>
           </div>
 
@@ -327,7 +326,7 @@ export default function HomePage() {
                     <div className="space-y-1">
                       <p className="text-sm font-black uppercase italic text-white">Escala Comunitaria (100 Deptos)</p>
                       <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                        Si solo el 5% de tus unidades tiene una fuga leve, tu edificio está perdiendo <span className="text-white font-bold">$1.944.000 anuales</span> en agua que nadie usó.
+                        Si solo el 5% de tus unidades tiene una fuga leve, tu edificio está perdiendo <span className="text-white font-bold">$1.944.000 anuales</span> en agua desperdiciada.
                       </p>
                     </div>
                   </div>
@@ -364,7 +363,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <Badge className="bg-amber-500 text-black font-black px-4 py-1 uppercase tracking-widest">Energía Solar Pro</Badge>
+              <Badge className="bg-amber-500 text-black font-black px-4 py-1 uppercase tracking-widest border-none">Energía Solar Pro</Badge>
               <h2 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-none">
                 El ERP que tu cuadrilla <br />
                 <span className="text-amber-400">solar realmente usará.</span>
@@ -420,14 +419,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="py-12 bg-slate-50 border-t border-slate-100">
+      <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
           <img src="/logoweb.png" alt="Logo" className="h-6 w-auto object-contain opacity-50" />
           <div className="flex items-center gap-4">
             <a href={WHATSAPP_URL} className="text-xs font-bold text-slate-500 hover:text-emerald-600 transition-colors flex items-center gap-1">
               <MessageCircle className="h-4 w-4" /> +56 9 4124 5316
             </a>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">© {new Date().getFullYear()} - Todos los derechos reservados.</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+              © {new Date().getFullYear()} - Todos los derechos reservados.
+            </p>
           </div>
         </div>
       </footer>
