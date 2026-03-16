@@ -48,6 +48,9 @@ Si ves un error **400 Bad Request** al intentar crear un lanzamiento:
 1. Ve a [console.cloud.google.com/billing](https://console.cloud.google.com/billing).
 2. Asegúrate de que no haya saldos pendientes. Si los hay, haz clic en "Pagar ahora".
 3. Una vez pagado, las APIs de Cloud Run y Cloud Build se reactivarán automáticamente.
+4. **Verificación Técnica**: 
+   - Entra a [APIs & Services](https://console.cloud.google.com/apis/dashboard) y confirma que **Cloud Build API** esté habilitada.
+   - Si el error persiste, borra el Backend en App Hosting y vuelve a conectarlo al repositorio GitHub.
 
 ## 🛠️ Tecnologías
 - **NextJS 15** (App Router)
