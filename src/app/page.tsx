@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from "react";
@@ -40,7 +39,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 const WHATSAPP_URL = "https://wa.me/56941245316?text=Hola,%20me%20interesa%20saber%20m%C3%A1s%20sobre%20PCGMANTENIMIENTO.";
@@ -163,8 +162,8 @@ export default function HomePage() {
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
               <Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link>
             </Button>
-            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-xl font-bold border-2" asChild>
-              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="gap-2">
+            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-xl font-bold border-2 gap-3" asChild>
+              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
                 <MessageCircle className="h-6 w-6 text-emerald-500" /> WhatsApp
               </a>
             </Button>
@@ -206,27 +205,27 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <Card className="p-10 rounded-[3rem] bg-slate-900 text-white space-y-6 shadow-2xl">
+            <div className="p-10 rounded-[3rem] bg-slate-900 text-white space-y-6 shadow-2xl">
               <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Layers className="h-6 w-6 text-white" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase">Unidad de Gestión</h3>
               <p className="text-slate-400 text-sm leading-relaxed">
                 Integramos personal, activos, clientes e inventario en un solo flujo técnico-legal.
               </p>
-            </Card>
-            <Card className="p-10 rounded-[3rem] border-2 border-slate-100 bg-white space-y-6">
+            </div>
+            <div className="p-10 rounded-[3rem] border-2 border-slate-100 bg-white space-y-6 shadow-sm">
               <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Database className="h-6 w-6 text-primary" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase">Base de Datos Viva</h3>
               <p className="text-slate-500 text-sm leading-relaxed">
                 Cada foto y cada firma alimenta un histórico inalterable por activo y cliente.
               </p>
-            </Card>
-            <Card className="p-10 rounded-[3rem] bg-blue-50 border-2 border-blue-100 space-y-6">
+            </div>
+            <div className="p-10 rounded-[3rem] bg-blue-50 border-2 border-blue-100 space-y-6 shadow-sm">
               <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-white" /></div>
               <h3 className="text-2xl font-black italic tracking-tight uppercase text-blue-900">Inteligencia Terreno</h3>
               <p className="text-blue-800/70 text-sm leading-relaxed">
                 IA para resúmenes de bitácora técnica y transformación de datos crudos en estrategia.
               </p>
-            </Card>
+            </div>
           </div>
         </div>
       </section>
@@ -269,7 +268,7 @@ export default function HomePage() {
           </div>
 
           {/* SIMULADOR DE FUGA DE WC */}
-          <Card className="max-w-5xl mx-auto rounded-[3.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] bg-slate-900 text-white overflow-hidden mb-16 group">
+          <div className="max-w-5xl mx-auto rounded-[3.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] bg-slate-900 text-white overflow-hidden mb-16 group">
             <div className="grid lg:grid-cols-5 h-full">
               {/* Lado Visual Animado */}
               <div className="lg:col-span-2 p-12 flex flex-col items-center justify-center bg-white/5 border-r border-white/10 relative overflow-hidden">
@@ -337,7 +336,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-          </Card>
+          </div>
 
           {/* TARJETAS DE VALOR BAJO SIMULACIÓN */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
@@ -383,7 +382,7 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-            <Card className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
+            <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
               <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce text-black">
                 <Zap className="h-6 w-6" />
               </div>
@@ -394,7 +393,7 @@ export default function HomePage() {
                   <p className="text-4xl font-black italic tracking-tighter text-blue-100">98.4%</p>
                 </div>
               </div>
-            </Card>
+            </div>
           </div>
         </div>
       </section>

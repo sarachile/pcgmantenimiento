@@ -635,7 +635,7 @@ function NewWorkOrderContent() {
               </div>
             ) : (
               checklist.map((item, idx) => (
-                <div key={idx} className="flex gap-2 animate-in fade-in slide-in-from-left-2">
+                <div className="flex gap-2 animate-in fade-in slide-in-from-left-2" key={item.id || idx}>
                   <Input 
                     value={item.task} 
                     onChange={e => { const n = [...checklist]; n[idx].task = e.target.value; setChecklist(n); }} 
