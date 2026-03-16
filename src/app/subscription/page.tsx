@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -20,7 +21,8 @@ import {
   Cpu,
   Zap,
   MessageSquare,
-  Send
+  Send,
+  Droplets
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Company } from "@/lib/types";
@@ -101,20 +103,21 @@ export default function SubscriptionPage() {
     setIsUpgrading(true);
   };
 
-  const handleRequestKit = async () => {
+  const handleRequestKit = async (type: 'solar' | 'agua') => {
     if (!db || !profile || !company) return;
     setIsRequestingKit(true);
+    const subject = type === 'solar' ? "Interés en Kit de Sensores IoT Solar" : "Interés en Monitoreo Hídrico Comunidades";
     try {
       await addDoc(collection(db, "supportTickets"), {
         userId: profile.id, userName: profile.name, companyId: profile.companyId, companyName: company.name,
-        subject: "Interés en Kit de Sensores IoT", description: "El usuario ha solicitado presupuesto para Kit IoT.",
+        subject: subject, description: `El usuario ha solicitado presupuesto para Kit IoT de tipo: ${type}.`,
         status: "open", category: "technical", priority: "high", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
       });
       await sendSystemEmail({
-        to: "control@pcgoperacion.com", subject: `SOLICITUD KIT IOT - ${company.name}`,
-        html: `<p>Nueva solicitud de Kit Sensores de <strong>${company.name}</strong> por parte de ${profile.name}.</p>`
+        to: "control@pcgmantenimiento.com", subject: `SOLICITUD KIT IOT [${type.toUpperCase()}] - ${company.name}`,
+        html: `<p>Nueva solicitud de Kit Sensores de tipo <strong>${type}</strong> de <strong>${company.name}</strong> por parte de ${profile.name}.</p>`
       });
-      toast({ title: "Solicitud Enviada", description: "Un ejecutivo te contactará en breve." });
+      toast({ title: "Solicitud Enviada", description: "Un ejecutivo técnico te contactará en breve." });
     } catch (e) { toast({ title: "Error", variant: "destructive" }); } finally { setIsRequestingKit(false); }
   };
 
@@ -165,34 +168,47 @@ export default function SubscriptionPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="rounded-[3rem] border-none shadow-xl bg-slate-900 text-white p-10 relative overflow-hidden group">
-          <div className="absolute right-0 top-0 p-12 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-48 w-48 text-blue-400" /></div>
-          <div className="relative z-10 space-y-6">
-            <Badge className="bg-blue-600 text-white font-black uppercase px-4 py-1">Oferta PYME Energy</Badge>
-            <h3 className="text-4xl font-black italic uppercase leading-none">Monitoreo Solar Pro</h3>
-            <p className="text-slate-400 text-lg">¿Instalas paneles? Obtén nuestro kit de sensores pre-configurados para control 24/7.</p>
-            <Button variant="outline" className="h-16 px-10 rounded-2xl bg-white/10 text-white border-white/20 font-black uppercase" onClick={handleRequestKit} disabled={isRequestingKit}>{isRequestingKit ? <Loader2 className="animate-spin h-4 w-4" /> : <Send className="h-4 w-4 mr-2" /> + " Pedir Kit IoT"}</Button>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="rounded-[3rem] border-none shadow-xl bg-slate-900 text-white p-8 relative overflow-hidden group">
+          <div className="absolute right-0 top-0 p-10 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-40 w-40 text-blue-400" /></div>
+          <div className="relative z-10 space-y-4">
+            <Badge className="bg-blue-600 text-white font-black uppercase text-[9px] px-3 py-1">Oferta PYME Energy</Badge>
+            <h3 className="text-2xl font-black italic uppercase leading-none">Monitoreo Solar Pro</h3>
+            <p className="text-slate-400 text-sm">¿Instalas paneles? Obtén nuestro kit de sensores pre-configurados para control 24/7.</p>
+            <Button variant="outline" className="w-full h-12 rounded-xl bg-white/10 text-white border-white/20 font-black uppercase text-[10px] tracking-widest" onClick={() => handleRequestKit('solar')} disabled={isRequestingKit}>{isRequestingKit ? <Loader2 className="animate-spin h-4 w-4" /> : <><Send className="h-4 w-4 mr-2" /> Pedir Kit IoT</>}</Button>
           </div>
         </Card>
-        <Card className="rounded-[3rem] border-2 border-dashed p-10 flex flex-col items-center justify-center text-center space-y-6">
-          <div className="bg-primary/10 p-4 rounded-3xl"><MessageSquare className="h-10 w-10 text-primary" /></div>
-          <div className="space-y-2">
-            <h3 className="text-2xl font-black italic uppercase">¿Necesitas Mayor Escala?</h3>
-            <p className="text-slate-500 text-sm">Para flotas masivas o más de 50 activos IoT, contacta a nuestro equipo comercial.</p>
+
+        <Card className="rounded-[3rem] border-none shadow-xl bg-blue-600 text-white p-8 relative overflow-hidden group">
+          <div className="absolute right-0 top-0 p-10 opacity-10 group-hover:scale-110 transition-transform"><Droplets className="h-40 w-40 text-white" /></div>
+          <div className="relative z-10 space-y-4">
+            <Badge className="bg-slate-900 text-white font-black uppercase text-[9px] px-3 py-1">Especial Comunidades</Badge>
+            <h3 className="text-2xl font-black italic uppercase leading-none">Monitoreo Hídrico</h3>
+            <p className="text-blue-100 text-sm">Control de fugas en edificios y condominios. Sensores sin corte de suministro para WC y Matrices.</p>
+            <Button variant="outline" className="w-full h-12 rounded-xl bg-white/10 text-white border-white/20 font-black uppercase text-[10px] tracking-widest" onClick={() => handleRequestKit('agua')} disabled={isRequestingKit}>
+              {isRequestingKit ? <Loader2 className="animate-spin h-4 w-4" /> : <><Send className="h-4 w-4 mr-2" /> Pedir Evaluación</>}
+            </Button>
           </div>
-          <Button asChild variant="outline" className="rounded-xl px-8 font-bold"><Link href="/support">Hablar con un Ejecutivo</Link></Button>
+        </Card>
+
+        <Card className="rounded-[3rem] border-2 border-dashed p-8 flex flex-col items-center justify-center text-center space-y-4">
+          <div className="bg-primary/10 p-4 rounded-3xl"><MessageSquare className="h-10 w-10 text-primary" /></div>
+          <div className="space-y-1">
+            <h3 className="text-xl font-black italic uppercase">¿Necesitas Escala?</h3>
+            <p className="text-slate-500 text-xs">Para flotas masivas o proyectos industriales ad-hoc, contacta a ventas.</p>
+          </div>
+          <Button asChild variant="outline" className="w-full rounded-xl px-8 font-bold text-[10px] uppercase h-12 border-slate-200"><Link href="/support">Hablar con un Ejecutivo</Link></Button>
         </Card>
       </div>
 
       {isUpgrading && (
         <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-          <Card className="w-full max-w-md rounded-[2.5rem] bg-white">
+          <Card className="w-full max-w-md rounded-[2.5rem] bg-white shadow-2xl">
             <CardHeader className="p-10 text-center"><Lock className="h-10 w-10 text-amber-600 mx-auto mb-4" /><CardTitle className="text-2xl font-black italic uppercase">Aumento de Plan</CardTitle></CardHeader>
             <form onSubmit={confirmUpgrade}>
               <CardContent className="px-10 pb-10 space-y-6">
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase">RUT Facturación</Label><Input placeholder="76.000.000-0" required className="h-14 rounded-xl border-2 font-black text-center" value={rut} onChange={(e) => setRut(e.target.value)} /></div>
-                <div className="bg-slate-50 p-6 rounded-2xl text-center"><p className="text-xs font-black uppercase text-slate-400">Total Mensual</p><p className="text-3xl font-black text-primary">{selectedPlan.price}</p></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">RUT Facturación</Label><Input placeholder="76.000.000-0" required className="h-14 rounded-xl border-2 font-black text-center" value={rut} onChange={(e) => setRut(e.target.value)} /></div>
+                <div className="bg-slate-50 p-6 rounded-2xl text-center border-2 border-dashed"><p className="text-xs font-black uppercase text-slate-400">Total Mensual</p><p className="text-3xl font-black text-primary">{selectedPlan.price}</p></div>
               </CardContent>
               <CardFooter className="px-10 pb-10 flex gap-4"><Button type="button" variant="ghost" className="flex-1 font-black" onClick={() => setIsUpgrading(false)}>Atrás</Button><Button type="submit" className="flex-[2] h-14 rounded-xl bg-primary text-white font-black uppercase shadow-xl">Activar Ahora</Button></CardFooter>
             </form>
