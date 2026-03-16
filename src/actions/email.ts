@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer';
 
 /**
  * @fileOverview Acción de servidor para envío de correos vía SMTP.
- * Se ha optimizado el remitente para cumplir con las políticas SPF/DKIM de Gmail.
+ * Se ha optimizado el remitente para usar exclusivamente el dominio pcgmantenimiento.com
  */
 
 interface SendEmailInput {
@@ -14,7 +14,8 @@ interface SendEmailInput {
 }
 
 export async function sendSystemEmail(input: SendEmailInput) {
-  const SMTP_USER = process.env.EMAIL_USER || 'control@pcgoperacion.com';
+  // Cambiamos el fallback al dominio oficial pcgmantenimiento.com
+  const SMTP_USER = process.env.EMAIL_USER || 'control@pcgmantenimiento.com';
   const SMTP_PASS = process.env.EMAIL_PASS; 
 
   if (!SMTP_PASS) {

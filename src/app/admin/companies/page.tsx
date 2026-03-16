@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -190,7 +189,7 @@ export default function AdminCompaniesPage() {
     const companyRef = doc(db, "companies", selectedCompany.id);
     updateDocumentNonBlocking(companyRef, {
       currentPlan: configData.currentPlan,
-      subscriptionStatus: configData.subscriptionStatus,
+      subscriptionStatus: configData.status,
       isActive: configData.isActive,
       updatedAt: serverTimestamp(),
     });
@@ -246,7 +245,7 @@ export default function AdminCompaniesPage() {
             ${detailsCompany.id}
           </div>
           <p style="color: #b45309; font-size: 12px; font-weight: bold; margin-top: 12px; text-align: center;">
-            * Este código vincula su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
+            * Este código vinculas su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
           </p>
         </div>
         
@@ -257,7 +256,7 @@ export default function AdminCompaniesPage() {
         <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
         
         <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
-          Este es un message automático de la plataforma central de PCG OPERACIONES. Por favor no responda a esta casilla.
+          Este es un mensaje automático de la plataforma central de PCGMANTENIMIENTO. Por favor no responda a esta casilla.
         </p>
       </div>
     `;

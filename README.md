@@ -2,16 +2,16 @@
 
 Plataforma de gestión industrial con trazabilidad inalterable e integración IoT.
 
-## 🚀 Guía de Configuración DNS (Evitar Bloqueo de Correos)
+## 🚀 Guía de Configuración DNS para pcgmantenimiento.com
 
-Si tus correos son rechazados por Gmail con el error **550 5.7.26 (Unauthenticated sender)**, debes configurar los registros de autenticación en tu proveedor de dominio (Squarespace, Godaddy, etc.) para el dominio que envía los correos (`pcgoperacion.com` o `pcgmantenimiento.com`).
+Si tus correos son rechazados por Gmail con el error **550 5.7.26 (Unauthenticated sender)**, debes configurar los siguientes registros en tu proveedor de dominio (Squarespace, Godaddy, etc.) para el dominio `pcgmantenimiento.com`.
 
 ### Paso 1: Configurar SPF (Autorizar envío)
 Agrega un registro de tipo **TXT** en el host raíz (`@`):
 - **Tipo:** `TXT`
 - **Host:** `@`
 - **Valor:** `v=spf1 include:_spf.google.com ~all`
-*Nota: Esto le dice al mundo que Google tiene permiso para enviar correos en nombre de tu dominio.*
+*Nota: Esto autoriza a Google a enviar correos en nombre de pcgmantenimiento.com.*
 
 ### Paso 2: Configurar DMARC (Protección de Marca)
 Agrega un registro de tipo **TXT** en el host `_dmarc`:
@@ -22,8 +22,8 @@ Agrega un registro de tipo **TXT** en el host `_dmarc`:
 
 ### Paso 3: Configurar DKIM (Firma Digital)
 1. Ve al panel de **Google Workspace Admin** > Aplicaciones > Gmail > Autenticar correo electrónico.
-2. Genera un nuevo registro DKIM.
-3. Copia el valor (suele empezar con `v=DKIM1; k=rsa; ...`) y pégalo como un registro **TXT** en tu DNS con el host `google._domainkey`.
+2. Genera un nuevo registro DKIM para `pcgmantenimiento.com`.
+3. Copia el valor generado y pégalo como un registro **TXT** en tu DNS con el host `google._domainkey`.
 
 ---
 
