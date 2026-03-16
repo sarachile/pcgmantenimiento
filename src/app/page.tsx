@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -9,23 +10,16 @@ import {
   LayoutDashboard,
   Menu,
   X,
-  History,
   Zap,
   CheckCircle2,
   HardHat,
-  Cpu,
-  Fingerprint,
-  CloudLightning,
   Smartphone,
-  BarChart3,
-  MessageSquare,
   Sun,
   Waves,
   Database,
   Layers,
   Sparkles,
   Activity,
-  Bell,
   Wind,
   Wrench,
   Construction,
@@ -34,15 +28,14 @@ import {
   Truck,
   Bug,
   Droplets,
-  Radio,
-  Router,
-  Globe,
   AlertTriangle,
   TrendingDown,
   Scale,
   Users,
   ChevronDown,
-  MessageCircle
+  MessageCircle,
+  Clock,
+  CircleDollarSign
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,18 +49,18 @@ export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Estados para el simulador de fuga
+  // Estados para el simulador de fuga de WC
   const [litersLost, setLitersLost] = useState(0);
   const [moneyLost, setMoneyLost] = useState(0);
 
   useEffect(() => {
     setMounted(true);
     
-    // Simular pérdida de agua en tiempo real (Riego defectuoso ~1500L/hora = ~0.41L/segundo)
+    // Simular pérdida de agua en tiempo real de un WC defectuoso (aprox 0.01 litros por segundo)
     const interval = setInterval(() => {
-      setLitersLost(prev => prev + 0.41);
-      // Costo aproximado en Chile: $1.800 por m3 ($1.8 por litro)
-      setMoneyLost(prev => prev + (0.41 * 1.8));
+      setLitersLost(prev => prev + 0.01);
+      // Costo aproximado en Chile: $1.800 por m3 ($1.8 por litro) incluyendo alcantarillado
+      setMoneyLost(prev => prev + (0.01 * 1.8));
     }, 1000);
 
     return () => clearInterval(interval);
@@ -260,60 +253,104 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* WATER MONITORING SECTION */}
+      {/* WATER MONITORING SECTION - WC LEAK FOCUS */}
       <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-16 space-y-4">
-            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg">Solución Inteligente para Condominios</Badge>
+            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg">Gestión de Activos Críticos</Badge>
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 uppercase italic">
-              Sistema de Monitoreo de Agua <br />
-              <span className="text-blue-600">en Tiempo Real</span>
+              El Silencio que <br />
+              <span className="text-blue-600">Vacía tu Caja Común</span>
             </h2>
+            <p className="text-slate-500 font-medium max-w-2xl mx-auto">
+              Una fuga silenciosa en un WC puede perder hasta **30 litros por hora**. En un edificio, esto significa millones de pesos anuales en gastos comunes innecesarios.
+            </p>
           </div>
 
-          {/* SIMULADOR DE FUGA */}
-          <Card className="max-w-4xl mx-auto rounded-[3rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden mb-16">
-            <div className="grid lg:grid-cols-2">
-              <div className="p-10 flex flex-col items-center justify-center bg-white/5 border-r border-white/10">
+          {/* SIMULADOR DE FUGA DE WC */}
+          <Card className="max-w-5xl mx-auto rounded-[3.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] bg-slate-900 text-white overflow-hidden mb-16 group">
+            <div className="grid lg:grid-cols-5 h-full">
+              {/* Lado Visual Animado */}
+              <div className="lg:col-span-2 p-12 flex flex-col items-center justify-center bg-white/5 border-r border-white/10 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 to-transparent pointer-events-none" />
                 <div className="relative mb-12">
-                  <div className="bg-slate-800 p-6 rounded-[2rem] border-2 border-blue-500/30 shadow-2xl">
-                    <Waves className="h-16 w-16 text-blue-400" />
+                  <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)] relative z-10">
+                    <Droplets className="h-20 w-20 text-blue-400" />
                   </div>
+                  {/* Animación de goteo constante */}
                   <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4">
-                    <Droplets className="h-8 w-8 text-blue-500 animate-drop opacity-0" />
+                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-drop opacity-0 mb-2" style={{ animationDelay: '0s' }} />
+                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-drop opacity-0 mb-2" style={{ animationDelay: '0.5s' }} />
+                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-drop opacity-0 mb-2" style={{ animationDelay: '1s' }} />
                   </div>
                 </div>
-                <Badge className="bg-rose-600 text-white font-black px-3 py-1 uppercase tracking-widest animate-pulse">Alerta: Fuga de Riego</Badge>
+                <div className="space-y-3 text-center">
+                  <Badge className="bg-rose-600 text-white font-black px-4 py-1.5 uppercase tracking-widest animate-pulse border-none rounded-xl">
+                    ALERTA: FUGA SILENCIOSA WC
+                  </Badge>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Sensor Ultrasónico Depto 402</p>
+                </div>
               </div>
-              <div className="p-10 space-y-8">
-                <h3 className="text-2xl font-black italic uppercase text-blue-400 flex items-center gap-3"><Scale className="h-6 w-6" /> Impacto Económico</h3>
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10">
-                    <p className="text-[10px] font-black uppercase text-blue-400 mb-2">Agua Perdida (Lts)</p>
-                    <p className="text-4xl font-black italic tabular-nums">{litersLost.toFixed(1)}</p>
+
+              {/* Lado de Datos y Cálculo */}
+              <div className="lg:col-span-3 p-12 space-y-10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-2xl font-black italic uppercase text-blue-400 flex items-center gap-3">
+                    <Scale className="h-7 w-7" /> Impacto Financiero Live
+                  </h3>
+                  <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-tighter">
+                    <Clock className="h-4 w-4" /> Contador en tiempo real
                   </div>
-                  <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10">
-                    <p className="text-[10px] font-black uppercase text-rose-400 mb-2">Gasto (CLP)</p>
-                    <p className="text-4xl font-black italic tabular-nums text-rose-100">$ {moneyLost.toFixed(0)}</p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-inner group-hover:border-blue-500/50 transition-colors">
+                    <p className="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">Agua Perdida (Litros)</p>
+                    <p className="text-5xl font-black italic tracking-tighter tabular-nums text-white">
+                      {litersLost.toFixed(2)}
+                    </p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-4">Pérdida proyectada: ~21.600 L/mes</p>
                   </div>
+                  <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-inner group-hover:border-rose-500/50 transition-colors">
+                    <p className="text-[10px] font-black uppercase text-rose-400 mb-2 tracking-widest">Gasto Innecesario (CLP)</p>
+                    <p className="text-5xl font-black italic tracking-tighter tabular-nums text-rose-100">
+                      $ {moneyLost.toFixed(1)}
+                    </p>
+                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-4">Equivale a: $38.880 / mes por WC</p>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-white/10 space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-blue-600/20 p-3 rounded-2xl"><CircleDollarSign className="h-6 w-6 text-blue-400" /></div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black uppercase italic text-white">Escala Comunitaria (100 Deptos)</p>
+                      <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                        Si solo el 5% de tus unidades tiene una fuga leve, tu edificio está perdiendo <span className="text-white font-bold">$1.944.000 anuales</span> en agua que nadie usó.
+                      </p>
+                    </div>
+                  </div>
+                  <Button asChild className="w-full h-16 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black text-lg uppercase tracking-widest shadow-xl shadow-blue-900/40">
+                    <Link href="/auth/signup">Detener pérdidas ahora</Link>
+                  </Button>
                 </div>
               </div>
             </div>
           </Card>
 
-          {/* TARJETAS DE VALOR */}
+          {/* TARJETAS DE VALOR BAJO SIMULACIÓN */}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {[
-              { icon: TrendingDown, title: "Ahorro Directo", desc: "Reduce hasta un 30% el gasto común.", color: "text-blue-600", bg: "bg-blue-50" },
-              { icon: AlertTriangle, title: "Fugas Invisibles", desc: "Detección de goteos en WC y tuberías.", color: "text-rose-600", bg: "bg-rose-50" },
-              { icon: Users, title: "Paz Vecinal", desc: "Elimina conflictos por cobros estimados.", color: "text-emerald-600", bg: "bg-emerald-50" },
-              { icon: Scale, title: "Justicia Hídrica", desc: "Cada unidad paga lo que consume.", color: "text-slate-900", bg: "bg-slate-100" }
+              { icon: TrendingDown, title: "Ahorro Directo", desc: "Reduce hasta un 30% el gasto común mediante detección temprana.", color: "text-blue-600", bg: "bg-blue-50" },
+              { icon: AlertTriangle, title: "Fugas Invisibles", desc: "El oído no detecta un goteo de WC, nuestro sensor ultrasónico sí.", color: "text-rose-600", bg: "bg-rose-50" },
+              { icon: Users, title: "Justicia Hídrica", desc: "Identifica fugas por departamento para que cada unidad pague lo justo.", color: "text-emerald-600", bg: "bg-emerald-50" },
+              { icon: Scale, title: "ROI Inmediato", desc: "El sistema se paga solo al eliminar las primeras 3 fugas mayores.", color: "text-slate-900", bg: "bg-slate-100" }
             ].map((item, i) => (
-              <div key={i} className="p-8 rounded-[2rem] border-2 border-white/50 bg-white/80 backdrop-blur-sm shadow-xl hover:border-blue-200 transition-all">
-                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-sm", item.bg, item.color)}>
+              <div key={i} className="p-8 rounded-[2.5rem] border-2 border-white bg-white/80 backdrop-blur-sm shadow-xl hover:border-blue-200 hover:scale-105 transition-all duration-300">
+                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-6 shadow-sm", item.bg, item.color)}>
                   <item.icon className="h-6 w-6" />
                 </div>
-                <h4 className="font-black text-slate-900 uppercase italic tracking-tight mb-2">{item.title}</h4>
+                <h4 className="font-black text-slate-900 uppercase italic tracking-tight mb-3">{item.title}</h4>
                 <p className="text-xs text-slate-500 leading-relaxed font-medium">{item.desc}</p>
               </div>
             ))}
@@ -334,9 +371,9 @@ export default function HomePage() {
               <div className="grid sm:grid-cols-2 gap-6">
                 {[
                   { icon: Sun, title: "Protocolos PV", desc: "Checklists específicos inversores." },
-                  { icon: Fingerprint, title: "Sello Digital", desc: "Firma en terreno vía QR." },
+                  { icon: CheckCircle2, title: "Sello Digital", desc: "Firma en terreno vía QR." },
                   { icon: Activity, title: "Generación Live", desc: "Ahorro visible en tiempo real." },
-                  { icon: Bell, title: "Alertas", desc: "Detección de caídas de tensión." }
+                  { icon: AlertTriangle, title: "Alertas", desc: "Detección de caídas de tensión." }
                 ].map((f, i) => (
                   <div key={i} className="flex gap-3">
                     <div className="bg-white/5 p-2 rounded-lg border border-white/10"><f.icon className="h-5 w-5 text-amber-400" /></div>
@@ -346,10 +383,10 @@ export default function HomePage() {
               </div>
             </div>
             <Card className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
-              <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce">
-                <Zap className="h-6 w-6 text-black" />
+              <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce text-black">
+                <Zap className="h-6 w-6" />
               </div>
-              <h3 className="text-2xl font-black italic mb-6">Blindaje Operativo</h3>
+              <h3 className="text-2xl font-black italic mb-6 uppercase tracking-tighter">Blindaje Operativo</h3>
               <div className="space-y-4">
                 <div className="p-6 bg-blue-600/20 rounded-[2rem] border border-blue-500/30">
                   <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Eficiencia Real-Time</p>
