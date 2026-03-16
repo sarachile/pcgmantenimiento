@@ -55,10 +55,9 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     
-    // Simular pérdida de agua en tiempo real de un WC defectuoso (aprox 0.01 litros por segundo)
     const interval = setInterval(() => {
       setLitersLost(prev => prev + 0.01);
-      // Costo aproximado en Chile: $1.800 por m3 ($1.8 por litro) incluyendo alcantarillado
+      // Costo aproximado en Chile: $1.8 por litro
       setMoneyLost(prev => prev + (0.01 * 1.8));
     }, 1000);
 
@@ -90,8 +89,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
-      {/* Botón Flotante WhatsApp */}
-      <div className="fixed bottom-8 right-8 z-[60] animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
+      {/* WhatsApp Floating Button */}
+      <div className="fixed bottom-8 right-8 z-[60]">
         <a 
           href={WHATSAPP_URL}
           target="_blank" 
@@ -105,7 +104,6 @@ export default function HomePage() {
         </a>
       </div>
 
-      {/* Navigation */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
@@ -117,7 +115,6 @@ export default function HomePage() {
               <a href="#plataforma" className="hover:text-primary transition-colors">La Plataforma</a>
               <a href="#agua" className="hover:text-primary transition-colors">Gestión Agua</a>
               <a href="#solar" className="hover:text-primary transition-colors">Energía Solar</a>
-              <a href="#iot" className="hover:text-primary transition-colors">Ecosistema IoT</a>
               {isAuthenticated ? (
                 <Button asChild className="rounded-full">
                   <Link href="/dashboard" className="gap-2">
@@ -158,19 +155,14 @@ export default function HomePage() {
             Certifica la calidad de tu equipo en terreno. Reemplaza la incertidumbre por evidencia real, firmas digitales y <span className="text-primary font-bold">monitoreo inteligente de activos</span>.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
-            <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl shadow-primary/20">
+            <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl">
               <Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link>
-            </Button>
-            <Button variant="outline" size="lg" className="h-14 px-10 rounded-full text-xl font-bold border-2 gap-3" asChild>
-              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="h-6 w-6 text-emerald-500" /> WhatsApp
-              </a>
             </Button>
           </div>
         </div>
       </section>
 
-      {/* Áreas de Aplicación Section */}
+      {/* Áreas de Aplicación */}
       <section className="py-20 bg-slate-50/50 overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 text-center">
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.4em] mb-4">Sectores Digitalizados</p>
@@ -179,7 +171,7 @@ export default function HomePage() {
         <div className="relative flex overflow-x-hidden">
           <div className="animate-marquee hover:[animation-play-state:paused] whitespace-nowrap flex py-4">
             {[...applications, ...applications].map((app, i) => (
-              <div key={i} className="mx-4 flex items-center gap-6 p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm hover:shadow-xl transition-all">
+              <div key={i} className="mx-4 flex items-center gap-6 p-8 rounded-[2.5rem] bg-white border border-slate-100 shadow-sm">
                 <div className={cn("p-4 rounded-2xl", app.bg)}>
                   <app.icon className={cn("h-8 w-8", app.color)} />
                 </div>
@@ -190,46 +182,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* El Sistema Nervioso Section */}
-      <section id="plataforma" className="py-32 bg-white relative overflow-hidden border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-20 space-y-6">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 italic uppercase">
-              El Sistema Nervioso Central de tu <br />
-              <span className="text-primary">Ecosistema Industrial</span>
-            </h2>
-            <p className="text-xl text-slate-500 max-w-4xl mx-auto font-medium leading-relaxed">
-              PCGMANTENIMIENTO no es solo una App de tareas. Es un ecosistema híbrido que une la **movilidad del terreno** con la **inteligencia administrativa**.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-            <div className="p-10 rounded-[3rem] bg-slate-900 text-white space-y-6 shadow-2xl">
-              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Layers className="h-6 w-6 text-white" /></div>
-              <h3 className="text-2xl font-black italic tracking-tight uppercase">Unidad de Gestión</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Integramos personal, activos, clientes e inventario en un solo flujo técnico-legal.
-              </p>
-            </div>
-            <div className="p-10 rounded-[3rem] border-2 border-slate-100 bg-white space-y-6 shadow-sm">
-              <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Database className="h-6 w-6 text-primary" /></div>
-              <h3 className="text-2xl font-black italic tracking-tight uppercase">Base de Datos Viva</h3>
-              <p className="text-slate-500 text-sm leading-relaxed">
-                Cada foto y cada firma alimenta un histórico inalterable por activo y cliente.
-              </p>
-            </div>
-            <div className="p-10 rounded-[3rem] bg-blue-50 border-2 border-blue-100 space-y-6 shadow-sm">
-              <div className="bg-blue-600 w-12 h-12 rounded-xl flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-white" /></div>
-              <h3 className="text-2xl font-black italic tracking-tight uppercase text-blue-900">Inteligencia Terreno</h3>
-              <p className="text-blue-800/70 text-sm leading-relaxed">
-                IA para resúmenes de bitácora técnica y transformación de datos crudos en estrategia.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* WATER MONITORING SECTION - WC LEAK FOCUS */}
+      {/* Simulador de Fuga de WC */}
       <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-16 space-y-4">
@@ -239,18 +192,15 @@ export default function HomePage() {
               <span className="text-blue-600">Vacía tu Caja Común</span>
             </h2>
             <p className="text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
-              Una fuga silenciosa en un WC puede perder hasta **30 litros por hora**. En un edificio de 100 departamentos, esto se traduce en millones de pesos anuales en agua que nadie usó.
+              Una fuga silenciosa en un WC puede perder hasta **30 litros por hora**. Detenemos las pérdidas antes de que llegue la cuenta.
             </p>
           </div>
 
-          {/* SIMULADOR DE FUGA DE WC */}
-          <div className="max-w-5xl mx-auto rounded-[3.5rem] border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] bg-slate-900 text-white overflow-hidden mb-16 group">
+          <div className="max-w-5xl mx-auto rounded-[3.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden mb-16">
             <div className="grid lg:grid-cols-5 h-full">
-              {/* Lado Visual Animado */}
               <div className="lg:col-span-2 p-12 flex flex-col items-center justify-center bg-white/5 border-r border-white/10 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-b from-blue-600/10 to-transparent pointer-events-none" />
                 <div className="relative mb-12">
-                  <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)] relative z-10">
+                  <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)]">
                     <Droplets className="h-20 w-20 text-blue-400" />
                   </div>
                 </div>
@@ -262,7 +212,6 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Lado de Datos y Cálculo */}
               <div className="lg:col-span-3 p-12 space-y-10">
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-black italic uppercase text-blue-400 flex items-center gap-3">
@@ -274,33 +223,22 @@ export default function HomePage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-inner group-hover:border-blue-500/50 transition-colors">
+                  <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-inner">
                     <p className="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">Agua Perdida (Litros)</p>
                     <p className="text-5xl font-black italic tracking-tighter tabular-nums text-white">
                       {litersLost.toFixed(2)}
                     </p>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-4">Pérdida proyectada: ~21.600 L/mes</p>
                   </div>
-                  <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-inner group-hover:border-rose-500/50 transition-colors">
+                  <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-inner">
                     <p className="text-[10px] font-black uppercase text-rose-400 mb-2 tracking-widest">Gasto Innecesario (CLP)</p>
                     <p className="text-5xl font-black italic tracking-tighter tabular-nums text-rose-100">
                       $ {moneyLost.toFixed(1)}
                     </p>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase mt-4">Equivale a: $38.880 / mes por WC</p>
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-white/10 space-y-6">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-blue-600/20 p-3 rounded-2xl"><CircleDollarSign className="h-6 w-6 text-blue-400" /></div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-black uppercase italic text-white">Escala Comunitaria (100 Deptos)</p>
-                      <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                        Si solo el 5% de tus unidades tiene una fuga leve, tu edificio está perdiendo <span className="text-white font-bold">$1.944.000 anuales</span> en agua desperdiciada.
-                      </p>
-                    </div>
-                  </div>
-                  <Button asChild className="w-full h-16 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black text-lg uppercase tracking-widest shadow-xl shadow-blue-900/40">
+                <div className="pt-6 border-t border-white/10">
+                  <Button asChild className="w-full h-16 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black text-lg uppercase tracking-widest shadow-xl">
                     <Link href="/auth/signup">Detener pérdidas ahora</Link>
                   </Button>
                 </div>
@@ -310,33 +248,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Final */}
-      <section className="py-32 bg-white overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-10">
-          <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 uppercase italic leading-none">
-            ¿Listo para ordenar <br />tu gestión técnica?
-          </h2>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-            <Button asChild size="lg" className="h-20 px-12 rounded-[2rem] text-xl font-black shadow-2xl group">
-              <Link href="/auth/signup">
-                Empezar gratis ahora <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-2 transition-transform" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" className="h-20 px-12 rounded-[2rem] text-xl font-bold border-2 gap-3" asChild>
-              <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
-                <MessageCircle className="h-6 w-6 text-emerald-500" /> WhatsApp
-              </a>
-            </Button>
-          </div>
-        </div>
-      </section>
-
       <footer className="py-12 bg-slate-50 border-t border-slate-100 text-center">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
-            © {new Date().getFullYear()} - PCGMANTENIMIENTO ERP
-          </p>
-        </div>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">
+          © {new Date().getFullYear()} - PCGMANTENIMIENTO.COM
+        </p>
       </footer>
     </div>
   );
