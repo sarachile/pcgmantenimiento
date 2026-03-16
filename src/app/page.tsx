@@ -34,6 +34,7 @@ import {
   Users,
   ChevronDown,
   MessageCircle,
+  MessageSquare,
   Clock,
   CircleDollarSign
 } from "lucide-react";
