@@ -1,5 +1,5 @@
-# Configuración ultra-ligera para asegurar el despliegue tras regularización de pago
-# Se minimiza el uso de recursos para evitar errores de cuota (400 Bad Request)
+# Configuración optimizada para recuperación de despliegue tras regularización de pago
+# Define los recursos mínimos para asegurar que el Rollout no falle por cuotas.
 
 runConfig:
   memoryMiB: 1024
