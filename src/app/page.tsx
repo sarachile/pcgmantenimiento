@@ -263,7 +263,20 @@ export default function HomePage() {
             <div className="grid lg:grid-cols-5 h-full">
               <div className="lg:col-span-2 p-12 flex flex-col items-center justify-center bg-white/5 border-r border-white/10 relative overflow-hidden">
                 <div className="relative mb-12">
-                  <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)]">
+                  {/* Gotas animadas cayendo */}
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-full h-40 pointer-events-none z-0">
+                    <div className="absolute left-[20%] animate-drop" style={{ animationDelay: '0s' }}>
+                      <Droplets className="h-4 w-4 text-blue-400/40 fill-blue-400/20" />
+                    </div>
+                    <div className="absolute left-[50%] animate-drop" style={{ animationDelay: '0.5s' }}>
+                      <Droplets className="h-3 w-3 text-blue-400/30 fill-blue-400/10" />
+                    </div>
+                    <div className="absolute left-[80%] animate-drop" style={{ animationDelay: '1s' }}>
+                      <Droplets className="h-5 w-5 text-blue-400/20 fill-blue-400/5" />
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)] relative z-10">
                     <Droplets className="h-20 w-20 text-blue-400" />
                   </div>
                 </div>
