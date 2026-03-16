@@ -47,7 +47,9 @@ import {
   HelpCircle,
   AlertTriangle,
   Zap,
-  ChevronRight
+  ChevronRight,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
