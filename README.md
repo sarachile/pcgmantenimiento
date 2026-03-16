@@ -4,7 +4,7 @@ Plataforma de gestión industrial con trazabilidad inalterable e integración Io
 
 ## 🚀 Guía de Configuración DNS para pcgmantenimiento.com
 
-Si tus correos son rechazados por Gmail, debes configurar los siguientes registros en tu proveedor de dominio (donde compraste pcgmantenimiento.com):
+Si tus correos son rechazados por Gmail, debes configurar los siguientes registros en tu proveedor de dominio:
 
 ### Paso 1: Configurar SPF (Autorizar envío)
 Agrega un registro de tipo **TXT** en el host raíz (`@`):
@@ -16,18 +16,17 @@ Agrega un registro de tipo **TXT** en el host `_dmarc`:
 
 ---
 
-## 🛠️ Resolución de Error 400 en App Hosting
+## 🛠️ Resolución de Error 400 y Recuperación tras Pago
 
-Si tras pagar la cuenta sigues viendo un error **400 Bad Request** al lanzar:
+Si tras pagar la cuenta sigues viendo errores o los commits no llegan, sigue este proceso de "Borrado y Reconstrucción":
 
-1. **Borrar Backend**: Ve a la pestaña "Configuración" del Backend en Firebase y haz clic en **"Borrar Backend"** (abajo).
+1. **Borrar Backend**: Ve a la pestaña "Configuración" del Backend en Firebase y haz clic en **"Borrar Backend"** (botón rojo abajo).
 2. **Crear Nuevo**: Dale a "Nuevo en App Hosting", conecta tu GitHub y selecciona la rama `main`.
-3. **Configurar Secretos**: ¡IMPORTANTE! Al recrear el backend, debes volver a añadir tus llaves privadas:
-   - Ve a la pestaña **Configuración** del nuevo Backend.
-   - En la sección **Secretos**, añade:
-     - `EMAIL_PASS`: Tu contraseña de aplicación de Gmail.
-     - `SIMPLE_API_KEY`: Tu llave de SimpleAPI para facturación.
-4. **Lanzar**: Ahora realiza el lanzamiento y Google Cloud usará los nuevos permisos activos.
+3. **Configurar Secretos**: ¡IMPORTANTE! Al recrear el backend, debes volver a añadir tus llaves privadas en la pestaña **Configuración > Secretos**:
+   - `EMAIL_PASS`: Tu contraseña de aplicación de Gmail.
+   - `SIMPLE_API_KEY`: Tu llave de SimpleAPI para facturación.
+4. **Reasociar Dominios**: Ve a la pestaña **"Dominios"** del nuevo Backend y añade `pcgmantenimiento.com`. Como ya tienes los DNS configurados, la validación será casi instantánea.
+5. **Lanzar**: Realiza el lanzamiento manual con el ID de confirmación de GitHub.
 
 ## 💳 Verificación de Google Cloud
 Asegúrate de que estas APIs estén "Habilitadas" en [console.cloud.google.com](https://console.cloud.google.com):

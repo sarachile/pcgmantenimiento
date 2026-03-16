@@ -1,5 +1,5 @@
-# Configuración optimizada para recuperación de despliegue tras regularización de pago
-# Define los recursos mínimos para asegurar que el Rollout no falle por cuotas.
+# Configuración de recuperación de despliegue
+# Optimizada para minimizar errores de cuota tras reactivación de cuenta.
 
 runConfig:
   memoryMiB: 1024
