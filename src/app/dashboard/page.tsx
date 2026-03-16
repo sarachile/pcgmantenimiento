@@ -33,7 +33,8 @@ import {
   BellRing,
   Monitor,
   Download,
-  ShieldCheck
+  ShieldCheck,
+  Inbox
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -101,6 +102,7 @@ export default function DashboardPage() {
     const total = realWorkOrders.length;
     const completed = realWorkOrders.filter(ot => ot.status === 'aprobada').length;
     const reviewPending = realWorkOrders.filter(ot => ot.status === 'en revision').length;
+    const clientRequests = realWorkOrders.filter(ot => ot.status === 'solicitada');
     const rejected = realWorkOrders.filter(ot => ot.status === 'rechazada');
     const active = realWorkOrders.filter(ot => ot.status !== 'aprobada').length;
     
@@ -116,6 +118,8 @@ export default function DashboardPage() {
       completed, 
       active, 
       reviewPending,
+      clientRequests: clientRequests.length,
+      clientRequestsList: clientRequests,
       rejected: rejected.length,
       rejectedList: rejected,
       delayed: delayed.length,
@@ -170,6 +174,8 @@ export default function DashboardPage() {
         return <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4 px-1.5 border-blue-200 text-blue-600">En Proceso</Badge>;
       case 'en revision':
         return <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4 px-1.5 border-amber-200 text-amber-600">En Revisión</Badge>;
+      case 'solicitada':
+        return <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4 px-1.5 border-indigo-200 bg-indigo-50 text-indigo-600 shadow-sm">Solicitud Mandante</Badge>;
       default:
         return <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter h-4 px-1.5 border-slate-200 text-slate-600">{status}</Badge>;
     }
@@ -320,8 +326,41 @@ export default function DashboardPage() {
       </div>
 
       {/* ALERTAS OPERATIVAS */}
-      {(stats.alertCount > 0 || iotStats.maintenanceCount > 0 || stats.reviewPending > 0) && (
+      {(stats.alertCount > 0 || iotStats.maintenanceCount > 0 || stats.reviewPending > 0 || stats.clientRequests > 0) && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* NUEVOS REQUERIMIENTOS MANDANTE */}
+          {stats.clientRequests > 0 && isAdminOrSupervisor && (
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-indigo-600 text-white overflow-hidden border-l-[12px] border-indigo-800 animate-in slide-in-from-left-4">
+              <CardHeader className="bg-indigo-700/30 p-6 border-b border-indigo-700/10">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                      <Inbox className="h-4 w-4" /> Requerimientos Mandante
+                    </CardTitle>
+                    <CardDescription className="text-[10px] font-bold text-indigo-100 uppercase">Órdenes generadas desde el Portal QR</CardDescription>
+                  </div>
+                  <Badge className="bg-white text-indigo-600 font-black text-[10px]">{stats.clientRequests}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0 max-h-[200px] overflow-y-auto">
+                <div className="divide-y divide-indigo-500/20">
+                  {stats.clientRequestsList.map(ot => (
+                    <Link key={ot.id} href={`/work-orders/${ot.id}`} className="flex items-center justify-between p-4 hover:bg-white/5 transition-colors group">
+                      <div className="flex items-start gap-3">
+                        <div className="bg-white/20 p-2 rounded-xl"><ClipboardList className="h-4 w-4" /></div>
+                        <div>
+                          <p className="text-xs font-black">{ot.id}</p>
+                          <p className="text-[10px] text-indigo-100 line-clamp-1">{clients?.find(c => c.id === ot.clientId)?.name}</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-indigo-300 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {stats.reviewPending > 0 && isAdminOrSupervisor && (
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-amber-500 text-white overflow-hidden border-l-[12px] border-amber-600 animate-in slide-in-from-left-4">
               <CardHeader className="bg-amber-600/20 p-6 border-b border-amber-600/10">
@@ -385,40 +424,6 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Link href="/iot-control" className="block group">
-            <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden h-full transition-all group-hover:scale-[1.01] border-l-[12px] border-amber-400">
-              <CardHeader className="bg-white/10 p-6 border-b border-white/10">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                      <Cpu className="h-4 w-4 text-blue-400" /> Alertas de Planta IoT
-                    </CardTitle>
-                    <CardDescription className="text-[10px] font-bold text-blue-200 uppercase">Activos con parámetros fuera de rango</CardDescription>
-                  </div>
-                  <Badge className="bg-amber-400 text-slate-900 font-black text-[10px]">{iotStats.maintenanceCount}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0 max-h-[200px] overflow-y-auto">
-                <div className="divide-y divide-white/5">
-                  {iotStats.maintenanceList.length > 0 ? iotStats.maintenanceList.map(asset => (
-                    <div key={asset.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
-                      <div className="flex items-start gap-3">
-                        <div className="bg-white/20 p-2 rounded-xl"><AlertTriangle className="h-4 w-4 text-amber-300" /></div>
-                        <div>
-                          <p className="text-xs font-black">{asset.name}</p>
-                          <p className="text-[10px] text-blue-200 line-clamp-1">{asset.maintenanceReason || 'Parámetro fuera de rango detectado.'}</p>
-                        </div>
-                      </div>
-                      <Badge variant="outline" className="text-[8px] border-white/20 text-white uppercase">{asset.iotType}</Badge>
-                    </div>
-                  )) : (
-                    <div className="p-10 text-center text-blue-200/50 italic text-xs">Todos los equipos operando bajo norma.</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
         </div>
       )}
 
@@ -476,7 +481,7 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900">Gestión de Usuarios</h3>
                 <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                  Controle su fuerza técnica de campo, organice cuadrillas de trabajo y gestione las credenciales de acceso de sus operarios y supervisores.
+                  Controle su fuerza técnica de campo, organize cuadrillas de trabajo y gestione las credenciales de acceso de sus operarios y supervisores.
                 </p>
                 <div className="flex items-center gap-2 text-emerald-600 font-black text-[10px] uppercase tracking-widest pt-2">
                   Administrar personal <ChevronRight className="h-3 w-3" />
@@ -534,9 +539,11 @@ export default function DashboardPage() {
                         <div className="flex items-start gap-4 min-w-0">
                           <div className={cn(
                             "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 mt-1", 
-                            ot.status === 'aprobada' ? "bg-emerald-50 text-emerald-600" : "bg-blue-50 text-blue-600"
+                            ot.status === 'aprobada' ? "bg-emerald-50 text-emerald-600" : 
+                            ot.status === 'solicitada' ? "bg-indigo-50 text-indigo-600 shadow-inner" : "bg-blue-50 text-blue-600"
                           )}>
-                            {ot.status === 'aprobada' ? <Trophy className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
+                            {ot.status === 'aprobada' ? <Trophy className="h-6 w-6" /> : 
+                             ot.status === 'solicitada' ? <Inbox className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-1">
