@@ -40,6 +40,15 @@ Para que tu dominio principal funcione correctamente:
 | **CNAME** | `www` | `@` | Hace que www use la misma configuración. |
 | **TXT** | `@` | (Código `fah-claim`) | Valida propiedad en Firebase. |
 
+---
+
+## 💳 Resolución de Error 400 en App Hosting (Facturación)
+
+Si ves un error **400 Bad Request** al intentar crear un lanzamiento:
+1. Ve a [console.cloud.google.com/billing](https://console.cloud.google.com/billing).
+2. Asegúrate de que no haya saldos pendientes. Si los hay, haz clic en "Pagar ahora".
+3. Una vez pagado, las APIs de Cloud Run y Cloud Build se reactivarán automáticamente.
+
 ## 🛠️ Tecnologías
 - **NextJS 15** (App Router)
 - **Firebase** (Auth, Firestore, Storage)
