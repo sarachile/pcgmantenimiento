@@ -49,7 +49,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-const WHATSAPP_URL = "https://wa.me/56941245316?text=Hola,%20mi%20nombre%20es%20Paulo.%20¿El%20tuyo?%20Me%20interesa%20saber%20más%20sobre%20PCGMANTENIMIENTO.";
+const WHATSAPP_URL = "https://wa.me/56941245316?text=Hola,%20me%20interesa%20saber%20m%C3%A1s%20sobre%20PCGMANTENIMIENTO.";
 
 export default function HomePage() {
   const { isAuthenticated } = useUser();
@@ -108,7 +108,7 @@ export default function HomePage() {
         >
           <MessageCircle className="h-8 w-8 fill-white" />
           <span className="max-w-0 overflow-hidden group-hover:max-w-xs group-hover:ml-3 transition-all duration-500 font-black uppercase text-xs tracking-widest whitespace-nowrap">
-            Hablar con Paulo
+            Consultar Ahora
           </span>
         </a>
       </div>
@@ -345,8 +345,10 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-            <Card className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm">
-              <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce"><Zap className="h-6 w-6 text-black" /></div>
+            <Card className="bg-white/5 border border-white/10 p-10 rounded-[3rem] backdrop-blur-sm relative group">
+              <div className="absolute -top-6 -right-6 bg-amber-500 p-4 rounded-2xl shadow-xl animate-bounce">
+                <Zap className="h-6 w-6 text-black" />
+              </div>
               <h3 className="text-2xl font-black italic mb-6">Blindaje Operativo</h3>
               <div className="space-y-4">
                 <div className="p-6 bg-blue-600/20 rounded-[2rem] border border-blue-500/30">
