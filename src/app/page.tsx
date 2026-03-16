@@ -48,7 +48,7 @@ export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Estados para el simulador de fuga de WC
+  // Estados para el simulador de impacto hídrico
   const [litersLost, setLitersLost] = useState(0);
   const [moneyLost, setMoneyLost] = useState(0);
 
@@ -57,7 +57,7 @@ export default function HomePage() {
     
     const interval = setInterval(() => {
       setLitersLost(prev => prev + 0.01);
-      // Costo aproximado en Chile: $1.8 por litro
+      // Costo aproximado en Chile: $1.8 por litro (Agua + Alcantarillado)
       setMoneyLost(prev => prev + (0.01 * 1.8));
     }, 1000);
 

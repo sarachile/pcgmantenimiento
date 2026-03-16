@@ -1,11 +1,11 @@
-# Configuración optimizada para evitar errores 400 por falta de cuota o pago
-# Se establece minInstances en 0 para que no reserve recursos costosos innecesariamente
+# Configuración ultra-ligera para asegurar el despliegue tras regularización de pago
+# Se minimiza el uso de recursos para evitar errores de cuota (400 Bad Request)
 
 runConfig:
   memoryMiB: 1024
   cpu: 1
   minInstances: 0
-  maxInstances: 10
+  maxInstances: 5
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
