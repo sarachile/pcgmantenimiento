@@ -208,17 +208,18 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'aprobada':
-        return <Badge className="bg-emerald-100 text-emerald-700 border-none font-black uppercase text-[8px]">Terminado</Badge>;
+        return <Badge className="bg-emerald-100 text-emerald-700 border-none font-black uppercase text-[8px] tracking-widest px-2 h-5">Terminado</Badge>;
       case 'rechazada':
-        return <Badge className="bg-rose-100 text-rose-700 border-none font-black uppercase text-[8px]">Rechazado</Badge>;
+        return <Badge className="bg-rose-100 text-rose-700 border-none font-black uppercase text-[8px] tracking-widest px-2 h-5">Rechazado</Badge>;
       case 'en proceso':
       case 'ejecutada':
       case 'en revision':
-        return <Badge className="bg-blue-100 text-blue-700 border-none font-black uppercase text-[8px]">En Curso</Badge>;
+      case 'pendiente cliente':
+        return <Badge className="bg-blue-100 text-blue-700 border-none font-black uppercase text-[8px] tracking-widest px-2 h-5">En Curso</Badge>;
       case 'solicitada':
-        return <Badge className="bg-amber-100 text-amber-700 border-none font-black uppercase text-[8px]">En Espera</Badge>;
+        return <Badge className="bg-amber-100 text-amber-700 border-none font-black uppercase text-[8px] tracking-widest px-2 h-5">En Espera</Badge>;
       default:
-        return <Badge className="bg-slate-100 text-slate-600 border-none font-black uppercase text-[8px]">{status}</Badge>;
+        return <Badge className="bg-slate-100 text-slate-600 border-none font-black uppercase text-[8px] tracking-widest px-2 h-5">{status.toUpperCase()}</Badge>;
     }
   };
 
@@ -323,7 +324,6 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
             </TabsContent>
 
             <TabsContent value="history" className="space-y-6">
-              {/* PANEL DE STATUS DASHBOARD (NUEVO) */}
               <div className="grid grid-cols-3 gap-4">
                 <Card className="rounded-3xl border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
                   <div className="bg-blue-50 p-3 rounded-2xl mb-2"><Activity className="h-5 w-5 text-blue-600" /></div>
@@ -354,9 +354,12 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
                 </CardHeader>
                 <CardContent className="p-0">
                   {history.length === 0 ? (
-                    <div className="py-20 text-center opacity-40 italic flex flex-col items-center gap-4">
-                      <ClipboardPlus className="h-12 w-12 text-slate-300" />
-                      <p className="text-sm font-medium">Aún no tiene solicitudes registradas.</p>
+                    <div className="py-24 text-center opacity-40 italic flex flex-col items-center gap-4">
+                      <div className="bg-slate-100 p-6 rounded-full"><ClipboardPlus className="h-12 w-12 text-slate-300" /></div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-black uppercase tracking-tighter text-slate-900">Aún no tienes solicitudes</p>
+                        <p className="text-xs font-medium max-w-[200px] mx-auto">Tus requerimientos técnicos aparecerán aquí una vez que los envíes.</p>
+                      </div>
                     </div>
                   ) : (
                     <div className="divide-y">
@@ -364,13 +367,13 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
                         <div key={ot.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between group">
                           <div className="flex-1 min-w-0 mr-4">
                             <div className="flex items-center gap-3 mb-2">
-                              <span className="text-sm font-black text-primary italic">{ot.id}</span>
+                              <span className="text-sm font-black text-primary italic tracking-tight">{ot.id}</span>
                               {getStatusBadge(ot.status)}
-                              {ot.urgency === 'high' && <Badge className="bg-rose-50 text-rose-600 border-none font-black text-[7px] uppercase h-4">Urgente</Badge>}
+                              {ot.urgency === 'high' && <Badge className="bg-rose-50 text-rose-600 border-none font-black text-[7px] uppercase h-4 px-1.5 tracking-tighter">Urgente</Badge>}
                             </div>
                             <p className="text-sm font-bold text-slate-900 truncate mb-1">{ot.description}</p>
                             <p className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1.5">
-                              <MapPin className="h-3 w-3" /> {ot.street} {ot.streetNumber} • {ot.commune}
+                              <MapPin className="h-3 w-3 text-slate-400" /> {ot.street} {ot.streetNumber} • {ot.commune}
                             </p>
                           </div>
                           <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
