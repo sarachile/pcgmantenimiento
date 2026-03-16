@@ -1,10 +1,10 @@
-# Configuración optimizada para Next.js 15 en producción
-# Se aumenta potencia para procesar el alto volumen de tráfico y evitar error 400
+# Configuración de App Hosting optimizada para estabilidad
+# Se ajusta minInstances a 0 para evitar errores de cuota (Error 400)
 
 runConfig:
   memoryMiB: 1024
   cpu: 1
-  minInstances: 1
+  minInstances: 0
   maxInstances: 10
 
 env:
