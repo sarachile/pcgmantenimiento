@@ -39,7 +39,10 @@ import {
   Check,
   Monitor,
   Download,
-  Globe
+  Globe,
+  Activity,
+  Trophy,
+  AlertTriangle
 } from "lucide-react";
 import {
   Dialog,
@@ -90,7 +93,7 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
 
   // Address State
   const [region, setRegion] = useState("");
-  const [city, setCity] = useState("");
+  const [city, setCity] = useState(""); 
   const [commune, setCommune] = useState("");
   const [street, setStreet] = useState("");
   const [streetNumber, setStreetNumber] = useState("");
@@ -98,6 +101,14 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
   const [locationComment, setLocationComment] = useState("");
 
   const selectedRegion = useMemo(() => CHILE_REGIONS.find(r => r.name === region), [region]);
+
+  // Indicadores de Estado para el Cliente
+  const historyStats = useMemo(() => {
+    const pending = history.filter(ot => ot.status !== 'aprobada' && ot.status !== 'rechazada').length;
+    const completed = history.filter(ot => ot.status === 'aprobada').length;
+    const total = history.length;
+    return { pending, completed, total };
+  }, [history]);
 
   useEffect(() => {
     async function loadData() {
@@ -128,10 +139,20 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
     if (!companyId || !clientId || !firestore) return;
     setIsHistoryLoading(true);
     try {
-      const q = query(collection(firestore, "companies", companyId, "workOrders"), where("clientId", "==", clientId), orderBy("createdAt", "desc"));
+      const q = query(
+        collection(firestore, "companies", companyId, "workOrders"), 
+        where("clientId", "==", clientId), 
+        orderBy("createdAt", "desc")
+      );
       const snap = await getDocs(q);
       setHistory(snap.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
-    } catch (e) { console.error(e); } finally { setIsHistoryLoading(false); }
+    } catch (e) { 
+      console.error(e); 
+      // Si falla por falta de índice, al menos cargamos sin orden para no bloquear al usuario
+      const qSimple = query(collection(firestore, "companies", companyId, "workOrders"), where("clientId", "==", clientId));
+      const snapSimple = await getDocs(qSimple);
+      setHistory(snapSimple.docs.map(d => ({ ...d.data(), id: d.id } as WorkOrder)));
+    } finally { setIsHistoryLoading(false); }
   };
 
   const handleVerifyEmail = (e: React.FormEvent) => {
@@ -182,6 +203,23 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
       const url = await getDownloadURL(sRef);
       setEvidenceUrls(prev => [...prev, url]);
     } catch (e: any) { toast({ title: "Error al subir foto", variant: "destructive" }); } finally { setIsUploading(false); }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'aprobada':
+        return <Badge className="bg-emerald-100 text-emerald-700 border-none font-black uppercase text-[8px]">Terminado</Badge>;
+      case 'rechazada':
+        return <Badge className="bg-rose-100 text-rose-700 border-none font-black uppercase text-[8px]">Rechazado</Badge>;
+      case 'en proceso':
+      case 'ejecutada':
+      case 'en revision':
+        return <Badge className="bg-blue-100 text-blue-700 border-none font-black uppercase text-[8px]">En Curso</Badge>;
+      case 'solicitada':
+        return <Badge className="bg-amber-100 text-amber-700 border-none font-black uppercase text-[8px]">En Espera</Badge>;
+      default:
+        return <Badge className="bg-slate-100 text-slate-600 border-none font-black uppercase text-[8px]">{status}</Badge>;
+    }
   };
 
   if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>;
@@ -284,23 +322,58 @@ function PublicRequestContent({ params }: { params: { id: string } }) {
               </Card>
             </TabsContent>
 
-            <TabsContent value="history">
+            <TabsContent value="history" className="space-y-6">
+              {/* PANEL DE STATUS DASHBOARD (NUEVO) */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card className="rounded-3xl border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
+                  <div className="bg-blue-50 p-3 rounded-2xl mb-2"><Activity className="h-5 w-5 text-blue-600" /></div>
+                  <p className="text-2xl font-black text-slate-900 leading-none">{historyStats.total}</p>
+                  <p className="text-[8px] font-black uppercase text-slate-400 mt-1 tracking-widest">Totales</p>
+                </Card>
+                <Card className="rounded-3xl border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
+                  <div className="bg-amber-50 p-3 rounded-2xl mb-2"><Clock className="h-5 w-5 text-amber-600" /></div>
+                  <p className="text-2xl font-black text-slate-900 leading-none">{historyStats.pending}</p>
+                  <p className="text-[8px] font-black uppercase text-slate-400 mt-1 tracking-widest">En Curso</p>
+                </Card>
+                <Card className="rounded-3xl border-none shadow-sm bg-white p-6 flex flex-col items-center justify-center text-center">
+                  <div className="bg-emerald-50 p-3 rounded-2xl mb-2"><Trophy className="h-5 w-5 text-emerald-600" /></div>
+                  <p className="text-2xl font-black text-slate-900 leading-none">{historyStats.completed}</p>
+                  <p className="text-[8px] font-black uppercase text-slate-400 mt-1 tracking-widest">Finalizados</p>
+                </Card>
+              </div>
+
               <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
                 <CardHeader className="bg-slate-50 border-b p-8 flex flex-row items-center justify-between">
-                  <div><CardTitle className="text-xl font-black uppercase italic">Historial de Servicios</CardTitle></div>
-                  <Button variant="ghost" size="icon" onClick={loadHistory} disabled={isHistoryLoading} className="rounded-xl h-12 w-12 bg-white border shadow-sm">{isHistoryLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <History className="h-5 w-5" />}</Button>
+                  <div>
+                    <CardTitle className="text-xl font-black uppercase italic">Historial de Servicios</CardTitle>
+                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Trazabilidad de requerimientos externos</CardDescription>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={loadHistory} disabled={isHistoryLoading} className="rounded-xl h-12 w-12 bg-white border shadow-sm">
+                    {isHistoryLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <History className="h-5 w-5" />}
+                  </Button>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {history.length === 0 ? <div className="py-20 text-center opacity-40 italic">Sin historial.</div> : (
+                  {history.length === 0 ? (
+                    <div className="py-20 text-center opacity-40 italic flex flex-col items-center gap-4">
+                      <ClipboardPlus className="h-12 w-12 text-slate-300" />
+                      <p className="text-sm font-medium">Aún no tiene solicitudes registradas.</p>
+                    </div>
+                  ) : (
                     <div className="divide-y">
                       {history.map((ot) => (
-                        <div key={ot.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between">
+                        <div key={ot.id} className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between group">
                           <div className="flex-1 min-w-0 mr-4">
-                            <div className="flex items-center gap-3 mb-2"><span className="text-sm font-black text-primary italic">{ot.id}</span><Badge className={cn("text-[8px] font-black uppercase", ot.status === 'aprobada' ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700")}>{ot.status}</Badge></div>
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-sm font-black text-primary italic">{ot.id}</span>
+                              {getStatusBadge(ot.status)}
+                              {ot.urgency === 'high' && <Badge className="bg-rose-50 text-rose-600 border-none font-black text-[7px] uppercase h-4">Urgente</Badge>}
+                            </div>
                             <p className="text-sm font-bold text-slate-900 truncate mb-1">{ot.description}</p>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">{ot.street} {ot.streetNumber} - {ot.commune}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1.5">
+                              <MapPin className="h-3 w-3" /> {ot.street} {ot.streetNumber} • {ot.commune}
+                            </p>
                           </div>
-                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                          <ChevronRight className="h-5 w-5 text-slate-300 group-hover:text-primary group-hover:translate-x-1 transition-all" />
                         </div>
                       ))}
                     </div>
