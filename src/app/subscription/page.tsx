@@ -161,7 +161,7 @@ export default function SubscriptionPage() {
               </ul>
             </CardContent>
             <CardFooter className="p-8">
-              {plan.current ? <Button className="w-full h-14 rounded-2xl font-black uppercase" variant="outline" disabled><ShieldCheck className="mr-2 h-4 w-4" /> Plan Activo</Button> : <Button className="w-full h-14 rounded-2xl font-black uppercase bg-slate-900 text-white" onClick={() => handleRequestUpgrade(plan)}>Mejorar Plan <ArrowRight className="ml-2 h-4 w-4" /></Button>}
+              {plan.current ? <Button className="w-full h-14 rounded-2xl font-black uppercase" variant="outline" disabled><ShieldCheck className="mr-2 h-4 w-4" /> Plan Activo</Button> : <Button className="w-full h-14 rounded-2xl font-black uppercase bg-slate-900 text-white" onClick={() => handleRequestUpgrade(plan)}>Mejorar Plan <ArrowRight className="ml-2 h-5 w-5" /></Button>}
             </CardFooter>
           </Card>
         ))}
@@ -209,8 +209,12 @@ export default function SubscriptionPage() {
                 <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">RUT Facturación</Label><Input placeholder="76.000.000-0" required className="h-14 rounded-xl border-2 font-black text-center" value={rut} onChange={(e) => setRut(e.target.value)} /></div>
                 <div className="bg-slate-50 p-6 rounded-2xl text-center border-2 border-dashed"><p className="text-xs font-black uppercase text-slate-400">Total Mensual</p><p className="text-3xl font-black text-primary">{selectedPlan.price}</p></div>
               </CardContent>
-              <CardFooter className="px-10 pb-10 flex gap-4"><Button type="button" variant="ghost" className="flex-1 font-black" onClick={() => setIsUpgrading(false)}>Atrás</Button><Button type="submit" className="flex-[2] h-14 rounded-xl bg-primary text-white font-black uppercase shadow-xl">Activar Ahora</Button></form>
-            </Card>
+              <CardFooter className="px-10 pb-10 flex gap-4">
+                <Button type="button" variant="ghost" className="flex-1 font-black" onClick={() => setIsUpgrading(false)}>Atrás</Button>
+                <Button type="submit" className="flex-[2] h-14 rounded-xl bg-primary text-white font-black uppercase shadow-xl">Activar Ahora</Button>
+              </CardFooter>
+            </form>
+          </Card>
         </div>
       )}
     </div>
