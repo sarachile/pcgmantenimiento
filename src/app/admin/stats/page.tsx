@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -24,6 +23,7 @@ import {
   Loader2,
   LogOut
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useUser, useAuth } from "@/firebase";
 import { redirect } from "next/navigation";
@@ -57,15 +57,17 @@ export default function GlobalStatsPage() {
   if (!mounted) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="p-2 hover:bg-muted rounded-full transition-colors">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <Button variant="ghost" size="icon" asChild className="rounded-full">
+            <Link href="/admin">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Estadísticas Globales</h2>
-            <p className="text-muted-foreground">Métricas de crecimiento y salud de la infraestructura SaaS.</p>
+            <h2 className="text-3xl font-black tracking-tighter uppercase italic">Estadísticas Globales</h2>
+            <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Salud de la infraestructura SaaS</p>
           </div>
         </div>
         <Button onClick={handleLogout} variant="ghost" className="text-rose-600 hover:bg-rose-50 font-bold uppercase text-[10px]">
@@ -74,76 +76,76 @@ export default function GlobalStatsPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-none shadow-sm bg-primary/5">
+        <Card className="border-none shadow-sm bg-primary/5 rounded-3xl">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
               <Zap className="h-4 w-4 text-primary" />
               Consumo de API Global
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">125.4k</div>
-            <p className="text-xs text-muted-foreground">Llamadas SimpleAPI este mes</p>
+            <div className="text-3xl font-black italic">125.4k</div>
+            <p className="text-[9px] font-bold text-muted-foreground uppercase">Llamadas SimpleAPI este mes</p>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm">
+        <Card className="border-none shadow-sm rounded-3xl">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
               <Building2 className="h-4 w-4 text-blue-500" />
               Nuevos Tenantes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+4</div>
-            <p className="text-xs text-muted-foreground">Últimos 30 días</p>
+            <div className="text-3xl font-black italic">+4</div>
+            <p className="text-[9px] font-bold text-muted-foreground uppercase">Últimos 30 días</p>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm bg-rose-50 border-rose-100">
+        <Card className="border-none shadow-sm bg-rose-50 border-rose-100 rounded-3xl">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-rose-700">
+            <CardTitle className="text-[10px] font-black uppercase text-rose-700 tracking-widest flex items-center gap-2">
               <ShieldAlert className="h-4 w-4" />
               Alertas de Sistema
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-rose-700">2</div>
-            <p className="text-xs text-rose-600/80">Requeren atención inmediata</p>
+            <div className="text-3xl font-black italic text-rose-700">2</div>
+            <p className="text-[9px] font-bold text-rose-600/80 uppercase">Requieren atención inmediata</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle>Crecimiento de Plataforma</CardTitle>
-            <CardDescription>Evolución de empresas activas en el sistema.</CardDescription>
+        <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
+          <CardHeader className="bg-slate-50 border-b">
+            <CardTitle className="text-sm font-black uppercase tracking-tighter">Crecimiento de Plataforma</CardTitle>
+            <CardDescription className="text-[9px] font-bold uppercase">Evolución de empresas activas</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[300px] pt-6">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={platformGrowth}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                <YAxis fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                 <Tooltip />
-                <Line type="monotone" dataKey="companies" stroke="hsl(var(--primary))" strokeWidth={2} />
+                <Line type="monotone" dataKey="companies" stroke="hsl(var(--primary))" strokeWidth={4} dot={{ r: 6, fill: 'white', strokeWidth: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card className="border-none shadow-sm">
-          <CardHeader>
-            <CardTitle>Volumen Transaccional Global</CardTitle>
-            <CardDescription>Órdenes de trabajo procesadas mensualmente.</CardDescription>
+        <Card className="border-none shadow-sm rounded-3xl overflow-hidden">
+          <CardHeader className="bg-slate-50 border-b">
+            <CardTitle className="text-sm font-black uppercase tracking-tighter">Volumen Transaccional</CardTitle>
+            <CardDescription className="text-[9px] font-bold uppercase">Órdenes de trabajo procesadas</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
+          <CardContent className="h-[300px] pt-6">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={platformGrowth}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis fontSize={12} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
+                <YAxis fontSize={10} tickLine={false} axisLine={false} fontWeight="bold" />
                 <Tooltip />
-                <Bar dataKey="ots" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="ots" fill="#3b82f6" radius={[10, 10, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

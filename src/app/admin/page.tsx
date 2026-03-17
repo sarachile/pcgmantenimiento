@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useEffect } from "react";
@@ -43,7 +42,7 @@ export default function SuperadminDashboardPage() {
     router.push("/auth/login");
   };
 
-  // Consultas Globales (Simplificadas)
+  // Consultas Globales (Simplificadas para evitar bucles de índices)
   const companiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
     return query(collection(db, "companies"), orderBy("createdAt", "desc"), limit(10));
@@ -62,7 +61,7 @@ export default function SuperadminDashboardPage() {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Accediendo a Infraestructura...</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Accediendo a Control Maestro...</p>
         </div>
       </div>
     );

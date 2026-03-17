@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -106,14 +105,14 @@ export default function AdminCompaniesPage() {
   const [formData, setFormData] = useState({
     name: "",
     address: "",
-    currentPlan: "free" as any,
+    currentPlan: "simple" as any,
   });
 
   // Config Subscription State
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [configData, setConfigData] = useState({
-    currentPlan: "free" as any,
+    currentPlan: "simple" as any,
     subscriptionStatus: "active" as any,
     isActive: true
   });
@@ -178,14 +177,14 @@ export default function AdminCompaniesPage() {
     });
     
     setIsCreateOpen(false);
-    setFormData({ name: "", address: "", currentPlan: "free" });
+    setFormData({ name: "", address: "", currentPlan: "simple" });
     setIsSubmitting(false);
   };
 
   const handleOpenConfig = (company: Company) => {
     setSelectedCompany(company);
     setConfigData({
-      currentPlan: company.currentPlan || "free",
+      currentPlan: company.currentPlan || "simple",
       subscriptionStatus: company.subscriptionStatus || "active",
       isActive: company.isActive ?? true
     });
@@ -199,7 +198,7 @@ export default function AdminCompaniesPage() {
     const companyRef = doc(db, "companies", selectedCompany.id);
     updateDocumentNonBlocking(companyRef, {
       currentPlan: configData.currentPlan,
-      subscriptionStatus: configData.status,
+      subscriptionStatus: configData.subscriptionStatus,
       isActive: configData.isActive,
       updatedAt: serverTimestamp(),
     });
@@ -393,8 +392,8 @@ export default function AdminCompaniesPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
-                        <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
-                        <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
+                        <SelectItem value="business">Plan Business (1.8 UF)</SelectItem>
+                        <SelectItem value="enterprise">Plan Enterprise (3.5 UF)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -759,7 +758,7 @@ export default function AdminCompaniesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="simple">Plan Simple (Freemium)</SelectItem>
+                    <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
                     <SelectItem value="business">Plan Business (1.8 UF)</SelectItem>
                     <SelectItem value="enterprise">Plan Enterprise (3.5 UF)</SelectItem>
                   </SelectContent>
