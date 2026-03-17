@@ -36,7 +36,8 @@ import {
   TrendingDown,
   ShieldAlert,
   ArrowRight,
-  History
+  History,
+  ShieldCheck
 } from "lucide-react";
 import { 
   BarChart, 
@@ -61,6 +62,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
 import { collection, query, where, doc, serverTimestamp, getDocs } from "firebase/firestore";
@@ -88,6 +90,11 @@ export default function WaterControlPage() {
   const [localMeters, setLocalMeters] = useState<WaterMeter[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
+
+  // PIN CHALLENGE STATE
+  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pendingMeter, setPendingMeter] = useState<WaterMeter | null>(null);
 
   const companyId = profile?.companyId || "";
 
@@ -133,7 +140,30 @@ export default function WaterControlPage() {
     { hour: "23:59", value: 18 },
   ];
 
-  const toggleValve = async (meter: WaterMeter) => {
+  const handleToggleValveRequest = (meter: WaterMeter) => {
+    setPendingMeter(meter);
+    setPinInput("");
+    setIsPinDialogOpen(true);
+  };
+
+  const handleConfirmPin = async () => {
+    if (!pendingMeter || !profile) return;
+
+    // Validación de PIN (Comparar con el PIN guardado en el perfil para buildingAdmin)
+    if (pinInput === profile.pin || (pinInput === "123456" && !profile.pin)) { // Fallback para demo
+      setIsPinDialogOpen(false);
+      executeToggleValve(pendingMeter);
+    } else {
+      toast({
+        title: "PIN Incorrecto",
+        description: "Acceso denegado. El comando de válvula ha sido bloqueado.",
+        variant: "destructive"
+      });
+      setPinInput("");
+    }
+  };
+
+  const executeToggleValve = async (meter: WaterMeter) => {
     setIsProcessing(meter.id);
     
     const newStatus = meter.status === 'open' ? 'closed' : 'open';
@@ -209,6 +239,7 @@ export default function WaterControlPage() {
         </Card>
       )}
 
+      {/* DIÁLOGO DE REPORTE */}
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <DialogHeader className="bg-slate-900 text-white p-8">
@@ -263,11 +294,6 @@ export default function WaterControlPage() {
                 "El patrón de flujo continuo detectado (0.5 L/min) es compatible con una falla en la válvula de descarga del estanque de inodoro (WC). Se recomienda el corte remoto preventivo si la unidad no responde al contacto."
               </div>
             </div>
-
-            <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <Clock className="h-4 w-4 text-blue-600" />
-              <p className="text-[9px] font-bold text-blue-700 uppercase tracking-tight">Última lectura válida registrada a las {new Date().toLocaleTimeString()}</p>
-            </div>
           </div>
 
           <DialogFooter className="p-8 bg-slate-50 border-t flex gap-3">
@@ -276,13 +302,60 @@ export default function WaterControlPage() {
               className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-[10px] tracking-widest gap-2 shadow-xl"
               onClick={() => {
                 const target = localMeters.find(m => m.unitIdentifier === "Depto 102");
-                if (target) toggleValve(target);
+                if (target) handleToggleValveRequest(target);
                 setIsReportOpen(false);
               }}
             >
               <PowerOff className="h-4 w-4" /> Ejecutar Corte Remoto
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIÁLOGO DE SEGURIDAD (PIN CHALLENGE) */}
+      <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+          <div className="p-8 space-y-6 text-center">
+            <div className="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-inner">
+              <Lock className="h-10 w-10 text-slate-900" />
+            </div>
+            <div className="space-y-2">
+              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Validación de Comando</DialogTitle>
+              <DialogDescription className="font-bold text-slate-500">
+                Está a punto de {pendingMeter?.status === 'open' ? 'cortar' : 'restablecer'} el suministro de <strong>{pendingMeter?.unitIdentifier}</strong>. Ingrese su PIN de administrador para confirmar.
+              </DialogDescription>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em]">PIN de Seguridad</Label>
+              <Input 
+                type="password"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="******"
+                className="h-16 text-center text-3xl font-black tracking-[0.5em] rounded-2xl border-2 border-slate-200 focus:border-blue-600 shadow-inner"
+                value={pinInput}
+                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <Button 
+                className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest gap-2 shadow-xl"
+                onClick={handleConfirmPin}
+                disabled={pinInput.length < 6}
+              >
+                <ShieldCheck className="h-5 w-5" /> Confirmar Operación
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="text-slate-400 font-bold uppercase text-[10px]"
+                onClick={() => setIsPinDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -401,7 +474,7 @@ export default function WaterControlPage() {
                           </Link>
                         </Button>
                         <Button 
-                          onClick={() => toggleValve(m)}
+                          onClick={() => handleToggleValveRequest(m)}
                           disabled={isProcessing === m.id}
                           className={cn(
                             "h-12 px-6 rounded-2xl font-black uppercase text-[10px] tracking-widest gap-2 shadow-xl transition-all active:scale-95",
@@ -434,7 +507,7 @@ export default function WaterControlPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={consumptionData}>
                   <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorValue" x1="0" x1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                     </linearGradient>

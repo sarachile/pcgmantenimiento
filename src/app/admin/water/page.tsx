@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -66,7 +67,8 @@ import {
   Edit,
   Trash2,
   RefreshCcw,
-  UserCog
+  UserCog,
+  Battery
 } from "lucide-react";
 import { 
   useUser, 
@@ -214,6 +216,7 @@ export default function AdminWaterControlPage() {
       const uid = userCredential.user.uid;
 
       // 3. Crear Perfil en Firestore
+      // GUARDAMOS EL PIN PARA LA VALIDACIÓN DE OPERACIONES CRÍTICAS
       const userRef = doc(db, "users", uid);
       await setDocumentNonBlocking(userRef, {
         id: uid,
@@ -222,6 +225,7 @@ export default function AdminWaterControlPage() {
         name: formData.name,
         role: "buildingAdmin",
         companyId: buildingId,
+        pin: formData.pin, // Guardar PIN para validaciones remotas
         active: true,
         createdAt: serverTimestamp(),
       }, { merge: true });

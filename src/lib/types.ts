@@ -95,6 +95,7 @@ export interface User {
   createdAt: string;
   staffId?: string;
   isStaffAccount?: boolean;
+  pin?: string; // Solo para roles de acceso rápido como buildingAdmin
 }
 
 export interface StaffMember {
