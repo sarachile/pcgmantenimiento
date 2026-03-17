@@ -41,6 +41,23 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
+    "WaterMeter": {
+      "title": "WaterMeter",
+      "type": "object",
+      "description": "Smart water meter device for telemetry and remote control.",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "unitIdentifier": { "type": "string", "description": "Depto, Casa or Lot number." },
+        "status": { "type": "string", "enum": ["open", "closed", "blocked"] },
+        "currentReading": { "type": "number", "description": "Cumulative m3 reading." },
+        "batteryLevel": { "type": "number" },
+        "signalStrength": { "type": "number" },
+        "hasLeakAlert": { "type": "boolean" },
+        "lastCommunication": { "type": "string", "format": "date-time" }
+      }
+    },
     "WorkOrder": {
       "title": "WorkOrder",
       "type": "object",
@@ -74,6 +91,7 @@
     "structure": [
       { "path": "/users/{userId}", "definition": { "entityName": "User", "description": "Global user profiles." } },
       { "path": "/companies/{companyId}", "definition": { "entityName": "Company", "description": "Main tenant config." } },
+      { "path": "/companies/{companyId}/waterMeters/{meterId}", "definition": { "entityName": "WaterMeter", "description": "IoT water meters." } },
       { "path": "/companies/{companyId}/workOrders/{workOrderId}", "definition": { "entityName": "WorkOrder", "description": "Operational orders." } }
     ]
   }

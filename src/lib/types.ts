@@ -1,3 +1,4 @@
+
 export type Role = 'companyAdmin' | 'supervisor' | 'tecnico' | 'reviewer' | 'superadmin';
 
 export type OTStatus = 'solicitada' | 'creada' | 'asignada' | 'en proceso' | 'ejecutada' | 'en revision' | 'pendiente cliente' | 'aprobada' | 'rechazada';
@@ -13,6 +14,8 @@ export type BillingDocumentType = 'factura' | 'boleta' | 'guia_despacho' | 'nota
 export type PlanType = 'simple' | 'business' | 'enterprise';
 
 export type SubscriptionStatus = 'active' | 'past_due' | 'canceled';
+
+export type WaterMeterStatus = 'open' | 'closed' | 'blocked';
 
 export interface Company {
   id: string;
@@ -60,6 +63,19 @@ export interface Client {
   portalLastSentAt?: string | any; 
   createdAt: string;
   isDeleted?: boolean;
+}
+
+export interface WaterMeter {
+  id: string;
+  companyId: string;
+  clientId: string;
+  unitIdentifier: string; // Depto 402, etc
+  status: WaterMeterStatus;
+  currentReading: number;
+  batteryLevel: number;
+  signalStrength: number;
+  hasLeakAlert: boolean;
+  lastCommunication: string | any;
 }
 
 export interface User {

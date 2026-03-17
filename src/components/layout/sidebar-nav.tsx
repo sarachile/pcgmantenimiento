@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -22,7 +23,8 @@ import {
   Layers,
   Sparkles,
   Lock,
-  Cpu
+  Cpu,
+  Droplets
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -60,8 +62,9 @@ const operationalItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", href: "/calendar", icon: CalendarDays },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
+  { title: "Control de Agua (IoT)", href: "/water-control", icon: Droplets, highlight: true },
   { title: "Revisiones Técnicas", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor', 'companyAdmin'] },
-  { title: "Monitor IoT Alertas", href: "/iot-control", icon: Cpu, highlight: true },
+  { title: "Monitor IoT Alertas", href: "/iot-control", icon: Cpu },
   { title: "Captura Terreno", href: "/field/capture", icon: Camera },
 ];
 
