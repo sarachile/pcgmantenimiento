@@ -12,19 +12,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { 
   ArrowLeft, 
   Loader2, 
   History, 
   TrendingUp, 
-  TrendingDown, 
   Calendar, 
   Clock, 
   Droplets,
-  AlertTriangle,
   Download,
   Filter,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  ChevronDown,
+  LayoutList
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -37,9 +43,9 @@ import {
 } from "recharts";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, orderBy, limit } from "firebase/firestore";
-import { WaterReading, WaterMeter } from "@/lib/types";
+import { WaterReading } from "@/lib/types";
 import Link from "next/link";
-import { format, subHours, startOfHour } from "date-fns";
+import { format, subHours, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -47,9 +53,9 @@ import { cn } from "@/lib/utils";
 const generateSimulatedHistory = () => {
   const data = [];
   const now = new Date();
-  for (let i = 24; i >= 0; i--) {
+  // Generamos datos para los últimos 3 días para demostrar la agrupación
+  for (let i = 72; i >= 0; i--) {
     const time = subHours(now, i);
-    // Simular picos de consumo (mañana y noche)
     const hour = time.getHours();
     let baseValue = 0.5;
     if (hour >= 7 && hour <= 9) baseValue = Math.random() * 5 + 3;
@@ -78,7 +84,7 @@ export default function MeterHistoryPage({ params }: { params: Promise<{ meterId
     db && companyId && meterId ? query(
       collection(db, "companies", companyId, "waterMeters", meterId, "readings"),
       orderBy("timestamp", "desc"),
-      limit(100)
+      limit(200)
     ) : null, 
     [db, companyId, meterId]
   );
@@ -95,16 +101,34 @@ export default function MeterHistoryPage({ params }: { params: Promise<{ meterId
     })).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [firestoreReadings, isReadingsLoading]);
 
+  // Agrupación por Día
+  const groupedReadings = useMemo(() => {
+    const groups: Record<string, { label: string, items: any[] }> = {};
+    const sortedDesc = [...readings].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    sortedDesc.forEach(r => {
+      const date = new Date(r.timestamp);
+      const key = format(date, "yyyy-MM-dd");
+      const label = format(date, "eeee d 'de' MMMM", { locale: es });
+      if (!groups[key]) groups[key] = { label, items: [] };
+      groups[key].items.push(r);
+    });
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [readings]);
+
   const stats = useMemo(() => {
     if (readings.length === 0) return { total: 0, avg: 0, peak: 0 };
-    const total = readings.reduce((acc, r) => acc + r.value, 0);
-    const peak = Math.max(...readings.map(r => r.value));
-    const avg = total / readings.length;
+    // Mostrar solo las últimas 24h en los stats de arriba
+    const last24 = readings.slice(-24);
+    const total = last24.reduce((acc, r) => acc + r.value, 0);
+    const peak = Math.max(...last24.map(r => r.value));
+    const avg = total / last24.length;
     return { total, avg, peak };
   }, [readings]);
 
   const chartData = useMemo(() => {
-    return readings.map(r => ({
+    // El gráfico muestra solo las últimas 24 lecturas para claridad
+    return readings.slice(-24).map(r => ({
       time: format(new Date(r.timestamp), "HH:mm"),
       consumo: r.value
     }));
@@ -116,7 +140,7 @@ export default function MeterHistoryPage({ params }: { params: Promise<{ meterId
     <div className="space-y-8 pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild className="rounded-full h-12 w-12"><Link href="/water-control"><ArrowLeft className="h-5 w-5" /></Link></Button>
+          <Button variant="ghost" size="icon" asChild className="rounded-full h-12 w-12 hover:bg-blue-50"><Link href="/water-control"><ArrowLeft className="h-5 w-5" /></Link></Button>
           <div>
             <h2 className="text-4xl font-black tracking-tighter italic uppercase text-slate-900">Historial de Consumo</h2>
             <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Unidad: {meterId.startsWith('sim') ? 'Unidad de Prueba' : meterId}</p>
@@ -127,7 +151,7 @@ export default function MeterHistoryPage({ params }: { params: Promise<{ meterId
             <Download className="h-4 w-4" /> Exportar CSV
           </Button>
           <Button variant="outline" className="rounded-xl font-bold gap-2">
-            <Filter className="h-4 w-4" /> 24 Horas
+            <Filter className="h-4 w-4" /> Filtrar Rango
           </Button>
         </div>
       </div>
@@ -135,7 +159,7 @@ export default function MeterHistoryPage({ params }: { params: Promise<{ meterId
       <div className="grid gap-6 md:grid-cols-3">
         <Card className="border-none shadow-sm bg-blue-600 text-white rounded-[2rem] overflow-hidden">
           <CardHeader className="pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100">Consumo Acumulado</CardTitle>
+            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-100">Consumo (Últ. 24h)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2">
@@ -159,7 +183,7 @@ export default function MeterHistoryPage({ params }: { params: Promise<{ meterId
 
         <Card className="border-none shadow-sm bg-white rounded-[2rem] overflow-hidden border-2 border-slate-100">
           <CardHeader className="pb-2">
-            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Consumo Promedio</CardTitle>
+            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Promedio Horario</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-baseline gap-2 text-slate-900">
@@ -175,7 +199,7 @@ export default function MeterHistoryPage({ params }: { params: Promise<{ meterId
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-                <TrendingUp className="h-6 w-6 text-blue-600" /> Curva de Consumo Detallada
+                <TrendingUp className="h-6 w-6 text-blue-600" /> Curva de Consumo (24h)
               </CardTitle>
               <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Trazabilidad por hora de flujo hídrico</CardDescription>
             </div>
@@ -206,48 +230,66 @@ export default function MeterHistoryPage({ params }: { params: Promise<{ meterId
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-        <CardHeader className="p-8 border-b bg-slate-50/50">
-          <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-            <ShieldCheck className="h-6 w-6 text-blue-600" /> Log de Auditoría IoT
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Fecha y Hora</th>
-                  <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Lectura Pulso (m³)</th>
-                  <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">Estado Gateway</th>
-                  <th className="p-6 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Integridad</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {readings.slice().reverse().map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-6">
-                      <div className="flex items-center gap-3">
-                        <Clock className="h-4 w-4 text-slate-300" />
-                        <span className="text-sm font-bold text-slate-700">{format(new Date(r.timestamp), "dd MMM, HH:mm:ss", { locale: es })}</span>
-                      </div>
-                    </td>
-                    <td className="p-6">
-                      <span className="text-sm font-black text-slate-900">{r.value.toFixed(3)} m³</span>
-                    </td>
-                    <td className="p-6">
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase">Online</Badge>
-                    </td>
-                    <td className="p-6 text-right">
-                      <Zap className="h-4 w-4 text-blue-400 inline" />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2 pl-4">
+          <LayoutList className="h-4 w-4" /> Log de Auditoría por Día
+        </h3>
+        
+        <Accordion type="single" collapsible defaultValue={groupedReadings[0]?.[0]} className="space-y-4">
+          {groupedReadings.map(([dayKey, group]) => (
+            <AccordionItem key={dayKey} value={dayKey} className="border-none">
+              <Card className="border-none shadow-sm rounded-[1.5rem] overflow-hidden bg-white">
+                <AccordionTrigger className="px-8 py-6 hover:no-underline hover:bg-slate-50 transition-colors group">
+                  <div className="flex items-center gap-4 text-left">
+                    <div className="bg-blue-50 p-2 rounded-xl text-blue-600 group-data-[state=open]:bg-blue-600 group-data-[state=open]:text-white transition-all">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-base font-black uppercase italic tracking-tighter text-slate-900 block capitalize">{group.label}</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{group.items.length} Pulsos de telemetría</span>
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="p-0">
+                  <div className="overflow-x-auto border-t border-slate-50">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-50/50">
+                        <tr>
+                          <th className="p-6 text-[9px] font-black uppercase text-slate-400 tracking-widest">Hora de Lectura</th>
+                          <th className="p-6 text-[9px] font-black uppercase text-slate-400 tracking-widest">Valor Pulso (m³)</th>
+                          <th className="p-6 text-[9px] font-black uppercase text-slate-400 tracking-widest">Estado Gateway</th>
+                          <th className="p-6 text-[9px] font-black uppercase text-slate-400 tracking-widest text-right">Integridad</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {group.items.map((r) => (
+                          <tr key={r.id} className="hover:bg-blue-50/20 transition-colors">
+                            <td className="p-6">
+                              <div className="flex items-center gap-3">
+                                <Clock className="h-3.5 w-3.5 text-slate-300" />
+                                <span className="text-xs font-bold text-slate-700">{format(new Date(r.timestamp), "HH:mm:ss")}</span>
+                              </div>
+                            </td>
+                            <td className="p-6">
+                              <span className="text-sm font-black text-slate-900">{r.value.toFixed(3)} m³</span>
+                            </td>
+                            <td className="p-6">
+                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase">Online</Badge>
+                            </td>
+                            <td className="p-6 text-right">
+                              <Zap className="h-3.5 w-3.5 text-blue-400 inline" />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </div>
     </div>
   );
 }
