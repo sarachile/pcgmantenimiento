@@ -90,6 +90,16 @@ import { redirect } from "next/navigation";
 import { cleanRut } from "@/lib/utils-rut";
 import { useToast } from "@/hooks/use-toast";
 
+// DATOS SIMULADOS PARA PRESENTACIÓN
+const MOCK_METERS: WaterMeter[] = [
+  { id: "sim-1", companyId: "mock", clientId: "mock", unitIdentifier: "Depto 101", status: "open", currentReading: 42.55, batteryLevel: 92, signalStrength: 88, hasLeakAlert: false, lastCommunication: new Date().toISOString() },
+  { id: "sim-2", companyId: "mock", clientId: "mock", unitIdentifier: "Depto 102", status: "open", currentReading: 15.30, batteryLevel: 85, signalStrength: 72, hasLeakAlert: true, lastCommunication: new Date().toISOString() },
+  { id: "sim-3", companyId: "mock", clientId: "mock", unitIdentifier: "Depto 201", status: "open", currentReading: 122.10, batteryLevel: 98, signalStrength: 95, hasLeakAlert: false, lastCommunication: new Date().toISOString() },
+  { id: "sim-4", companyId: "mock", clientId: "mock", unitIdentifier: "Depto 202", status: "closed", currentReading: 88.45, batteryLevel: 78, signalStrength: 65, hasLeakAlert: false, lastCommunication: new Date().toISOString() },
+  { id: "sim-5", companyId: "mock", clientId: "mock", unitIdentifier: "Depto 301", status: "open", currentReading: 210.00, batteryLevel: 90, signalStrength: 82, hasLeakAlert: false, lastCommunication: new Date().toISOString() },
+  { id: "sim-6", companyId: "mock", clientId: "mock", unitIdentifier: "Depto 302", status: "open", currentReading: 5.12, batteryLevel: 100, signalStrength: 99, hasLeakAlert: false, lastCommunication: new Date().toISOString() },
+];
+
 export default function AdminWaterControlPage() {
   const { isSuperAdmin, isLoading: isUserLoading } = useUser();
   const db = useFirestore();
@@ -161,7 +171,13 @@ export default function AdminWaterControlPage() {
     try {
       const q = collection(db, "companies", compId, "waterMeters");
       const snap = await getDocs(q);
-      const meters = snap.docs.map(d => ({ ...d.data(), id: d.id } as WaterMeter));
+      let meters = snap.docs.map(d => ({ ...d.data(), id: d.id } as WaterMeter));
+      
+      // FALLBACK PARA PRESENTACIÓN: Si no hay medidores reales, inyectar simulados
+      if (meters.length === 0) {
+        meters = MOCK_METERS.map(m => ({ ...m, companyId: compId }));
+      }
+      
       setBuildingMeters(prev => ({ ...prev, [compId]: meters }));
     } catch (e) {
       console.error(e);
@@ -422,7 +438,7 @@ export default function AdminWaterControlPage() {
                         }}
                       >
                         <div className="flex items-center gap-6">
-                          <div className="bg-blue-100 p-4 rounded-3xl text-blue-600 group-hover:scale-110 transition-transform">
+                          <div className={cn("p-4 rounded-3xl transition-transform group-hover:scale-110", isExpanded ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-600")}>
                             <Building2 className="h-8 w-8" />
                           </div>
                           <div>
@@ -435,7 +451,7 @@ export default function AdminWaterControlPage() {
                         </div>
                         <div className="flex items-center gap-8">
                           <div className="text-right">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sensores Activos</p>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sensores Enrolados</p>
                             <p className="text-2xl font-black italic text-slate-900">{meters.length || '?'}</p>
                           </div>
                           <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
@@ -459,7 +475,7 @@ export default function AdminWaterControlPage() {
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                            {isExpanded ? <ChevronUp className="h-6 w-6 text-slate-300" /> : <ChevronDown className="h-6 w-6 text-slate-300" />}
+                            {isExpanded ? <ChevronUp className="h-6 w-6 text-blue-600" /> : <ChevronDown className="h-6 w-6 text-slate-300" />}
                           </div>
                         </div>
                       </div>
@@ -470,34 +486,29 @@ export default function AdminWaterControlPage() {
                             <h4 className="text-sm font-black uppercase text-blue-600 tracking-[0.2em] flex items-center gap-2">
                               <Monitor className="h-4 w-4" /> Monitor de Telemetría Live
                             </h4>
-                            <Badge className="bg-emerald-500 text-white font-black text-[8px] uppercase">Online</Badge>
+                            <Badge className="bg-emerald-500 text-white font-black text-[8px] uppercase px-3 py-1 animate-pulse">Streaming Activo</Badge>
                           </div>
 
                           {isLoadingMeters === admin.companyId ? (
                             <div className="py-10 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-400" /></div>
-                          ) : meters.length === 0 ? (
-                            <div className="py-10 text-center border-2 border-dashed rounded-3xl text-slate-400 italic text-sm">
-                              No hay medidores vinculados a esta comunidad aún.
-                            </div>
                           ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                               {meters.map(m => (
-                                <Card key={m.id} className="rounded-2xl border shadow-sm bg-white overflow-hidden">
-                                  <div className="p-4 flex items-center justify-between border-b bg-slate-50/50">
+                                <Card key={m.id} className={cn("rounded-2xl border-2 shadow-sm bg-white overflow-hidden transition-all", m.hasLeakAlert ? "border-rose-200" : "border-slate-100")}>
+                                  <div className={cn("p-4 flex items-center justify-between border-b", m.hasLeakAlert ? "bg-rose-50" : "bg-slate-50/50")}>
                                     <span className="text-xs font-black uppercase tracking-tighter">{m.unitIdentifier}</span>
                                     {m.hasLeakAlert && <Badge className="bg-rose-600 text-white animate-pulse text-[7px] h-4">ALERTA FUGA</Badge>}
                                   </div>
                                   <div className="p-4 space-y-3">
                                     <div className="flex justify-between items-baseline">
-                                      <span className="text-[9px] font-black text-slate-400 uppercase">Lectura</span>
+                                      <span className="text-[9px] font-black text-slate-400 uppercase">Lectura m³</span>
                                       <div className="flex items-baseline gap-1">
                                         <span className="text-xl font-black italic">{m.currentReading.toFixed(2)}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase italic">m³</span>
                                       </div>
                                     </div>
                                     <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase">
                                       <span className="flex items-center gap-1"><Zap className={cn("h-3 w-3", m.status === 'open' ? "text-emerald-500" : "text-rose-500")} /> {m.status === 'open' ? 'Abierto' : 'Cerrado'}</span>
-                                      <span>Batería: {m.batteryLevel}%</span>
+                                      <span className="flex items-center gap-1"><Battery className="h-3 w-3" /> {m.batteryLevel}%</span>
                                     </div>
                                   </div>
                                 </Card>
