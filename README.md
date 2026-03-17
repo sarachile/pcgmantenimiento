@@ -2,6 +2,35 @@
 
 Plataforma de gestión industrial con trazabilidad inalterable e integración IoT.
 
+---
+
+## 🛰️ Guía de Conexión IoT: Del Terreno al CRM
+Esta guía explica cómo conectar los medidores inteligentes de agua a la plataforma, desde la instalación física hasta el monitoreo en tiempo real.
+
+### Paso 1: Instalación Física (Plomería)
+1.  **Sentido del Flujo:** Identifique la flecha grabada en el cuerpo del medidor. Debe apuntar hacia la propiedad (sentido del agua).
+2.  **Posición:** El medidor ultrasónico puede instalarse horizontal o verticalmente. Asegúrese de que el visor digital quede hacia arriba o al frente para facilitar lecturas manuales de respaldo.
+3.  **Limpieza:** Antes de conectar, deje correr el agua por 30 segundos para limpiar sedimentos que puedan obstruir los filtros internos.
+
+### Paso 2: Activación y Conexión de Radio (Medidor ➜ Antena)
+*Nuestros medidores no usan Wi-Fi de los vecinos, usan una red de radio privada PCG.*
+1.  **Despertar el Sensor:** Los medidores vienen en "Modo Almacén" para ahorrar batería. Pase un imán por el costado del equipo o use la App de Instalador (vía NFC) para activarlo.
+2.  **Sincronización:** Una vez activo, el medidor buscará automáticamente la **Antena Maestra (Gateway)** más cercana.
+3.  **Verificación:** El icono de antena en el visor del medidor dejará de parpadear y se quedará fijo cuando la conexión sea exitosa.
+
+### Paso 3: Configuración de la Antena Maestra (Antena ➜ Internet)
+1.  **Ubicación:** Instale la antena en un punto alto (conserjería, azotea o sala técnica) para maximizar la cobertura.
+2.  **Energía:** Conecte a una fuente de poder ininterrumpida (UPS) para que el monitoreo no se detenga durante cortes de luz.
+3.  **Conectividad:** La antena debe estar conectada al router del edificio vía cable Ethernet o tener un chip 4G/LTE de datos activo.
+
+### Paso 4: Acople con el CRM (Antena ➜ API PCGMANTENIMIENTO)
+1.  **Obtener Llave API:** En el ERP, vaya a **"Mi Empresa"** y presione **"Generar API Key"**. Copie este código.
+2.  **Configurar Destino:** En la configuración de su Antena Maestra (Panel de Control de Hardware), pegue la API Key y configure la dirección de envío:
+    `https://www.pcgmantenimiento.com/api/v1/water-readings`
+3.  **Mapeo de Unidades:** El ID que aparece en la etiqueta del medidor (ej: 874455) debe coincidir con el ID registrado en el CRM dentro del edificio correspondiente.
+
+---
+
 ## 🚀 Guía de Configuración DNS para pcgmantenimiento.com
 
 Si tus correos son rechazados por Gmail, debes configurar los siguientes registros en tu proveedor de dominio:
@@ -25,18 +54,6 @@ Para guardar tus avances y desplegar los cambios en producción, usa estos coman
 3. **Subir a GitHub**: `git push origin main`
 
 ---
-
-## 🛠️ Resolución de Error 400 y Recuperación tras Pago
-
-Si tras pagar la cuenta sigues viendo errores o los commits no llegan, sigue este proceso de "Borrado y Reconstrucción":
-
-1. **Borrar Backend**: Ve a la pestaña "Configuración" del Backend en Firebase y haz clic en **"Borrar Backend"** (botón rojo abajo).
-2. **Crear Nuevo**: Dale a "Nuevo en App Hosting", conecta tu GitHub y selecciona la rama `main`.
-3. **Configurar Secretos**: ¡IMPORTANTE! Al recrear el backend, debes volver a añadir tus llaves privadas en la pestaña **Configuración > Secretos**:
-   - `EMAIL_PASS`: Tu contraseña de aplicación de Gmail.
-   - `SIMPLE_API_KEY`: Tu llave de SimpleAPI para facturación.
-4. **Reasociar Dominios**: Ve a la pestaña **"Dominios"** del nuevo Backend y añade `pcgmantenimiento.com`. Como ya tienes los DNS configurados, la validación será casi instantánea.
-5. **Lanzar**: Realiza el lanzamiento manual con el ID de confirmación de GitHub.
 
 ## 💳 Verificación de Google Cloud
 Asegúrate de que estas APIs estén "Habilitadas" en [console.cloud.google.com](https://console.cloud.google.com):
