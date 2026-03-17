@@ -311,7 +311,6 @@ export default function HomePage() {
             <div className="grid lg:grid-cols-5 h-full">
               <div className="lg:col-span-2 p-12 flex flex-col items-center justify-center bg-white/5 border-r border-white/10 relative overflow-hidden">
                 <div className="relative mb-12">
-                  {/* Gotas animadas cayendo */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-full h-40 pointer-events-none z-0">
                     <div className="absolute left-[20%] animate-drop" style={{ animationDelay: '0s' }}>
                       <Droplets className="h-4 w-4 text-blue-400/40 fill-blue-400/20" />
@@ -484,9 +483,12 @@ export default function HomePage() {
             <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">Soluciones para el Terreno Industrial</p>
           </div>
           
-          <div className="flex justify-center gap-8 text-[10px] font-black uppercase text-slate-400 tracking-widest">
+          <div className="flex justify-center gap-8 text-[10px] font-black uppercase text-slate-400 tracking-widest flex-wrap px-4">
             <Link href="/terms" className="hover:text-primary transition-colors">Términos Legales</Link>
             <Link href="/auth/signup" className="hover:text-primary transition-colors">Empezar Gratis</Link>
+            <Link href="/water-control/login" className="text-blue-600 hover:text-blue-700 font-black flex items-center gap-1.5 transition-colors">
+              <Droplets className="h-3 w-3" /> Portal Administradores de Edificio (IoT)
+            </Link>
             <a href={WHATSAPP_URL} className="hover:text-primary transition-colors">Soporte</a>
           </div>
 

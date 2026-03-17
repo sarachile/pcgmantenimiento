@@ -36,7 +36,7 @@
         "companyId": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "name": { "type": "string" },
-        "role": { "type": "string", "enum": ["companyAdmin", "supervisor", "tecnico", "reviewer", "superadmin"] },
+        "role": { "type": "string", "enum": ["companyAdmin", "supervisor", "tecnico", "reviewer", "superadmin", "buildingAdmin"] },
         "active": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" }
       }

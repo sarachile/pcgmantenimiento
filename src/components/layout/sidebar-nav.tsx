@@ -60,16 +60,16 @@ interface NavItem {
 
 const operationalItems: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Calendario", href: "/calendar", icon: CalendarDays },
-  { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList },
-  { title: "Control de Agua (IoT)", href: "/water-control", icon: Droplets, highlight: true },
+  { title: "Calendario", href: "/calendar", icon: CalendarDays, roles: ['companyAdmin', 'supervisor', 'tecnico', 'reviewer', 'superadmin'] },
+  { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList, roles: ['companyAdmin', 'supervisor', 'tecnico', 'reviewer', 'superadmin'] },
+  { title: "Control de Agua (IoT)", href: "/water-control", icon: Droplets, highlight: true, roles: ['companyAdmin', 'supervisor', 'buildingAdmin'] },
   { title: "Revisiones Técnicas", href: "/reviews", icon: ShieldCheck, roles: ['reviewer', 'supervisor', 'companyAdmin'] },
-  { title: "Monitor IoT Alertas", href: "/iot-control", icon: Cpu },
-  { title: "Captura Terreno", href: "/field/capture", icon: Camera },
+  { title: "Monitor IoT Alertas", href: "/iot-control", icon: Cpu, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Captura Terreno", href: "/field/capture", icon: Camera, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
 ];
 
 const inventoryItems: NavItem[] = [
-  { title: "Activos e Equipos", href: "/assets", icon: HardHat },
+  { title: "Activos e Equipos", href: "/assets", icon: HardHat, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
   { title: "Inventario / Insumos", href: "/inventory", icon: Package, roles: ['companyAdmin', 'supervisor', 'tecnico'] },
 ];
 
