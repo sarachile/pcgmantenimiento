@@ -16,6 +16,16 @@ Agrega un registro de tipo **TXT** en el host `_dmarc`:
 
 ---
 
+## 🛠️ Control de Versiones (Git)
+
+Para guardar tus avances y desplegar los cambios en producción, usa estos comandos:
+
+1. **Añadir cambios**: `git add .`
+2. **Confirmar**: `git commit -m "Descripción de tus mejoras"`
+3. **Subir a GitHub**: `git push origin main`
+
+---
+
 ## 🛠️ Resolución de Error 400 y Recuperación tras Pago
 
 Si tras pagar la cuenta sigues viendo errores o los commits no llegan, sigue este proceso de "Borrado y Reconstrucción":
