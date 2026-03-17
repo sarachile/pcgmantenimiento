@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -29,7 +30,12 @@ import {
   Settings2,
   Lock,
   Unlock,
-  Navigation
+  Navigation,
+  FileText,
+  Clock,
+  TrendingDown,
+  ShieldAlert,
+  ArrowRight
 } from "lucide-react";
 import { 
   BarChart, 
@@ -44,6 +50,15 @@ import {
   AreaChart,
   Area
 } from "recharts";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase";
@@ -71,6 +86,7 @@ export default function WaterControlPage() {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [localMeters, setLocalMeters] = useState<WaterMeter[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   const companyId = profile?.companyId || "";
 
@@ -186,10 +202,94 @@ export default function WaterControlPage() {
                 <p className="text-sm font-medium text-rose-100">Exceso de flujo detectado en {stats.leakAlerts} unidad(es).</p>
               </div>
             </div>
-            <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-[10px]">Ver Reporte</Button>
+            <Button 
+              variant="outline" 
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20 font-black uppercase text-[10px]"
+              onClick={() => setIsReportOpen(true)}
+            >
+              Ver Reporte
+            </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* MODAL DE REPORTE DE AUDITORÍA HÍDRICA */}
+      <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
+        <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+          <DialogHeader className="bg-slate-900 text-white p-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-rose-600 p-2 rounded-lg shadow-lg">
+                <ShieldAlert className="h-6 w-6 text-white" />
+              </div>
+              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Auditoría de Fuga Crítica</DialogTitle>
+            </div>
+            <DialogDescription className="text-slate-400 font-medium">
+              Informe generado automáticamente por IA a partir de telemetría IoT.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="p-8 space-y-8">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-slate-100 space-y-1">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Unidad Afectada</p>
+                <p className="text-lg font-black text-slate-900 italic uppercase">Depto 102</p>
+              </div>
+              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-slate-100 space-y-1">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Duración del Evento</p>
+                <p className="text-lg font-black text-slate-900 italic uppercase">02h 14m</p>
+              </div>
+            </div>
+
+            <div className="bg-rose-50 p-6 rounded-[2rem] border-2 border-rose-100 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-5 w-5 text-rose-600" />
+                  <p className="text-xs font-black uppercase text-rose-900">Análisis de Desperdicio</p>
+                </div>
+                <Badge className="bg-rose-600 text-white font-black text-[8px] uppercase">ACTIVO</Badge>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[9px] font-bold text-rose-700/60 uppercase mb-1">Volumen Perdido</p>
+                  <p className="text-3xl font-black italic text-rose-900">67.2 <span className="text-sm">Litros</span></p>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-rose-700/60 uppercase mb-1">Costo Proyectado (24h)</p>
+                  <p className="text-3xl font-black italic text-rose-900">$ 12.450</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center gap-2">
+                <FileText className="h-4 w-4" /> Diagnóstico del Sistema
+              </p>
+              <div className="bg-white border-2 rounded-2xl p-4 text-xs font-medium text-slate-600 leading-relaxed italic">
+                "El patrón de flujo continuo detectado (0.5 L/min) es compatible con una falla en la válvula de descarga del estanque de inodoro (WC). Se recomienda el corte remoto preventivo si la unidad no responde al contacto."
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-xl border border-blue-100">
+              <Clock className="h-4 w-4 text-blue-600" />
+              <p className="text-[9px] font-bold text-blue-700 uppercase tracking-tight">Última lectura válida registrada a las {new Date().toLocaleTimeString()}</p>
+            </div>
+          </div>
+
+          <DialogFooter className="p-8 bg-slate-50 border-t flex gap-3">
+            <Button variant="ghost" className="flex-1 rounded-xl font-black uppercase text-[10px] tracking-widest" onClick={() => setIsReportOpen(false)}>Descartar</Button>
+            <Button 
+              className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black uppercase text-[10px] tracking-widest gap-2 shadow-xl"
+              onClick={() => {
+                const target = localMeters.find(m => m.unitIdentifier === "Depto 102");
+                if (target) toggleValve(target);
+                setIsReportOpen(false);
+              }}
+            >
+              <PowerOff className="h-4 w-4" /> Ejecutar Corte Remoto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-none shadow-sm bg-blue-600 text-white rounded-[2rem] overflow-hidden">
