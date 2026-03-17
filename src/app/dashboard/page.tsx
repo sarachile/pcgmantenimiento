@@ -34,7 +34,10 @@ import {
   Monitor,
   Download,
   ShieldCheck,
-  Inbox
+  Inbox,
+  Droplets,
+  TrendingUp,
+  Settings
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -42,7 +45,7 @@ import { collection, doc } from "firebase/firestore";
 import { Progress } from "@/components/ui/progress";
 import { isBefore, parseISO, startOfDay, differenceInDays, format } from "date-fns";
 import { es } from "date-fns/locale";
-import { WorkOrder, Client, Company, Asset } from "@/lib/types";
+import { WorkOrder, Client, Company, Asset, WaterMeter } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -59,7 +62,7 @@ import { cn } from "@/lib/utils";
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor } = useUser();
+  const { profile, isLoading: isUserLoading, isTechnician, isCompanyAdmin, isSupervisor, isBuildingAdmin } = useUser();
   const limits = usePlanLimits();
   const db = useFirestore();
   const [mounted, setMounted] = useState(false);
@@ -73,15 +76,20 @@ export default function DashboardPage() {
   const isAdminOrSupervisor = isCompanyAdmin || isSupervisor;
   const companyId = profile?.companyId || "";
 
+  // Queries generales
   const workOrdersQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "workOrders") : null, [db, companyId]);
   const clientsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "clients") : null, [db, companyId]);
   const assetsQuery = useMemoFirebase(() => db && companyId ? collection(db, "companies", companyId, "assets") : null, [db, companyId]);
   const companyRef = useMemoFirebase(() => db && companyId ? doc(db, "companies", companyId) : null, [db, companyId]);
+  
+  // Query específica de Agua IoT para buildingAdmin
+  const metersQuery = useMemoFirebase(() => db && companyId && isBuildingAdmin ? collection(db, "companies", companyId, "waterMeters") : null, [db, companyId, isBuildingAdmin]);
 
   const { data: rawWorkOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(workOrdersQuery);
   const { data: rawClients, isLoading: isClientsLoading } = useCollection<Client>(clientsQuery);
   const { data: rawAssets, isLoading: isAssetsLoading } = useCollection<Asset>(assetsQuery);
   const { data: company, isLoading: isCompanyLoading } = useDoc<Company>(companyRef);
+  const { data: meters, isLoading: isMetersLoading } = useCollection<WaterMeter>(metersQuery);
 
   const workOrders = useMemo(() => (rawWorkOrders || []).filter(o => !o.isDeleted), [rawWorkOrders]);
   const clients = useMemo(() => (rawClients || []).filter(c => !c.isDeleted), [rawClients]);
@@ -114,10 +122,7 @@ export default function DashboardPage() {
     });
 
     return { 
-      total, 
-      completed, 
-      active, 
-      reviewPending,
+      total, completed, active, reviewPending,
       clientRequests: clientRequests.length,
       clientRequestsList: clientRequests,
       rejected: rejected.length,
@@ -128,6 +133,15 @@ export default function DashboardPage() {
     };
   }, [realWorkOrders, today]);
 
+  const waterStats = useMemo(() => {
+    if (!meters) return { consumption: 0, leaks: 0, closed: 0 };
+    return {
+      consumption: meters.reduce((acc, m) => acc + (m.currentReading || 0), 0),
+      leaks: meters.filter(m => m.hasLeakAlert).length,
+      closed: meters.filter(m => m.status === 'closed').length
+    };
+  }, [meters]);
+
   const recentOrders = useMemo(() => {
     return [...realWorkOrders].sort((a, b) => {
       const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : (typeof a.createdAt === 'string' ? parseISO(a.createdAt) : new Date(0));
@@ -135,36 +149,6 @@ export default function DashboardPage() {
       return dateB.getTime() - dateA.getTime();
     }).slice(0, 5);
   }, [realWorkOrders]);
-
-  const iotStats = useMemo(() => {
-    const iotAssets = (assets || []).filter(a => a.isIoT);
-    const activeIoT = iotAssets.filter(a => a.status === 'activo').length;
-    const maintenanceIoT = iotAssets.filter(a => a.maintenanceRequired);
-    return { 
-      count: iotAssets.length, 
-      active: activeIoT, 
-      maintenanceCount: maintenanceIoT.length,
-      maintenanceList: maintenanceIoT 
-    };
-  }, [assets]);
-
-  const onboardingSteps = useMemo(() => {
-    if (!company || isTechnician) return [];
-    return [
-      { id: 'profile', label: 'Datos Empresa', desc: 'RUT y dirección', completed: !!company.rut && company.rut !== "RUT por definir", href: '/company' },
-      { id: 'team', label: 'Cargar Equipo', desc: 'Registra técnicos', completed: limits.techCount > 0, href: '/team' },
-      { id: 'clients', label: 'Clientes', desc: 'Añade mandantes', completed: limits.clientsCount > 0, href: '/clients' },
-      { id: 'ots', label: 'Primera OT', desc: 'Inicia flujo', completed: realWorkOrders.length > 0, href: '/work-orders/new' }
-    ];
-  }, [company, limits.techCount, limits.clientsCount, realWorkOrders, isTechnician]);
-
-  const allStepsCompleted = onboardingSteps.length > 0 && onboardingSteps.every(s => s.completed);
-
-  const trialDaysRemaining = useMemo(() => {
-    if (!company?.trialEndsAt || !today) return null;
-    const end = company.trialEndsAt.toDate ? company.trialEndsAt.toDate() : parseISO(company.trialEndsAt);
-    return differenceInDays(end, today);
-  }, [company?.trialEndsAt, today]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -190,7 +174,96 @@ export default function DashboardPage() {
     );
   }
 
-  // VISTA TÉCNICO
+  // --- VISTA ADMINISTRADOR DE EDIFICIO (PCG AGUA) ---
+  if (isBuildingAdmin) {
+    return (
+      <div className="space-y-8 pb-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Dashboard Hídrico</h2>
+            <p className="text-muted-foreground font-medium">Estado de telemetría para {company?.name}.</p>
+          </div>
+          <Button asChild className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 font-black gap-2 shadow-xl shadow-blue-900/20">
+            <Link href="/water-control"><Droplets className="h-5 w-5" /> Ir al Monitor en Tiempo Real</Link>
+          </Button>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden relative group">
+            <div className="absolute right-0 top-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Activity className="h-32 w-32" /></div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-blue-100">Consumo Acumulado (Mes)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-black italic tracking-tighter">{waterStats.consumption.toFixed(1)}</span>
+                <span className="text-xl font-bold opacity-50 italic">m³</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={cn("rounded-[2.5rem] border-none shadow-xl overflow-hidden relative group transition-all", waterStats.leaks > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
+            <div className="absolute right-0 top-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><AlertTriangle className="h-32 w-32" /></div>
+            <CardHeader className="pb-2">
+              <CardTitle className={cn("text-[10px] font-black uppercase tracking-widest", waterStats.leaks > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Detectadas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-5xl font-black italic tracking-tighter">{waterStats.leaks}</div>
+              <p className={cn("text-[10px] font-bold mt-1 uppercase", waterStats.leaks > 0 ? "text-rose-100" : "text-slate-400")}>Eventos críticos activos</p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden relative group">
+            <div className="absolute right-0 top-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><Zap className="h-32 w-32 text-blue-400" /></div>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Válvulas de Corte</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-5xl font-black italic tracking-tighter">{waterStats.closed}</div>
+              <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">Suministros suspendidos</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-8 lg:grid-cols-2">
+          <Card className="rounded-[3rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
+            <CardContent className="p-0">
+              <div className="grid md:grid-cols-5">
+                <div className="md:col-span-2 bg-blue-600 p-10 flex flex-col justify-center items-center text-center space-y-4">
+                  <div className="bg-white/20 p-5 rounded-3xl shadow-inner"><Droplets className="h-12 w-12 text-white" /></div>
+                  <h3 className="text-xl font-black text-white uppercase italic tracking-tighter leading-none">Gestión<br/>Avanzada</h3>
+                </div>
+                <div className="md:col-span-3 p-10 flex flex-col justify-center space-y-6">
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed">Acceda al monitor detallado para ver la telemetría de cada unidad, descargar reportes de auditoría y ejecutar cortes remotos de emergencia.</p>
+                  <Button asChild className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest text-[10px] gap-3 shadow-lg">
+                    <Link href="/water-control">Abrir Panel de Control <ChevronRight className="h-4 w-4" /></Link>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[3rem] border-none shadow-xl bg-slate-900 text-white p-10 relative overflow-hidden">
+            <div className="absolute -right-10 -bottom-10 opacity-10"><History className="h-48 w-48 text-blue-400" /></div>
+            <div className="relative z-10 space-y-6">
+              <div className="space-y-2">
+                <Badge className="bg-blue-600 text-white font-black uppercase text-[9px] px-3 py-1">Trazabilidad Total</Badge>
+                <h3 className="text-2xl font-black italic uppercase italic tracking-tighter">Historial Auditivo</h3>
+              </div>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                Revise las curvas de consumo históricas de su comunidad. Identifique patrones de desperdicio y valide la integridad de su red hídrica con datos inalterables.
+              </p>
+              <Button asChild variant="outline" className="w-full h-12 rounded-xl bg-white/5 border-white/10 text-white hover:bg-white/10 font-bold uppercase text-[10px] tracking-widest">
+                <Link href="/water-control">Ver histórico por unidad</Link>
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // --- VISTA TÉCNICO ---
   if (isTechnician) {
     return (
       <div className="space-y-8 pb-32">
@@ -300,6 +373,7 @@ export default function DashboardPage() {
     );
   }
 
+  // --- VISTA ADMINISTRATIVO / SUPERVISOR (ERP COMPLETO) ---
   return (
     <div className="space-y-8 pb-10">
       {trialDaysRemaining !== null && trialDaysRemaining <= 5 && (
@@ -326,9 +400,8 @@ export default function DashboardPage() {
       </div>
 
       {/* ALERTAS OPERATIVAS */}
-      {(stats.alertCount > 0 || iotStats.maintenanceCount > 0 || stats.reviewPending > 0 || stats.clientRequests > 0) && (
+      {(stats.alertCount > 0 || stats.reviewPending > 0 || stats.clientRequests > 0) && (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* NUEVOS REQUERIMIENTOS MANDANTE */}
           {stats.clientRequests > 0 && isAdminOrSupervisor && (
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-indigo-600 text-white overflow-hidden border-l-[12px] border-indigo-800 animate-in slide-in-from-left-4">
               <CardHeader className="bg-indigo-700/30 p-6 border-b border-indigo-700/10">
@@ -600,17 +673,6 @@ export default function DashboardPage() {
                 <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest">Técnicos de Campo</span>
               </div>
               <Progress value={(limits.techCount / limits.maxTechnicians) * 100} className="h-1.5 bg-white/10" />
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-end">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-2"><Cpu className="h-3 w-3 text-amber-400" /> Monitoreo de Planta</p>
-                  <p className="text-3xl font-black italic tracking-tighter">{limits.iotAssetsCount} / {limits.maxIoT}</p>
-                </div>
-                <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest">Activos IoT</span>
-              </div>
-              <Progress value={limits.maxIoT > 0 ? (limits.iotAssetsCount / limits.maxIoT) * 100 : 0} className="h-1.5 bg-white/10" />
             </div>
 
             <div className="pt-6 border-t border-white/5">

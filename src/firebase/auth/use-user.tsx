@@ -30,8 +30,6 @@ export function useUser() {
       }
 
       // Caso especial: Superadmin por correo (Acceso Inmediato)
-      // Esto evita que el sistema intente cargar un perfil de Firestore que podría no existir
-      // o tardar demasiado, rompiendo el bucle de redirección.
       if (authUser.email === 'control@pcgoperacion.com') {
         if (isMounted) {
           setProfile({
@@ -94,5 +92,6 @@ export function useUser() {
     isTechnician: profile?.role === 'tecnico',
     isSupervisor: profile?.role === 'supervisor',
     isReviewer: profile?.role === 'reviewer',
+    isBuildingAdmin: profile?.role === 'buildingAdmin',
   }), [authUser?.uid, profile, isLoading, isAuthenticated]);
 }
