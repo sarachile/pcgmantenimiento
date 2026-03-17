@@ -26,13 +26,14 @@ export default function DashboardLayout({
       if (!isAuthenticated) {
         router.push("/auth/login");
       } else if (isSuperAdmin && !pathname.startsWith('/admin')) {
-        // Redirigir al Superadmin fuera de las áreas operativas de empresa
+        // Redirigir al Superadmin fuera de las áreas operativas de empresa inmediatamente
         router.push("/admin");
       }
     }
   }, [isLoading, isAuthenticated, isSuperAdmin, router, pathname]);
 
   const companyRef = useMemoFirebase(() => {
+    // Si es superadmin o no hay companyId, no cargamos empresa operativa
     if (!db || !profile?.companyId || isSuperAdmin) return null;
     return doc(db, "companies", profile.companyId);
   }, [db, profile?.companyId, isSuperAdmin]);
@@ -50,8 +51,15 @@ export default function DashboardLayout({
     );
   }
 
-  // Si es Superadmin y está en una ruta /dashboard, no renderizamos nada mientras redirige
-  if (isSuperAdmin && !pathname.startsWith('/admin')) return null;
+  // Si es Superadmin y está en una ruta /dashboard, no renderizamos nada mientras redirige para evitar parpadeos
+  if (isSuperAdmin && !pathname.startsWith('/admin')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) return null;
 
   return (

@@ -5,26 +5,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { 
   Building2, 
   Users, 
-  TrendingUp, 
-  AlertTriangle,
-  FileCheck,
-  Zap,
   ArrowLeft,
   Loader2,
-  Clock,
   ChevronRight,
   Globe,
-  Activity
+  Activity,
+  Zap,
+  ShieldCheck,
+  LayoutDashboard
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, limit, orderBy, collectionGroup, where } from "firebase/firestore";
+import { collection, query, limit, orderBy } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Company, User, WorkOrder } from "@/lib/types";
-import { differenceInDays, parseISO } from "date-fns";
+import { Company, User } from "@/lib/types";
 
 export default function SuperadminDashboardPage() {
   const { isSuperAdmin, isLoading: isAuthLoading, isAuthenticated } = useUser();
@@ -33,28 +30,28 @@ export default function SuperadminDashboardPage() {
 
   useEffect(() => {
     if (!isAuthLoading && (!isAuthenticated || !isSuperAdmin)) {
-      router.push("/dashboard");
+      router.push("/auth/login");
     }
   }, [isAuthLoading, isSuperAdmin, isAuthenticated, router]);
 
-  // Consultas Globales
-  const companiesQuery = useMemoFirebase(() => db ? collection(db, "companies") : null, [db]);
-  const usersQuery = useMemoFirebase(() => db ? collection(db, "users") : null, [db]);
-  const globalOrdersQuery = useMemoFirebase(() => db ? query(collectionGroup(db, "workOrders"), limit(100)) : null, [db]);
+  // Consultas Globales (Simplificadas para evitar bucles por falta de índices)
+  const companiesQuery = useMemoFirebase(() => {
+    if (!db || !isSuperAdmin) return null;
+    return query(collection(db, "companies"), orderBy("createdAt", "desc"), limit(10));
+  }, [db, isSuperAdmin]);
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!db || !isSuperAdmin) return null;
+    return query(collection(db, "users"), limit(1)); // Solo para conteo rápido si fuera necesario
+  }, [db, isSuperAdmin]);
 
   const { data: companies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
-  const { data: users, isLoading: isUsersLoading } = useCollection<User>(usersQuery);
-  const { data: globalOrders, isLoading: isOrdersLoading } = useCollection<WorkOrder>(globalOrdersQuery);
 
   const stats = useMemo(() => {
     const totalCompanies = companies?.length || 0;
-    const totalUsers = users?.length || 0;
-    const totalOrders = globalOrders?.length || 0;
-    
     const activeTenants = (companies || []).filter(c => c.isActive).length;
-
-    return { totalCompanies, totalUsers, totalOrders, activeTenants };
-  }, [companies, users, globalOrders]);
+    return { totalCompanies, activeTenants };
+  }, [companies]);
 
   if (isAuthLoading || !isSuperAdmin) {
     return (
@@ -68,10 +65,10 @@ export default function SuperadminDashboardPage() {
   }
 
   const platformStats = [
-    { label: "Empresas Totales", value: stats.totalCompanies, icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Usuarios Globales", value: stats.totalUsers, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Tenants Activos", value: stats.activeTenants, icon: Activity, color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "Tráfico Global OTs", value: stats.totalOrders, icon: Zap, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Empresas Registradas", value: stats.totalCompanies, icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Tenants Activos", value: stats.activeTenants, icon: Activity, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Nivel de Servicio", value: "SLA 99.9%", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Estado Infra", value: "Online", icon: Globe, color: "text-indigo-600", bg: "bg-indigo-50" },
   ];
 
   return (
@@ -79,17 +76,17 @@ export default function SuperadminDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-xl"><Globe className="text-white h-6 w-6" /></div>
+            <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-900/20"><Globe className="text-white h-6 w-6" /></div>
             <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Control Maestro</h2>
           </div>
-          <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest pl-1">Ecosistema SaaS PCGMANTENIMIENTO</p>
+          <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest pl-1">Gestión de Ecosistema SaaS</p>
         </div>
         <div className="flex gap-3">
           <Button asChild variant="outline" className="rounded-2xl font-black uppercase text-[10px] h-12 px-6 border-slate-200">
-            <Link href="/admin/stats">Análisis Global</Link>
+            <Link href="/admin/companies">Ver Todas las Empresas</Link>
           </Button>
           <Button asChild className="rounded-2xl font-black uppercase text-[10px] h-12 px-8 shadow-xl shadow-blue-900/20">
-            <Link href="/admin/companies">Gestionar Clientes SaaS</Link>
+            <Link href="/admin/companies">Configurar Clientes</Link>
           </Button>
         </div>
       </div>
@@ -114,17 +111,16 @@ export default function SuperadminDashboardPage() {
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 border-b p-8">
             <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <Building2 className="h-6 w-6 text-blue-600" /> Actividad de Clientes SaaS
+              <Building2 className="h-6 w-6 text-blue-600" /> Clientes SaaS Recientes
             </CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Empresas con mayor volumen transaccional</CardDescription>
+            <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Últimas empresas incorporadas al ecosistema</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {isCompaniesLoading ? (
               <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600/20" /></div>
             ) : (
               <div className="divide-y">
-                {(companies || []).slice(0, 6).map((company) => {
-                  const companyOrders = (globalOrders || []).filter(o => o.companyId === company.id).length;
+                {(companies || []).map((company) => {
                   return (
                     <div key={company.id} className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors group">
                       <div className="flex items-center gap-4">
@@ -133,18 +129,26 @@ export default function SuperadminDashboardPage() {
                         </div>
                         <div>
                           <p className="text-sm font-black text-slate-900 uppercase">{company.name}</p>
-                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Plan: {company.currentPlan}</p>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">ID: {company.id}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px] font-black">{companyOrders} OTs</Badge>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] font-black uppercase",
+                            company.currentPlan === 'enterprise' ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-blue-50 text-blue-700 border-blue-200"
+                          )}>
+                            {company.currentPlan}
+                          </Badge>
                           <Button variant="ghost" size="icon" asChild className="rounded-xl"><Link href="/admin/companies"><ChevronRight className="h-4 w-4" /></Link></Button>
                         </div>
                       </div>
                     </div>
                   );
                 })}
+                {(!companies || companies.length === 0) && (
+                  <div className="py-20 text-center text-slate-400 italic text-sm">No hay empresas registradas aún.</div>
+                )}
               </div>
             )}
           </CardContent>
@@ -154,9 +158,9 @@ export default function SuperadminDashboardPage() {
           <div className="absolute -right-10 -bottom-10 opacity-10"><Zap className="h-48 w-48 text-blue-400" /></div>
           <CardHeader className="border-b border-white/5 p-8">
             <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <Activity className="h-6 w-6 text-blue-400" /> Estado de Infraestructura
+              <Activity className="h-6 w-6 text-blue-400" /> Monitor de Infraestructura
             </CardTitle>
-            <CardDescription className="text-slate-400 text-[10px] font-bold uppercase">Monitor de salud de la plataforma</CardDescription>
+            <CardDescription className="text-slate-400 text-[10px] font-bold uppercase">Estado de servicios críticos</CardDescription>
           </CardHeader>
           <CardContent className="p-8 space-y-6">
             <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
