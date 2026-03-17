@@ -1,3 +1,4 @@
+
 {
   "placeholderImages": [
     {
@@ -17,6 +18,24 @@
       "description": "Logotipo corporativo abstracto",
       "imageUrl": "https://picsum.photos/seed/pcg-logo-77/200/200",
       "imageHint": "corporate logo"
+    },
+    {
+      "id": "showcase-terreno-1",
+      "description": "Instalador operando con PCG",
+      "imageUrl": "/imagen1.png",
+      "imageHint": "technician working"
+    },
+    {
+      "id": "showcase-terreno-2",
+      "description": "Firma digital en terreno",
+      "imageUrl": "/imagen2.png",
+      "imageHint": "digital signature"
+    },
+    {
+      "id": "showcase-terreno-3",
+      "description": "Entrega conforme de servicios",
+      "imageUrl": "/imagen3.png",
+      "imageHint": "professional service"
     }
   ]
 }

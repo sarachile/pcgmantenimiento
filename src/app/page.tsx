@@ -1,7 +1,9 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useUser } from "@/firebase";
 import { 
   ShieldCheck, 
@@ -183,9 +185,55 @@ export default function HomePage() {
             Toda tu operación técnica <br />
             <span className="text-primary italic font-serif">con trazabilidad inalterable</span>
           </h1>
-          <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-10 leading-relaxed">
+          <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-16 leading-relaxed">
             Certifica la calidad de tu equipo en terreno. Reemplaza la incertidumbre por evidencia real, firmas digitales y <span className="text-primary font-bold">monitoreo inteligente de activos</span>.
           </p>
+
+          {/* Rejilla de Imágenes Operativas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-20 animate-in fade-in slide-in-from-bottom-10 duration-1000">
+            <div className="group relative overflow-hidden rounded-[2.5rem] border-4 border-white shadow-2xl transition-all hover:scale-[1.02] bg-slate-100 aspect-[4/3]">
+              <Image 
+                src="/imagen1.png" 
+                alt="Instalador operando con PCG" 
+                fill 
+                className="object-cover" 
+                data-ai-hint="technician working"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8 text-left">
+                <p className="text-white text-xs font-black uppercase tracking-widest italic mb-1">Simplicidad</p>
+                <p className="text-white/80 text-[10px] font-bold uppercase">Gestión ágil desde cualquier dispositivo móvil.</p>
+              </div>
+            </div>
+            
+            <div className="group relative overflow-hidden rounded-[2.5rem] border-4 border-white shadow-2xl transition-all hover:scale-[1.02] bg-slate-100 aspect-[4/3] md:mt-12">
+              <Image 
+                src="/imagen2.png" 
+                alt="Firma digital en terreno" 
+                fill 
+                className="object-cover" 
+                data-ai-hint="digital signature"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8 text-left">
+                <p className="text-white text-xs font-black uppercase tracking-widest italic mb-1">Versatilidad</p>
+                <p className="text-white/80 text-[10px] font-bold uppercase">Aprobaciones instantáneas con sello QR inalterable.</p>
+              </div>
+            </div>
+
+            <div className="group relative overflow-hidden rounded-[2.5rem] border-4 border-white shadow-2xl transition-all hover:scale-[1.02] bg-slate-100 aspect-[4/3]">
+              <Image 
+                src="/imagen3.png" 
+                alt="Entrega conforme de servicios" 
+                fill 
+                className="object-cover" 
+                data-ai-hint="professional service"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8 text-left">
+                <p className="text-white text-xs font-black uppercase tracking-widest italic mb-1">Profesionalismo</p>
+                <p className="text-white/80 text-[10px] font-bold uppercase">Reportes automáticos que generan confianza en el cliente.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl">
               <Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link>
