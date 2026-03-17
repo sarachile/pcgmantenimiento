@@ -361,9 +361,16 @@ export default function HomePage() {
                 </div>
 
                 <div className="pt-6 border-t border-white/10">
-                  <Button asChild className="w-full h-16 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black text-lg uppercase tracking-widest shadow-xl">
-                    <Link href="/auth/signup">Detener pérdidas ahora</Link>
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button asChild className="flex-1 h-16 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black text-lg uppercase tracking-widest shadow-xl">
+                      <Link href="/auth/signup">Detener pérdidas ahora</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="flex-1 h-16 rounded-[1.5rem] border-white/20 text-white hover:bg-white/10 font-black text-lg uppercase tracking-widest">
+                      <Link href="/water-control/login" className="flex items-center justify-center gap-2">
+                        <Building2 className="h-5 w-5" /> Acceso Admins IoT
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
