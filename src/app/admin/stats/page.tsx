@@ -21,15 +21,17 @@ import {
   ArrowLeft,
   Zap,
   ShieldAlert,
-  Loader2
+  Loader2,
+  LogOut
 } from "lucide-react";
 import Link from "next/link";
-import { useUser } from "@/firebase";
+import { useUser, useAuth } from "@/firebase";
 import { redirect } from "next/navigation";
-import { MOCK_COMPANIES, MOCK_WORK_ORDERS } from "@/lib/mock-data";
+import { signOut } from "firebase/auth";
 
 export default function GlobalStatsPage() {
   const { isSuperAdmin, isLoading } = useUser();
+  const auth = useAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -39,6 +41,11 @@ export default function GlobalStatsPage() {
   if (!isLoading && !isSuperAdmin) {
     redirect("/dashboard");
   }
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    redirect("/auth/login");
+  };
 
   const platformGrowth = [
     { month: "Ene", companies: 4, ots: 120 },
@@ -61,6 +68,9 @@ export default function GlobalStatsPage() {
             <p className="text-muted-foreground">Métricas de crecimiento y salud de la infraestructura SaaS.</p>
           </div>
         </div>
+        <Button onClick={handleLogout} variant="ghost" className="text-rose-600 hover:bg-rose-50 font-bold uppercase text-[10px]">
+          <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

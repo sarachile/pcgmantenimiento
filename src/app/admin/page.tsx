@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useEffect } from "react";
@@ -12,13 +13,15 @@ import {
   Activity,
   Zap,
   ShieldCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  LogOut
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase";
 import { collection, query, limit, orderBy } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { signOut } from "firebase/auth";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Company, User } from "@/lib/types";
@@ -26,6 +29,7 @@ import { Company, User } from "@/lib/types";
 export default function SuperadminDashboardPage() {
   const { isSuperAdmin, isLoading: isAuthLoading, isAuthenticated } = useUser();
   const db = useFirestore();
+  const auth = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -34,15 +38,15 @@ export default function SuperadminDashboardPage() {
     }
   }, [isAuthLoading, isSuperAdmin, isAuthenticated, router]);
 
-  // Consultas Globales (Simplificadas para evitar bucles por falta de índices)
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/auth/login");
+  };
+
+  // Consultas Globales (Simplificadas)
   const companiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
     return query(collection(db, "companies"), orderBy("createdAt", "desc"), limit(10));
-  }, [db, isSuperAdmin]);
-
-  const usersQuery = useMemoFirebase(() => {
-    if (!db || !isSuperAdmin) return null;
-    return query(collection(db, "users"), limit(1)); // Solo para conteo rápido si fuera necesario
   }, [db, isSuperAdmin]);
 
   const { data: companies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
@@ -82,6 +86,9 @@ export default function SuperadminDashboardPage() {
           <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest pl-1">Gestión de Ecosistema SaaS</p>
         </div>
         <div className="flex gap-3">
+          <Button onClick={handleLogout} variant="ghost" className="rounded-2xl font-black uppercase text-[10px] h-12 px-6 text-rose-600 hover:bg-rose-50 hover:text-rose-700">
+            <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
+          </Button>
           <Button asChild variant="outline" className="rounded-2xl font-black uppercase text-[10px] h-12 px-6 border-slate-200">
             <Link href="/admin/companies">Ver Todas las Empresas</Link>
           </Button>

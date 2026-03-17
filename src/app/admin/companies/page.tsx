@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -52,7 +53,8 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  Timer
+  Timer,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -63,6 +65,7 @@ import {
   useFirestore, 
   useCollection, 
   useMemoFirebase, 
+  useAuth,
   updateDocumentNonBlocking,
   setDocumentNonBlocking
 } from "@/firebase";
@@ -71,11 +74,13 @@ import { Company, User } from "@/lib/types";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import { sendSystemEmail } from "@/actions/email";
+import { signOut } from "firebase/auth";
 
 export default function AdminCompaniesPage() {
   const { toast } = useToast();
   const { isSuperAdmin, profile, isLoading: isUserLoading } = useUser();
   const db = useFirestore();
+  const auth = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
   
@@ -89,6 +94,11 @@ export default function AdminCompaniesPage() {
       redirect("/dashboard");
     }
   }, [isUserLoading, isSuperAdmin]);
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    redirect("/auth/login");
+  };
 
   // Create Company State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -347,52 +357,57 @@ export default function AdminCompaniesPage() {
           </div>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Registrar Nuevo Cliente (Tenant)</DialogTitle>
-              <DialogDescription>Cree el entorno para que el cliente pueda registrar sus usuarios operativos.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Nombre de la Empresa / Razón Social</Label>
-                  <Input 
-                    placeholder="Ej: Servicios Industriales S.A." 
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  />
+        <div className="flex gap-2">
+          <Button onClick={handleLogout} variant="ghost" className="text-rose-600 hover:bg-rose-50 font-bold uppercase text-[10px]">
+            <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
+          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Registrar Nuevo Cliente (Tenant)</DialogTitle>
+                <DialogDescription>Cree el entorno para que el cliente pueda registrar sus usuarios operativos.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Nombre de la Empresa / Razón Social</Label>
+                    <Input 
+                      placeholder="Ej: Servicios Industriales S.A." 
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Plan de Inicio</Label>
+                    <Select 
+                      value={formData.currentPlan} 
+                      onValueChange={(val) => setFormData({...formData, currentPlan: val})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
+                        <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
+                        <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Plan de Inicio</Label>
-                  <Select 
-                    value={formData.currentPlan} 
-                    onValueChange={(val) => setFormData({...formData, currentPlan: val})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
-                      <SelectItem value="pro">Plan Pro (1.5 UF)</SelectItem>
-                      <SelectItem value="enterprise">Plan Enterprise (2.5 UF)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Entorno y Código Maestro"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <DialogFooter className="pt-4">
+                  <Button type="submit" className="w-full" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Entorno y Código Maestro"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -559,8 +574,7 @@ export default function AdminCompaniesPage() {
           <Card className="border-none shadow-sm bg-blue-50/50">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Shield className="h-4 w-4 text-blue-600" />
-                Motor de Notificaciones
+                <Shield className="h-4 w-4 text-blue-600" /> Motor de Notificaciones
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
