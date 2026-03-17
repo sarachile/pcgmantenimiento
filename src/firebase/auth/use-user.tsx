@@ -6,7 +6,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { User, Role } from '@/lib/types';
 
 /**
- * Hook de usuario robusto con detección inmediata de Superadmin para evitar bloqueos.
+ * Hook de usuario optimizado para evitar bucles de redirección.
+ * Prioriza la detección inmediata de Superadmin por correo.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
@@ -19,7 +20,6 @@ export function useUser() {
     let isMounted = true;
 
     async function fetchProfile() {
-      // 1. Caso: No hay usuario autenticado
       if (!authUser) {
         if (isMounted) {
           setProfile(null);
@@ -29,18 +29,14 @@ export function useUser() {
         return;
       }
 
-      // 2. Optimización: No repetir carga si ya tenemos el perfil para el mismo UID
-      if (lastUidRef.current === authUser.uid && profile) {
-        if (isMounted) setIsProfileLoading(false);
-        return;
-      }
-
-      // 3. Caso especial: Superadmin por correo (Recuperación Inmediata)
+      // Caso especial: Superadmin por correo (Acceso Inmediato)
+      // Esto evita que el sistema intente cargar un perfil de Firestore que podría no existir
+      // o tardar demasiado, rompiendo el bucle de redirección.
       if (authUser.email === 'control@pcgoperacion.com') {
         if (isMounted) {
           setProfile({
             id: authUser.uid,
-            email: authUser.email,
+            email: authUser.email!,
             name: 'Super Administrador (Core)',
             role: 'superadmin' as Role,
             companyId: 'pcg-central',
@@ -53,7 +49,12 @@ export function useUser() {
         return;
       }
 
-      // 4. Caso general: Cargar desde Firestore
+      // Evitar recargas innecesarias
+      if (lastUidRef.current === authUser.uid && profile) {
+        if (isMounted) setIsProfileLoading(false);
+        return;
+      }
+
       try {
         if (isMounted) setIsProfileLoading(true);
         if (!firestore) return;
@@ -67,7 +68,6 @@ export function useUser() {
             lastUidRef.current = authUser.uid;
           }
         } else {
-          // Si no existe el doc, pero no es superadmin, limpiar
           if (isMounted) setProfile(null);
         }
       } catch (error) {

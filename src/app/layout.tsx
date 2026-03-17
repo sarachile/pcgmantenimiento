@@ -14,8 +14,6 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/logo.png?v=1", type: "image/png" },
-      { url: "/logo.png?v=1", sizes: "32x32", type: "image/png" },
-      { url: "/logo.png?v=1", sizes: "16x16", type: "image/png" },
     ],
     apple: [
       { url: "/logo.png?v=1", sizes: "180x180", type: "image/png" },
@@ -44,7 +42,6 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="PCG ERP" />
-        <link rel="apple-touch-icon" href="/logo.png?v=1" />
       </head>
       <body className="font-body antialiased min-h-screen bg-background">
         <FirebaseClientProvider>

@@ -26,27 +26,32 @@ export default function DashboardLayout({
       if (!isAuthenticated) {
         router.push("/auth/login");
       } else if (isSuperAdmin && !pathname.startsWith('/admin')) {
-        // Redirigir al Superadmin si intenta entrar a áreas de Admin regular
+        // Redirigir al Superadmin fuera de las áreas operativas de empresa
         router.push("/admin");
       }
     }
   }, [isLoading, isAuthenticated, isSuperAdmin, router, pathname]);
 
   const companyRef = useMemoFirebase(() => {
-    if (!db || !profile?.companyId) return null;
+    if (!db || !profile?.companyId || isSuperAdmin) return null;
     return doc(db, "companies", profile.companyId);
-  }, [db, profile?.companyId]);
+  }, [db, profile?.companyId, isSuperAdmin]);
 
   const { data: company } = useDoc<Company>(companyRef);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Validando Credenciales...</p>
+        </div>
       </div>
     );
   }
 
+  // Si es Superadmin y está en una ruta /dashboard, no renderizamos nada mientras redirige
+  if (isSuperAdmin && !pathname.startsWith('/admin')) return null;
   if (!isAuthenticated) return null;
 
   return (

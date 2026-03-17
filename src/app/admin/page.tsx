@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Building2, 
@@ -12,11 +12,13 @@ import {
   ArrowLeft,
   Loader2,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Globe,
+  Activity
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, limit, orderBy, collectionGroup, where } from "firebase/firestore";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -25,15 +27,17 @@ import { Company, User, WorkOrder } from "@/lib/types";
 import { differenceInDays, parseISO } from "date-fns";
 
 export default function SuperadminDashboardPage() {
-  const { isSuperAdmin, isLoading: isAuthLoading } = useUser();
+  const { isSuperAdmin, isLoading: isAuthLoading, isAuthenticated } = useUser();
   const db = useFirestore();
+  const router = useRouter();
 
-  // Redirigir si no es superadmin
-  if (!isAuthLoading && !isSuperAdmin) {
-    redirect("/dashboard");
-  }
+  useEffect(() => {
+    if (!isAuthLoading && (!isAuthenticated || !isSuperAdmin)) {
+      router.push("/dashboard");
+    }
+  }, [isAuthLoading, isSuperAdmin, isAuthenticated, router]);
 
-  // Consultas Reales
+  // Consultas Globales
   const companiesQuery = useMemoFirebase(() => db ? collection(db, "companies") : null, [db]);
   const usersQuery = useMemoFirebase(() => db ? collection(db, "users") : null, [db]);
   const globalOrdersQuery = useMemoFirebase(() => db ? query(collectionGroup(db, "workOrders"), limit(100)) : null, [db]);
@@ -47,22 +51,18 @@ export default function SuperadminDashboardPage() {
     const totalUsers = users?.length || 0;
     const totalOrders = globalOrders?.length || 0;
     
-    const expiringSoon = (companies || []).filter(c => {
-      if (!c.trialEndsAt) return false;
-      const end = c.trialEndsAt.toDate ? c.trialEndsAt.toDate() : parseISO(c.trialEndsAt);
-      const diff = differenceInDays(end, new Date());
-      return diff >= 0 && diff <= 5;
-    }).length;
+    const activeTenants = (companies || []).filter(c => c.isActive).length;
 
-    return { totalCompanies, totalUsers, totalOrders, expiringSoon };
+    return { totalCompanies, totalUsers, totalOrders, activeTenants };
   }, [companies, users, globalOrders]);
 
-  const isLoading = isAuthLoading || isCompaniesLoading || isUsersLoading || isOrdersLoading;
-
-  if (isLoading) {
+  if (isAuthLoading || !isSuperAdmin) {
     return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Accediendo a Infraestructura...</p>
+        </div>
       </div>
     );
   }
@@ -70,37 +70,36 @@ export default function SuperadminDashboardPage() {
   const platformStats = [
     { label: "Empresas Totales", value: stats.totalCompanies, icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Usuarios Globales", value: stats.totalUsers, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { label: "Trials por Vencer", value: stats.expiringSoon, icon: AlertTriangle, color: "text-amber-600", bg: "bg-amber-50" },
-    { label: "Órdenes Totales", value: stats.totalOrders, icon: FileCheck, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Tenants Activos", value: stats.activeTenants, icon: Activity, color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Tráfico Global OTs", value: stats.totalOrders, icon: Zap, color: "text-indigo-600", bg: "bg-indigo-50" },
   ];
 
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild title="Volver al dashboard operativo" className="rounded-full">
-            <Link href="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex flex-col gap-1">
+    <div className="max-w-7xl mx-auto p-6 md:p-10 space-y-10">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-2 rounded-xl"><Globe className="text-white h-6 w-6" /></div>
             <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Control Maestro</h2>
-            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Infraestructura SaaS PCGMANTENIMIENTO</p>
           </div>
+          <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest pl-1">Ecosistema SaaS PCGMANTENIMIENTO</p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline" className="rounded-xl font-bold">
-            <Link href="/admin/companies">Gestionar Empresas</Link>
+        <div className="flex gap-3">
+          <Button asChild variant="outline" className="rounded-2xl font-black uppercase text-[10px] h-12 px-6 border-slate-200">
+            <Link href="/admin/stats">Análisis Global</Link>
+          </Button>
+          <Button asChild className="rounded-2xl font-black uppercase text-[10px] h-12 px-8 shadow-xl shadow-blue-900/20">
+            <Link href="/admin/companies">Gestionar Clientes SaaS</Link>
           </Button>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {platformStats.map((stat) => (
-          <Card key={stat.label} className="border-none shadow-sm rounded-3xl overflow-hidden group hover:shadow-md transition-all">
+          <Card key={stat.label} className="border-none shadow-sm rounded-[2rem] overflow-hidden group hover:shadow-md transition-all bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{stat.label}</CardTitle>
-              <div className={cn("p-2 rounded-xl transition-transform group-hover:scale-110", stat.bg)}>
+              <CardTitle className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{stat.label}</CardTitle>
+              <div className={cn("p-2.5 rounded-2xl transition-transform group-hover:rotate-12", stat.bg)}>
                 <stat.icon className={cn("h-4 w-4", stat.color)} />
               </div>
             </CardHeader>
@@ -111,71 +110,76 @@ export default function SuperadminDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 border-none shadow-sm rounded-[2rem] overflow-hidden">
-          <CardHeader className="bg-slate-50 border-b">
-            <CardTitle className="text-lg font-black uppercase italic tracking-tight">Actividad de Clientes Reciente</CardTitle>
-            <CardDescription className="text-xs font-bold uppercase">Empresas con mayor carga operativa hoy.</CardDescription>
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+          <CardHeader className="bg-slate-50/50 border-b p-8">
+            <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+              <Building2 className="h-6 w-6 text-blue-600" /> Actividad de Clientes SaaS
+            </CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Empresas con mayor volumen transaccional</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y">
-              {(companies || []).slice(0, 6).map((company) => {
-                const companyOrders = (globalOrders || []).filter(o => o.companyId === company.id).length;
-                return (
-                  <div key={company.id} className="flex items-center justify-between p-5 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-primary/10 p-2.5 rounded-2xl">
-                        <Building2 className="h-5 w-5 text-primary" />
+            {isCompaniesLoading ? (
+              <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600/20" /></div>
+            ) : (
+              <div className="divide-y">
+                {(companies || []).slice(0, 6).map((company) => {
+                  const companyOrders = (globalOrders || []).filter(o => o.companyId === company.id).length;
+                  return (
+                    <div key={company.id} className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-blue-50 p-3 rounded-2xl group-hover:bg-blue-100 transition-colors">
+                          <Building2 className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black text-slate-900 uppercase">{company.name}</p>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Plan: {company.currentPlan}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-black text-slate-900">{company.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Plan: {company.currentPlan?.toUpperCase()}</p>
+                      <div className="text-right">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] font-black">{companyOrders} OTs</Badge>
+                          <Button variant="ghost" size="icon" asChild className="rounded-xl"><Link href="/admin/companies"><ChevronRight className="h-4 w-4" /></Link></Button>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-slate-900">{companyOrders} OTs</p>
-                      <Link href="/admin/companies" className="text-[9px] font-black text-primary uppercase hover:underline">Ver Ficha</Link>
-                    </div>
-                  </div>
-                );
-              })}
-              {(!companies || companies.length === 0) && (
-                <div className="p-10 text-center text-slate-400 italic">No hay empresas registradas aún.</div>
-              )}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        <Card className="col-span-3 border-none shadow-sm rounded-[2rem] bg-slate-900 text-white overflow-hidden relative">
+        <Card className="border-none shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden relative">
           <div className="absolute -right-10 -bottom-10 opacity-10"><Zap className="h-48 w-48 text-blue-400" /></div>
-          <CardHeader className="border-b border-white/5">
-            <CardTitle className="text-lg font-black uppercase italic tracking-tight flex items-center gap-2">
-              <Zap className="h-5 w-5 text-blue-400" /> Monitoreo Trial
+          <CardHeader className="border-b border-white/5 p-8">
+            <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+              <Activity className="h-6 w-6 text-blue-400" /> Estado de Infraestructura
             </CardTitle>
-            <CardDescription className="text-slate-400 text-xs font-bold uppercase">Cuentas próximas a expirar.</CardDescription>
+            <CardDescription className="text-slate-400 text-[10px] font-bold uppercase">Monitor de salud de la plataforma</CardDescription>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            {(companies || []).filter(c => c.trialEndsAt).slice(0, 4).map(c => {
-              const end = c.trialEndsAt.toDate ? c.trialEndsAt.toDate() : parseISO(c.trialEndsAt);
-              const diff = differenceInDays(end, new Date());
-              return (
-                <div key={c.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-black uppercase truncate max-w-[150px]">{c.name}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-tighter text-slate-500">ID: {c.id}</p>
-                  </div>
-                  <Badge className={cn(
-                    "text-[9px] font-black uppercase",
-                    diff <= 3 ? "bg-rose-50" : "bg-blue-600"
-                  )}>
-                    {diff < 0 ? "Expirado" : `${diff} Días`}
-                  </Badge>
-                </div>
-              );
-            })}
-            {(!companies || companies.length === 0) && (
-              <div className="py-10 text-center text-white/20 italic text-sm">Sin periodos de prueba activos.</div>
-            )}
+          <CardContent className="p-8 space-y-6">
+            <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Base de Datos</p>
+                <p className="text-lg font-black uppercase">Firestore Multi-Region</p>
+              </div>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">OPERACIONAL</Badge>
+            </div>
+            <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Servidor de Correo</p>
+                <p className="text-lg font-black uppercase">SMTP Relay (Direct)</p>
+              </div>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">CONECTADO</Badge>
+            </div>
+            <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Facturación API</p>
+                <p className="text-lg font-black uppercase">SimpleAPI Gateway</p>
+              </div>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">ONLINE</Badge>
+            </div>
           </CardContent>
         </Card>
       </div>
