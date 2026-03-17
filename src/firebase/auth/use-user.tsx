@@ -6,7 +6,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { User, Role } from '@/lib/types';
 
 /**
- * Hook de usuario blindado contra re-renders infinitos y con fallback para Superadmin.
+ * Hook de usuario robusto con detección inmediata de Superadmin para evitar bloqueos.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
@@ -19,6 +19,7 @@ export function useUser() {
     let isMounted = true;
 
     async function fetchProfile() {
+      // 1. Caso: No hay usuario autenticado
       if (!authUser) {
         if (isMounted) {
           setProfile(null);
@@ -28,12 +29,31 @@ export function useUser() {
         return;
       }
 
-      // Evitar re-fetch si ya tenemos el perfil cargado para este UID
+      // 2. Optimización: No repetir carga si ya tenemos el perfil para el mismo UID
       if (lastUidRef.current === authUser.uid && profile) {
         if (isMounted) setIsProfileLoading(false);
         return;
       }
 
+      // 3. Caso especial: Superadmin por correo (Recuperación Inmediata)
+      if (authUser.email === 'control@pcgoperacion.com') {
+        if (isMounted) {
+          setProfile({
+            id: authUser.uid,
+            email: authUser.email,
+            name: 'Super Administrador (Core)',
+            role: 'superadmin' as Role,
+            companyId: 'pcg-central',
+            active: true,
+            createdAt: new Date().toISOString()
+          });
+          setIsProfileLoading(false);
+          lastUidRef.current = authUser.uid;
+        }
+        return;
+      }
+
+      // 4. Caso general: Cargar desde Firestore
       try {
         if (isMounted) setIsProfileLoading(true);
         if (!firestore) return;
@@ -41,41 +61,14 @@ export function useUser() {
         const userRef = doc(firestore, 'users', authUser.uid);
         const userSnap = await getDoc(userRef);
         
-        let fetchedProfile: User | null = null;
-
         if (userSnap.exists()) {
-          fetchedProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
-        } else {
-          // FALLBACK CRÍTICO: Si el correo es el de superadmin, otorgar acceso aunque no exista el doc
-          if (authUser.email === 'control@pcgoperacion.com') {
-            fetchedProfile = {
-              id: authUser.uid,
-              email: authUser.email,
-              name: 'Super Administrador (Core)',
-              role: 'superadmin' as Role,
-              companyId: 'pcg-central',
-              active: true,
-              createdAt: new Date().toISOString()
-            } as User;
-          } else {
-            const adminRef = doc(firestore, 'platform_admins', authUser.uid);
-            const adminSnap = await getDoc(adminRef);
-            
-            if (adminSnap.exists()) {
-              fetchedProfile = { 
-                ...(adminSnap.data() as any), 
-                id: authUser.uid, 
-                role: 'superadmin' as Role,
-                companyId: 'pcg-central',
-                active: true
-              } as User;
-            }
+          if (isMounted) {
+            setProfile({ ...(userSnap.data() as any), id: authUser.uid } as User);
+            lastUidRef.current = authUser.uid;
           }
-        }
-
-        if (isMounted) {
-          setProfile(fetchedProfile);
-          lastUidRef.current = authUser.uid;
+        } else {
+          // Si no existe el doc, pero no es superadmin, limpiar
+          if (isMounted) setProfile(null);
         }
       } catch (error) {
         console.error("Error loading profile:", error);
@@ -86,7 +79,7 @@ export function useUser() {
 
     fetchProfile();
     return () => { isMounted = false; };
-  }, [authUser?.uid, firestore, authUser?.email]);
+  }, [authUser, firestore]);
 
   const isLoading = isAuthLoading || isProfileLoading;
   const isAuthenticated = !!authUser && !!profile;

@@ -6,7 +6,6 @@ import { FirebaseClientProvider } from "@/firebase/client-provider";
 export const metadata: Metadata = {
   title: "PCGMANTENIMIENTO - Ordena tu gestión industrial",
   description: "La plataforma digital para empresas de mantenimiento. Reemplaza planillas por trazabilidad, evidencia real y control total de activos.",
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     title: "PCG ERP",
@@ -43,7 +42,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        {/* Metatags para simular App en el escritorio del teléfono y PC */}
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="PCG ERP" />
         <link rel="apple-touch-icon" href="/logo.png?v=1" />

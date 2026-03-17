@@ -1,32 +1,36 @@
-
 'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { SidebarProvider, SidebarInset, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { MobileActionDock } from "@/components/layout/mobile-action-dock";
 import { Separator } from "@/components/ui/separator";
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { Company } from "@/lib/types";
-import { Loader2, Menu } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { Loader2 } from "lucide-react";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { profile, isLoading, isAuthenticated } = useUser();
+  const { profile, isLoading, isAuthenticated, isSuperAdmin } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/auth/login");
+    if (!isLoading) {
+      if (!isAuthenticated) {
+        router.push("/auth/login");
+      } else if (isSuperAdmin && !pathname.startsWith('/admin')) {
+        // Redirigir al Superadmin si intenta entrar a áreas de Admin regular
+        router.push("/admin");
+      }
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, isSuperAdmin, router, pathname]);
 
   const companyRef = useMemoFirebase(() => {
     if (!db || !profile?.companyId) return null;
@@ -54,7 +58,7 @@ export default function DashboardLayout({
           <Separator orientation="vertical" className="mr-2 h-4" />
           <div className="flex-1">
             <h1 className="text-sm font-black text-slate-900 uppercase italic truncate max-w-[200px] sm:max-w-[300px]">
-              {company?.name || "PCGMANTENIMIENTO ERP"}
+              {isSuperAdmin ? "Control Maestro SaaS" : (company?.name || "PCGMANTENIMIENTO ERP")}
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -70,7 +74,7 @@ export default function DashboardLayout({
         <div className="flex flex-1 flex-col gap-4 p-6 overflow-auto pb-32 md:pb-6">
           {children}
         </div>
-        <MobileActionDock />
+        {!isSuperAdmin && <MobileActionDock />}
       </SidebarInset>
     </SidebarProvider>
   );
