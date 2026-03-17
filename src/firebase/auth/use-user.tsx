@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useFirebase } from '@/firebase/provider';
 import { doc, getDoc } from 'firebase/firestore';
-import { User } from '@/lib/types';
+import { User, Role } from '@/lib/types';
 
 /**
- * Hook de usuario blindado contra re-renders infinitos.
+ * Hook de usuario blindado contra re-renders infinitos y con fallback para Superadmin.
  */
 export function useUser() {
   const { user: authUser, firestore, isUserLoading: isAuthLoading } = useFirebase();
@@ -19,7 +19,7 @@ export function useUser() {
     let isMounted = true;
 
     async function fetchProfile() {
-      if (!authUser || !firestore) {
+      if (!authUser) {
         if (isMounted) {
           setProfile(null);
           setIsProfileLoading(false);
@@ -28,11 +28,16 @@ export function useUser() {
         return;
       }
 
-      if (lastUidRef.current === authUser.uid) {
+      // Evitar re-fetch si ya tenemos el perfil cargado para este UID
+      if (lastUidRef.current === authUser.uid && profile) {
+        if (isMounted) setIsProfileLoading(false);
         return;
       }
 
       try {
+        if (isMounted) setIsProfileLoading(true);
+        if (!firestore) return;
+
         const userRef = doc(firestore, 'users', authUser.uid);
         const userSnap = await getDoc(userRef);
         
@@ -41,17 +46,30 @@ export function useUser() {
         if (userSnap.exists()) {
           fetchedProfile = { ...(userSnap.data() as any), id: authUser.uid } as User;
         } else {
-          const adminRef = doc(firestore, 'platform_admins', authUser.uid);
-          const adminSnap = await getDoc(adminRef);
-          
-          if (adminSnap.exists()) {
-            fetchedProfile = { 
-              ...(adminSnap.data() as any), 
-              id: authUser.uid, 
-              role: 'superadmin',
+          // FALLBACK CRÍTICO: Si el correo es el de superadmin, otorgar acceso aunque no exista el doc
+          if (authUser.email === 'control@pcgoperacion.com') {
+            fetchedProfile = {
+              id: authUser.uid,
+              email: authUser.email,
+              name: 'Super Administrador (Core)',
+              role: 'superadmin' as Role,
               companyId: 'pcg-central',
-              active: true
+              active: true,
+              createdAt: new Date().toISOString()
             } as User;
+          } else {
+            const adminRef = doc(firestore, 'platform_admins', authUser.uid);
+            const adminSnap = await getDoc(adminRef);
+            
+            if (adminSnap.exists()) {
+              fetchedProfile = { 
+                ...(adminSnap.data() as any), 
+                id: authUser.uid, 
+                role: 'superadmin' as Role,
+                companyId: 'pcg-central',
+                active: true
+              } as User;
+            }
           }
         }
 
@@ -68,7 +86,7 @@ export function useUser() {
 
     fetchProfile();
     return () => { isMounted = false; };
-  }, [authUser?.uid, firestore]);
+  }, [authUser?.uid, firestore, authUser?.email]);
 
   const isLoading = isAuthLoading || isProfileLoading;
   const isAuthenticated = !!authUser && !!profile;

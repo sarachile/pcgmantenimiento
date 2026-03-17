@@ -24,12 +24,32 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push('/dashboard');
+      const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase().trim(), password);
+      
+      // Si el login es exitoso, redirigir. El DashboardLayout se encargará de verificar el perfil.
+      if (email.toLowerCase().trim() === 'control@pcgoperacion.com') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
+      
+      toast({
+        title: "Acceso exitoso",
+        description: "Cargando su entorno de trabajo...",
+      });
     } catch (error: any) {
+      console.error("Login Error:", error);
+      let message = "Credenciales inválidas. Por favor intente nuevamente.";
+      
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        message = "El correo o la contraseña no coinciden.";
+      } else if (error.code === 'auth/too-many-requests') {
+        message = "Demasiados intentos fallidos. Reintente en unos minutos.";
+      }
+
       toast({
         title: "Error de acceso",
-        description: "Credenciales inválidas. Por favor intente nuevamente.",
+        description: message,
         variant: "destructive",
       });
     } finally {
