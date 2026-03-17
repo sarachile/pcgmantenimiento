@@ -45,10 +45,18 @@ import {
   BarChart3,
   Globe,
   Receipt,
-  History
+  History,
+  HelpCircle,
+  Radio
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
 const WHATSAPP_URL = "https://wa.me/56941245316?text=Hola,%20me%20interesa%20saber%20m%C3%A1s%20sobre%20pcgmantenimiento.";
@@ -102,6 +110,34 @@ export default function HomePage() {
     { title: "Ejecución Terreno", desc: "Checklists con fotos GPS obligatorias para trazabilidad total.", icon: HardHat },
     { title: "Firma Digital", desc: "El cliente aprueba el servicio mediante QR en el acto.", icon: Fingerprint },
     { title: "Cierre y Factura", desc: "Generación automática de reporte PDF y emisión de DTE.", icon: Receipt },
+  ];
+
+  const faqs = [
+    {
+      q: "¿Cómo funcionan los medidores inteligentes y por qué son mejores que los tradicionales?",
+      a: "Usamos Medidores Ultrasónicos Inteligentes PCG, que no tienen piezas móviles en su interior. Esto es clave: al no tener engranajes, no se desgastan ni se traban con el sarro, lo que garantiza mediciones exactas por 16 años de vida útil de batería. Detectan flujos mínimos y goteos que los medidores antiguos ignoran.",
+      icon: Gauge
+    },
+    {
+      q: "¿Es necesario que cada departamento/casa tenga Wi-Fi para que el sistema funcione?",
+      a: "No, para nada. Nuestros medidores son totalmente independientes del Wi-Fi de los vecinos. Usan una Red de Radio Privada PCG (LoRaWAN/Sigfox) de largo alcance y bajo consumo. Todos los datos se envían de forma segura a una Antena Receptora Maestra centralizada en la conserjería o administración.",
+      icon: Radio
+    },
+    {
+      q: "¿Qué tipo de alertas y reportes recibe la administración y los copropietarios?",
+      a: "Nuestra plataforma genera alertas automáticas en tiempo real para: \n\n💧 Alerta de Fuga Continua: Detección de consumos nocturnos o flujos constantes que indican una fuga interna.\n\n🚫 Alerta de Manipulación: Notificación inmediata si alguien intenta intervenir o abrir el medidor (fraude).\n\n⚠️ Estado de Batería/Señal: Aviso preventivo para mantenimiento técnico del equipo.\n\n📊 Reportes de Picos: Análisis de los momentos de mayor consumo para optimizar el riego y uso de áreas comunes.",
+      icon: BellChart
+    },
+    {
+      q: "¿Cómo funciona el Corte de Paso Remoto en caso de emergencia?",
+      a: "Ante una matriz rota, un flexible reventado en un departamento vacío (ej. vacaciones) o por solicitud del usuario para mantenimiento interno, la administración (o el usuario vía CRM) puede accionar una válvula integrada en el medidor para cortar el suministro de esa unidad de forma remota en segundos, evitando inundaciones y daños estructurales sin afectar a los demás vecinos.",
+      icon: Zap
+    },
+    {
+      q: "¿Este sistema es solo para edificios o sirve para parcelaciones y condominios extendidos?",
+      a: "Gracias a nuestra tecnología de radio de largo alcance, el sistema es escalable y perfecto para condominios de casas y parcelaciones. Podemos cubrir grandes distancias desde las unidades hasta el Gateway central, asegurando la trazabilidad completa del agua desde la matriz hasta cada hogar.",
+      icon: Globe
+    }
   ];
 
   return (
@@ -482,6 +518,43 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <section id="faq" className="py-24 bg-slate-50 border-t">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16 space-y-4">
+            <div className="bg-primary/10 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto text-primary">
+              <HelpCircle className="h-6 w-6" />
+            </div>
+            <h2 className="text-3xl md:text-4xl font-black tracking-tighter uppercase italic">Todo lo que necesita saber sobre nuestra <span className="text-primary">tecnología de Agua</span></h2>
+            <p className="text-slate-500 font-medium">Resolvemos las dudas más frecuentes de comités y administraciones.</p>
+          </div>
+
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden p-8 md:p-12">
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              {faqs.map((faq, i) => (
+                <AccordionItem key={i} value={`faq-${i}`} className="border-b border-slate-100 last:border-0 pb-2">
+                  <AccordionTrigger className="hover:no-underline hover:text-primary text-left py-4">
+                    <div className="flex items-center gap-4 pr-4">
+                      <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                        <faq.icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <span className="font-black text-slate-900 uppercase italic tracking-tight text-sm md:text-base leading-snug">
+                        {faq.q}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-2 pb-6 pl-14">
+                    <p className="text-slate-600 text-sm md:text-base leading-relaxed font-medium whitespace-pre-line">
+                      {faq.a}
+                    </p>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </Card>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="py-20 bg-slate-50 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-10">
@@ -504,6 +577,17 @@ export default function HomePage() {
           </p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+/** 
+ * Placeholder icon for alerts list 
+ */
+function BellChart({ className }: { className?: string }) {
+  return (
+    <div className={className}>
+      <Activity className="h-full w-full" />
     </div>
   );
 }
