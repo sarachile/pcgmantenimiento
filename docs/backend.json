@@ -58,6 +58,17 @@
         "lastCommunication": { "type": "string", "format": "date-time" }
       }
     },
+    "WaterReading": {
+      "title": "WaterReading",
+      "type": "object",
+      "description": "Time-series reading from a smart meter.",
+      "properties": {
+        "id": { "type": "string" },
+        "meterId": { "type": "string" },
+        "value": { "type": "number", "description": "Instant or cumulative reading value." },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
     "WorkOrder": {
       "title": "WorkOrder",
       "type": "object",
@@ -92,6 +103,7 @@
       { "path": "/users/{userId}", "definition": { "entityName": "User", "description": "Global user profiles." } },
       { "path": "/companies/{companyId}", "definition": { "entityName": "Company", "description": "Main tenant config." } },
       { "path": "/companies/{companyId}/waterMeters/{meterId}", "definition": { "entityName": "WaterMeter", "description": "IoT water meters." } },
+      { "path": "/companies/{companyId}/waterMeters/{meterId}/readings/{readingId}", "definition": { "entityName": "WaterReading", "description": "Historical meter data." } },
       { "path": "/companies/{companyId}/workOrders/{workOrderId}", "definition": { "entityName": "WorkOrder", "description": "Operational orders." } }
     ]
   }

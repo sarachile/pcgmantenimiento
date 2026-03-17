@@ -78,6 +78,13 @@ export interface WaterMeter {
   lastCommunication: string | any;
 }
 
+export interface WaterReading {
+  id: string;
+  meterId: string;
+  value: number;
+  timestamp: string | any;
+}
+
 export interface User {
   id: string;
   email: string;

@@ -35,7 +35,8 @@ import {
   Clock,
   TrendingDown,
   ShieldAlert,
-  ArrowRight
+  ArrowRight,
+  History
 } from "lucide-react";
 import { 
   BarChart, 
@@ -97,13 +98,11 @@ export default function WaterControlPage() {
   
   const { data: firestoreMeters, isLoading: isMetersLoading } = useCollection<WaterMeter>(metersQuery);
 
-  // Efecto para cargar datos reales o simulados
   useEffect(() => {
     if (!isMetersLoading) {
       if (firestoreMeters && firestoreMeters.length > 0) {
         setLocalMeters(firestoreMeters);
       } else {
-        // MODO DEMO: Cargar simulados si Firestore está vacío
         setLocalMeters(SIMULATED_METERS);
       }
     }
@@ -139,7 +138,6 @@ export default function WaterControlPage() {
     
     const newStatus = meter.status === 'open' ? 'closed' : 'open';
     
-    // Si es real, actualizar Firestore
     if (db && companyId && !meter.id.startsWith('sim-')) {
       const meterRef = doc(db, "companies", companyId, "waterMeters", meter.id);
       updateDocumentNonBlocking(meterRef, {
@@ -147,7 +145,6 @@ export default function WaterControlPage() {
         updatedAt: serverTimestamp()
       });
     } else {
-      // Si es simulado, actualizar estado local para la demo
       setLocalMeters(prev => prev.map(m => m.id === meter.id ? { ...m, status: newStatus } : m));
     }
 
@@ -191,7 +188,6 @@ export default function WaterControlPage() {
         </div>
       </div>
 
-      {/* ALERTAS DE PRESENTACIÓN */}
       {stats.leakAlerts > 0 && (
         <Card className="rounded-[2rem] border-none bg-rose-600 text-white shadow-xl overflow-hidden animate-pulse">
           <CardContent className="p-6 flex items-center justify-between">
@@ -213,7 +209,6 @@ export default function WaterControlPage() {
         </Card>
       )}
 
-      {/* MODAL DE REPORTE DE AUDITORÍA HÍDRICA */}
       <Dialog open={isReportOpen} onOpenChange={setIsReportOpen}>
         <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <DialogHeader className="bg-slate-900 text-white p-8">
@@ -384,7 +379,7 @@ export default function WaterControlPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-10">
+                    <div className="flex items-center gap-6">
                       <div className="text-center md:text-right space-y-1">
                         <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Consumo Acum.</p>
                         <div className="flex items-baseline justify-center md:justify-end gap-1">
@@ -393,8 +388,18 @@ export default function WaterControlPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-center gap-2">
-                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Válvula Remota</p>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline"
+                          size="icon"
+                          asChild
+                          className="h-12 w-12 rounded-2xl border-blue-100 hover:bg-blue-50 text-blue-600 shadow-sm"
+                          title="Ver Historial de Consumo"
+                        >
+                          <Link href={`/water-control/history/${m.id}`}>
+                            <History className="h-5 w-5" />
+                          </Link>
+                        </Button>
                         <Button 
                           onClick={() => toggleValve(m)}
                           disabled={isProcessing === m.id}
@@ -404,7 +409,7 @@ export default function WaterControlPage() {
                           )}
                         >
                           {isProcessing === m.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                            m.status === 'open' ? <><PowerOff className="h-4 w-4" /> Cortar Paso</> : <><Power className="h-4 w-4" /> Abrir Paso</>
+                            m.status === 'open' ? <><PowerOff className="h-4 w-4" /> Cortar</> : <><Power className="h-4 w-4" /> Abrir</>
                           )}
                         </Button>
                       </div>
