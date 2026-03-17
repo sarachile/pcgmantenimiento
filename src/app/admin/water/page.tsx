@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -53,7 +52,8 @@ import {
   ArrowRight,
   LogOut,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Waves
 } from "lucide-react";
 import { 
   useUser, 
@@ -73,11 +73,13 @@ import { sendSystemEmail } from "@/actions/email";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { cleanRut } from "@/lib/utils-rut";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminWaterControlPage() {
   const { isSuperAdmin, isLoading: isUserLoading } = useUser();
   const db = useFirestore();
   const auth = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
   const [expandedBuildingId, setExpandedBuildingId] = useState<string | null>(null);
@@ -228,7 +230,7 @@ export default function AdminWaterControlPage() {
   if (isUserLoading || !mounted) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto p-6 md:p-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild className="rounded-full">

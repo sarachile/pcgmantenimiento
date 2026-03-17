@@ -13,7 +13,10 @@ import {
   Zap,
   ShieldCheck,
   LayoutDashboard,
-  LogOut
+  LogOut,
+  Droplets,
+  Waves,
+  ArrowUpRight
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase";
 import { collection, query, limit, orderBy } from "firebase/firestore";
@@ -42,7 +45,6 @@ export default function SuperadminDashboardPage() {
     router.push("/auth/login");
   };
 
-  // Consultas Globales (Simplificadas para evitar bucles de índices)
   const companiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
     return query(collection(db, "companies"), orderBy("createdAt", "desc"), limit(10));
@@ -88,12 +90,6 @@ export default function SuperadminDashboardPage() {
           <Button onClick={handleLogout} variant="ghost" className="rounded-2xl font-black uppercase text-[10px] h-12 px-6 text-rose-600 hover:bg-rose-50 hover:text-rose-700">
             <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
           </Button>
-          <Button asChild variant="outline" className="rounded-2xl font-black uppercase text-[10px] h-12 px-6 border-slate-200">
-            <Link href="/admin/companies">Ver Todas las Empresas</Link>
-          </Button>
-          <Button asChild className="rounded-2xl font-black uppercase text-[10px] h-12 px-8 shadow-xl shadow-blue-900/20">
-            <Link href="/admin/companies">Configurar Clientes</Link>
-          </Button>
         </div>
       </div>
 
@@ -113,11 +109,48 @@ export default function SuperadminDashboardPage() {
         ))}
       </div>
 
+      {/* ACCESOS DIRECTOS DESTACADOS */}
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
+          <CardContent className="p-0">
+            <div className="grid md:grid-cols-5">
+              <div className="md:col-span-2 bg-slate-900 p-8 flex flex-col justify-center items-center text-center space-y-4">
+                <div className="bg-white/10 p-4 rounded-3xl"><Building2 className="h-10 w-10 text-white" /></div>
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Gestión de Empresas</h3>
+              </div>
+              <div className="md:col-span-3 p-8 flex flex-col justify-center space-y-4">
+                <p className="text-sm text-slate-500 font-medium">Control de Tenants, asignación de planes Business/Enterprise y monitoreo de suscripciones.</p>
+                <Button asChild className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 font-black uppercase tracking-widest text-[10px] gap-2">
+                  <Link href="/admin/companies">Configurar Clientes SaaS <ArrowUpRight className="h-4 w-4" /></Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
+          <CardContent className="p-0">
+            <div className="grid md:grid-cols-5">
+              <div className="md:col-span-2 bg-blue-600 p-8 flex flex-col justify-center items-center text-center space-y-4">
+                <div className="bg-white/20 p-4 rounded-3xl"><Droplets className="h-10 w-10 text-white" /></div>
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Gestión Agua IoT</h3>
+              </div>
+              <div className="md:col-span-3 p-8 flex flex-col justify-center space-y-4">
+                <p className="text-sm text-slate-500 font-medium">Alta de Administradores de Edificio, envío de PINs y telemetría de medidores inteligentes.</p>
+                <Button asChild className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest text-[10px] gap-2">
+                  <Link href="/admin/water">Monitor Hídrico Maestro <ArrowUpRight className="h-4 w-4" /></Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-8 lg:grid-cols-2">
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 border-b p-8">
             <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <Building2 className="h-6 w-6 text-blue-600" /> Clientes SaaS Recientes
+              <Building2 className="h-6 w-6 text-blue-600" /> Tenants SaaS Recientes
             </CardTitle>
             <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Últimas empresas incorporadas al ecosistema</CardDescription>
           </CardHeader>
