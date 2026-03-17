@@ -30,6 +30,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Droplets, 
   Plus, 
@@ -53,7 +61,12 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
-  Waves
+  Waves,
+  MoreVertical,
+  Edit,
+  Trash2,
+  RefreshCcw,
+  UserCog
 } from "lucide-react";
 import { 
   useUser, 
@@ -61,9 +74,11 @@ import {
   useCollection, 
   useMemoFirebase, 
   useAuth,
-  setDocumentNonBlocking
+  setDocumentNonBlocking,
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking
 } from "@/firebase";
-import { collection, doc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { collection, doc, serverTimestamp, query, where, getDocs, updateDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { User, Company, WaterMeter } from "@/lib/types";
 import { format, parseISO } from "date-fns";
@@ -84,15 +99,26 @@ export default function AdminWaterControlPage() {
   const [mounted, setMounted] = useState(false);
   const [expandedBuildingId, setExpandedBuildingId] = useState<string | null>(null);
 
-  // Building Admin Creation State
+  // Management States
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [selectedAdmin, setSelectedAdmin] = useState<User | null>(null);
+  const [editingBuilding, setEditingBuilding] = useState<Company | null>(null);
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     rut: "",
     buildingName: "",
     pin: Math.floor(100000 + Math.random() * 900000).toString(),
+  });
+
+  const [editData, setEditData] = useState({
+    name: "",
+    buildingName: ""
   });
 
   useEffect(() => {
@@ -222,10 +248,66 @@ export default function AdminWaterControlPage() {
     }
   };
 
-  const filteredAdmins = (buildingAdmins || []).filter(a => 
-    a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleEditBuilding = (admin: User, company: Company) => {
+    setSelectedAdmin(admin);
+    setEditingBuilding(company);
+    setEditData({
+      name: admin.name,
+      buildingName: company.name
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdateBuilding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db || !selectedAdmin || !editingBuilding) return;
+
+    setIsSubmitting(true);
+    try {
+      const companyRef = doc(db, "companies", editingBuilding.id);
+      const userRef = doc(db, "users", selectedAdmin.id);
+
+      updateDocumentNonBlocking(companyRef, { name: editData.buildingName, updatedAt: serverTimestamp() });
+      updateDocumentNonBlocking(userRef, { name: editData.name, updatedAt: serverTimestamp() });
+
+      toast({ title: "Datos Actualizados", description: "Los cambios han sido guardados correctamente." });
+      setIsEditOpen(false);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteBuilding = async () => {
+    if (!db || !selectedAdmin || !editingBuilding) return;
+
+    setIsSubmitting(true);
+    try {
+      const companyRef = doc(db, "companies", editingBuilding.id);
+      const userRef = doc(db, "users", selectedAdmin.id);
+
+      // Soft delete: marcar como inactivos
+      updateDocumentNonBlocking(companyRef, { isActive: false, isDeleted: true, updatedAt: serverTimestamp() });
+      updateDocumentNonBlocking(userRef, { active: false, updatedAt: serverTimestamp() });
+
+      toast({ title: "Comunidad Eliminada", description: "El registro ha sido removido del sistema activo." });
+      setIsDeleteOpen(false);
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const filteredAdmins = (buildingAdmins || []).filter(a => {
+    const company = companies?.find(c => c.id === a.companyId);
+    return (
+      a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      company?.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   if (isUserLoading || !mounted) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>;
 
@@ -319,6 +401,8 @@ export default function AdminWaterControlPage() {
               <div className="divide-y">
                 {filteredAdmins.map((admin) => {
                   const company = companies?.find(c => c.id === admin.companyId);
+                  if (company?.isDeleted) return null;
+                  
                   const meters = buildingMeters[admin.companyId] || [];
                   const isExpanded = expandedBuildingId === admin.companyId;
 
@@ -354,7 +438,29 @@ export default function AdminWaterControlPage() {
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sensores Activos</p>
                             <p className="text-2xl font-black italic text-slate-900">{meters.length || '?'}</p>
                           </div>
-                          {isExpanded ? <ChevronUp className="h-6 w-6 text-slate-300" /> : <ChevronDown className="h-6 w-6 text-slate-300" />}
+                          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10">
+                                  <MoreVertical className="h-5 w-5 text-slate-400" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
+                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Gestión</DropdownMenuLabel>
+                                <DropdownMenuItem className="rounded-xl p-3 focus:bg-slate-50 font-bold gap-3" onClick={() => handleEditBuilding(admin, company!)}>
+                                  <Edit className="h-4 w-4 text-blue-600" /> Editar Datos
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="rounded-xl p-3 focus:bg-amber-50 font-bold gap-3 text-amber-700">
+                                  <RefreshCcw className="h-4 w-4" /> Resetear Acceso PIN
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-slate-50" />
+                                <DropdownMenuItem className="rounded-xl p-3 focus:bg-rose-50 font-bold gap-3 text-rose-600" onClick={() => { setSelectedAdmin(admin); setEditingBuilding(company!); setIsDeleteOpen(true); }}>
+                                  <Trash2 className="h-4 w-4" /> Eliminar Comunidad
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            {isExpanded ? <ChevronUp className="h-6 w-6 text-slate-300" /> : <ChevronDown className="h-6 w-6 text-slate-300" />}
+                          </div>
                         </div>
                       </div>
 
@@ -408,6 +514,54 @@ export default function AdminWaterControlPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* DIÁLOGOS DE GESTIÓN */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Editar Comunidad IoT</DialogTitle>
+            <DialogDescription>Ajuste los nombres comerciales del entorno.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateBuilding} className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400">Nombre de la Comunidad</Label>
+              <Input value={editData.buildingName} onChange={e => setEditData({...editData, buildingName: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Administrador</Label>
+              <Input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl bg-blue-600 font-black uppercase tracking-widest shadow-xl">
+                {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Guardar Cambios"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-rose-100">
+          <DialogHeader className="text-center">
+            <div className="bg-rose-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="h-8 w-8 text-rose-600" />
+            </div>
+            <DialogTitle className="text-2xl font-black uppercase italic text-rose-900">¿Eliminar Comunidad?</DialogTitle>
+            <DialogDescription className="font-bold text-rose-700">
+              Esta acción desactivará el acceso del administrador <strong>{selectedAdmin?.name}</strong> y archivará los datos del edificio <strong>{editingBuilding?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 text-center">
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Esta operación no eliminará la telemetría histórica pero impedirá nuevos accesos.</p>
+          </div>
+          <DialogFooter className="flex flex-col sm:flex-row gap-3">
+            <Button variant="ghost" className="flex-1 rounded-xl font-bold" onClick={() => setIsDeleteOpen(false)}>Cancelar</Button>
+            <Button disabled={isSubmitting} className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 font-black uppercase text-[10px] tracking-widest" onClick={handleDeleteBuilding}>
+              {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Sí, Eliminar Registro"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
