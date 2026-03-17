@@ -165,6 +165,25 @@ export default function DashboardPage() {
     }
   };
 
+  const trialDaysRemaining = useMemo(() => {
+    if (!company?.trialEndsAt) return null;
+    const end = company.trialEndsAt.toDate ? company.trialEndsAt.toDate() : parseISO(company.trialEndsAt);
+    const diff = differenceInDays(end, new Date());
+    return diff > 0 ? diff : 0;
+  }, [company?.trialEndsAt]);
+
+  const onboardingSteps = useMemo(() => {
+    if (isBuildingAdmin) return [];
+    return [
+      { id: 'profile', label: 'Mi Empresa', desc: 'Configura tu marca y RUT legal.', href: '/company', completed: company?.rut && company.rut !== 'RUT por definir' },
+      { id: 'clients', label: 'Clientes', desc: 'Registra tus primeros mandantes.', href: '/clients', completed: clients.length > 0 },
+      { id: 'team', label: 'Equipo', desc: 'Invita a tus técnicos de campo.', href: '/team', completed: limits.techCount > 0 },
+      { id: 'work-order', label: 'Primera OT', desc: 'Genera tu primer despacho técnico.', href: '/work-orders/new', completed: workOrders.length > 0 }
+    ];
+  }, [company, clients, limits, workOrders, isBuildingAdmin]);
+
+  const allStepsCompleted = onboardingSteps.every(s => s.completed);
+
   if (!mounted || isUserLoading || isOrdersLoading || isClientsLoading || isCompanyLoading || isAssetsLoading || !today) {
     return (
       <div className="flex flex-col h-[400px] items-center justify-center gap-4">
@@ -184,7 +203,7 @@ export default function DashboardPage() {
             <p className="text-muted-foreground font-medium">Estado de telemetría para {company?.name}.</p>
           </div>
           <Button asChild className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 font-black gap-2 shadow-xl shadow-blue-900/20">
-            <Link href="/water-control"><Droplets className="h-5 w-5" /> Ir al Monitor en Tiempo Real</Link>
+            <Link href="/water-control"><Droplets className="h-5 w-5" /> Monitor Tiempo Real</Link>
           </Button>
         </div>
 
@@ -230,13 +249,13 @@ export default function DashboardPage() {
             <CardContent className="p-0">
               <div className="grid md:grid-cols-5">
                 <div className="md:col-span-2 bg-blue-600 p-10 flex flex-col justify-center items-center text-center space-y-4">
-                  <div className="bg-white/20 p-5 rounded-3xl shadow-inner"><Droplets className="h-12 w-12 text-white" /></div>
+                  <div className="bg-white/20 p-5 rounded-3xl shadow-inner"><Monitor className="h-12 w-12 text-white" /></div>
                   <h3 className="text-xl font-black text-white uppercase italic tracking-tighter leading-none">Gestión<br/>Avanzada</h3>
                 </div>
                 <div className="md:col-span-3 p-10 flex flex-col justify-center space-y-6">
-                  <p className="text-sm text-slate-500 font-medium leading-relaxed">Acceda al monitor detallado para ver la telemetría de cada unidad, descargar reportes de auditoría y ejecutar cortes remotos de emergencia.</p>
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed">Acceda al monitor detallado para ver la telemetría de cada unidad y realizar cortes remotos de emergencia.</p>
                   <Button asChild className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest text-[10px] gap-3 shadow-lg">
-                    <Link href="/water-control">Abrir Panel de Control <ChevronRight className="h-4 w-4" /></Link>
+                    <Link href="/water-control">Abrir Monitor Live <ChevronRight className="h-4 w-4" /></Link>
                   </Button>
                 </div>
               </div>
@@ -251,10 +270,10 @@ export default function DashboardPage() {
                 <h3 className="text-2xl font-black italic uppercase italic tracking-tighter">Historial Auditivo</h3>
               </div>
               <p className="text-slate-400 text-sm leading-relaxed">
-                Revise las curvas de consumo históricas de su comunidad. Identifique patrones de desperdicio y valide la integridad de su red hídrica con datos inalterables.
+                Revise las curvas de consumo históricas de su comunidad. Identifique patrones de desperdicio y valide la integridad de su red.
               </p>
               <Button asChild variant="outline" className="w-full h-12 rounded-xl bg-white/5 border-white/10 text-white hover:bg-white/10 font-bold uppercase text-[10px] tracking-widest">
-                <Link href="/water-control">Ver histórico por unidad</Link>
+                <Link href="/water-control">Ver historial por unidad</Link>
               </Button>
             </div>
           </Card>
@@ -501,7 +520,7 @@ export default function DashboardPage() {
       )}
 
       {/* GUÍA DE ACTIVACIÓN */}
-      {!allStepsCompleted && (
+      {!allStepsCompleted && onboardingSteps.length > 0 && (
         <Card className="rounded-[2.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
           <div className="grid md:grid-cols-3">
             <div className="p-10 space-y-6 bg-blue-600/10 border-r border-white/5">
