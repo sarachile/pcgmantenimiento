@@ -150,7 +150,10 @@ export default function WaterControlPage() {
     if (!pendingMeter || !profile) return;
 
     // Validación de PIN (Comparar con el PIN guardado en el perfil para buildingAdmin)
-    if (pinInput === profile.pin || (pinInput === "123456" && !profile.pin)) { // Fallback para demo
+    const userPin = profile.pin;
+    const isCorrect = pinInput === userPin || (pinInput === "123456" && !userPin);
+
+    if (isCorrect) {
       setIsPinDialogOpen(false);
       executeToggleValve(pendingMeter);
     } else {
@@ -313,7 +316,12 @@ export default function WaterControlPage() {
       </Dialog>
 
       {/* DIÁLOGO DE SEGURIDAD (PIN CHALLENGE) */}
-      <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+      <Dialog open={isPinDialogOpen} onOpenChange={(open) => {
+        setIsPinDialogOpen(open);
+        if (!open) {
+          setPinInput(""); // Limpiar PIN al cerrar para evitar interferencia del navegador
+        }
+      }}>
         <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
           <div className="p-8 space-y-6 text-center">
             <div className="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-inner">
@@ -333,9 +341,11 @@ export default function WaterControlPage() {
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="******"
+                autoComplete="one-time-code"
                 className="h-16 text-center text-3xl font-black tracking-[0.5em] rounded-2xl border-2 border-slate-200 focus:border-blue-600 shadow-inner"
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => e.key === 'Enter' && pinInput.length >= 6 && handleConfirmPin()}
               />
             </div>
 
@@ -414,6 +424,7 @@ export default function WaterControlPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input 
                   placeholder="Buscar unidad..." 
+                  autoComplete="off"
                   className="pl-10 h-11 bg-white rounded-xl border-slate-200"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
