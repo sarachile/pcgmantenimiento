@@ -407,9 +407,14 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="pt-4">
-                    <Button asChild className="w-full h-14 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest shadow-xl">
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <Button asChild className="flex-1 h-14 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest shadow-xl">
                       <Link href="/auth/signup">Detener pérdidas ahora</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="flex-1 h-14 rounded-[1.5rem] border-blue-600 text-blue-600 font-black uppercase tracking-widest hover:bg-blue-50">
+                      <Link href="/water-control/login" className="flex items-center justify-center gap-2">
+                        <Monitor className="h-4 w-4" /> Acceso Administradores
+                      </Link>
                     </Button>
                   </div>
                 </div>
