@@ -48,7 +48,9 @@ import {
   History,
   HelpCircle,
   Radio,
-  Gauge
+  Gauge,
+  Eye,
+  Filter
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -128,7 +130,7 @@ export default function HomePage() {
     {
       q: "¿Qué tipo de alertas y reportes recibe la administración y los copropietarios?",
       a: "Nuestra plataforma genera alertas automáticas en tiempo real para: \n\n💧 Alerta de Fuga Continua: Detección de consumos nocturnos o flujos constantes que indican una fuga interna.\n\n🚫 Alerta de Manipulación: Notificación inmediata si alguien intenta intervenir o abrir el medidor (fraude).\n\n⚠️ Estado de Batería/Señal: Aviso preventivo para mantenimiento técnico del equipo.\n\n📊 Reportes de Picos: Análisis de los momentos de mayor consumo para optimizar el riego y uso de áreas comunes.",
-      icon: BellChart
+      icon: Activity
     },
     {
       q: "¿Cómo funciona el Corte de Paso Remoto en caso de emergencia?",
@@ -139,6 +141,11 @@ export default function HomePage() {
       q: "¿Este sistema es solo para edificios o sirve para parcelaciones y condominios extendidos?",
       a: "Gracias a nuestra tecnología de radio de largo alcance, el sistema es escalable y perfecto para condominios de casas y parcelaciones. Podemos cubrir grandes distancias desde las unidades hasta el Gateway central, asegurando la trazabilidad completa del agua desde la matriz hasta cada hogar.",
       icon: Globe
+    },
+    {
+      q: "¿Qué es el sensor de turbidez y cómo previene problemas?",
+      a: "Instalamos sensores ópticos que monitorean la claridad del agua en tiempo real. Si el agua se vuelve turbia (por roturas de matriz externa o sedimentos), el sistema genera una alerta inmediata. Esto permite limpiar filtros o cerrar el paso preventivamente antes de que el agua dañe calefonts, lavadoras o grifería de los departamentos.",
+      icon: Waves
     }
   ];
 
@@ -331,7 +338,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Simulador de Fuga de WC */}
+      {/* Gestión de Activos Críticos - Agua */}
       <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-16 space-y-4">
@@ -341,77 +348,97 @@ export default function HomePage() {
               <span className="text-blue-600">Vacía tu Caja Común</span>
             </h2>
             <p className="text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
-              Una fuga silenciosa en un WC puede perder hasta **30 litros por hora**. Detenemos las pérdidas antes de que llegue la cuenta.
+              Detección inmediata de anomalías hídricas. Detenemos las pérdidas antes de que llegue la cuenta.
             </p>
           </div>
 
-          <div className="max-w-5xl mx-auto rounded-[3.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden mb-16">
-            <div className="grid lg:grid-cols-5 h-full">
-              <div className="lg:col-span-2 p-12 flex flex-col items-center justify-center bg-white/5 border-r border-white/10 relative overflow-hidden">
-                <div className="relative mb-12">
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-full h-40 pointer-events-none z-0">
-                    <div className="absolute left-[20%] animate-drop" style={{ animationDelay: '0s' }}>
-                      <Droplets className="h-4 w-4 text-blue-400/40 fill-blue-400/20" />
+          <div className="grid lg:grid-cols-3 gap-8 mb-12">
+            {/* Simulador de Fuga */}
+            <div className="lg:col-span-2 rounded-[3.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
+              <div className="grid lg:grid-cols-5 h-full">
+                <div className="lg:col-span-2 p-12 flex flex-col items-center justify-center bg-white/5 border-r border-white/10 relative overflow-hidden">
+                  <div className="relative mb-12">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-full h-40 pointer-events-none z-0">
+                      <div className="absolute left-[20%] animate-drop" style={{ animationDelay: '0s' }}>
+                        <Droplets className="h-4 w-4 text-blue-400/40 fill-blue-400/20" />
+                      </div>
+                      <div className="absolute left-[50%] animate-drop" style={{ animationDelay: '0.5s' }}>
+                        <Droplets className="h-3 w-3 text-blue-400/30 fill-blue-400/10" />
+                      </div>
+                      <div className="absolute left-[80%] animate-drop" style={{ animationDelay: '1s' }}>
+                        <Droplets className="h-5 w-5 text-blue-400/20 fill-blue-400/5" />
+                      </div>
                     </div>
-                    <div className="absolute left-[50%] animate-drop" style={{ animationDelay: '0.5s' }}>
-                      <Droplets className="h-3 w-3 text-blue-400/30 fill-blue-400/10" />
-                    </div>
-                    <div className="absolute left-[80%] animate-drop" style={{ animationDelay: '1s' }}>
-                      <Droplets className="h-5 w-5 text-blue-400/20 fill-blue-400/5" />
+
+                    <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)] relative z-10">
+                      <Droplets className="h-20 w-20 text-blue-400" />
                     </div>
                   </div>
-
-                  <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)] relative z-10">
-                    <Droplets className="h-20 w-20 text-blue-400" />
-                  </div>
-                </div>
-                <div className="space-y-3 text-center">
-                  <Badge className="bg-rose-600 text-white font-black px-4 py-1.5 uppercase tracking-widest animate-pulse border-none rounded-xl">
-                    ALERTA: FUGA SILENCIOSA WC
-                  </Badge>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Sensor Ultrasónico Depto 402</p>
-                </div>
-              </div>
-
-              <div className="lg:col-span-3 p-12 space-y-10">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-black italic uppercase text-blue-400 flex items-center gap-3">
-                    <Scale className="h-7 w-7" /> Impacto Financiero Live
-                  </h3>
-                  <div className="flex items-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-tighter">
-                    <Clock className="h-4 w-4" /> Contador en tiempo real
+                  <div className="space-y-3 text-center">
+                    <Badge className="bg-rose-600 text-white font-black px-4 py-1.5 uppercase tracking-widest animate-pulse border-none rounded-xl">
+                      ALERTA: FUGA SILENCIOSA
+                    </Badge>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Sensor Ultrasónico Depto 402</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-inner">
-                    <p className="text-[10px] font-black uppercase text-blue-400 mb-2 tracking-widest">Agua Perdida (Litros)</p>
-                    <p className="text-5xl font-black italic tracking-tighter tabular-nums text-white">
-                      {litersLost.toFixed(2)}
-                    </p>
+                <div className="lg:col-span-3 p-12 space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xl font-black italic uppercase text-blue-400 flex items-center gap-3">
+                      <Scale className="h-6 w-6" /> Impacto Live
+                    </h3>
+                    <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-tighter">
+                      <Clock className="h-4 w-4" /> Contador en tiempo real
+                    </div>
                   </div>
-                  <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-inner">
-                    <p className="text-[10px] font-black uppercase text-rose-400 mb-2 tracking-widest">Gasto Innecesario (CLP)</p>
-                    <p className="text-5xl font-black italic tracking-tighter tabular-nums text-rose-100">
-                      $ {moneyLost.toFixed(1)}
-                    </p>
-                  </div>
-                </div>
 
-                <div className="pt-6 border-t border-white/10">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <Button asChild className="flex-1 h-16 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black text-lg uppercase tracking-widest shadow-xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 shadow-inner">
+                      <p className="text-[9px] font-black uppercase text-blue-400 mb-1 tracking-widest">Agua Perdida (L)</p>
+                      <p className="text-4xl font-black italic tracking-tighter tabular-nums text-white">
+                        {litersLost.toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 shadow-inner">
+                      <p className="text-[9px] font-black uppercase text-rose-400 mb-1 tracking-widest">Gasto (CLP)</p>
+                      <p className="text-4xl font-black italic tracking-tighter tabular-nums text-rose-100">
+                        $ {moneyLost.toFixed(1)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4">
+                    <Button asChild className="w-full h-14 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest shadow-xl">
                       <Link href="/auth/signup">Detener pérdidas ahora</Link>
-                    </Button>
-                    <Button asChild variant="outline" className="flex-1 h-16 rounded-[1.5rem] border-white/20 text-white hover:bg-white/10 font-black text-lg uppercase tracking-widest">
-                      <Link href="/water-control/login" className="flex items-center justify-center gap-2">
-                        <Building2 className="h-5 w-5" /> Acceso Admins IoT
-                      </Link>
                     </Button>
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* Servicio de Turbidez */}
+            <Card className="rounded-[3.5rem] border-none shadow-xl bg-white overflow-hidden flex flex-col group">
+              <div className="p-10 bg-indigo-50 border-b-2 border-white flex flex-col items-center justify-center text-center space-y-4">
+                <div className="bg-indigo-600 p-5 rounded-3xl shadow-lg group-hover:scale-110 transition-transform">
+                  <Waves className="h-10 w-10 text-white" />
+                </div>
+                <Badge className="bg-indigo-100 text-indigo-700 font-black px-3 py-1 uppercase tracking-widest rounded-lg border-none">Calidad del Agua</Badge>
+              </div>
+              <CardContent className="p-10 flex-1 flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-black italic uppercase tracking-tighter text-indigo-950">Detección de Turbidez</h3>
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                    Monitoreo óptico de impurezas y sedimentos. Recibe alertas preventivas antes de que el agua sucia dañe calefonts, lavadoras o grifería.
+                  </p>
+                </div>
+                <div className="bg-indigo-50/50 p-4 rounded-2xl border-2 border-indigo-100 space-y-3">
+                  <div className="flex items-center gap-2 text-indigo-600 font-black text-[9px] uppercase tracking-widest">
+                    <AlertTriangle className="h-3 w-3" /> Alerta Activa: Sedimentos
+                  </div>
+                  <p className="text-[10px] text-slate-600 leading-tight">Detección de partículas tras rotura de matriz externa. Cierre preventivo recomendado.</p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -579,17 +606,6 @@ export default function HomePage() {
           </p>
         </div>
       </footer>
-    </div>
-  );
-}
-
-/** 
- * Placeholder icon for alerts list 
- */
-function BellChart({ className }: { className?: string }) {
-  return (
-    <div className={className}>
-      <Activity className="h-full w-full" />
     </div>
   );
 }
