@@ -27,7 +27,17 @@ Esta guía explica cómo conectar los medidores inteligentes de agua a la plataf
 1.  **Obtener Llave API:** En el ERP, vaya a **"Mi Empresa"** y presione **"Generar API Key"**. Copie este código.
 2.  **Configurar Destino:** En la configuración de su Antena Maestra (Panel de Control de Hardware), pegue la API Key y configure la dirección de envío:
     `https://www.pcgmantenimiento.com/api/v1/water-readings`
-3.  **Mapeo de Unidades:** El ID que aparece en la etiqueta del medidor (ej: 874455) debe coincidir con el ID registrado en el CRM dentro del edificio correspondiente.
+3.  **Formato de Datos (JSON):** La antena debe enviar un POST con el encabezado `x-api-key` y el siguiente cuerpo:
+    ```json
+    {
+      "meterId": "SERIAL_DEL_MEDIDOR",
+      "value": 125.42,
+      "batteryLevel": 95,
+      "signalStrength": 80,
+      "unitIdentifier": "Depto 402"
+    }
+    ```
+4.  **Mapeo de Unidades:** El ID que aparece en la etiqueta del medidor (ej: 874455) debe coincidir con el `meterId` enviado. El sistema enrolará automáticamente la unidad en el primer pulso.
 
 ---
 
@@ -50,7 +60,7 @@ Agrega un registro de tipo **TXT** en el host `_dmarc`:
 Para guardar tus avances y desplegar los cambios en producción, usa estos comandos:
 
 1. **Añadir cambios**: `git add .`
-2. **Confirmar**: `git commit -m "Descripción de tus mejoras"`
+2. **Confirmar**: `git commit -m "Activación de Endpoint de Ingesta IoT y Trazabilidad Hídrica"`
 3. **Subir a GitHub**: `git push origin main`
 
 ---
