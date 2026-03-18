@@ -16,7 +16,10 @@ import {
   LogOut,
   Droplets,
   Waves,
-  ArrowUpRight
+  ArrowUpRight,
+  Server,
+  KeyRound,
+  Wifi
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase";
 import { collection, query, limit, orderBy } from "firebase/firestore";
@@ -109,7 +112,6 @@ export default function SuperadminDashboardPage() {
         ))}
       </div>
 
-      {/* ACCESOS DIRECTOS DESTACADOS */}
       <div className="grid gap-8 lg:grid-cols-2">
         <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
           <CardContent className="p-0">
@@ -199,29 +201,48 @@ export default function SuperadminDashboardPage() {
             <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
               <Activity className="h-6 w-6 text-blue-400" /> Monitor de Infraestructura
             </CardTitle>
-            <CardDescription className="text-slate-400 text-[10px] font-bold uppercase">Estado de servicios críticos</CardDescription>
+            <CardDescription className="text-slate-400 text-[10px] font-bold uppercase">Estado de servicios críticos en tiempo real</CardDescription>
           </CardHeader>
-          <CardContent className="p-8 space-y-6">
-            <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+          <CardContent className="p-8 space-y-4">
+            <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Base de Datos</p>
-                <p className="text-lg font-black uppercase">Firestore Multi-Region</p>
+                <p className="text-[9px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-2">
+                  <Server className="h-3 w-3" /> Core Backend
+                </p>
+                <p className="text-sm font-black uppercase">Firestore Multi-Region</p>
               </div>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">OPERACIONAL</Badge>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">OPERACIONAL</Badge>
             </div>
-            <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+
+            <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Servidor de Correo</p>
-                <p className="text-lg font-black uppercase">SMTP Relay (Direct)</p>
+                <p className="text-[9px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                  <Globe className="h-3 w-3" /> Public API Gateway
+                </p>
+                <p className="text-sm font-black uppercase">Ingesta IoT & Telemetría</p>
               </div>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">CONECTADO</Badge>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">ONLINE (V1)</Badge>
             </div>
-            <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 flex items-center justify-between">
+
+            <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Facturación API</p>
-                <p className="text-lg font-black uppercase">SimpleAPI Gateway</p>
+                <p className="text-[9px] font-black uppercase text-amber-400 tracking-widest flex items-center gap-2">
+                  <Zap className="h-3 w-3" /> External Integrations
+                </p>
+                <p className="text-sm font-black uppercase">SimpleAPI & SMTP Relay</p>
               </div>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">ONLINE</Badge>
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">CONECTADO</Badge>
+            </div>
+
+            <div className="pt-4 border-t border-white/5">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-500">
+                  <KeyRound className="h-3 w-3" /> Auth: Bearer / API-Key
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-500">
+                  <Wifi className="h-3 w-3" /> Latency: 42ms
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
