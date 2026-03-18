@@ -19,7 +19,8 @@ import {
   ArrowUpRight,
   Server,
   KeyRound,
-  Wifi
+  Wifi,
+  Database
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase";
 import { collection, query, limit, orderBy } from "firebase/firestore";
@@ -130,7 +131,7 @@ export default function SuperadminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
+        <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden group hover:shadow-2xl transition-all">
           <CardContent className="p-0">
             <div className="grid md:grid-cols-5">
               <div className="md:col-span-2 bg-blue-600 p-8 flex flex-col justify-center items-center text-center space-y-4">
@@ -195,6 +196,7 @@ export default function SuperadminDashboardPage() {
           </CardContent>
         </Card>
 
+        {/* MONITOR DE INFRAESTRUCTURA - ASEGURAR QUE SEA VISIBLE */}
         <Card className="border-none shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden relative">
           <div className="absolute -right-10 -bottom-10 opacity-10"><Zap className="h-48 w-48 text-blue-400" /></div>
           <CardHeader className="border-b border-white/5 p-8">
@@ -207,7 +209,7 @@ export default function SuperadminDashboardPage() {
             <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
               <div className="space-y-1">
                 <p className="text-[9px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-2">
-                  <Server className="h-3 w-3" /> Core Backend
+                  <Database className="h-3 w-3" /> Core Backend
                 </p>
                 <p className="text-sm font-black uppercase">Firestore Multi-Region</p>
               </div>
