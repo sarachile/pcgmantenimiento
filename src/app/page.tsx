@@ -78,9 +78,9 @@ export default function HomePage() {
     setMounted(true);
     
     const interval = setInterval(() => {
-      setLitersLost(prev => prev + 0.01);
+      setLitersLost(prev => prev + 0.0125);
       // Costo aproximado en Chile: $1.8 por litro (Agua + Alcantarillado)
-      setMoneyLost(prev => prev + (0.01 * 1.8));
+      setMoneyLost(prev => prev + (0.0125 * 1.8));
     }, 1000);
 
     return () => clearInterval(interval);
@@ -338,112 +338,148 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Gestión de Activos Críticos - Agua */}
-      <section id="agua" className="py-24 bg-gradient-to-b from-blue-100/40 via-white to-blue-50 relative overflow-hidden border-b">
+      {/* Gestión de Activos Críticos - Agua (PROFESSIONAL VERSION) */}
+      <section id="agua" className="py-32 bg-slate-50 relative overflow-hidden border-b">
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-100/30 rounded-full blur-[120px] -z-10 translate-x-1/2 -translate-y-1/2" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-16 space-y-4">
-            <Badge className="bg-blue-600 text-white font-black px-4 py-1 uppercase tracking-widest rounded-full shadow-lg border-none">Gestión de Activos Críticos</Badge>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 uppercase italic">
-              El Silencio que <br />
-              <span className="text-blue-600">Vacía tu Caja Común</span>
+          <div className="text-center mb-24 space-y-6">
+            <Badge className="bg-blue-600 text-white font-black px-6 py-2 uppercase tracking-[0.3em] rounded-full shadow-2xl shadow-blue-900/20 border-none text-[10px]">
+              Infraestructura Hídrica Inteligente
+            </Badge>
+            <h2 className="text-5xl md:text-8xl font-black tracking-tighter text-slate-900 uppercase italic leading-[0.85]">
+              Control Total <br />
+              <span className="text-blue-600">Gota a Gota</span>
             </h2>
-            <p className="text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
-              Detección inmediata de anomalías hídricas. Detenemos las pérdidas antes de que llegue la cuenta.
+            <p className="text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
+              Tecnología ultrasónica avanzada y red de radio privada para una trazabilidad inalterable del consumo de agua en comunidades y parcelaciones.
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8 mb-12">
-            {/* Simulador de Fuga */}
-            <div className="lg:col-span-2 rounded-[3.5rem] border-none shadow-2xl bg-slate-900 text-white overflow-hidden">
-              <div className="grid lg:grid-cols-5 h-full">
-                <div className="lg:col-span-2 p-12 flex flex-col items-center justify-center bg-white/5 border-r border-white/10 relative overflow-hidden">
-                  <div className="relative mb-12">
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 w-full h-40 pointer-events-none z-0">
-                      <div className="absolute left-[20%] animate-drop" style={{ animationDelay: '0s' }}>
-                        <Droplets className="h-4 w-4 text-blue-400/40 fill-blue-400/20" />
+          <div className="grid lg:grid-cols-12 gap-8 items-stretch">
+            {/* LADO IZQUIERDO: MONITOR TÉCNICO (SIMULADOR) */}
+            <div className="lg:col-span-8 group">
+              <Card className="rounded-[3.5rem] border-none shadow-2xl bg-slate-950 text-white overflow-hidden h-full flex flex-col relative border-t border-white/10">
+                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10 pointer-events-none" />
+                
+                <div className="p-8 md:p-12 relative z-10 flex-1 flex flex-col">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-3 w-3 bg-blue-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(59,130,246,1)]" />
+                        <h3 className="text-sm font-black uppercase tracking-[0.4em] text-blue-400 italic">Core Monitor v2.1</h3>
                       </div>
-                      <div className="absolute left-[50%] animate-drop" style={{ animationDelay: '0.5s' }}>
-                        <Droplets className="h-3 w-3 text-blue-400/30 fill-blue-400/10" />
-                      </div>
-                      <div className="absolute left-[80%] animate-drop" style={{ animationDelay: '1s' }}>
-                        <Droplets className="h-5 w-5 text-blue-400/20 fill-blue-400/5" />
-                      </div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado Gateway: Transmitiendo vía LoRaWAN</p>
                     </div>
-
-                    <div className="bg-slate-800 p-8 rounded-[2.5rem] border-4 border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.3)] relative z-10">
-                      <Droplets className="h-20 w-20 text-blue-400" />
-                    </div>
-                  </div>
-                  <div className="space-y-3 text-center">
-                    <Badge className="bg-rose-600 text-white font-black px-4 py-1.5 uppercase tracking-widest animate-pulse border-none rounded-xl">
-                      ALERTA: FUGA SILENCIOSA
+                    <Badge variant="outline" className="border-rose-500/50 text-rose-500 bg-rose-500/5 px-4 py-2 font-black uppercase text-[10px] tracking-widest animate-pulse">
+                      Evento de Fuga Detectado
                     </Badge>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Sensor Ultrasónico Depto 402</p>
                   </div>
-                </div>
 
-                <div className="lg:col-span-3 p-12 space-y-8">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-black italic uppercase text-blue-400 flex items-center gap-3">
-                      <Scale className="h-6 w-6" /> Impacto Live
-                    </h3>
-                    <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-tighter">
-                      <Clock className="h-4 w-4" /> Contador en tiempo real
+                  <div className="grid md:grid-cols-2 gap-12 items-center flex-1">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-blue-600/20 blur-[80px] rounded-full animate-pulse" />
+                      <div className="bg-slate-900 p-10 rounded-[3rem] border-2 border-blue-500/30 shadow-[0_0_100px_rgba(59,130,246,0.15)] relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-50" />
+                        <Droplets className="h-24 w-24 text-blue-400 mx-auto mb-8 drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
+                        <div className="space-y-2 text-center">
+                          <p className="text-[10px] font-black uppercase text-blue-400/60 tracking-[0.3em]">Sensor Ultrasónico</p>
+                          <p className="text-2xl font-black italic text-white uppercase tracking-tighter">Depto 402-B</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-8">
+                      <div className="space-y-6">
+                        <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm group-hover:bg-white/10 transition-colors">
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="text-[10px] font-black uppercase text-blue-400 tracking-widest">Volumen Desperdiciado</p>
+                            <TrendingDown className="h-4 w-4 text-rose-500" />
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-6xl font-black italic tracking-tighter tabular-nums text-white">
+                              {litersLost.toFixed(2)}
+                            </p>
+                            <span className="text-xl font-bold text-slate-500 uppercase italic">Litros</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-rose-500/5 p-8 rounded-[2.5rem] border border-rose-500/20 backdrop-blur-sm group-hover:bg-rose-500/10 transition-colors">
+                          <div className="flex justify-between items-center mb-2">
+                            <p className="text-[10px] font-black uppercase text-rose-400 tracking-widest">Pérdida Financiera (CLP)</p>
+                            <CircleDollarSign className="h-4 w-4 text-rose-400" />
+                          </div>
+                          <div className="flex items-baseline gap-2">
+                            <p className="text-6xl font-black italic tracking-tighter tabular-nums text-rose-100">
+                              $ {moneyLost.toFixed(1)}
+                            </p>
+                            <span className="text-xl font-bold text-rose-500/50 uppercase italic">Hoy</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 shadow-inner">
-                      <p className="text-[9px] font-black uppercase text-blue-400 mb-1 tracking-widest">Agua Perdida (L)</p>
-                      <p className="text-4xl font-black italic tracking-tighter tabular-nums text-white">
-                        {litersLost.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="bg-white/5 p-6 rounded-[2rem] border border-white/10 shadow-inner">
-                      <p className="text-[9px] font-black uppercase text-rose-400 mb-1 tracking-widest">Gasto (CLP)</p>
-                      <p className="text-4xl font-black italic tracking-tighter tabular-nums text-rose-100">
-                        $ {moneyLost.toFixed(1)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-4 pt-4">
-                    <Button asChild className="w-full h-14 rounded-[1.5rem] bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest shadow-xl">
-                      <Link href="/auth/signup">Detener pérdidas ahora</Link>
+                  <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Button asChild size="lg" className="h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 text-xs transition-all hover:scale-[1.02]">
+                      <Link href="/auth/signup">Detener pérdidas ahora <ArrowRight className="ml-2 h-4 w-4" /></Link>
                     </Button>
-                    <Button asChild variant="outline" className="w-full h-14 rounded-[1.5rem] border-blue-600 text-blue-600 font-black uppercase tracking-widest hover:bg-blue-50">
-                      <Link href="/water-control/login" className="flex items-center justify-center gap-2">
-                        <Monitor className="h-4 w-4" /> Acceso Administradores
+                    <Button asChild variant="outline" size="lg" className="h-16 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-black uppercase tracking-[0.2em] text-xs">
+                      <Link href="/water-control/login" className="flex items-center justify-center gap-3">
+                        <Monitor className="h-4 w-4 text-blue-400" /> Acceso Administradores
                       </Link>
                     </Button>
                   </div>
                 </div>
-              </div>
+              </Card>
             </div>
 
-            {/* Servicio de Turbidez */}
-            <Card className="rounded-[3.5rem] border-none shadow-xl bg-white overflow-hidden flex flex-col group">
-              <div className="p-10 bg-indigo-50 border-b-2 border-white flex flex-col items-center justify-center text-center space-y-4">
-                <div className="bg-indigo-600 p-5 rounded-3xl shadow-lg group-hover:scale-110 transition-transform">
-                  <Waves className="h-10 w-10 text-white" />
-                </div>
-                <Badge className="bg-indigo-100 text-indigo-700 font-black px-3 py-1 uppercase tracking-widest rounded-lg border-none">Calidad del Agua</Badge>
-              </div>
-              <CardContent className="p-10 flex-1 flex flex-col justify-between space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-2xl font-black italic uppercase tracking-tighter text-indigo-950">Detección de Turbidez</h3>
-                  <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                    Monitoreo óptico de impurezas y sedimentos. Recibe alertas preventivas antes de que el agua sucia dañe calefonts, lavadoras o grifería.
-                  </p>
-                </div>
-                <div className="bg-indigo-50/50 p-4 rounded-2xl border-2 border-indigo-100 space-y-3">
-                  <div className="flex items-center gap-2 text-indigo-600 font-black text-[9px] uppercase tracking-widest">
-                    <AlertTriangle className="h-3 w-3" /> Alerta Activa: Sedimentos
+            {/* LADO DERECHO: SERVICIOS TÉCNICOS */}
+            <div className="lg:col-span-4 flex flex-col gap-8">
+              {/* Tarjeta Turbidez */}
+              <Card className="rounded-[3rem] border-none shadow-xl bg-white overflow-hidden flex-1 group hover:shadow-2xl transition-all border-b-8 border-indigo-600">
+                <div className="p-10 bg-indigo-50 border-b border-indigo-100 flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="bg-indigo-600 p-5 rounded-3xl shadow-xl shadow-indigo-900/20 group-hover:rotate-6 transition-transform">
+                    <Waves className="h-10 w-10 text-white" />
                   </div>
-                  <p className="text-[10px] text-slate-600 leading-tight">Detección de partículas tras rotura de matriz externa. Cierre preventivo recomendado.</p>
+                  <Badge className="bg-indigo-100 text-indigo-700 font-black px-4 py-1.5 uppercase tracking-widest rounded-full border-none text-[9px]">Protección de Red</Badge>
                 </div>
-              </CardContent>
-            </Card>
+                <CardContent className="p-10 space-y-6">
+                  <div className="space-y-3">
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter text-indigo-950">Sensor de Turbidez</h3>
+                    <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                      Monitoreo óptico de pureza. Recibe alertas preventivas antes de que sedimentos dañen calefonts, lavadoras o grifería tras roturas de matriz externa.
+                    </p>
+                  </div>
+                  <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex items-start gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" />
+                    <p className="text-[10px] text-indigo-900 font-bold uppercase tracking-tight">Preserva la vida útil de los activos del hogar.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tarjeta Tecnología */}
+              <Card className="rounded-[3rem] border-none shadow-xl bg-blue-600 text-white p-10 flex flex-col justify-center relative overflow-hidden group">
+                <div className="absolute -right-10 -bottom-10 opacity-10 group-hover:scale-110 transition-transform duration-700"><Radio className="h-48 w-48" /></div>
+                <div className="relative z-10 space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-200">Especificaciones</p>
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter leading-none">Red Privada <br/>PCG Wireless</h3>
+                  </div>
+                  <ul className="space-y-3">
+                    {[
+                      "Independiente del Wi-Fi de vecinos",
+                      "Alcance de hasta 5km (Line-of-Sight)",
+                      "Batería industrial (16 años vida útil)",
+                      "Cifrado militar AES-128"
+                    ].map((item, i) => (
+                      <li key={i} className="flex items-center gap-3 text-xs font-bold text-blue-50">
+                        <Zap className="h-3.5 w-3.5 text-white fill-white" /> {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
       </section>
