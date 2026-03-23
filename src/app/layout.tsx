@@ -45,6 +45,16 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="PCG ERP" />
       </head>
       <body className="font-body antialiased min-h-screen bg-background">
+        {/* Google Tag Manager (noscript) */}
+        <noscript>
+          <iframe 
+            src="https://www.googletagmanager.com/ns.html?id=GTM-WMS5BQ34"
+            height="0" 
+            width="0" 
+            style={{ display: 'none', visibility: 'hidden' }}
+          />
+        </noscript>
+        
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`
             (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -54,6 +64,7 @@ export default function RootLayout({
             })(window,document,'script','dataLayer','GTM-WMS5BQ34');
           `}
         </Script>
+        
         <FirebaseClientProvider>
           {children}
           <Toaster />
