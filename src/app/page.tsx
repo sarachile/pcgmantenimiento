@@ -52,6 +52,16 @@ import {
   Eye,
   Filter
 } from "lucide-react";
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  ReferenceLine
+} from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -73,6 +83,19 @@ export default function HomePage() {
   // Estados para el simulador de impacto hídrico
   const [litersLost, setLitersLost] = useState(0);
   const [moneyLost, setMoneyLost] = useState(0);
+
+  // Datos simulados para el gráfico de monitoreo live
+  const monitorData = [
+    { time: "02:00", value: 0.1 },
+    { time: "02:15", value: 0.12 },
+    { time: "02:30", value: 0.08 },
+    { time: "02:45", value: 0.15 },
+    { time: "03:00", value: 0.85 }, // Spike (Fuga)
+    { time: "03:15", value: 0.92 },
+    { time: "03:30", value: 0.88 },
+    { time: "03:45", value: 0.95 },
+    { time: "04:00", value: 0.91 },
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -366,9 +389,9 @@ export default function HomePage() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
                         <div className="h-3 w-3 bg-blue-500 rounded-full animate-pulse shadow-[0_0_15px_rgba(59,130,246,1)]" />
-                        <h3 className="text-sm font-black uppercase tracking-[0.4em] text-blue-400 italic">Core Monitor v2.1</h3>
+                        <h3 className="text-sm font-black uppercase tracking-[0.4em] text-blue-400 italic">Telemetría Live v2.1</h3>
                       </div>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Estado Gateway: Transmitiendo vía LoRaWAN</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Gateway: Conectado vía LoRaWAN • Frecuencia: 15 min</p>
                     </div>
                     <Badge variant="outline" className="border-rose-500/50 text-rose-500 bg-rose-500/5 px-4 py-2 font-black uppercase text-[10px] tracking-widest animate-pulse">
                       Evento de Fuga Detectado
@@ -376,15 +399,50 @@ export default function HomePage() {
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-12 items-center flex-1">
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-blue-600/20 blur-[80px] rounded-full animate-pulse" />
-                      <div className="bg-slate-900 p-10 rounded-[3rem] border-2 border-blue-500/30 shadow-[0_0_100px_rgba(59,130,246,0.15)] relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-50" />
-                        <Droplets className="h-24 w-24 text-blue-400 mx-auto mb-8 drop-shadow-[0_0_20px_rgba(59,130,246,0.5)]" />
-                        <div className="space-y-2 text-center">
-                          <p className="text-[10px] font-black uppercase text-blue-400/60 tracking-[0.3em]">Sensor Ultrasónico</p>
-                          <p className="text-2xl font-black italic text-white uppercase tracking-tighter">Depto 402-B</p>
-                        </div>
+                    <div className="relative h-[280px] w-full bg-slate-900 rounded-[2.5rem] border-2 border-white/10 p-6 shadow-inner">
+                      <div className="absolute top-4 left-6 flex items-center gap-2 z-20">
+                        <Activity className="h-3 w-3 text-blue-400 animate-pulse" />
+                        <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Monitoreo de Flujo (m³/h)</span>
+                      </div>
+                      
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={monitorData}>
+                          <defs>
+                            <linearGradient id="monitorGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff05" />
+                          <XAxis 
+                            dataKey="time" 
+                            fontSize={8} 
+                            axisLine={false} 
+                            tickLine={false} 
+                            stroke="#475569" 
+                            fontWeight="bold"
+                          />
+                          <YAxis hide domain={[0, 1.2]} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '10px' }}
+                            itemStyle={{ color: '#3b82f6', fontWeight: '900' }}
+                          />
+                          <Area 
+                            type="monotone" 
+                            dataKey="value" 
+                            stroke="#3b82f6" 
+                            strokeWidth={3} 
+                            fillOpacity={1} 
+                            fill="url(#monitorGradient)" 
+                            animationDuration={2000}
+                          />
+                          <ReferenceLine y={0.8} stroke="#ef4444" strokeDasharray="3 3" label={{ position: 'right', value: 'ALERTA', fill: '#ef4444', fontSize: 8, fontWeight: '900' }} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+
+                      <div className="absolute bottom-4 right-6 flex items-center gap-2">
+                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                        <span className="text-[8px] font-black text-slate-500 uppercase">Streaming Activo</span>
                       </div>
                     </div>
 
