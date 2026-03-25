@@ -54,7 +54,12 @@ import {
   Check,
   Coins,
   ShieldAlert,
-  SearchCode
+  SearchCode,
+  GraduationCap,
+  School,
+  HandCoins,
+  Microscope,
+  Leaf
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -133,13 +138,6 @@ export default function HomePage() {
     { title: "Facility Management", icon: Building2, color: "text-indigo-600", bg: "bg-indigo-50" },
     { title: "Mantención de Flota", icon: Truck, color: "text-purple-600", bg: "bg-purple-50" },
     { title: "Control de Plagas", icon: Bug, color: "text-red-600", bg: "bg-red-50" },
-  ];
-
-  const workflow = [
-    { title: "Generación de OT", desc: "Define el alcance y asigna técnicos desde la oficina o móvil.", icon: FileText },
-    { title: "Ejecución Terreno", desc: "Checklists con fotos GPS obligatorias para trazabilidad total.", icon: HardHat },
-    { title: "Firma Digital", desc: "El cliente aprueba el servicio mediante QR en el acto.", icon: Fingerprint },
-    { title: "Cierre y Factura", desc: "Generación automática de reporte PDF y emisión de DTE.", icon: Receipt },
   ];
 
   const genkoFeatures = [
@@ -240,7 +238,8 @@ export default function HomePage() {
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
               <a href="#plataforma" className="hover:text-primary transition-colors">La Plataforma</a>
-              <a href="#agua" className="hover:text-primary transition-colors">Gestión Agua</a>
+              <a href="#agua-comunidades" className="hover:text-primary transition-colors">Comunidades</a>
+              <a href="#agua-colegios" className="hover:text-primary transition-colors">Colegios</a>
               {isAuthenticated ? (
                 <Button asChild className="rounded-full">
                   <Link href="/dashboard" className="gap-2">
@@ -268,7 +267,8 @@ export default function HomePage() {
         {isMenuOpen && (
           <div className="md:hidden bg-white border-b p-4 space-y-4 animate-in slide-in-from-top-2">
             <a href="#plataforma" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>La Plataforma</a>
-            <a href="#agua" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Gestión Agua</a>
+            <a href="#agua-comunidades" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Comunidades</a>
+            <a href="#agua-colegios" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Colegios</a>
             <hr />
             {isAuthenticated ? (
               <Button asChild className="w-full rounded-xl"><Link href="/dashboard">Panel de Control</Link></Button>
@@ -325,7 +325,7 @@ export default function HomePage() {
 
           <div className="flex items-center justify-center gap-4 flex-wrap">
             <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl"><Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link></Button>
-            <Button asChild variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2"><Link href="#agua">Ver soluciones por rubro</Link></Button>
+            <Button asChild variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2"><Link href="#agua-comunidades">Ver soluciones hídricas</Link></Button>
           </div>
         </div>
       </section>
@@ -348,17 +348,17 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Gestión Agua IoT - SECCIÓN REFORZADA PCG GENKO */}
-      <section id="agua" className="py-32 bg-slate-50 relative overflow-hidden border-b">
+      {/* PCG GENKO - EDIFICIOS Y CONDOMINIOS */}
+      <section id="agua-comunidades" className="py-32 bg-slate-50 relative overflow-hidden border-b">
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-100/30 rounded-full blur-[120px] -z-10 translate-x-1/2 -translate-y-1/2" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-24 space-y-6">
             <Badge className="bg-blue-600 text-white font-black px-6 py-2 uppercase tracking-[0.3em] rounded-full shadow-2xl shadow-blue-900/20 border-none text-[10px]">
-              PCG GENKO: Inteligencia Hídrica
+              EDIFICIOS Y CONDOMINIOS
             </Badge>
             <h2 className="text-5xl md:text-8xl font-black tracking-tighter text-slate-900 uppercase italic leading-[0.85]">
-              Control Total <br />
-              <span className="text-blue-600">Gota a Gota</span>
+              Inteligencia Hídrica <br />
+              <span className="text-blue-600">PCG GENKO</span>
             </h2>
             <p className="text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">
               Un sistema autónomo que cuida el presupuesto de su comunidad por usted. Tecnología ultrasónica y NB-IoT para una gestión infalible.
@@ -411,9 +411,9 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Button asChild size="lg" className="h-16 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 text-xs transition-all hover:scale-[1.02]"><Link href="/auth/signup">Detener pérdidas ahora <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-                    <Button asChild variant="outline" size="lg" className="h-16 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-black uppercase tracking-[0.2em] text-xs"><Link href="/water-control/login" className="flex items-center justify-center gap-3"><Monitor className="h-4 w-4 text-blue-400" /> Acceso Administradores</Link></Button>
+                  <div className="mt-12 flex flex-col sm:flex-row gap-4">
+                    <Button asChild size="lg" className="h-16 flex-1 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 text-xs"><Link href="/auth/signup">Detener pérdidas ahora <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
+                    <Button asChild variant="outline" size="lg" className="h-16 flex-1 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-black uppercase tracking-[0.2em] text-xs"><Link href="/water-control/login" className="flex items-center justify-center gap-3"><Monitor className="h-4 w-4 text-blue-400" /> Acceso Administradores</Link></Button>
                   </div>
                 </div>
               </Card>
@@ -428,7 +428,7 @@ export default function HomePage() {
                 </div>
                 <CardContent className="p-10 space-y-6">
                   <h3 className="text-2xl font-black italic uppercase tracking-tighter text-indigo-950">Sensor de Turbidez</h3>
-                  <p className="text-sm text-slate-500 font-medium leading-relaxed">Monitoreo óptico de pureza. Alertas preventivas antes de que sedimentos dañen calefonts o lavadoras tras roturas de matriz.</p>
+                  <p className="text-sm text-slate-500 font-medium leading-relaxed">Monitoreo óptico de pureza. Alertas preventivas antes de que sedimentos dañen calefonts o lavadoras tras roturas de matriz externa.</p>
                   <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex items-start gap-3"><CheckCircle2 className="h-5 w-5 text-indigo-600 shrink-0 mt-0.5" /><p className="text-[10px] text-indigo-900 font-bold uppercase tracking-tight">Preserva la vida útil de los activos del hogar.</p></div>
                 </CardContent>
               </Card>
@@ -439,7 +439,7 @@ export default function HomePage() {
                 <div className="relative z-10 space-y-4">
                   <Badge className="bg-amber-500 text-slate-900 font-black uppercase text-[10px] tracking-widest px-4 py-1">Concepto Ganador</Badge>
                   <h3 className="text-3xl font-black italic uppercase tracking-tighter leading-none">¡AHORRO DOBLE!</h3>
-                  <p className="text-slate-400 text-sm leading-relaxed">¿Sabía que las sanitarias cobran el alcantarillado basado en lo que marca su medidor? Con <strong>PCG GENKO</strong>, ahorra dinero dos veces: en el consumo y en la tarifa de descarga.</p>
+                  <p className="text-slate-400 text-sm leading-relaxed">¿Sabía que las sanitarias cobran el alcantarillado basado en lo que marca su medidor? Con <strong>PCG GENKO</strong>, ahorra dinero dos veces.</p>
                 </div>
               </Card>
             </div>
@@ -461,6 +461,107 @@ export default function HomePage() {
                   <p className="text-sm text-slate-500 leading-relaxed font-medium">{feature.desc}</p>
                 </Card>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* PCG EDUCACIÓN - COLEGIOS */}
+      <section id="agua-colegios" className="py-32 bg-slate-950 text-white relative overflow-hidden border-b border-white/5">
+        <div className="absolute bottom-0 left-0 w-[1000px] h-[1000px] bg-emerald-900/20 rounded-full blur-[150px] -z-10 -translate-x-1/2 translate-y-1/2" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-10">
+              <div className="space-y-6">
+                <Badge className="bg-emerald-500 text-white font-black px-6 py-2 uppercase tracking-[0.3em] rounded-full border-none text-[10px]">
+                  ESTABLECIMIENTOS EDUCACIONALES
+                </Badge>
+                <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase italic leading-[0.9]">
+                  Digitalice su Colegio a <br />
+                  <span className="text-emerald-400">"Costo Cero"</span>
+                </h2>
+                <p className="text-xl text-slate-400 font-medium leading-relaxed">
+                  Transformamos la sostenibilidad en una prioridad operativa y financiera. Un modelo donde el riesgo es cero y la eficiencia es pedagógica.
+                </p>
+              </div>
+
+              <Card className="rounded-[2.5rem] border-none bg-emerald-500/10 border-2 border-emerald-500/20 p-8 shadow-2xl">
+                <div className="flex items-start gap-6">
+                  <div className="bg-emerald-500 p-4 rounded-3xl shadow-xl shadow-emerald-900/40"><HandCoins className="h-10 w-10 text-white" /></div>
+                  <div className="space-y-2">
+                    <h3 className="text-2xl font-black italic uppercase tracking-tighter text-emerald-400">Modelo de Ahorro Compartido</h3>
+                    <p className="text-slate-300 text-sm leading-relaxed">
+                      Nuestra retribución es un porcentaje del ahorro real generado en su factura. <strong>Si su colegio no ahorra, nosotros no cobramos.</strong> El sistema se paga solo con el dinero que hoy pierde por fugas.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {[
+                  { title: "Laboratorio Vivo", desc: "Muestre a sus alumnos el impacto del ahorro hídrico colectivo en tiempo real.", icon: Microscope, color: "text-blue-400" },
+                  { title: "IA para la Dirección", desc: "Resúmenes ejecutivos GenAI listos para consejos directivos.", icon: Sparkles, color: "text-amber-400" },
+                  { title: "Optimización de Costos", desc: "Libere presupuesto desperdiciado para otros proyectos escolares.", icon: CircleDollarSign, color: "text-emerald-400" },
+                  { title: "Reputación ESG", icon: Leaf, desc: "Evidencia real para acreditaciones de excelencia ambiental.", color: "text-emerald-500" }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                    <item.icon className={cn("h-6 w-6 shrink-0", item.color)} />
+                    <div>
+                      <p className="font-black uppercase italic tracking-tighter text-xs text-white">{item.title}</p>
+                      <p className="text-[10px] text-slate-400 font-medium leading-tight mt-1">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative">
+              <Card className="rounded-[3.5rem] border-none shadow-2xl bg-white text-slate-900 overflow-hidden relative border-t-8 border-emerald-500">
+                <CardHeader className="p-10 border-b bg-slate-50">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-xl font-black uppercase italic tracking-tighter">Campus Inteligente</CardTitle>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Protocolos de Infraestructura Escolar</p>
+                    </div>
+                    <GraduationCap className="h-8 w-8 text-emerald-600" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-10 space-y-8">
+                  <div className="space-y-4">
+                    {[
+                      { label: "Área: Pabellón Central", status: "Protegido", value: "0.0 L/min" },
+                      { label: "Área: Gimnasio & Duchas", status: "Anomalía detectada", value: "4.2 L/min", alert: true },
+                      { label: "Área: Jardines Matriz", status: "Riego Programado", value: "12.5 L/min" }
+                    ].map((row, i) => (
+                      <div key={i} className={cn("p-5 rounded-[1.5rem] border-2 flex items-center justify-between", row.alert ? "bg-rose-50 border-rose-200" : "bg-slate-50 border-slate-100")}>
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase text-slate-400">{row.label}</p>
+                          <p className={cn("text-xs font-bold", row.alert ? "text-rose-600" : "text-slate-700")}>{row.status}</p>
+                        </div>
+                        <p className="text-xl font-black italic">{row.value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-4 relative overflow-hidden">
+                    <div className="absolute right-0 top-0 p-4 opacity-10"><Zap className="h-20 w-20 text-emerald-400" /></div>
+                    <p className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.3em]">IA: Diagnóstico Ejecutivo</p>
+                    <p className="text-sm font-medium italic leading-relaxed text-slate-300">
+                      "Se detecta flujo continuo en duchas secundarias tras cierre de jornada. Potencial fuga en llave de paso o desperfecto estructural. Acción sugerida: Cierre preventivo remoto."
+                    </p>
+                    <Button className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-black uppercase text-[10px] gap-2">
+                      Ejecutar Acción Remota <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">¿Desea una evaluación técnica gratuita?</p>
+                    <Button asChild className="h-16 rounded-2xl bg-slate-900 text-white font-black uppercase text-xs tracking-widest shadow-xl">
+                      <Link href={WHATSAPP_URL} target="_blank">Agenda Auditoría Escolar <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
