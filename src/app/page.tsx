@@ -34,6 +34,7 @@ import {
   Scale,
   Users,
   ChevronDown,
+  ChevronRight,
   MessageCircle,
   MessageSquare,
   Clock,
