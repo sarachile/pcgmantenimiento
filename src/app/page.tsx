@@ -121,7 +121,6 @@ export default function HomePage() {
 
   const applications = [
     { title: "Mantención Industrial", icon: Wrench, color: "text-blue-600", bg: "bg-blue-50" },
-    { title: "Energía Solar / PV", icon: Sun, color: "text-amber-600", bg: "bg-amber-50" },
     { title: "Ascensores y Elevación", icon: Layers, color: "text-slate-600", bg: "bg-slate-50" },
     { title: "Climatización (HVAC)", icon: Wind, color: "text-cyan-600", bg: "bg-cyan-50" },
     { title: "Construcción y Obras", icon: Construction, color: "text-orange-600", bg: "bg-orange-50" },
@@ -152,7 +151,7 @@ export default function HomePage() {
     },
     {
       q: "¿Qué tipo de alertas y reportes recibe la administración y los copropietarios?",
-      a: "Nuestra plataforma genera alertas automáticas en tiempo real para: \n\n💧 Alerta de Fuga Continua: Detección de consumos nocturnos o flujos constantes que indican una fuga interna.\n\n🚫 Alerta de Manipulación: Notificación inmediata si alguien intenta intervenir o abrir el medidor (fraude).\n\n⚠️ Estado de Batería/Señal: Aviso preventivo para mantenimiento técnico del equipo.\n\n📊 Reportes de Picos: Análisis de los momentos de mayor consumo para optimizar el riego y uso de áreas comunes.",
+      a: "Our platform generates automatic alerts in real time for: \n\n💧 Continuous Leak Alert: Detection of night-time consumption or constant flows indicating an internal leak.\n\n🚫 Tamper Alert: Immediate notification if someone attempts to interfere with or open the meter (fraud).\n\n⚠️ Battery/Signal Status: Preventive warning for technical maintenance of the equipment.\n\n📊 Peak Reports: Analysis of consumption peaks to optimize irrigation and use of common areas.",
       icon: Activity
     },
     {
@@ -199,7 +198,6 @@ export default function HomePage() {
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
               <a href="#plataforma" className="hover:text-primary transition-colors">La Plataforma</a>
               <a href="#agua" className="hover:text-primary transition-colors">Gestión Agua</a>
-              <a href="#solar" className="hover:text-primary transition-colors">Energía Solar</a>
               {isAuthenticated ? (
                 <Button asChild className="rounded-full">
                   <Link href="/dashboard" className="gap-2">
@@ -228,7 +226,6 @@ export default function HomePage() {
           <div className="md:hidden bg-white border-b p-4 space-y-4 animate-in slide-in-from-top-2">
             <a href="#plataforma" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>La Plataforma</a>
             <a href="#agua" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Gestión Agua</a>
-            <a href="#solar" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Energía Solar</a>
             <hr />
             {isAuthenticated ? (
               <Button asChild className="w-full rounded-xl"><Link href="/dashboard">Panel de Control</Link></Button>
@@ -537,75 +534,6 @@ export default function HomePage() {
                   </ul>
                 </div>
               </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Energía Solar Section */}
-      <section id="solar" className="py-24 bg-slate-900 text-white border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-20 items-center">
-            <div className="space-y-8">
-              <Badge className="bg-amber-500 text-slate-900 font-black uppercase px-4 py-1">Energía del Futuro</Badge>
-              <h2 className="text-5xl md:text-6xl font-black tracking-tighter uppercase italic leading-[0.9]">
-                Monitoreo Solar <br />
-                <span className="text-amber-500">Sin Puntos Ciegos</span>
-              </h2>
-              <p className="text-xl text-slate-400 leading-relaxed font-medium">
-                Sincroniza tus plantas fotovoltaicas. Recibe alertas de bajo rendimiento (kW) y programa mantenciones preventivas antes de que afecten la rentabilidad de tus clientes.
-              </p>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {[
-                  { label: "Lectura Live", desc: "Integración API con inversores", icon: Zap },
-                  { label: "Alarmas", desc: "Notificaciones por caída de red", icon: AlertTriangle },
-                  { label: "KPIs", desc: "Eficiencia de generación diaria", icon: BarChart3 },
-                  { label: "Histórico", desc: "Reportes de rendimiento mensual", icon: History },
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
-                    <div className="p-3 bg-amber-500/20 text-amber-500 rounded-xl h-fit">
-                      <item.icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="font-black text-sm uppercase tracking-tight">{item.label}</p>
-                      <p className="text-xs text-slate-500">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="relative">
-              <div className="absolute inset-0 bg-amber-500/20 blur-[120px] rounded-full" />
-              <div className="relative bg-slate-800 border-4 border-slate-700 rounded-[3rem] p-10 shadow-2xl overflow-hidden">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="h-3 w-3 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Planta El Quisco - Online</span>
-                  </div>
-                  <Cpu className="text-amber-500 h-6 w-6" />
-                </div>
-                <div className="space-y-6">
-                  <div className="bg-slate-900 p-8 rounded-[2rem] border border-white/10">
-                    <p className="text-[10px] font-black uppercase text-amber-500 mb-2">Potencia Instantánea</p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-6xl font-black italic tracking-tighter">125.4</span>
-                      <span className="text-2xl font-bold text-slate-500 uppercase">kW</span>
-                    </div>
-                  </div>
-                  <div className="h-32 flex items-end gap-2 px-2">
-                    {[40, 60, 45, 90, 100, 85, 70, 95, 110, 125].map((h, i) => (
-                      <div key={i} className="flex-1 bg-amber-500/20 rounded-t-lg relative group">
-                        <div 
-                          className="absolute bottom-0 left-0 right-0 bg-amber-500 rounded-t-lg transition-all duration-1000" 
-                          style={{ height: `${h}%` }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
