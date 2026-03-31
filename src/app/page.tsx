@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from "react";
@@ -243,11 +242,6 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-3">
-              <img 
-                src="/logogenko.png" 
-                alt="GENKO" 
-                className="h-10 w-auto object-contain mix-blend-multiply" 
-              />
               <span className="font-black text-xl tracking-tighter text-slate-900 uppercase italic">GENKO</span>
             </div>
             
@@ -381,7 +375,7 @@ export default function HomePage() {
                 <div className="bg-blue-500/20 p-3 rounded-2xl w-fit mb-4 text-blue-400 group-hover:scale-110 transition-transform">
                   <item.icon className="h-6 w-6" />
                 </div>
-                <h3 className="text-white font-black uppercase italic tracking-tight text-lg mb-1">{item.title}</h3>
+                {item.title && <h3 className="text-white font-black uppercase italic tracking-tight text-lg mb-1">{item.title}</h3>}
                 <p className="text-slate-300 text-xs font-bold uppercase tracking-widest">{item.desc}</p>
               </div>
             ))}
