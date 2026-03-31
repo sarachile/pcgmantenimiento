@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -66,9 +67,12 @@ export default function LoginPage() {
         
         <Card className="w-full border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className="space-y-1 flex flex-col items-center p-10 bg-slate-900 text-white">
-            <div className="p-4 rounded-3xl mb-4 backdrop-blur-md bg-transparent border border-white/10">
-              <img src="/logogenko.png" alt="GENKO" className="h-16 w-auto object-contain" onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=GENKO")} />
-            </div>
+            <img 
+              src="/logogenko.png" 
+              alt="GENKO" 
+              className="h-16 w-auto object-contain mb-4" 
+              onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=GENKO")} 
+            />
             <CardTitle className="text-3xl font-black tracking-tighter uppercase italic leading-none">GENKO ERP</CardTitle>
             <CardDescription className="text-slate-400 font-bold uppercase tracking-widest pt-2">Gestión Hídrica Industrial</CardDescription>
           </CardHeader>

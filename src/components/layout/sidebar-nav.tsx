@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -130,7 +131,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
     <Sidebar className="border-r border-border/50 bg-slate-950 text-slate-300">
       <SidebarHeader className="p-6">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 relative overflow-hidden rounded-xl bg-transparent flex items-center justify-center shrink-0">
+          <div className="h-10 w-10 relative overflow-hidden flex items-center justify-center shrink-0">
             {company?.logoUrl ? (
               <FirebaseImage 
                 url={company.logoUrl} 
@@ -138,7 +139,12 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
                 className="h-full w-full"
               />
             ) : (
-              <img src="/logogenko.png" alt="GENKO" className="h-8 w-auto object-contain" onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=GENKO")} />
+              <img 
+                src="/logogenko.png" 
+                alt="GENKO" 
+                className="h-8 w-auto object-contain" 
+                onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=GENKO")} 
+              />
             )}
           </div>
           <div className="flex flex-col min-w-0">
