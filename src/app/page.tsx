@@ -201,6 +201,15 @@ export default function HomePage() {
     }
   ];
 
+  const menuItems = [
+    { label: "HOME", href: "/" },
+    { label: "¿QUÉ ES GENKO?", href: "#agua-comunidades" },
+    { label: "COMUNIDADES", href: "#agua-comunidades" },
+    { label: "COLEGIOS", href: "#agua-colegios" },
+    { label: "PREGUNTAS", href: "#faq" },
+    { label: "CONTACTO", href: WHATSAPP_URL, external: true },
+  ];
+
   if (!mounted) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -228,6 +237,7 @@ export default function HomePage() {
         </a>
       </div>
 
+      {/* NEW NAVBAR */}
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
@@ -236,51 +246,85 @@ export default function HomePage() {
               <span className="font-black text-xl tracking-tighter text-slate-900 uppercase italic">GENKO</span>
             </div>
             
-            <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
-              <a href="#agua-comunidades" className="hover:text-primary transition-colors">Comunidades</a>
-              <a href="#agua-colegios" className="hover:text-primary transition-colors">Colegios</a>
-              <a href="#faq" className="hover:text-primary transition-colors">Preguntas</a>
-              {isAuthenticated ? (
-                <Button asChild className="rounded-full">
-                  <Link href="/dashboard" className="gap-2">
-                    Panel Control <LayoutDashboard className="h-4 w-4" />
-                  </Link>
-                </Button>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <Link href="/auth/login" className="hover:text-primary transition-colors">Ingresar</Link>
-                  <Button asChild className="rounded-full px-6 shadow-lg shadow-primary/20">
-                    <Link href="/auth/signup">Activar Custodia</Link>
-                  </Button>
-                </div>
+            <div className="flex items-center gap-6">
+              {!isMenuOpen && (
+                <button 
+                  onClick={() => setIsMenuOpen(true)}
+                  className="text-emerald-400 font-black uppercase tracking-[0.2em] text-sm hover:text-emerald-500 transition-colors"
+                >
+                  MENÚ
+                </button>
               )}
-            </div>
-
-            <div className="md:hidden">
-              <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                {isMenuOpen ? <X /> : <Menu />}
-              </button>
+              {isAuthenticated && !isMenuOpen && (
+                <Button asChild className="rounded-full h-10 px-6">
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden bg-white border-b p-4 space-y-4 animate-in slide-in-from-top-2">
-            <a href="#agua-comunidades" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Comunidades</a>
-            <a href="#agua-colegios" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Colegios</a>
-            <a href="#faq" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Preguntas</a>
-            <hr />
-            {isAuthenticated ? (
-              <Button asChild className="w-full rounded-xl"><Link href="/dashboard">Panel de Control</Link></Button>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <Button asChild variant="outline" className="rounded-xl"><Link href="/auth/login">Ingresar</Link></Button>
-                <Button asChild className="rounded-xl"><Link href="/auth/signup">Empezar</Link></Button>
-              </div>
-            )}
-          </div>
-        )}
       </nav>
+
+      {/* BIG PINK OVERLAY MENU */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="absolute top-0 right-0 w-full sm:w-[450px] h-full bg-[#ec2d7b] shadow-2xl animate-in slide-in-from-right duration-500 flex flex-col p-10">
+            <div className="flex justify-end mb-12">
+              <button 
+                onClick={() => setIsMenuOpen(false)}
+                className="text-white hover:rotate-90 transition-transform p-2"
+              >
+                <X className="h-10 w-10" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-8 flex-1 justify-center">
+              {menuItems.map((item) => (
+                item.external ? (
+                  <a 
+                    key={item.label}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white text-4xl sm:text-5xl font-black italic tracking-tighter hover:translate-x-4 transition-transform leading-none"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link 
+                    key={item.label}
+                    href={item.href}
+                    className="text-white text-4xl sm:text-5xl font-black italic tracking-tighter hover:translate-x-4 transition-transform leading-none"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              ))}
+            </div>
+
+            <div className="mt-auto pt-10 border-t border-white/20">
+              <div className="flex flex-col gap-4">
+                {isAuthenticated ? (
+                  <Button asChild variant="outline" className="w-full h-14 rounded-2xl border-white text-white bg-transparent hover:bg-white hover:text-[#ec2d7b] font-black uppercase">
+                    <Link href="/dashboard">Ir al Dashboard</Link>
+                  </Button>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <Button asChild variant="outline" className="h-14 rounded-2xl border-white text-white bg-transparent hover:bg-white hover:text-[#ec2d7b] font-black uppercase">
+                      <Link href="/auth/login">Entrar</Link>
+                    </Button>
+                    <Button asChild className="h-14 rounded-2xl bg-white text-[#ec2d7b] hover:bg-slate-100 font-black uppercase">
+                      <Link href="/auth/signup">Registro</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* HERO SECTION CON VIDEO */}
       <section className="relative h-[100vh] min-h-[700px] flex items-center justify-center overflow-hidden">
