@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from "react";
@@ -135,31 +134,9 @@ export default function HomePage() {
     { title: "Colegios", icon: School, color: "text-emerald-600", bg: "bg-emerald-50" },
     { title: "Condominios", icon: LayoutDashboard, color: "text-indigo-600", bg: "bg-indigo-50" },
     { title: "Parcelaciones", icon: Globe, color: "text-cyan-600", bg: "bg-cyan-50" },
-    { title: "Industria", icon: Factory, color: "text-slate-600", bg: "bg-slate-50" },
+    { title: "Industria", icon: Building2, color: "text-slate-600", bg: "bg-slate-50" },
     { title: "Hotelería", icon: Waves, color: "text-blue-400", bg: "bg-blue-50" },
   ];
-
-  function Factory(props: any) {
-    return (
-      <svg
-        {...props}
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M2 20V9l9-2 10 2v10" />
-        <path d="M9 20V9" />
-        <path d="M17 20V9" />
-        <rect x="2" y="20" width="20" height="4" />
-      </svg>
-    )
-  }
 
   const genkoFeatures = [
     {
@@ -303,11 +280,11 @@ export default function HomePage() {
         )}
       </nav>
 
-      {/* NEW HERO SECTION WITH VIDEO BACKGROUND */}
+      {/* HERO SECTION CON VIDEO HD */}
       <section className="relative h-[100vh] min-h-[700px] flex items-center justify-center overflow-hidden">
         {/* VIDEO BACKGROUND */}
         <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-slate-900/60 z-10" /> {/* Dark overlay */}
+          <div className="absolute inset-0 bg-slate-900/60 z-10" />
           <video 
             autoPlay 
             muted 
@@ -316,7 +293,7 @@ export default function HomePage() {
             className="w-full h-full object-cover"
           >
             <source src="https://cdn.pixabay.com/vimeo/453141257/water-48111.mp4?width=1280&hash=bc8ed6be6da6ee6f0f6f6efbc0f0f6f6efbc0f0f" type="video/mp4" />
-            Your browser does not support the video tag.
+            Su navegador no soporta el tag de video.
           </video>
         </div>
 
@@ -355,7 +332,7 @@ export default function HomePage() {
 
           <div className="flex items-center justify-center gap-4 flex-wrap pt-6 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-500">
             <Button asChild size="lg" className="h-16 px-12 rounded-full text-lg font-black shadow-2xl bg-blue-600 hover:bg-blue-500 border-none">
-              <Link href="/auth/signup">Activar Custodia Digital <ArrowRight className="ml-2 h-5 w-5" /></Link>
+              <Link href="/auth/signup">Activar Custodia Digital <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="h-16 px-12 rounded-full text-lg font-bold border-2 border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
               <Link href="#agua-comunidades">Explorar GENKO</Link>
