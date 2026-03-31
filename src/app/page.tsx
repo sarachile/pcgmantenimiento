@@ -99,9 +99,10 @@ export default function HomePage() {
     }, 1000);
 
     // Forzar reproducción del video si el navegador lo bloquea inicialmente
+    // El archivo se busca en /hero-video.mp4 (raíz de public)
     if (videoRef.current) {
       videoRef.current.play().catch(error => {
-        console.warn("Autoplay de video bloqueado por el navegador:", error);
+        console.warn("Autoplay de video bloqueado o archivo no encontrado:", error);
       });
     }
 
