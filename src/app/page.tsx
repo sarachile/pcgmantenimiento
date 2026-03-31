@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useUser } from "@/firebase";
 import { 
@@ -70,6 +70,7 @@ export default function HomePage() {
   const { isAuthenticated } = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Estados para el simulador de impacto hídrico
   const [litersLost, setLitersLost] = useState(0);
@@ -91,11 +92,18 @@ export default function HomePage() {
   useEffect(() => {
     setMounted(true);
     
+    // Iniciar contadores de pérdida simulada
     const interval = setInterval(() => {
       setLitersLost(prev => prev + 0.0125);
-      // Costo aproximado en Chile: $1.8 por litro (Agua + Alcantarillado)
       setMoneyLost(prev => prev + (0.0125 * 1.8));
     }, 1000);
+
+    // Forzar reproducción del video si el navegador lo bloquea inicialmente
+    if (videoRef.current) {
+      videoRef.current.play().catch(error => {
+        console.warn("Autoplay de video bloqueado por el navegador:", error);
+      });
+    }
 
     return () => clearInterval(interval);
   }, []);
@@ -267,16 +275,16 @@ export default function HomePage() {
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-slate-900/60 z-10" />
           <video 
+            ref={videoRef}
             autoPlay 
             muted 
             loop 
             playsInline 
             preload="auto"
+            poster="/imagen3.png"
             className="w-full h-full object-cover"
           >
             <source src="/hero-video.mp4" type="video/mp4" />
-            {/* Fallback si el video no carga */}
-            <img src="/imagen3.png" alt="Fallback Background" className="w-full h-full object-cover" />
           </video>
         </div>
 
@@ -496,7 +504,7 @@ export default function HomePage() {
                   <div className="space-y-2">
                     <h3 className="text-2xl font-black italic uppercase tracking-tighter text-emerald-400">Modelo de Ahorro Compartido</h3>
                     <p className="text-slate-300 text-sm leading-relaxed">
-                      Nuestra retribución es un porcentaje del ahorro real generado en su factura. <strong>Si su colegio no ahorra, nosotros no cobramos.</strong> El sistema se paga solo con el dinero que hoy se pierde por fugas.
+                      Nuestra retribución es un porcentaje del ahorro real generado en su factura. <strong>Si su colegio no ahorra, nosotros no cobramos.</strong> El sistema se paga solo con el dinero que hoy se pierde por fugas o ineficiencias.
                     </p>
                   </div>
                 </div>
