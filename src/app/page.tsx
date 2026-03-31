@@ -99,19 +99,21 @@ export default function HomePage() {
       setMoneyLost(prev => prev + (0.0125 * 1.8));
     }, 1000);
 
-    // Intentar reproducir el video cuando el componente esté listo
     const playVideo = async () => {
       if (videoRef.current) {
         try {
-          videoRef.current.muted = true;
+          // FORZAR el mute a nivel de propiedad de DOM para bypass de políticas
+          videoRef.current.muted = true; 
+          videoRef.current.defaultMuted = true;
           await videoRef.current.play();
         } catch (error) {
-          console.warn("Autoplay falló, reintentando...", error);
+          console.warn("Autoplay bloqueado por el navegador, reintentando...", error);
         }
       }
     };
 
-    const timer = setTimeout(playVideo, 100);
+    // Un pequeño delay ayuda a que el DOM esté listo en Next.js
+    const timer = setTimeout(playVideo, 150);
 
     return () => {
       clearInterval(interval);
@@ -297,8 +299,9 @@ export default function HomePage() {
               disablePictureInPicture
               poster="/imagen3.png"
               className="w-full h-full object-cover"
-              src="/hero-video.mp4"
-            />
+            >
+              <source src="/hero-video.mp4" type="video/mp4" />
+            </video>
           )}
         </div>
 
