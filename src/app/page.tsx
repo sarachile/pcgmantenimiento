@@ -98,26 +98,25 @@ export default function HomePage() {
       setMoneyLost(prev => prev + (0.0125 * 1.8));
     }, 1000);
 
-    // Forzar reproducción del video si el navegador lo bloquea inicialmente
-    // El archivo se busca en /hero-video.mp4 (raíz de public)
-    if (videoRef.current) {
-      videoRef.current.play().catch(error => {
-        console.warn("Autoplay de video bloqueado o archivo no encontrado:", error);
-      });
-    }
+    // Intentar reproducir el video cuando el componente esté listo
+    const playVideo = async () => {
+      if (videoRef.current) {
+        try {
+          videoRef.current.muted = true;
+          await videoRef.current.play();
+        } catch (error) {
+          console.warn("Autoplay falló, reintentando...", error);
+        }
+      }
+    };
 
-    return () => clearInterval(interval);
+    const timer = setTimeout(playVideo, 100);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timer);
+    };
   }, []);
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="animate-pulse">
-          <p className="text-sm font-black uppercase tracking-widest text-slate-400">GENKO</p>
-        </div>
-      </div>
-    );
-  }
 
   const applications = [
     { title: "Comunidades", icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
@@ -200,6 +199,16 @@ export default function HomePage() {
     }
   ];
 
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="animate-pulse">
+          <p className="text-sm font-black uppercase tracking-widest text-slate-400">GENKO</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
       {/* WhatsApp Floating Button */}
@@ -275,18 +284,19 @@ export default function HomePage() {
         {/* VIDEO BACKGROUND */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-slate-900/60 z-10" />
-          <video 
-            ref={videoRef}
-            autoPlay 
-            muted 
-            loop 
-            playsInline 
-            preload="auto"
-            poster="/imagen3.png"
-            className="w-full h-full object-cover"
-          >
-            <source src="/hero-video.mp4" type="video/mp4" />
-          </video>
+          {mounted && (
+            <video 
+              ref={videoRef}
+              autoPlay 
+              muted 
+              loop 
+              playsInline 
+              preload="auto"
+              poster="/imagen3.png"
+              className="w-full h-full object-cover"
+              src="/hero-video.mp4"
+            />
+          )}
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 text-center space-y-10">
