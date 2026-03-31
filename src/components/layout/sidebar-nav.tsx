@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -139,14 +138,14 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
                 className="h-full w-full"
               />
             ) : (
-              <img src="/logo.png" alt="PCG" className="h-7 w-7 object-contain" onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=PCG")} />
+              <img src="/logogenko.png" alt="GENKO" className="h-8 w-auto object-contain" onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=GENKO")} />
             )}
           </div>
           <div className="flex flex-col min-w-0">
             <span className="font-black text-sm tracking-tighter text-white uppercase truncate">
-              {isSuperAdmin ? "CORE INFRA" : (company?.name || "PCGMANT")}
+              {isSuperAdmin ? "CORE INFRA" : (company?.name || "GENKO ERP")}
             </span>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">ERP Industrial</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">Espíritu Guardián</span>
           </div>
         </div>
       </SidebarHeader>

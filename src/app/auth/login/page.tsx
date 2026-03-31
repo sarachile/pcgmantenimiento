@@ -67,10 +67,10 @@ export default function LoginPage() {
         <Card className="w-full border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className="space-y-1 flex flex-col items-center p-10 bg-slate-900 text-white">
             <div className="p-4 rounded-3xl mb-4 backdrop-blur-md bg-transparent border border-white/10">
-              <img src="/logo.png" alt="PCG" className="h-12 w-12 object-contain" onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=PCG")} />
+              <img src="/logogenko.png" alt="GENKO" className="h-16 w-auto object-contain" onError={(e) => (e.currentTarget.src = "https://placehold.co/100x100?text=GENKO")} />
             </div>
-            <CardTitle className="text-3xl font-black tracking-tighter uppercase italic leading-none">PCGMANTENIMIENTO</CardTitle>
-            <CardDescription className="text-slate-400 font-bold uppercase tracking-widest pt-2">Gestión Industrial ERP</CardDescription>
+            <CardTitle className="text-3xl font-black tracking-tighter uppercase italic leading-none">GENKO ERP</CardTitle>
+            <CardDescription className="text-slate-400 font-bold uppercase tracking-widest pt-2">Gestión Hídrica Industrial</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-6 p-10">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from "react";
@@ -233,6 +232,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-3">
+              <img src="/logogenko.png" alt="GENKO" className="h-10 w-auto object-contain" />
               <span className="font-black text-xl tracking-tighter text-slate-900 uppercase italic">GENKO</span>
             </div>
             
@@ -650,6 +650,7 @@ export default function HomePage() {
       <footer className="py-20 bg-slate-50 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-10">
           <div className="flex flex-col items-center gap-4">
+            <img src="/logogenko.png" alt="GENKO" className="h-12 w-auto object-contain" />
             <span className="font-black text-2xl tracking-tighter text-slate-900 uppercase italic">GENKO</span>
             <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">Custodia del Ciclo Hídrico Digital</p>
           </div>
