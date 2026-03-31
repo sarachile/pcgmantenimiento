@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useUser } from "@/firebase";
 import { 
   ShieldCheck, 
@@ -12,45 +11,18 @@ import {
   X,
   Zap,
   CheckCircle2,
-  HardHat,
-  Smartphone,
-  Sun,
-  Waves,
-  Database,
-  Layers,
-  Sparkles,
   Activity,
-  Wind,
-  Wrench,
-  Construction,
-  Stethoscope,
-  Building2,
-  Truck,
-  Bug,
+  Waves,
+  Globe,
   Droplets,
   AlertTriangle,
   TrendingDown,
   Scale,
-  Users,
   ChevronDown,
   ChevronRight,
   MessageCircle,
-  MessageSquare,
-  Clock,
-  CircleDollarSign,
-  Fingerprint,
-  FileText,
-  Cpu,
-  Monitor,
-  BarChart3,
-  Globe,
-  Receipt,
-  History,
-  HelpCircle,
   Radio,
   Gauge,
-  Eye,
-  Filter,
   Check,
   Coins,
   ShieldAlert,
@@ -60,7 +32,10 @@ import {
   HandCoins,
   Microscope,
   Leaf,
-  Navigation
+  Navigation,
+  Monitor,
+  History,
+  HelpCircle
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -280,7 +255,7 @@ export default function HomePage() {
         )}
       </nav>
 
-      {/* HERO SECTION CON VIDEO HD */}
+      {/* HERO SECTION CON VIDEO */}
       <section className="relative h-[100vh] min-h-[700px] flex items-center justify-center overflow-hidden">
         {/* VIDEO BACKGROUND */}
         <div className="absolute inset-0 z-0">
@@ -290,9 +265,10 @@ export default function HomePage() {
             muted 
             loop 
             playsInline 
+            poster="/imagen3.png"
             className="w-full h-full object-cover"
           >
-            <source src="https://cdn.pixabay.com/vimeo/453141257/water-48111.mp4?width=1280&hash=bc8ed6be6da6ee6f0f6f6efbc0f0f6f6efbc0f0f" type="video/mp4" />
+            <source src="/hero-video.mp4" type="video/mp4" />
             Su navegador no soporta el tag de video.
           </video>
         </div>
@@ -317,7 +293,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-300">
             {[
               { title: "Justicia", desc: "Lectura exacta sin piezas móviles.", icon: Scale },
-              { title: "Trazabilidad", desc: "Bitácora inalterable del recurso.", icon: Fingerprint },
+              { title: "Trazabilidad", desc: "Bitácora inalterable del recurso.", icon: CheckCircle2 },
               { title: "Vigilancia", desc: "Alertas de fuga en tiempo real.", icon: ShieldCheck }
             ].map((item, i) => (
               <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] text-left group hover:bg-white/20 transition-all cursor-default">
@@ -330,12 +306,14 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="flex items-center justify-center gap-4 flex-wrap pt-6 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-500">
+          <div className="flex flex-col items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-500">
             <Button asChild size="lg" className="h-16 px-12 rounded-full text-lg font-black shadow-2xl bg-blue-600 hover:bg-blue-500 border-none">
               <Link href="/auth/signup">Activar Custodia Digital <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="h-16 px-12 rounded-full text-lg font-bold border-2 border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
-              <Link href="#agua-comunidades">Explorar GENKO</Link>
+            <Button asChild variant="outline" size="lg" className="h-12 px-10 rounded-full text-sm font-bold border-2 border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
+              <Link href="/water-control/login" className="flex items-center gap-2">
+                <Monitor className="h-4 w-4 text-blue-400" /> Acceso Administradores
+              </Link>
             </Button>
           </div>
         </div>
@@ -520,8 +498,8 @@ export default function HomePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {[
                   { title: "Laboratorio Vivo", desc: "Muestre a sus alumnos el impacto del ahorro hídrico colectivo en tiempo real.", icon: Microscope, color: "text-blue-400" },
-                  { title: "IA para la Dirección", desc: "Resúmenes ejecutivos GenAI listos para consejos directivos.", icon: Sparkles, color: "text-amber-400" },
-                  { title: "Optimización de Costos", desc: "Libere presupuesto desperdiciado para otros proyectos escolares.", icon: CircleDollarSign, color: "text-emerald-400" },
+                  { title: "IA para la Dirección", desc: "Resúmenes ejecutivos GenAI listos para consejos directivos.", icon: Zap, color: "text-amber-400" },
+                  { title: "Optimización de Costos", desc: "Libere presupuesto desperdiciado para otros proyectos escolares.", icon: HandCoins, color: "text-emerald-400" },
                   { title: "Reputación ESG", icon: Leaf, desc: "Evidencia real para acreditaciones de excelencia ambiental.", color: "text-emerald-500" }
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
@@ -577,7 +555,7 @@ export default function HomePage() {
                   <div className="flex flex-col gap-4">
                     <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">¿Desea una evaluación técnica gratuita?</p>
                     <Button asChild className="h-16 rounded-2xl bg-slate-900 text-white font-black uppercase text-xs tracking-widest shadow-xl">
-                      <Link href={WHATSAPP_URL} target="_blank">Agenda Auditoría Escolar <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                      <a href={WHATSAPP_URL} target="_blank">Agenda Auditoría Escolar <ArrowRight className="ml-2 h-4 w-4" /></a>
                     </Button>
                   </div>
                 </CardContent>
@@ -602,7 +580,7 @@ export default function HomePage() {
               <p className="text-slate-500 font-medium leading-relaxed">Tus clientes no necesitan cuentas. Escanean el móvil de tu técnico, revisan el reporte y firman digitalmente. Generación automática de certificados.</p>
             </div>
             <div className="space-y-4">
-              <div className="bg-purple-100 text-purple-600 p-4 rounded-3xl w-fit"><Sparkles className="h-8 w-8" /></div>
+              <div className="bg-purple-100 text-purple-600 p-4 rounded-3xl w-fit"><Zap className="h-8 w-8" /></div>
               <h3 className="text-2xl font-black uppercase italic tracking-tighter">Inteligencia GenAI</h3>
               <p className="text-slate-500 font-medium leading-relaxed">Nuestra IA procesa meses de bitácoras técnicas para entregarte resúmenes ejecutivos listos para presentar en tus reuniones de gerencia.</p>
             </div>
