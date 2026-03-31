@@ -271,11 +271,12 @@ export default function HomePage() {
             muted 
             loop 
             playsInline 
-            poster="/imagen3.png"
+            preload="auto"
             className="w-full h-full object-cover"
           >
             <source src="/hero-video.mp4" type="video/mp4" />
-            Su navegador no soporta el tag de video.
+            {/* Fallback si el video no carga */}
+            <img src="/imagen3.png" alt="Fallback Background" className="w-full h-full object-cover" />
           </video>
         </div>
 
@@ -495,7 +496,7 @@ export default function HomePage() {
                   <div className="space-y-2">
                     <h3 className="text-2xl font-black italic uppercase tracking-tighter text-emerald-400">Modelo de Ahorro Compartido</h3>
                     <p className="text-slate-300 text-sm leading-relaxed">
-                      Nuestra retribución es un porcentaje del ahorro real generado en su factura. <strong>Si su colegio no ahorra, nosotros no cobramos.</strong> El sistema se paga solo con el dinero que hoy pierde por fugas.
+                      Nuestra retribución es un porcentaje del ahorro real generado en su factura. <strong>Si su colegio no ahorra, nosotros no cobramos.</strong> El sistema se paga solo con el dinero que hoy se pierde por fugas.
                     </p>
                   </div>
                 </div>
