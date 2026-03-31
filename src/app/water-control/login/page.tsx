@@ -20,7 +20,8 @@ import {
   ShieldCheck,
   AlertCircle,
   ArrowRight,
-  Building2
+  Building2,
+  Globe
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useAuth } from "@/firebase";
@@ -111,8 +112,8 @@ export default function WaterAdminLoginPage() {
           <div className="bg-white/20 w-20 h-20 rounded-[2rem] flex items-center justify-center mx-auto border border-white/30 mb-4 backdrop-blur-md">
             <Droplets className="h-10 w-10 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic">PCG AGUA <span className="text-blue-300">IoT</span></h1>
-          <p className="text-blue-200 font-medium uppercase text-[10px] tracking-[0.2em]">Acceso Administradores de Edificio</p>
+          <h1 className="text-3xl font-black text-white tracking-tighter uppercase italic">GENKO <span className="text-blue-300">AGUA</span></h1>
+          <p className="text-blue-200 font-medium uppercase text-[10px] tracking-[0.2em]">Monitor de Administradores</p>
         </div>
 
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4">
@@ -152,13 +153,22 @@ export default function WaterAdminLoginPage() {
           </CardContent>
           <CardFooter className="bg-slate-50 p-6 flex flex-col gap-4">
             <p className="text-[10px] text-slate-500 leading-relaxed text-left">
-              * El PIN de acceso es enviado a su correo corporativo al momento de la instalación de los sensores IoT. Si no lo tiene, contacte a su proveedor de PCGMANTENIMIENTO.
+              * El PIN de acceso es enviado a su correo corporativo al momento de la instalación de los sensores IoT. Si no lo tiene, contacte a su proveedor de <strong>GENKO</strong>.
             </p>
             <Link href="/" className="text-[10px] font-black text-blue-600 uppercase underline tracking-widest mt-2">
               Volver al Inicio
             </Link>
           </CardFooter>
         </Card>
+
+        {/* ACCESO DIRECTO SUPERADMIN */}
+        <div className="pt-4">
+          <Button variant="ghost" asChild className="text-white/40 hover:text-white/60 hover:bg-white/5 rounded-xl font-black uppercase text-[9px] tracking-[0.2em] gap-2">
+            <Link href="/auth/login">
+              <Globe className="h-3 w-3" /> Acceso Maestro (Superadmin)
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );
