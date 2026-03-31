@@ -60,7 +60,8 @@ import {
   School,
   HandCoins,
   Microscope,
-  Leaf
+  Leaf,
+  Navigation
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -83,7 +84,7 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
-const WHATSAPP_URL = "https://wa.me/56941245316?text=Hola,%20me%20interesa%20saber%20m%C3%A1s%20sobre%20pcgmantenimiento.";
+const WHATSAPP_URL = "https://wa.me/56941245316?text=Hola,%20me%20interesa%20saber%20m%C3%A1s%20sobre%20GENKO.";
 
 export default function HomePage() {
   const { isAuthenticated } = useUser();
@@ -123,23 +124,42 @@ export default function HomePage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="animate-pulse">
-          <p className="text-sm font-black uppercase tracking-widest text-slate-400">PCGMANTENIMIENTO</p>
+          <p className="text-sm font-black uppercase tracking-widest text-slate-400">GENKO</p>
         </div>
       </div>
     );
   }
 
   const applications = [
-    { title: "Mantención Industrial", icon: Wrench, color: "text-blue-600", bg: "bg-blue-50" },
-    { title: "Ascensores y Elevación", icon: Layers, color: "text-slate-600", bg: "bg-slate-50" },
-    { title: "Climatización (HVAC)", icon: Wind, color: "text-cyan-600", bg: "bg-cyan-50" },
-    { title: "Construcción y Obras", icon: Construction, color: "text-orange-600", bg: "bg-orange-50" },
-    { title: "Servicios Post-Venta", icon: MessageSquare, color: "text-emerald-600", bg: "bg-emerald-50" },
-    { title: "Equipos Médicos", icon: Stethoscope, color: "text-rose-600", bg: "bg-rose-50" },
-    { title: "Facility Management", icon: Building2, color: "text-indigo-600", bg: "bg-indigo-50" },
-    { title: "Mantención de Flota", icon: Truck, color: "text-purple-600", bg: "bg-purple-50" },
-    { title: "Control de Plagas", icon: Bug, color: "text-red-600", bg: "bg-red-50" },
+    { title: "Comunidades", icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
+    { title: "Colegios", icon: School, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { title: "Condominios", icon: LayoutDashboard, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { title: "Parcelaciones", icon: Globe, color: "text-cyan-600", bg: "bg-cyan-50" },
+    { title: "Industria", icon: Factory, color: "text-slate-600", bg: "bg-slate-50" },
+    { title: "Hotelería", icon: Waves, color: "text-blue-400", bg: "bg-blue-50" },
   ];
+
+  function Factory(props: any) {
+    return (
+      <svg
+        {...props}
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M2 20V9l9-2 10 2v10" />
+        <path d="M9 20V9" />
+        <path d="M17 20V9" />
+        <rect x="2" y="20" width="20" height="4" />
+      </svg>
+    )
+  }
 
   const genkoFeatures = [
     {
@@ -225,7 +245,7 @@ export default function HomePage() {
         >
           <MessageCircle className="h-8 w-8 fill-white" />
           <span className="max-w-0 overflow-hidden group-hover:max-w-xs group-hover:ml-3 transition-all duration-500 font-black uppercase text-xs tracking-widest whitespace-nowrap">
-            Consultar Ahora
+            Hablar con GENKO
           </span>
         </a>
       </div>
@@ -234,13 +254,13 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-3">
-              <span className="font-black text-xl tracking-tighter text-slate-900 uppercase italic">PCGMANTENIMIENTO</span>
+              <span className="font-black text-xl tracking-tighter text-slate-900 uppercase italic">GENKO</span>
             </div>
             
             <div className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-600 uppercase tracking-widest">
-              <a href="#plataforma" className="hover:text-primary transition-colors">La Plataforma</a>
               <a href="#agua-comunidades" className="hover:text-primary transition-colors">Comunidades</a>
               <a href="#agua-colegios" className="hover:text-primary transition-colors">Colegios</a>
+              <a href="#faq" className="hover:text-primary transition-colors">Preguntas</a>
               {isAuthenticated ? (
                 <Button asChild className="rounded-full">
                   <Link href="/dashboard" className="gap-2">
@@ -251,7 +271,7 @@ export default function HomePage() {
                 <div className="flex items-center gap-4">
                   <Link href="/auth/login" className="hover:text-primary transition-colors">Ingresar</Link>
                   <Button asChild className="rounded-full px-6 shadow-lg shadow-primary/20">
-                    <Link href="/auth/signup">Probar Gratis</Link>
+                    <Link href="/auth/signup">Activar Custodia</Link>
                   </Button>
                 </div>
               )}
@@ -267,9 +287,9 @@ export default function HomePage() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden bg-white border-b p-4 space-y-4 animate-in slide-in-from-top-2">
-            <a href="#plataforma" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>La Plataforma</a>
             <a href="#agua-comunidades" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Comunidades</a>
             <a href="#agua-colegios" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Colegios</a>
+            <a href="#faq" className="block text-sm font-bold uppercase" onClick={() => setIsMenuOpen(false)}>Preguntas</a>
             <hr />
             {isAuthenticated ? (
               <Button asChild className="w-full rounded-xl"><Link href="/dashboard">Panel de Control</Link></Button>
@@ -283,51 +303,69 @@ export default function HomePage() {
         )}
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden relative border-b">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Badge variant="outline" className="mb-6 py-1 px-4 border-primary/20 text-primary bg-primary/5 rounded-full font-bold uppercase tracking-widest">
-            Trazabilidad Inalterable e Integración IoT
-          </Badge>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-slate-900 mb-6 leading-[0.9]">
-            Toda tu operación técnica <br />
-            <span className="text-primary italic font-serif">con trazabilidad inalterable</span>
-          </h1>
-          <p className="text-xl md:text-2xl text-slate-600 max-w-3xl mx-auto mb-16 leading-relaxed">
-            Certifica la calidad de tu equipo en terreno. Reemplaza la incertidumbre por evidencia real, firmas digitales y <span className="text-primary font-bold">monitoreo inteligente de activos</span>.
-          </p>
+      {/* NEW HERO SECTION WITH VIDEO BACKGROUND */}
+      <section className="relative h-[100vh] min-h-[700px] flex items-center justify-center overflow-hidden">
+        {/* VIDEO BACKGROUND */}
+        <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 bg-slate-900/60 z-10" /> {/* Dark overlay */}
+          <video 
+            autoPlay 
+            muted 
+            loop 
+            playsInline 
+            className="w-full h-full object-cover"
+          >
+            <source src="https://cdn.pixabay.com/vimeo/453141257/water-48111.mp4?width=1280&hash=bc8ed6be6da6ee6f0f6f6efbc0f0f6f6efbc0f0f" type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-20">
-            <div className="group relative overflow-hidden rounded-[2.5rem] border-4 border-white shadow-2xl transition-all hover:scale-[1.02] bg-slate-100 aspect-[4/3]">
-              <Image src="/imagen1.png" alt="Instalador operando con PCG" fill className="object-cover" data-ai-hint="technician working" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8 text-left">
-                <p className="text-white text-xs font-black uppercase tracking-widest italic mb-1">Simplicidad</p>
-                <p className="text-white/80 text-[10px] font-bold uppercase">Gestión ágil desde cualquier dispositivo móvil.</p>
-              </div>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 text-center space-y-10">
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000">
+            <Badge variant="outline" className="py-2 px-6 border-blue-400/30 text-blue-300 bg-white/5 backdrop-blur-md rounded-full font-black uppercase tracking-[0.3em] text-[10px]">
+              GENKO • El Espíritu Guardián del Agua
+            </Badge>
             
-            <div className="group relative overflow-hidden rounded-[2.5rem] border-4 border-white shadow-2xl transition-all hover:scale-[1.02] bg-slate-100 aspect-[4/3] md:mt-12">
-              <Image src="/imagen2.png" alt="Firma digital en terreno" fill className="object-cover" data-ai-hint="digital signature" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8 text-left">
-                <p className="text-white text-xs font-black uppercase tracking-widest italic mb-1">Versatilidad</p>
-                <p className="text-white/80 text-[10px] font-bold uppercase">Aprobaciones instantáneas con sello QR inalterable.</p>
-              </div>
-            </div>
-
-            <div className="group relative overflow-hidden rounded-[2.5rem] border-4 border-white shadow-2xl transition-all hover:scale-[1.02] bg-slate-100 aspect-[4/3]">
-              <Image src="/imagen3.png" alt="Entrega conforme de servicios" fill className="object-cover" data-ai-hint="professional service" />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8 text-left">
-                <p className="text-white text-xs font-black uppercase tracking-widest italic mb-1">Profesionalismo</p>
-                <p className="text-white/80 text-[10px] font-bold uppercase">Reportes automáticos que generan confianza en el cliente.</p>
-              </div>
-            </div>
+            <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white uppercase italic leading-[0.85]">
+              Tecnología que protege <br />
+              <span className="text-blue-400">la fuente de la vida</span>
+            </h1>
+            
+            <p className="text-lg md:text-2xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium">
+              Transformamos la gestión hídrica en un acto de justicia y transparencia. 
+              Unificamos el monitoreo ultrasónico con el espíritu de custodia para asegurar cada gota.
+            </p>
           </div>
 
-          <div className="flex items-center justify-center gap-4 flex-wrap">
-            <Button asChild size="lg" className="h-14 px-10 rounded-full text-lg font-black shadow-xl"><Link href="/auth/signup">Empieza ahora gratis <ArrowRight className="ml-2 h-5 w-5" /></Link></Button>
-            <Button asChild variant="outline" size="lg" className="h-14 px-10 rounded-full text-lg font-bold border-2"><Link href="#agua-comunidades">Ver soluciones hídricas</Link></Button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-300">
+            {[
+              { title: "Justicia", desc: "Lectura exacta sin piezas móviles.", icon: Scale },
+              { title: "Trazabilidad", desc: "Bitácora inalterable del recurso.", icon: Fingerprint },
+              { title: "Vigilancia", desc: "Alertas de fuga en tiempo real.", icon: ShieldCheck }
+            ].map((item, i) => (
+              <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] text-left group hover:bg-white/20 transition-all cursor-default">
+                <div className="bg-blue-500/20 p-3 rounded-2xl w-fit mb-4 text-blue-400 group-hover:scale-110 transition-transform">
+                  <item.icon className="h-6 w-6" />
+                </div>
+                <h3 className="text-white font-black uppercase italic tracking-tight text-lg mb-1">{item.title}</h3>
+                <p className="text-slate-300 text-xs font-bold uppercase tracking-widest">{item.desc}</p>
+              </div>
+            ))}
           </div>
+
+          <div className="flex items-center justify-center gap-4 flex-wrap pt-6 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-500">
+            <Button asChild size="lg" className="h-16 px-12 rounded-full text-lg font-black shadow-2xl bg-blue-600 hover:bg-blue-500 border-none">
+              <Link href="/auth/signup">Activar Custodia Digital <ArrowRight className="ml-2 h-5 w-5" /></Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="h-16 px-12 rounded-full text-lg font-bold border-2 border-white/20 text-white hover:bg-white/10 backdrop-blur-md">
+              <Link href="#agua-comunidades">Explorar GENKO</Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Scroll Down Hint */}
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce opacity-50">
+          <ChevronDown className="h-8 w-8 text-white" />
         </div>
       </section>
 
@@ -335,7 +373,7 @@ export default function HomePage() {
       <section className="py-20 bg-slate-50/50 overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12 text-center">
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.4em] mb-4">Sectores Digitalizados</p>
-          <h3 className="text-2xl font-black italic tracking-tighter uppercase text-slate-900">Industrias que potencian su valor con nuestra tecnología</h3>
+          <h3 className="text-2xl font-black italic tracking-tighter uppercase text-slate-900">Comunidades que confían en el Guardián Digital</h3>
         </div>
         <div className="relative flex overflow-x-hidden">
           <div className="animate-marquee hover:[animation-play-state:paused] whitespace-nowrap flex py-4">
@@ -412,9 +450,13 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="mt-12 flex flex-col sm:flex-row gap-4">
-                    <Button asChild size="lg" className="h-16 flex-1 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 text-xs"><Link href="/auth/signup">Detener pérdidas ahora <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
-                    <Button asChild variant="outline" size="lg" className="h-16 flex-1 rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-black uppercase tracking-[0.2em] text-xs"><Link href="/water-control/login" className="flex items-center justify-center gap-3"><Monitor className="h-4 w-4 text-blue-400" /> Acceso Administradores</Link></Button>
+                  <div className="mt-12 flex flex-col items-center gap-4">
+                    <Button asChild size="lg" className="h-16 w-full rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 text-xs">
+                      <Link href="/auth/signup">Detener pérdidas ahora <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                    </Button>
+                    <Button asChild variant="outline" size="lg" className="h-16 w-full rounded-2xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-black uppercase tracking-[0.2em] text-xs">
+                      <Link href="/water-control/login" className="flex items-center justify-center gap-3"><Monitor className="h-4 w-4 text-blue-400" /> Acceso Administradores</Link>
+                    </Button>
                   </div>
                 </div>
               </Card>
@@ -621,8 +663,8 @@ export default function HomePage() {
       <footer className="py-20 bg-slate-50 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-10">
           <div className="flex flex-col items-center gap-4">
-            <span className="font-black text-2xl tracking-tighter text-slate-900 uppercase italic">PCGMANTENIMIENTO</span>
-            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">Soluciones para el Terreno Industrial</p>
+            <span className="font-black text-2xl tracking-tighter text-slate-900 uppercase italic">GENKO</span>
+            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">Custodia del Ciclo Hídrico Digital</p>
           </div>
           <div className="flex justify-center gap-8 text-[10px] font-black uppercase text-slate-400 tracking-widest flex-wrap px-4">
             <Link href="/terms" className="hover:text-primary transition-colors">Términos Legales</Link>
@@ -630,7 +672,7 @@ export default function HomePage() {
             <Link href="/water-control/login" className="text-blue-600 hover:text-blue-700 font-black flex items-center gap-1.5 transition-colors"><Droplets className="h-3 w-3" /> Portal Administradores de Edificio (IoT)</Link>
             <a href={WHATSAPP_URL} className="hover:text-primary transition-colors">Soporte</a>
           </div>
-          <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em] pt-10">© {new Date().getFullYear()} - PCGMANTENIMIENTO.COM - MADE IN CHILE</p>
+          <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em] pt-10">© {new Date().getFullYear()} - GENKO.CL - PROTEGIENDO EL AGUA</p>
         </div>
       </footer>
     </div>
