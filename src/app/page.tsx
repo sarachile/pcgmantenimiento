@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useRef } from "react";
@@ -287,11 +288,13 @@ export default function HomePage() {
           {mounted && (
             <video 
               ref={videoRef}
+              key="hero-video-client"
               autoPlay 
               muted 
               loop 
               playsInline 
               preload="auto"
+              disablePictureInPicture
               poster="/imagen3.png"
               className="w-full h-full object-cover"
               src="/hero-video.mp4"
