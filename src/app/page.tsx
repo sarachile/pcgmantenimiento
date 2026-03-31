@@ -35,7 +35,13 @@ import {
   Navigation,
   Monitor,
   History,
-  HelpCircle
+  HelpCircle,
+  Building2,
+  Smartphone,
+  PlusSquare,
+  Share,
+  Download,
+  Sparkles
 } from "lucide-react";
 import { 
   AreaChart, 
