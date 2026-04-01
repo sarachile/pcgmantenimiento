@@ -89,6 +89,10 @@ export interface WaterMeter {
   signalStrength: number;
   hasLeakAlert: boolean;
   lastCommunication: string | any;
+  // LoRaWAN / NB-IoT Provisioning
+  devEUI?: string;
+  appEUI?: string;
+  appKey?: string;
 }
 
 export interface WaterReading {
@@ -154,6 +158,10 @@ export interface Asset {
   lastMaintenanceAt?: string | any;
   createdAt: string | any;
   isDeleted?: boolean;
+  // LoRaWAN / NB-IoT Provisioning
+  devEUI?: string;
+  appEUI?: string;
+  appKey?: string;
 }
 
 export interface SparePart {

@@ -58,7 +58,10 @@ import {
   Droplets,
   HardHat,
   Smartphone,
-  Waves
+  Waves,
+  QrCode,
+  Wifi,
+  KeyRound
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -107,10 +110,17 @@ function AdminCompaniesContent() {
   const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
   const [commData, setCommData] = useState({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
 
-  // Enrollment State
+  // Enrollment State (Provisioning LoRaWAN/NB-IoT)
   const [isEnrollOpen, setIsEnrollOpen] = useState(false);
   const [enrollType, setEnrollOpenType] = useState<"meter" | "sensor">("meter");
-  const [enrollData, setEnrollData] = useState({ serial: "", alias: "", sensorType: "vibracion", initialReading: "0" });
+  const [enrollData, setEnrollData] = useState({ 
+    devEUI: "", 
+    appEUI: "70B3D57ED0000000", 
+    appKey: "", 
+    alias: "", 
+    sensorType: "caudal", 
+    initialReading: "0" 
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -229,43 +239,59 @@ function AdminCompaniesContent() {
   };
 
   const handleEnrollSystem = async () => {
-    if (!db || !viewingAdminId || !viewingCommunityId || !enrollData.serial) return;
+    if (!db || !viewingAdminId || !viewingCommunityId || !enrollData.devEUI) return;
     
     setIsSubmitting(true);
     try {
       if (enrollType === 'meter') {
-        const meterRef = doc(db, "companies", viewingAdminId, "waterMeters", enrollData.serial);
+        const meterRef = doc(db, "companies", viewingAdminId, "waterMeters", enrollData.devEUI);
         await setDoc(meterRef, {
-          id: enrollData.serial,
+          id: enrollData.devEUI,
           companyId: viewingAdminId,
           communityId: viewingCommunityId,
-          unitIdentifier: enrollData.alias || enrollData.serial,
+          unitIdentifier: enrollData.alias || enrollData.devEUI,
           status: "open",
           currentReading: Number(enrollData.initialReading) || 0,
           batteryLevel: 100,
           signalStrength: 100,
           hasLeakAlert: false,
-          lastCommunication: serverTimestamp()
+          lastCommunication: serverTimestamp(),
+          devEUI: enrollData.devEUI,
+          appEUI: enrollData.appEUI,
+          appKey: enrollData.appKey
         });
       } else {
-        const sensorRef = doc(db, "companies", viewingAdminId, "assets", enrollData.serial);
+        const sensorRef = doc(db, "companies", viewingAdminId, "assets", enrollData.devEUI);
         await setDoc(sensorRef, {
-          id: enrollData.serial,
+          id: enrollData.devEUI,
           companyId: viewingAdminId,
           communityId: viewingCommunityId,
-          name: enrollData.alias || `Sensor ${enrollData.serial}`,
-          code: enrollData.serial,
+          name: enrollData.alias || `Sensor ${enrollData.devEUI}`,
+          code: enrollData.devEUI,
           location: "Por definir",
           status: "activo",
           isIoT: true,
           iotType: enrollData.sensorType,
           lastValue: 0,
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          devEUI: enrollData.devEUI,
+          appEUI: enrollData.appEUI,
+          appKey: enrollData.appKey
         });
       }
-      toast({ title: "Sistema Enrolado", description: "El equipo ya está transmitiendo data al servidor." });
+      toast({ 
+        title: "Provisioning Exitoso", 
+        description: "El dispositivo ha sido vinculado. Esperando mensaje de activación (JOIN)..." 
+      });
       setIsEnrollOpen(false);
-      setEnrollData({ serial: "", alias: "", sensorType: "vibracion", initialReading: "0" });
+      setEnrollData({ 
+        devEUI: "", 
+        appEUI: "70B3D57ED0000000", 
+        appKey: "", 
+        alias: "", 
+        sensorType: "caudal", 
+        initialReading: "0" 
+      });
     } catch (e) {
       toast({ title: "Error en enrolamiento", variant: "destructive" });
     } finally {
@@ -305,9 +331,9 @@ function AdminCompaniesContent() {
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="rounded-full h-12 w-12 hover:bg-slate-100" onClick={() => setViewingCommunityId(null)}>
+            <button className="rounded-full h-12 w-12 hover:bg-slate-100 flex items-center justify-center transition-colors" onClick={() => setViewingCommunityId(null)}>
               <ArrowLeft className="h-6 w-6" />
-            </Button>
+            </button>
             <div>
               <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">{selectedCommunity.name}</h2>
               <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
@@ -321,63 +347,92 @@ function AdminCompaniesContent() {
                 <Plus className="h-4 w-4" /> Enrolar Nuevo Sistema
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black italic uppercase italic tracking-tighter">Enrolamiento de Dispositivo</DialogTitle>
-                <DialogDescription>Sincronice hardware GENKO con esta comunidad.</DialogDescription>
+            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+              <DialogHeader className="bg-slate-900 text-white p-8">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="bg-blue-600 p-2 rounded-lg"><QrCode className="h-6 w-6" /></div>
+                  <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Provisioning IoT</DialogTitle>
+                </div>
+                <DialogDescription className="text-slate-400 font-medium">Sincronice hardware LoRaWAN/NB-IoT con esta comunidad.</DialogDescription>
               </DialogHeader>
-              <div className="space-y-6 py-4">
-                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
-                  <Button variant={enrollType === 'meter' ? 'default' : 'ghost'} className="rounded-lg text-[9px] font-black uppercase h-9" onClick={() => setEnrollOpenType('meter')}>Medidor Agua</Button>
-                  <Button variant={enrollType === 'sensor' ? 'default' : 'ghost'} className="rounded-lg text-[9px] font-black uppercase h-9" onClick={() => setEnrollOpenType('sensor')}>Sensor IoT</Button>
+              
+              <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
+                  <Button variant={enrollType === 'meter' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'meter' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('meter')}>Medidor Agua</Button>
+                  <Button variant={enrollType === 'sensor' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'sensor' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('sensor')}>Sensor Clap-On</Button>
                 </div>
                 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">ID de Serie / Código QR</Label>
-                  <Input placeholder="Ej: SN-884422" value={enrollData.serial} onChange={e => setEnrollData({...enrollData, serial: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono" />
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase text-primary tracking-widest"><Wifi className="h-4 w-4" /> Credenciales de Red</div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">DevEUI (ID Único del Hardware)</Label>
+                    <div className="relative">
+                      <Input placeholder="Ej: 0011223344556677" value={enrollData.devEUI} onChange={e => setEnrollData({...enrollData, devEUI: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono uppercase pl-4" />
+                      <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors" title="Simular Escaneo QR"><Smartphone className="h-5 w-5" /></button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">AppEUI</Label>
+                      <Input value={enrollData.appEUI} onChange={e => setEnrollData({...enrollData, appEUI: e.target.value})} className="h-11 border-2 rounded-xl font-mono text-xs" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">AppKey (AES-128)</Label>
+                      <div className="relative">
+                        <Input type="password" placeholder="Key de Encriptación" value={enrollData.appKey} onChange={e => setEnrollData({...enrollData, appKey: e.target.value})} className="h-11 border-2 rounded-xl font-mono text-xs pr-10" />
+                        <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Alias de Identificación</Label>
-                  <Input placeholder={enrollType === 'meter' ? "Ej: Depto 405" : "Ej: Bomba Principal"} value={enrollData.alias} onChange={e => setEnrollData({...enrollData, alias: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                <div className="space-y-4 pt-4 border-t-2 border-dashed border-slate-100">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><MapPin className="h-4 w-4" /> Asignación Lógica</div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Ubicación / Vertical / Identificador</Label>
+                    <Input placeholder={enrollType === 'meter' ? "Ej: Depto 405 (Torre A)" : "Ej: Matriz Principal - Sala Calderas"} value={enrollData.alias} onChange={e => setEnrollData({...enrollData, alias: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                  </div>
+
+                  {enrollType === 'meter' && (
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Lectura Inicial / Offset (m³)</Label>
+                      <Input 
+                        type="number" 
+                        step="0.01"
+                        placeholder="Ej: 450.00" 
+                        value={enrollData.initialReading} 
+                        onChange={e => setEnrollData({...enrollData, initialReading: e.target.value})} 
+                        className="h-12 border-2 rounded-xl font-black text-blue-600 text-center text-lg" 
+                      />
+                      <p className="text-[9px] text-slate-400 font-medium italic text-center">Sincronice el CRM con la lectura actual del medidor físico análogo.</p>
+                    </div>
+                  )}
+
+                  {enrollType === 'sensor' && (
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Magnitud de Monitoreo</Label>
+                      <Select modal={false} value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
+                        <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="caudal" className="font-bold">Caudal (L/min)</SelectItem>
+                          <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
+                          <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
+                          <SelectItem value="presion">Presión (Bar)</SelectItem>
+                          <SelectItem value="otro">Genérico</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
-
-                {enrollType === 'meter' && (
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">Lectura Inicial / Offset (m³)</Label>
-                    <Input 
-                      type="number" 
-                      step="0.01"
-                      placeholder="Ej: 450.00" 
-                      value={enrollData.initialReading} 
-                      onChange={e => setEnrollData({...enrollData, initialReading: e.target.value})} 
-                      className="h-12 border-2 rounded-xl font-bold" 
-                    />
-                    <p className="text-[9px] text-slate-400 font-medium italic">Sincronice el CRM con la lectura actual del medidor físico.</p>
-                  </div>
-                )}
-
-                {enrollType === 'sensor' && (
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">Tipo de Magnitud</Label>
-                    <Select value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})} modal={false}>
-                      <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
-                        <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
-                        <SelectItem value="presion">Presión (Bar)</SelectItem>
-                        <SelectItem value="caudal">Caudal (L/min)</SelectItem>
-                        <SelectItem value="otro">Genérico</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
               </div>
-              <DialogFooter>
-                <Button disabled={isSubmitting || !enrollData.serial} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" onClick={handleEnrollSystem}>
-                  {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Activar y Sincronizar"}
+              <DialogFooter className="p-8 bg-slate-50 border-t">
+                <Button disabled={isSubmitting || !enrollData.devEUI} className="w-full h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl text-lg bg-blue-600 hover:bg-blue-700" onClick={handleEnrollSystem}>
+                  {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Vincular y Activar"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -399,7 +454,7 @@ function AdminCompaniesContent() {
                     </div>
                     <div>
                       <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{m.unitIdentifier}</p>
-                      <p className="text-[10px] font-mono text-slate-400">ID: {m.id}</p>
+                      <p className="text-[10px] font-mono text-slate-400">DevEUI: {m.devEUI || m.id}</p>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
                       <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
@@ -428,7 +483,7 @@ function AdminCompaniesContent() {
                     </div>
                     <div>
                       <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{s.name}</p>
-                      <p className="text-[10px] font-mono text-slate-400">SN: {s.id}</p>
+                      <p className="text-[10px] font-mono text-slate-400">DevEUI: {s.devEUI || s.id}</p>
                     </div>
                     <div className="bg-indigo-950 p-4 rounded-2xl flex justify-between items-baseline text-white">
                       <span className="text-[9px] font-black uppercase text-blue-400">Valor Live</span>
@@ -453,9 +508,9 @@ function AdminCompaniesContent() {
       <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="rounded-full h-12 w-12 hover:bg-slate-100" onClick={() => { setViewingAdminId(null); router.push('/admin/companies'); }}>
+            <button className="rounded-full h-12 w-12 hover:bg-slate-100 flex items-center justify-center transition-colors" onClick={() => { setViewingAdminId(null); router.push('/admin/companies'); }}>
               <ArrowLeft className="h-6 w-6" />
-            </Button>
+            </button>
             <div>
               <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Ficha del Administrador</h2>
               <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">Control de gestión y recintos vinculados</p>
@@ -516,7 +571,7 @@ function AdminCompaniesContent() {
                   <Plus className="h-4 w-4" /> Vincular Nueva Comunidad
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto" onPointerDown={(e) => e.stopPropagation()}>
+              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-black italic uppercase">Nuevo Registro de Comunidad</DialogTitle>
                   <DialogDescription>Asigne un recinto para que este administrador pueda gestionarlo.</DialogDescription>
@@ -532,7 +587,7 @@ function AdminCompaniesContent() {
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Región</Label>
                         <Select modal={false} value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}>
-                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white" onPointerDown={e => e.stopPropagation()}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
                             <SelectValue placeholder="Seleccione..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -543,7 +598,7 @@ function AdminCompaniesContent() {
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Ciudad</Label>
                         <Select modal={false} key={`city-${commData.region}`} value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}>
-                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white" onPointerDown={e => e.stopPropagation()}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
                             <SelectValue placeholder="Ciudad" />
                           </SelectTrigger>
                           <SelectContent>
@@ -554,7 +609,7 @@ function AdminCompaniesContent() {
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Comuna</Label>
                         <Select modal={false} key={`commune-${commData.region}`} value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}>
-                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white" onPointerDown={e => e.stopPropagation()}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
                             <SelectValue placeholder="Comuna" />
                           </SelectTrigger>
                           <SelectContent>
