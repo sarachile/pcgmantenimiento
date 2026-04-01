@@ -230,8 +230,8 @@ export default function AdminCompaniesPage() {
     const htmlContent = `
       <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 12px; padding: 32px; color: #1f2937; background-color: #ffffff;">
         <div style="text-align: center; margin-bottom: 24px;">
-          <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -1px;">PCGMANTENIMIENTO ERP</h1>
-          <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Solución de Gestión Industrial Avanzada</p>
+          <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; letter-spacing: -1px;">GENKO</h1>
+          <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Inteligencia Hídrica para su Comunidad</p>
         </div>
         
         <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 8px;">Bienvenido a su Entorno Operativo</h2>
@@ -254,7 +254,7 @@ export default function AdminCompaniesPage() {
             ${detailsCompany.id}
           </div>
           <p style="color: #b45309; font-size: 12px; font-weight: bold; margin-top: 12px; text-align: center;">
-            * Este código vinculas su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
+            * Este código vincu la su cuenta a la organización. Su contraseña personal es privada y la elige usted en el paso siguiente.
           </p>
         </div>
         
@@ -265,7 +265,7 @@ export default function AdminCompaniesPage() {
         <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 32px 0;" />
         
         <p style="font-size: 11px; color: #94a3b8; font-style: italic; text-align: center;">
-          Este es un mensaje automático de la plataforma central de PCGMANTENIMIENTO. Por favor no responda a esta casilla.
+          Este es un mensaje automático de la plataforma central de GENKO. Por favor no responda a esta casilla.
         </p>
       </div>
     `;
@@ -275,7 +275,7 @@ export default function AdminCompaniesPage() {
         to: inviteEmail,
         createdAt: serverTimestamp(),
         message: {
-          subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
+          subject: `Acceso Corporativo GENKO - ${detailsCompany.name}`,
           html: htmlContent,
         },
         delivery: { state: 'PROCESANDO' }
@@ -286,7 +286,7 @@ export default function AdminCompaniesPage() {
 
       const result = await sendSystemEmail({
         to: inviteEmail,
-        subject: `Acceso Corporativo PCGMANTENIMIENTO ERP - ${detailsCompany.name}`,
+        subject: `Acceso Corporativo GENKO - ${detailsCompany.name}`,
         html: htmlContent
       });
 
@@ -657,7 +657,7 @@ export default function AdminCompaniesPage() {
                             <div className="flex flex-col">
                               <span className="text-sm font-bold">{user.name}</span>
                               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <Mail className="h-2 w-2" /> {user.email}
+                                <Mail className="h-2.5 w-2.5" /> {user.email}
                               </span>
                             </div>
                           </TableCell>
@@ -721,7 +721,7 @@ export default function AdminCompaniesPage() {
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Vista Previa de Notificación:</p>
               <div className="text-[12px] text-slate-700 leading-relaxed space-y-2">
                 <p>Estimados,</p>
-                <p>Les damos la bienvenida a <strong>PCGMANTENIMIENTO ERP</strong>. Su entorno de gestión industrial ha sido configurado.</p>
+                <p>Les damos la bienvenida a <strong>GENKO</strong>. Su entorno de gestión industrial ha sido configurado.</p>
                 <p>Utilicen el siguiente <strong>Código de Acceso Maestro</strong>:</p>
                 <div className="bg-white p-3 text-center rounded-lg border-2 border-primary/20 font-mono font-black text-xl text-primary tracking-widest shadow-sm">
                   {detailsCompany?.id}

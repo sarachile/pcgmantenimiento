@@ -39,7 +39,7 @@ export async function sendSystemEmail(input: SendEmailInput) {
   try {
     // Es CRÍTICO que el 'from' coincida exactamente con el SMTP_USER para evitar bloqueos
     const info = await transporter.sendMail({
-      from: `"PCGMANTENIMIENTO ERP" <${SMTP_USER}>`,
+      from: `"GENKO" <${SMTP_USER}>`,
       to: input.to,
       subject: input.subject,
       html: input.html,

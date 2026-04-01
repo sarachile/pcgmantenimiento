@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -234,12 +233,13 @@ export default function AdminWaterControlPage() {
       const htmlContent = `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 24px; padding: 40px; background-color: #ffffff;">
           <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; text-transform: uppercase;">PCG AGUA <span style="color: #3b82f6;">IoT</span></h1>
-            <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Activación de Acceso Remoto</p>
+            <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; text-transform: uppercase;">GENKO <span style="color: #3b82f6;">AGUA</span></h1>
+            <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Monitor de Telemetría para Comunidades</p>
           </div>
           <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 24px;">Bienvenido al Monitor Hídrico</h2>
           <p>Estimado(a) <strong>${formData.name}</strong>,</p>
-          <p>Se ha configurado su portal de administración remota para <strong>${formData.buildingName}</strong>. Desde este panel podrá monitorear consumos en tiempo real y realizar cortes de suministro ante emergencias.</p>
+          <p>Su ecosistema de gestión para <strong>${formData.buildingName}</strong> ha sido activado y está listo para la operación de campo y administrativa.</p>
+          <p>Desde este panel podrá monitorear consumos en tiempo real y realizar cortes de suministro ante emergencias.</p>
           <div style="background-color: #f8fafc; border: 2px dashed #3b82f6; border-radius: 20px; padding: 32px; margin: 32px 0; text-align: center;">
             <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 2px;">Sus Credenciales de Seguridad</p>
             <table style="width: 100%; margin-bottom: 20px;">
@@ -248,13 +248,13 @@ export default function AdminWaterControlPage() {
             </table>
             <a href="https://www.pcgmantenimiento.com/water-control/login" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">ENTRAR AL PORTAL</a>
           </div>
-          <p style="font-size: 12px; color: #94a3b8; text-align: center;">Este PIN es personal e intransferible. PCGMANTENIMIENTO nunca le pedirá su PIN por teléfono.</p>
+          <p style="font-size: 12px; color: #94a3b8; text-align: center;">Este PIN es personal e intransferible. GENKO nunca le pedirá su PIN por teléfono.</p>
         </div>
       `;
 
       await sendSystemEmail({
         to: formData.email,
-        subject: `ACCESO PCG AGUA IoT - ${formData.buildingName}`,
+        subject: `ACCESO GENKO AGUA - ${formData.buildingName}`,
         html: htmlContent
       });
 
