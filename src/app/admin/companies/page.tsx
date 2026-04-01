@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, Suspense, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, Suspense, useRef, useCallback, Fragment } from "react";
 import { 
   Table, 
   TableBody, 
@@ -332,7 +332,7 @@ function QRScannerDialog({ onScan, isOpen, onOpenChange }: { onScan: (data: stri
                 <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
                 <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
                 <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-blue-400 rounded-tr-lg" />
-                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-blue-50/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] animate-[scan_2s_ease-in-out_infinite]" />
+                <div className="absolute top/1/2 left-0 w-full h-0.5 bg-blue-50/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] animate-[scan_2s_ease-in-out_infinite]" />
               </div>
             </div>
 
@@ -411,7 +411,7 @@ function UnitAnalysisSection({ meter }: { meter: WaterMeter }) {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="time" fontSize={8} tickLine={false} axisLine={false} stroke="#64748b" />
+                    <XAxis dataKey="time" fontSize={8} axisLine={false} tickLine={false} stroke="#64748b" />
                     <Tooltip contentStyle={{ fontSize: '10px', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                     <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorUnit)" />
                   </AreaChart>
@@ -429,7 +429,7 @@ function UnitAnalysisSection({ meter }: { meter: WaterMeter }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={daily}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="day" fontSize={8} tickLine={false} axisLine={false} stroke="#64748b" />
+                    <XAxis dataKey="day" fontSize={8} axisLine={false} tickLine={false} stroke="#64748b" />
                     <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ fontSize: '10px', borderRadius: '12px' }} />
                     <ReferenceLine y={0.75} stroke="#6366f1" strokeDasharray="3 3" label={{ position: 'right', value: 'PROM', fill: '#6366f1', fontSize: 8, fontWeight: '900' }} />
                     <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
@@ -848,7 +848,7 @@ function AdminCompaniesContent() {
                     {enrollType === 'sensor' && (
                       <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Tipo de Magnitud</Label>
-                        <Select value={enrollData.sensorType} onValueChange={(v) => setEnrollData({...enrollData, sensorType: v})} modal={false}>
+                        <Select value={enrollData.sensorType} onValueChange={(v) => setEnrollData({...enrollData, sensorType: v})}>
                           <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
                             <SelectValue placeholder="Seleccione magnitud..." />
                           </SelectTrigger>
@@ -1101,7 +1101,7 @@ function AdminCompaniesContent() {
                   </TableHeader>
                   <TableBody>
                     {(communityMeters || []).map((m) => (
-                      <div key={m.id} className="contents">
+                      <Fragment key={m.id}>
                         <TableRow 
                           className={cn(
                             "group hover:bg-slate-50 transition-colors cursor-pointer", 
@@ -1146,7 +1146,7 @@ function AdminCompaniesContent() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </div>
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
