@@ -64,7 +64,11 @@ import {
   KeyRound,
   Camera,
   X,
-  AlertTriangle
+  AlertTriangle,
+  LayoutGrid,
+  List,
+  Battery,
+  Signal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -112,11 +116,31 @@ const SIM_JUAN_COMMUNITY: Community = {
   isActive: true
 };
 
-const SIM_JUAN_METERS: WaterMeter[] = [
-  { id: 'meter-juan-1', companyId: 'adm-juan-f', communityId: 'comm-juan-1', unitIdentifier: 'Depto 402 (Torre A)', status: 'open', currentReading: 452.12, batteryLevel: 95, signalStrength: 88, hasLeakAlert: false, lastCommunication: new Date().toISOString(), devEUI: '0011223344556601' },
-  { id: 'meter-juan-2', companyId: 'adm-juan-f', communityId: 'comm-juan-1', unitIdentifier: 'Depto 505 (Torre A)', status: 'open', currentReading: 12.45, batteryLevel: 92, signalStrength: 75, hasLeakAlert: true, lastCommunication: new Date().toISOString(), devEUI: '0011223344556602' },
-  { id: 'meter-juan-3', companyId: 'adm-juan-f', communityId: 'comm-juan-1', unitIdentifier: 'Oficina Admin (PB)', status: 'open', currentReading: 1245.80, batteryLevel: 100, signalStrength: 99, hasLeakAlert: false, lastCommunication: new Date().toISOString(), devEUI: '0011223344556603' },
-];
+// GENERACIÓN DE 100 MEDIDORES PARA JUAN FERNANDEZ
+const SIM_JUAN_METERS: WaterMeter[] = Array.from({ length: 100 }, (_, i) => {
+  const id = i + 1;
+  const floor = Math.floor(i / 10) + 1;
+  const room = (i % 10) + 1;
+  const unit = `Depto ${floor}${room < 10 ? '0' + room : room}`;
+  const reading = Math.random() * 800 + 50;
+  const battery = Math.floor(Math.random() * 30) + 70;
+  const signal = Math.floor(Math.random() * 40) + 60;
+  const hasLeak = Math.random() > 0.96; // ~4% de fugas simuladas
+
+  return {
+    id: `meter-juan-${id}`,
+    companyId: 'adm-juan-f',
+    communityId: 'comm-juan-1',
+    unitIdentifier: unit,
+    status: Math.random() > 0.05 ? 'open' : 'closed',
+    currentReading: reading,
+    batteryLevel: battery,
+    signalStrength: signal,
+    hasLeakAlert: hasLeak,
+    lastCommunication: new Date().toISOString(),
+    devEUI: `00112233445566${id.toString(16).padStart(2, '0').toUpperCase()}`
+  } as WaterMeter;
+});
 
 const SIM_JUAN_SENSORS: Asset[] = [
   { id: 'sensor-juan-1', companyId: 'adm-juan-f', communityId: 'comm-juan-1', name: 'Matriz Principal - Caudal', code: 'CQ-01', location: 'Sala de Bombas -1', status: 'activo', isIoT: true, iotType: 'caudal', lastValue: 45.2, unit: 'L/min', createdAt: new Date().toISOString() },
@@ -220,7 +244,6 @@ function QRScannerDialog({ onScan, isOpen, onOpenChange }: { onScan: (data: stri
             <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay muted playsInline />
             <canvas ref={canvasRef} className="hidden" />
             
-            {/* Overlay de escaneo */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-48 h-48 border-2 border-blue-500 rounded-2xl relative animate-pulse">
                 <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
@@ -255,6 +278,8 @@ function AdminCompaniesContent() {
   const auth = useAuth();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [meterSearchTerm, setMeterSearchTerm] = useState("");
+  const [meterViewMode, setMeterViewMode] = useState<'grid' | 'list'>('grid');
   const [mounted, setMounted] = useState(false);
   
   // Niveles de Navegación
@@ -296,7 +321,6 @@ function AdminCompaniesContent() {
     if (adminId) setViewingAdminId(adminId);
   }, [searchParams]);
 
-  // FORCE UNLOCK BODY
   useEffect(() => {
     if (!isAddCommunityOpen && !isConfigOpen && !isCreateOpen && !isEnrollOpen && !isScannerOpen) {
       const timer = setTimeout(() => {
@@ -307,7 +331,6 @@ function AdminCompaniesContent() {
     }
   }, [isAddCommunityOpen, isConfigOpen, isCreateOpen, isEnrollOpen, isScannerOpen]);
 
-  // Consultas Globales
   const administratorsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
     return query(collection(db, "companies"), orderBy("createdAt", "desc"));
@@ -315,7 +338,6 @@ function AdminCompaniesContent() {
 
   const { data: rawAdministrators, isLoading: isAdminsLoading } = useCollection<Company>(administratorsQuery);
 
-  // Inyectar Juan Fernández
   const administrators = useMemo(() => {
     const list = rawAdministrators || [];
     if (!list.some(a => a.id === 'adm-juan-f')) {
@@ -329,7 +351,6 @@ function AdminCompaniesContent() {
     return administrators.find(a => a.id === viewingAdminId) || null;
   }, [viewingAdminId, administrators]);
 
-  // Consulta de Comunidades
   const communitiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin || !viewingAdminId || viewingAdminId === 'adm-juan-f') return null;
     return query(collection(db, "companies", viewingAdminId, "communities"), orderBy("createdAt", "desc"));
@@ -337,7 +358,6 @@ function AdminCompaniesContent() {
 
   const { data: rawLinkedCommunities, isLoading: isCommunitiesLoading } = useCollection<Community>(communitiesQuery);
 
-  // Inyectar comunidad de Juan
   const linkedCommunities = useMemo(() => {
     if (viewingAdminId === 'adm-juan-f') return [SIM_JUAN_COMMUNITY];
     return rawLinkedCommunities || [];
@@ -348,7 +368,6 @@ function AdminCompaniesContent() {
     return linkedCommunities.find(c => c.id === viewingCommunityId) || null;
   }, [viewingCommunityId, linkedCommunities]);
 
-  // Consulta de Equipos por Comunidad
   const metersQuery = useMemoFirebase(() => {
     if (!db || !viewingAdminId || !viewingCommunityId || viewingCommunityId === 'comm-juan-1') return null;
     return query(collection(db, "companies", viewingAdminId, "waterMeters"), where("communityId", "==", viewingCommunityId));
@@ -363,9 +382,15 @@ function AdminCompaniesContent() {
   const { data: rawCommunitySensors } = useCollection<Asset>(sensorsQuery);
 
   const communityMeters = useMemo(() => {
-    if (viewingCommunityId === 'comm-juan-1') return SIM_JUAN_METERS;
-    return rawCommunityMeters || [];
-  }, [rawCommunityMeters, viewingCommunityId]);
+    let list = viewingCommunityId === 'comm-juan-1' ? SIM_JUAN_METERS : (rawCommunityMeters || []);
+    if (meterSearchTerm) {
+      list = list.filter(m => 
+        m.unitIdentifier.toLowerCase().includes(meterSearchTerm.toLowerCase()) || 
+        m.devEUI?.toLowerCase().includes(meterSearchTerm.toLowerCase())
+      );
+    }
+    return list;
+  }, [rawCommunityMeters, viewingCommunityId, meterSearchTerm]);
 
   const communitySensors = useMemo(() => {
     if (viewingCommunityId === 'comm-juan-1') return SIM_JUAN_SENSORS;
@@ -479,7 +504,7 @@ function AdminCompaniesContent() {
         alias: "", 
         sensorType: "caudal", 
         initialReading: "0" 
-      });
+  });
     } catch (e) {
       toast({ title: "Error en enrolamiento", variant: "destructive" });
     } finally {
@@ -556,7 +581,7 @@ function AdminCompaniesContent() {
   if (viewingCommunityId && selectedCommunity) {
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <button className="rounded-full h-12 w-12 hover:bg-slate-100 flex items-center justify-center transition-colors" onClick={() => setViewingCommunityId(null)}>
               <ArrowLeft className="h-6 w-6" />
@@ -568,107 +593,127 @@ function AdminCompaniesContent() {
               </p>
             </div>
           </div>
-          <Dialog open={isEnrollOpen} onOpenChange={setIsEnrollOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-xl h-11 px-6 font-black uppercase text-[10px] gap-2 shadow-xl bg-blue-600">
-                <Plus className="h-4 w-4" /> Enrolar Nuevo Sistema
+          <div className="flex gap-2">
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border">
+              <Button 
+                variant={meterViewMode === 'grid' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", meterViewMode === 'grid' && "bg-white shadow-sm")}
+                onClick={() => setMeterViewMode('grid')}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Grilla
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-              <DialogHeader className="bg-slate-900 text-white p-8">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="bg-blue-600 p-2 rounded-lg"><QrCode className="h-6 w-6" /></div>
-                  <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Provisioning IoT</DialogTitle>
-                </div>
-                <DialogDescription className="text-slate-400 font-medium">Sincronice hardware LoRaWAN/NB-IoT con esta comunidad.</DialogDescription>
-              </DialogHeader>
-              
-              <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
-                  <Button variant={enrollType === 'meter' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'meter' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('meter')}>Medidor Agua</Button>
-                  <Button variant={enrollType === 'sensor' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'sensor' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('sensor')}>Sensor Clap-On</Button>
-                </div>
+              <Button 
+                variant={meterViewMode === 'list' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", meterViewMode === 'list' && "bg-white shadow-sm")}
+                onClick={() => setMeterViewMode('list')}
+              >
+                <List className="h-3.5 w-3.5" /> Listado
+              </Button>
+            </div>
+            <Dialog open={isEnrollOpen} onOpenChange={setIsEnrollOpen}>
+              <DialogTrigger asChild>
+                <Button className="rounded-xl h-11 px-6 font-black uppercase text-[10px] gap-2 shadow-xl bg-blue-600">
+                  <Plus className="h-4 w-4" /> Enrolar Nuevo Sistema
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+                <DialogHeader className="bg-slate-900 text-white p-8">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-blue-600 p-2 rounded-lg"><QrCode className="h-6 w-6" /></div>
+                    <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Provisioning IoT</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-slate-400 font-medium">Sincronice hardware LoRaWAN/NB-IoT con esta comunidad.</DialogDescription>
+                </DialogHeader>
                 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-[10px] font-black uppercase text-primary tracking-widest">
-                    <div className="flex items-center gap-2"><Wifi className="h-4 w-4" /> Credenciales de Red</div>
-                    <Button variant="ghost" size="sm" className="h-7 px-2 bg-slate-100 text-slate-600 rounded-lg gap-1.5" onClick={() => setIsScannerOpen(true)}>
-                      <Camera className="h-3 w-3" /> Escanear QR
-                    </Button>
+                <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
+                    <Button variant={enrollType === 'meter' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'meter' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('meter')}>Medidor Agua</Button>
+                    <Button variant={enrollType === 'sensor' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'sensor' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('sensor')}>Sensor Clap-On</Button>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">DevEUI (ID Único del Hardware)</Label>
-                    <div className="relative">
-                      <Input placeholder="Ej: 0011223344556677" value={enrollData.devEUI} onChange={e => setEnrollData({...enrollData, devEUI: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono uppercase pl-4" />
-                      <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors" title="Escanear QR" onClick={() => setIsScannerOpen(true)}><Smartphone className="h-5 w-5" /></button>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between text-[10px] font-black uppercase text-primary tracking-widest">
+                      <div className="flex items-center gap-2"><Wifi className="h-4 w-4" /> Credenciales de Red</div>
+                      <Button variant="ghost" size="sm" className="h-7 px-2 bg-slate-100 text-slate-600 rounded-lg gap-1.5" onClick={() => setIsScannerOpen(true)}>
+                        <Camera className="h-3 w-3" /> Escanear QR
+                      </Button>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                    
                     <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">AppEUI</Label>
-                      <Input value={enrollData.appEUI} onChange={e => setEnrollData({...enrollData, appEUI: e.target.value})} className="h-11 border-2 rounded-xl font-mono text-xs" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">AppKey (AES-128)</Label>
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">DevEUI (ID Único del Hardware)</Label>
                       <div className="relative">
-                        <Input type="password" placeholder="Key de Encriptación" value={enrollData.appKey} onChange={e => setEnrollData({...enrollData, appKey: e.target.value})} className="h-11 border-2 rounded-xl font-mono text-xs pr-10" />
-                        <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                        <Input placeholder="Ej: 0011223344556677" value={enrollData.devEUI} onChange={e => setEnrollData({...enrollData, devEUI: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono uppercase pl-4" />
+                        <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors" title="Escanear QR" onClick={() => setIsScannerOpen(true)}><Smartphone className="h-5 w-5" /></button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">AppEUI</Label>
+                        <Input value={enrollData.appEUI} onChange={e => setEnrollData({...enrollData, appEUI: e.target.value})} className="h-11 border-2 rounded-xl font-mono text-xs" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">AppKey (AES-128)</Label>
+                        <div className="relative">
+                          <Input type="password" placeholder="Key de Encriptación" value={enrollData.appKey} onChange={e => setEnrollData({...enrollData, appKey: e.target.value})} className="h-11 border-2 rounded-xl font-mono text-xs pr-10" />
+                          <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-4 pt-4 border-t-2 border-dashed border-slate-100">
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><MapPin className="h-4 w-4" /> Asignación Lógica</div>
-                  
-                  <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Ubicación / Vertical / Identificador</Label>
-                    <Input placeholder={enrollType === 'meter' ? "Ej: Depto 405 (Torre A)" : "Ej: Matriz Principal - Sala Calderas"} value={enrollData.alias} onChange={e => setEnrollData({...enrollData, alias: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                  <div className="space-y-4 pt-4 border-t-2 border-dashed border-slate-100">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><MapPin className="h-4 w-4" /> Asignación Lógica</div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Ubicación / Vertical / Identificador</Label>
+                      <Input placeholder={enrollType === 'meter' ? "Ej: Depto 405 (Torre A)" : "Ej: Matriz Principal - Sala Calderas"} value={enrollData.alias} onChange={e => setEnrollData({...enrollData, alias: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                    </div>
+
+                    {enrollType === 'meter' && (
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Lectura Inicial / Offset (m³)</Label>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="Ej: 450.00" 
+                          value={enrollData.initialReading} 
+                          onChange={e => setEnrollData({...enrollData, initialReading: e.target.value})} 
+                          className="h-12 border-2 rounded-xl font-black text-blue-600 text-center text-lg" 
+                        />
+                        <p className="text-[9px] text-slate-400 font-medium italic text-center">Sincronice el CRM con la lectura actual del medidor físico análogo.</p>
+                      </div>
+                    )}
+
+                    {enrollType === 'sensor' && (
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Magnitud de Monitoreo</Label>
+                        <Select modal={false} value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
+                          <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="caudal" className="font-bold">Caudal (L/min)</SelectItem>
+                            <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
+                            <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
+                            <SelectItem value="presion">Presión (Bar)</SelectItem>
+                            <SelectItem value="otro">Genérico</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
-
-                  {enrollType === 'meter' && (
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Lectura Inicial / Offset (m³)</Label>
-                      <Input 
-                        type="number" 
-                        step="0.01"
-                        placeholder="Ej: 450.00" 
-                        value={enrollData.initialReading} 
-                        onChange={e => setEnrollData({...enrollData, initialReading: e.target.value})} 
-                        className="h-12 border-2 rounded-xl font-black text-blue-600 text-center text-lg" 
-                      />
-                      <p className="text-[9px] text-slate-400 font-medium italic text-center">Sincronice el CRM con la lectura actual del medidor físico análogo.</p>
-                    </div>
-                  )}
-
-                  {enrollType === 'sensor' && (
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Magnitud de Monitoreo</Label>
-                      <Select modal={false} value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
-                        <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="caudal" className="font-bold">Caudal (L/min)</SelectItem>
-                          <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
-                          <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
-                          <SelectItem value="presion">Presión (Bar)</SelectItem>
-                          <SelectItem value="otro">Genérico</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                 </div>
-              </div>
-              <DialogFooter className="p-8 bg-slate-50 border-t">
-                <Button disabled={isSubmitting || !enrollData.devEUI} className="w-full h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl text-lg bg-blue-600 hover:bg-blue-700" onClick={handleEnrollSystem}>
-                  {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Vincular y Activar"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter className="p-8 bg-slate-50 border-t">
+                  <Button disabled={isSubmitting || !enrollData.devEUI} className="w-full h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl text-lg bg-blue-600 hover:bg-blue-700" onClick={handleEnrollSystem}>
+                    {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Vincular y Activar"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
 
           <QRScannerDialog 
             isOpen={isScannerOpen} 
@@ -679,35 +724,101 @@ function AdminCompaniesContent() {
 
         <div className="grid gap-8">
           <div className="space-y-4">
-            <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2 pl-2">
-              <Droplets className="h-4 w-4 text-blue-600" /> Medidores de Agua Inteligentes
-            </h3>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(communityMeters || []).map((m) => (
-                <Card key={m.id} className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden group">
-                  <CardContent className="p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="bg-blue-50 p-3 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all"><Droplets className="h-6 w-6" /></div>
-                      <Badge className="bg-emerald-50 text-emerald-700 font-black text-[8px] uppercase px-2 h-5">Online</Badge>
-                    </div>
-                    <div>
-                      <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{m.unitIdentifier}</p>
-                      <p className="text-[10px] font-mono text-slate-400">DevEUI: {m.devEUI || m.id}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
-                      <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
-                      <span className="text-2xl font-black italic">{m.currentReading.toFixed(2)}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {(communityMeters || []).length === 0 && (
-                <div className="col-span-full py-20 text-center border-4 border-dashed rounded-[3rem] bg-slate-50/50 opacity-40 italic">Sin medidores registrados.</div>
-              )}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
+              <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2">
+                <Droplets className="h-4 w-4 text-blue-600" /> Medidores de Agua ({communityMeters.length})
+              </h3>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input 
+                  placeholder="Buscar departamento..." 
+                  className="pl-9 h-10 border-2 rounded-xl bg-white shadow-sm"
+                  value={meterSearchTerm}
+                  onChange={e => setMeterSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
+
+            {meterViewMode === 'grid' ? (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {(communityMeters || []).map((m) => (
+                  <Card key={m.id} className={cn("border-none shadow-sm rounded-[2rem] bg-white overflow-hidden group transition-all", m.hasLeakAlert && "ring-2 ring-rose-500")}>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className={cn("p-3 rounded-2xl transition-all", m.status === 'open' ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white" : "bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white")}><Droplets className="h-6 w-6" /></div>
+                        <div className="flex gap-1.5">
+                          {m.hasLeakAlert && <Badge className="bg-rose-600 text-white font-black text-[7px] uppercase px-2 h-5 animate-pulse">FUGA</Badge>}
+                          <Badge className={cn("font-black text-[8px] uppercase px-2 h-5", m.status === 'open' ? "bg-emerald-50 text-emerald-700" : "bg-rose-100 text-rose-700")}>{m.status === 'open' ? 'Online' : 'Cerrado'}</Badge>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{m.unitIdentifier}</p>
+                        <div className="flex items-center gap-3 mt-1 opacity-40">
+                          <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Battery className="h-2.5 w-2.5" /> {m.batteryLevel}%</span>
+                          <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Signal className="h-2.5 w-2.5" /> {m.signalStrength}%</span>
+                        </div>
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
+                        <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
+                        <span className="text-2xl font-black italic">{m.currentReading.toFixed(2)}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <Card className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white">
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow>
+                      <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad / Depto</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Estado</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Lectura Actual</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Batería / Señal</TableHead>
+                      <TableHead className="font-black uppercase text-[10px] text-right pr-8">DevEUI</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(communityMeters || []).map((m) => (
+                      <TableRow key={m.id} className={cn("group hover:bg-slate-50 transition-colors", m.hasLeakAlert && "bg-rose-50/30")}>
+                        <TableCell className="pl-8 py-4">
+                          <div className="flex items-center gap-3">
+                            <Droplets className={cn("h-4 w-4", m.hasLeakAlert ? "text-rose-600" : "text-blue-600")} />
+                            <span className="font-black text-slate-900">{m.unitIdentifier}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
+                            <span className="text-[10px] font-bold uppercase text-slate-600">{m.status}</span>
+                            {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[7px] h-4">ALERTA</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-black italic">{m.currentReading.toFixed(3)} m³</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400">
+                            <span className="flex items-center gap-1"><Battery className="h-3 w-3" /> {m.batteryLevel}%</span>
+                            <span className="flex items-center gap-1"><Signal className="h-3 w-3" /> {m.signalStrength}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-8">
+                          <code className="text-[10px] font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">{m.devEUI}</code>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
+
+            {(communityMeters || []).length === 0 && (
+              <div className="py-20 text-center border-4 border-dashed rounded-[3rem] bg-slate-50/50 opacity-40 italic">Sin resultados para la búsqueda.</div>
+            )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 pt-8">
             <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2 pl-2">
               <Cpu className="h-4 w-4 text-indigo-600" /> Sensores de Activos Críticos
             </h3>
