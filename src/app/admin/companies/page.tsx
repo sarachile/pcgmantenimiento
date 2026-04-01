@@ -87,11 +87,33 @@ function AdminCompaniesContent() {
   const [mounted, setMounted] = useState(false);
   const [viewingAdminId, setViewingAdminId] = useState<string | null>(null);
   
+  // State para creación/edición
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({ name: "", address: "", currentPlan: "simple" as any });
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [configData, setConfigData] = useState({ currentPlan: "simple" as any, subscriptionStatus: "active" as any, isActive: true });
+
+  // Community Form State
+  const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
+  const [commData, setCommData] = useState({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
+
   useEffect(() => {
     setMounted(true);
     const adminId = searchParams.get('id');
     if (adminId) setViewingAdminId(adminId);
   }, [searchParams]);
+
+  // FORCE UNLOCK BODY: Garantiza que la UI no quede bloqueada tras cerrar modales
+  useEffect(() => {
+    if (!isAddCommunityOpen && !isConfigOpen && !isCreateOpen) {
+      const timer = setTimeout(() => {
+        document.body.style.pointerEvents = 'auto';
+        document.body.style.overflow = 'auto';
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAddCommunityOpen, isConfigOpen, isCreateOpen]);
 
   // Redirigir si no es superadmin
   useEffect(() => {
@@ -104,17 +126,6 @@ function AdminCompaniesContent() {
     await signOut(auth);
     redirect("/auth/login");
   };
-
-  // State para creación/edición
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ name: "", address: "", currentPlan: "simple" as any });
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [configData, setConfigData] = useState({ currentPlan: "simple" as any, subscriptionStatus: "active" as any, isActive: true });
-
-  // Community Form State
-  const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
-  const [commData, setCommData] = useState({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
 
   const administratorsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
@@ -168,21 +179,29 @@ function AdminCompaniesContent() {
     if (!db || !selectedAdmin || !commData.name) return;
     const fullAddress = `${commData.street} ${commData.number}${commData.complement ? ', ' + commData.complement : ''}, ${commData.commune}, ${commData.city}, ${commData.region}`;
     const communitiesCol = collection(db, "companies", selectedAdmin.id, "communities");
-    await addDocumentNonBlocking(communitiesCol, {
-      name: commData.name,
-      address: fullAddress,
-      region: commData.region,
-      city: commData.city,
-      commune: commData.commune,
-      street: commData.street,
-      number: commData.number,
-      complement: commData.complement,
-      isActive: true,
-      createdAt: serverTimestamp()
-    });
-    toast({ title: "Comunidad Vinculada", description: `${commData.name} activada para ${selectedAdmin.name}.` });
-    setIsAddCommunityOpen(false);
-    setCommData({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
+    
+    setIsSubmitting(true);
+    try {
+      await addDocumentNonBlocking(communitiesCol, {
+        name: commData.name,
+        address: fullAddress,
+        region: commData.region,
+        city: commData.city,
+        commune: commData.commune,
+        street: commData.street,
+        number: commData.number,
+        complement: commData.complement,
+        isActive: true,
+        createdAt: serverTimestamp()
+      });
+      toast({ title: "Comunidad Vinculada", description: `${commData.name} activada para ${selectedAdmin.name}.` });
+      setIsAddCommunityOpen(false);
+      setCommData({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
+    } catch (e) {
+      toast({ title: "Error", description: "No se pudo vincular la comunidad.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleOpenConfig = (admin: Company) => {
@@ -280,7 +299,7 @@ function AdminCompaniesContent() {
                   <Plus className="h-4 w-4" /> Vincular Nueva Comunidad
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-black italic uppercase">Nuevo Registro de Comunidad</DialogTitle>
                   <DialogDescription>Asigne un edificio o recinto para que este administrador pueda gestionarlo.</DialogDescription>
@@ -303,7 +322,11 @@ function AdminCompaniesContent() {
                     </div>
                   </div>
                 </div>
-                <DialogFooter><Button className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" onClick={handleAddCommunity}>Activar Comunidad</Button></DialogFooter>
+                <DialogFooter>
+                  <Button disabled={isSubmitting} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" onClick={handleAddCommunity}>
+                    {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Activar Comunidad"}
+                  </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
@@ -356,7 +379,7 @@ function AdminCompaniesContent() {
 
         {/* Dialog Configuración Comercial (Reutilizado) */}
         <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-          <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]">
+          <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]" onPointerDownOutside={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle className="font-black italic uppercase text-xl">Parámetros de Servicio</DialogTitle>
               <DialogDescription>Ajuste el nivel de suscripción para {selectedAdmin?.name}.</DialogDescription>
@@ -417,7 +440,7 @@ function AdminCompaniesContent() {
             <DialogTrigger asChild>
               <Button className="rounded-xl font-black gap-2 shadow-lg"><Plus className="h-4 w-4" /> Nuevo Administrador</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
+            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]" onPointerDownOutside={(e) => e.preventDefault()}>
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black italic uppercase">Registrar Nuevo Gestor</DialogTitle>
                 <DialogDescription>Cree el entorno para que el gestor pueda administrar sus comunidades.</DialogDescription>
@@ -451,7 +474,7 @@ function AdminCompaniesContent() {
         <CardHeader className="pb-6 p-8 border-b">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-            <Input placeholder="Buscar por nombre o ID..." className="pl-12 h-12 border-none bg-slate-50 rounded-2xl text-base font-medium shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Input placeholder="Buscar por nombre o ID..." className="pl-12 h-14 border-none bg-slate-50 rounded-2xl text-base font-medium shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
