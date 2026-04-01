@@ -26,26 +26,51 @@ import {
   List,
   MoreHorizontal,
   UserCog,
-  Home
+  Home,
+  Plus
 } from "lucide-react";
-import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { 
+  useUser, 
+  useFirestore, 
+  useCollection, 
+  useMemoFirebase, 
+  useAuth,
+  setDocumentNonBlocking 
+} from "@/firebase";
+import { collection, query, orderBy, doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { signOut } from "firebase/auth";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Company, User, Community } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
 
 // Componente auxiliar optimizado para obtener el conteo de comunidades de un administrador
-// Usamos memo para evitar que el bucle de renderizado del padre reinicie la suscripción
 const CommunityCount = memo(function CommunityCount({ adminId }: { adminId: string }) {
   const db = useFirestore();
   
   const communitiesQuery = useMemoFirebase(() => {
     if (!db || !adminId) return null;
-    // Conexión directa a la sub-colección de comunidades del administrador
     return collection(db, "companies", adminId, "communities");
   }, [db, adminId]);
 
@@ -63,7 +88,16 @@ export default function SuperadminDashboardPage() {
   const db = useFirestore();
   const auth = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Creation State
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    currentPlan: "simple" as any,
+  });
 
   useEffect(() => {
     if (!isAuthLoading && (!isAuthenticated || !isSuperAdmin)) {
@@ -88,6 +122,37 @@ export default function SuperadminDashboardPage() {
     const activeAdmins = (administrators || []).filter(c => c.isActive).length;
     return { totalAdmins, activeAdmins };
   }, [administrators]);
+
+  const handleCreateAdmin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!db) return;
+
+    setIsSubmitting(true);
+    const adminId = `adm-${Math.random().toString(36).substr(2, 6)}`;
+    const adminRef = doc(db, "companies", adminId);
+    
+    const adminData = {
+      id: adminId,
+      name: formData.name || "Nombre por definir",
+      rut: "RUT por definir", 
+      address: "Dirección por definir",
+      currentPlan: formData.currentPlan,
+      subscriptionStatus: "active",
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    setDocumentNonBlocking(adminRef, adminData, { merge: true });
+    
+    toast({
+      title: "Administrador Creado",
+      description: `Se ha generado el acceso para ${adminData.name}.`,
+    });
+    
+    setIsCreateOpen(false);
+    setFormData({ name: "", currentPlan: "simple" });
+    setIsSubmitting(false);
+  };
 
   if (isAuthLoading || !isSuperAdmin) {
     return (
@@ -146,23 +211,74 @@ export default function SuperadminDashboardPage() {
             <h3 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900">Cartera de Administradores</h3>
             <p className="text-[10px] font-bold uppercase text-slate-400">Control de gestión y comunidades asociadas</p>
           </div>
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border">
-            <Button 
-              variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
-              size="sm" 
-              className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", viewMode === 'grid' && "bg-white shadow-sm")}
-              onClick={() => setViewMode('grid')}
-            >
-              <LayoutGrid className="h-3.5 w-3.5" /> Tarjetas
-            </Button>
-            <Button 
-              variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
-              size="sm" 
-              className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", viewMode === 'list' && "bg-white shadow-sm")}
-              onClick={() => setViewMode('list')}
-            >
-              <List className="h-3.5 w-3.5" /> Listado
-            </Button>
+          <div className="flex items-center gap-2">
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button className="rounded-xl h-10 px-4 font-black uppercase text-[10px] gap-2 shadow-lg shadow-blue-900/10">
+                  <Plus className="h-4 w-4" /> Nuevo Administrador
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black italic uppercase italic tracking-tighter">Registrar Nuevo Gestor</DialogTitle>
+                  <DialogDescription>Cree el entorno para que el gestor pueda administrar sus comunidades.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateAdmin} className="space-y-6 py-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre del Administrador / Empresa</Label>
+                      <Input 
+                        placeholder="Ej: Administraciones Cordillera" 
+                        value={formData.name}
+                        onChange={(e) => setFormData({...formData, name: e.target.value})}
+                        className="h-12 rounded-xl border-2 font-bold"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Plan de Inicio</Label>
+                      <Select 
+                        value={formData.currentPlan} 
+                        onValueChange={(val) => setFormData({...formData, currentPlan: val})}
+                      >
+                        <SelectTrigger className="h-12 rounded-xl border-2">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
+                          <SelectItem value="business">Plan Business (1.8 UF)</SelectItem>
+                          <SelectItem value="enterprise">Plan Enterprise (3.5 UF)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter className="pt-4">
+                    <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Generar Entorno SaaS"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border ml-2">
+              <Button 
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", viewMode === 'grid' && "bg-white shadow-sm")}
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" /> Tarjetas
+              </Button>
+              <Button 
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", viewMode === 'list' && "bg-white shadow-sm")}
+                onClick={() => setViewMode('list')}
+              >
+                <List className="h-3.5 w-3.5" /> Listado
+              </Button>
+            </div>
           </div>
         </div>
 
