@@ -257,8 +257,8 @@ export default function HomePage() {
               GENKO • Gestión y Telemetría Hídrica
             </Badge>
             <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-white uppercase italic leading-tight">
-              Precisión Ultrasónica para <br />
-              <span className="text-blue-400">el Control del Recurso</span>
+              Inteligencia que Fluye: <br />
+              <span className="text-blue-400">El Futuro del Control Hídrico</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium px-4">
               Plataforma profesional de monitoreo y auditoría hídrica. Integramos telemetría NB-IoT con hardware de alta precisión para la optimización operativa de activos.
