@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Building2, 
@@ -38,11 +38,14 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Company, User, Community } from "@/lib/types";
 
-// Componente auxiliar para obtener el conteo de comunidades de un administrador
-function CommunityCount({ adminId }: { adminId: string }) {
+// Componente auxiliar optimizado para obtener el conteo de comunidades de un administrador
+// Usamos memo para evitar que el bucle de renderizado del padre reinicie la suscripción
+const CommunityCount = memo(function CommunityCount({ adminId }: { adminId: string }) {
   const db = useFirestore();
+  
   const communitiesQuery = useMemoFirebase(() => {
-    if (!db) return null;
+    if (!db || !adminId) return null;
+    // Conexión directa a la sub-colección de comunidades del administrador
     return collection(db, "companies", adminId, "communities");
   }, [db, adminId]);
 
@@ -53,7 +56,7 @@ function CommunityCount({ adminId }: { adminId: string }) {
   return (
     <span className="font-black text-slate-900">{communities?.length || 0}</span>
   );
-}
+});
 
 export default function SuperadminDashboardPage() {
   const { isSuperAdmin, isLoading: isAuthLoading, isAuthenticated } = useUser();
@@ -98,8 +101,8 @@ export default function SuperadminDashboardPage() {
   }
 
   const platformStats = [
-    { label: "Administradores Registrados", value: stats.totalAdmins, icon: UserCog, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Administradores Activos", value: stats.activeAdmins, icon: Activity, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { label: "Administradores SaaS", value: stats.totalAdmins, icon: UserCog, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Gestores Activos", value: stats.activeAdmins, icon: Activity, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Nivel de Servicio", value: "SLA 99.9%", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50" },
     { label: "Estado Infra", value: "Online", icon: Globe, color: "text-indigo-600", bg: "bg-indigo-50" },
   ];
