@@ -43,20 +43,11 @@ import {
   Eye,
   Calendar,
   Building2,
-  Mail,
-  Shield,
-  Send,
-  ExternalLink,
-  Globe,
-  Info,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  XCircle,
-  Timer,
+  Home,
   LogOut,
   UserCog,
-  Home
+  MapPin,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -73,15 +64,14 @@ import {
   addDocumentNonBlocking
 } from "@/firebase";
 import { collection, doc, serverTimestamp, query, orderBy, limit, updateDoc, addDoc } from "firebase/firestore";
-import { Company, User, Community } from "@/lib/types";
-import { format, parseISO, differenceInDays } from "date-fns";
+import { Company, Community } from "@/lib/types";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { sendSystemEmail } from "@/actions/email";
 import { signOut } from "firebase/auth";
 
 export default function AdminCompaniesPage() {
   const { toast } = useToast();
-  const { isSuperAdmin, profile, isLoading: isUserLoading } = useUser();
+  const { isSuperAdmin, isLoading: isUserLoading } = useUser();
   const db = useFirestore();
   const auth = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
@@ -130,7 +120,7 @@ export default function AdminCompaniesPage() {
 
   const administratorsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
-    return collection(db, "companies");
+    return query(collection(db, "companies"), orderBy("createdAt", "desc"));
   }, [db, isSuperAdmin]);
 
   const { data: administrators, isLoading: isAdminsLoading } = useCollection<Company>(administratorsQuery);
@@ -138,16 +128,10 @@ export default function AdminCompaniesPage() {
   // Consulta de Comunidades para el Administrador Seleccionado
   const communitiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin || !detailsAdmin) return null;
-    return collection(db, "companies", detailsAdmin.id, "communities");
+    return query(collection(db, "companies", detailsAdmin.id, "communities"), orderBy("createdAt", "desc"));
   }, [db, isSuperAdmin, detailsAdmin]);
 
   const { data: linkedCommunities, isLoading: isCommunitiesLoading } = useCollection<Community>(communitiesQuery);
-
-  const usersQuery = useMemoFirebase(() => {
-    if (!db || !isSuperAdmin) return null;
-    return collection(db, "users");
-  }, [db, isSuperAdmin]);
-  const { data: allUsers } = useCollection<User>(usersQuery);
 
   const filtered = (administrators || []).filter((c: Company) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -244,10 +228,6 @@ export default function AdminCompaniesPage() {
     } catch (e) {
       return 'N/A';
     }
-  };
-
-  const getAdminUsers = (adminId: string) => {
-    return (allUsers || []).filter(u => u.companyId === adminId);
   };
 
   if (isUserLoading || !isSuperAdmin) {
@@ -352,14 +332,11 @@ export default function AdminCompaniesPage() {
                     <TableHead>Administrador / Registro</TableHead>
                     <TableHead>Plan de Servicio</TableHead>
                     <TableHead>Código Acceso</TableHead>
-                    <TableHead>Personal Gestor</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filtered.map((admin: Company) => {
-                    const adminUsers = getAdminUsers(admin.id);
-                    
                     return (
                       <TableRow key={admin.id} className="group">
                         <TableCell>
@@ -397,19 +374,13 @@ export default function AdminCompaniesPage() {
                             </Button>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Users className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-sm font-medium">{adminUsers.length} Usuarios</span>
-                          </div>
-                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button 
                               variant="ghost" 
                               size="icon" 
                               onClick={() => handleViewDetails(admin)}
-                              title="Ver Comunidades y Usuarios"
+                              title="Ver Comunidades Asociadas"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -417,7 +388,7 @@ export default function AdminCompaniesPage() {
                               variant="ghost" 
                               size="icon" 
                               onClick={() => handleOpenConfig(admin)}
-                              title="Ajustar Parámetros"
+                              title="Ajustar Parámetros Comerciales"
                             >
                               <Settings2 className="h-4 w-4" />
                             </Button>
@@ -433,24 +404,27 @@ export default function AdminCompaniesPage() {
         </Card>
       </div>
 
-      {/* Dialog Ficha de Administrador y sus Comunidades */}
+      {/* Dialog FICHA DE COMUNIDADES POR ADMINISTRADOR */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-[2.5rem]">
-          <DialogHeader>
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 p-2 rounded-lg">
-                  <UserCog className="h-6 w-6 text-primary" />
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl">
+          <DialogHeader className="bg-slate-900 text-white p-8 -m-6 mb-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-4">
+                <div className="bg-white/10 p-3 rounded-2xl">
+                  <UserCog className="h-8 w-8 text-blue-400" />
                 </div>
                 <div>
                   <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">{detailsAdmin?.name}</DialogTitle>
-                  <DialogDescription>Administrador ID: {detailsAdmin?.id}</DialogDescription>
+                  <DialogDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                    ID Administrador: {detailsAdmin?.id}
+                  </DialogDescription>
                 </div>
               </div>
+              
               <Dialog open={isAddCommunityOpen} onOpenChange={setIsAddCommunityOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="gap-2">
-                    <Plus className="h-3.5 w-3.5" /> Vincular Comunidad
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-500 font-black uppercase text-[10px] gap-2 rounded-xl h-10 px-4">
+                    <Plus className="h-4 w-4" /> Vincular Comunidad
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[400px] rounded-[2rem]">
@@ -476,116 +450,63 @@ export default function AdminCompaniesPage() {
             </div>
           </DialogHeader>
           
-          <div className="space-y-8 py-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="bg-muted/30 p-3 rounded-lg border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">RUT Administrador</p>
-                <p className="text-sm font-bold">{detailsAdmin?.rut || 'Pendiente'}</p>
-              </div>
-              <div className="bg-muted/30 p-3 rounded-lg border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Plan</p>
-                <Badge variant="default" className="text-[10px] h-5">{detailsAdmin?.currentPlan?.toUpperCase()}</Badge>
-              </div>
-              <div className="bg-muted/30 p-3 rounded-lg border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Estado</p>
-                <p className={cn("text-sm font-bold capitalize", detailsAdmin?.isActive ? "text-emerald-600" : "text-rose-600")}>
-                  {detailsAdmin?.isActive ? 'Activo' : 'Suspendido'}
-                </p>
-              </div>
-              <div className="bg-muted/30 p-3 rounded-lg border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Registro</p>
-                <p className="text-sm font-bold">{formatDate(detailsAdmin?.createdAt)}</p>
-              </div>
-            </div>
-
+          <div className="space-y-8 py-2">
             <div className="space-y-4">
-              <h3 className="text-sm font-black uppercase tracking-widest text-blue-600 border-b pb-2 flex items-center gap-2">
-                <Home className="h-4 w-4" /> Comunidades Bajo Gestión ({linkedCommunities?.length || 0})
+              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-blue-600 border-b pb-2 flex items-center gap-2">
+                <Home className="h-4 w-4" /> Comunidades Asociadas ({linkedCommunities?.length || 0})
               </h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {isCommunitiesLoading ? (
-                  <div className="col-span-full py-10 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-200" /></div>
+                  <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-200" /></div>
                 ) : linkedCommunities && linkedCommunities.length > 0 ? (
                   linkedCommunities.map((comm) => (
-                    <Card key={comm.id} className="border-2 border-slate-100 shadow-none rounded-2xl overflow-hidden hover:border-blue-200 transition-colors">
-                      <CardContent className="p-4 flex items-center gap-4">
-                        <div className="bg-blue-50 p-3 rounded-xl"><Building2 className="h-5 w-5 text-blue-600" /></div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-black text-slate-900 uppercase truncate">{comm.name}</p>
-                          <p className="text-[10px] text-slate-400 font-bold truncate">{comm.address}</p>
+                    <Card key={comm.id} className="border-2 border-slate-100 shadow-none rounded-[1.5rem] overflow-hidden hover:border-blue-200 transition-colors group">
+                      <CardContent className="p-6 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="bg-blue-50 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <Building2 className="h-6 w-6 text-blue-600 group-hover:text-white" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-base font-black text-slate-900 uppercase italic tracking-tighter truncate">{comm.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <MapPin className="h-3 w-3 text-slate-400" />
+                              <p className="text-[10px] text-slate-400 font-bold truncate">{comm.address}</p>
+                            </div>
+                          </div>
                         </div>
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase">Live</Badge>
+                        <div className="flex items-center gap-4">
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase h-5">Operativo</Badge>
+                          <ChevronRight className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors" />
+                        </div>
                       </CardContent>
                     </Card>
                   ))
                 ) : (
-                  <div className="col-span-full py-12 text-center border-2 border-dashed rounded-3xl bg-slate-50/50">
-                    <p className="text-slate-400 italic text-sm">Este administrador no tiene comunidades vinculadas aún.</p>
+                  <div className="py-24 text-center border-2 border-dashed rounded-[2rem] bg-slate-50/50">
+                    <Home className="h-12 w-12 mx-auto mb-4 text-slate-200" />
+                    <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Este administrador no tiene comunidades asociadas aún.</p>
                   </div>
                 )}
               </div>
             </div>
-
-            <div className="space-y-4">
-              <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 border-b pb-2 flex items-center gap-2">
-                <Users className="h-4 w-4" /> Personal Administrativo ({getAdminUsers(detailsAdmin?.id || '').length})
-              </h3>
-              
-              <div className="border rounded-xl overflow-hidden bg-card">
-                <Table>
-                  <TableHeader className="bg-muted/50">
-                    <TableRow>
-                      <TableHead className="text-[10px] uppercase font-bold">Nombre / Email</TableHead>
-                      <TableHead className="text-[10px] uppercase font-bold text-center">Rol</TableHead>
-                      <TableHead className="text-[10px] uppercase font-bold text-right">Estado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {getAdminUsers(detailsAdmin?.id || '').length > 0 ? (
-                      getAdminUsers(detailsAdmin?.id || '').map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold">{user.name}</span>
-                              <span className="text-[10px] text-muted-foreground">{user.email}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <span className="text-[9px] font-bold uppercase bg-slate-100 px-2 py-1 rounded">{user.role}</span>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Badge variant={user.active ? "default" : "secondary"} className="text-[9px]">
-                              {user.active ? "ACTIVO" : "INACTIVO"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic text-sm">
-                          Sin usuarios registrados en este tenant.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" className="w-full h-12 rounded-xl font-bold" onClick={() => setIsDetailsOpen(false)}>Cerrar Ficha</Button>
+          
+          <DialogFooter className="pt-6">
+            <Button variant="ghost" className="w-full h-12 rounded-xl font-black uppercase text-[10px] tracking-widest text-slate-400" onClick={() => setIsDetailsOpen(false)}>
+              Cerrar Ficha de Administrador
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Suscripción */}
+      {/* Dialog Configuración Comercial */}
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-[2rem]">
           <DialogHeader>
-            <DialogTitle className="font-black italic uppercase text-xl">Parámetros Comerciales</DialogTitle>
+            <DialogTitle className="font-black italic uppercase text-xl">Parámetros de Servicio</DialogTitle>
             <DialogDescription>
-              Ajuste el nivel de servicio para {selectedAdmin?.name}.
+              Ajuste el nivel de suscripción para {selectedAdmin?.name}.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveConfig} className="space-y-4 py-4">
