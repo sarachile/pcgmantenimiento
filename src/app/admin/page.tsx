@@ -172,6 +172,10 @@ export default function SuperadminDashboardPage() {
     { label: "Estado Infra", value: "Online", icon: Globe, color: "text-indigo-600", bg: "bg-indigo-50" },
   ];
 
+  const handleAdminClick = (adminId: string) => {
+    router.push(`/admin/companies?id=${adminId}`);
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6 md:p-10 space-y-10">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -288,7 +292,7 @@ export default function SuperadminDashboardPage() {
           viewMode === 'grid' ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {administrators.map((admin) => (
-                <Card key={admin.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden group">
+                <Card key={admin.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden group cursor-pointer" onClick={() => handleAdminClick(admin.id)}>
                   <CardHeader className="p-8 pb-4">
                     <div className="flex justify-between items-start">
                       <div className={cn(
@@ -326,9 +330,9 @@ export default function SuperadminDashboardPage() {
                         <div className={cn("h-2 w-2 rounded-full", admin.isActive ? "bg-emerald-500" : "bg-rose-500")} />
                         <span className="text-[10px] font-black uppercase text-slate-500">{admin.isActive ? 'Operativo' : 'Suspendido'}</span>
                       </div>
-                      <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10">
-                        <Link href="/admin/companies"><ArrowUpRight className="h-5 w-5 text-blue-600" /></Link>
-                      </Button>
+                      <div className="rounded-xl h-10 w-10 flex items-center justify-center">
+                        <ArrowUpRight className="h-5 w-5 text-blue-600" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -339,7 +343,7 @@ export default function SuperadminDashboardPage() {
               <CardContent className="p-0">
                 <div className="divide-y">
                   {administrators.map((admin) => (
-                    <div key={admin.id} className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors group">
+                    <div key={admin.id} className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors group cursor-pointer" onClick={() => handleAdminClick(admin.id)}>
                       <div className="flex items-center gap-4">
                         <div className="bg-blue-50 p-3 rounded-2xl group-hover:bg-blue-100 transition-colors">
                           <UserCog className="h-5 w-5 text-blue-600" />
@@ -363,7 +367,7 @@ export default function SuperadminDashboardPage() {
                           )}>
                             {admin.currentPlan}
                           </Badge>
-                          <Button variant="ghost" size="icon" asChild className="rounded-xl"><Link href="/admin/companies"><ChevronRight className="h-4 w-4" /></Link></Button>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
                         </div>
                       </div>
                     </div>

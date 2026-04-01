@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { 
   Table, 
   TableBody, 
@@ -49,11 +49,14 @@ import {
   MapPin,
   ChevronRight,
   Globe,
-  Navigation
+  Navigation,
+  ExternalLink,
+  ShieldCheck,
+  Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { redirect, useSearchParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { 
   useUser, 
@@ -72,17 +75,23 @@ import { es } from "date-fns/locale";
 import { signOut } from "firebase/auth";
 import { CHILE_REGIONS } from "@/lib/chile-data";
 
-export default function AdminCompaniesPage() {
+function AdminCompaniesContent() {
   const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { isSuperAdmin, isLoading: isUserLoading } = useUser();
   const db = useFirestore();
   const auth = useAuth();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [viewingAdminId, setViewingAdminId] = useState<string | null>(null);
   
   useEffect(() => {
     setMounted(true);
-  }, []);
+    const adminId = searchParams.get('id');
+    if (adminId) setViewingAdminId(adminId);
+  }, [searchParams]);
 
   // Redirigir si no es superadmin
   useEffect(() => {
@@ -96,41 +105,16 @@ export default function AdminCompaniesPage() {
     redirect("/auth/login");
   };
 
-  // Administradores State
+  // State para creación/edición
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    address: "",
-    currentPlan: "simple" as any,
-  });
-
-  // Config Subscription State
+  const [formData, setFormData] = useState({ name: "", address: "", currentPlan: "simple" as any });
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState<Company | null>(null);
-  const [configData, setConfigData] = useState({
-    currentPlan: "simple" as any,
-    subscriptionStatus: "active" as any,
-    isActive: true
-  });
+  const [configData, setConfigData] = useState({ currentPlan: "simple" as any, subscriptionStatus: "active" as any, isActive: true });
 
-  // Details / Communities State
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [detailsAdmin, setDetailsAdmin] = useState<Company | null>(null);
-  const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
-  
   // Community Form State
-  const [commData, setCommData] = useState({
-    name: "",
-    region: "",
-    city: "",
-    commune: "",
-    street: "",
-    number: "",
-    complement: ""
-  });
-
-  const selectedRegion = useMemo(() => CHILE_REGIONS.find(r => r.name === commData.region), [commData.region]);
+  const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
+  const [commData, setCommData] = useState({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
 
   const administratorsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
@@ -139,11 +123,16 @@ export default function AdminCompaniesPage() {
 
   const { data: administrators, isLoading: isAdminsLoading } = useCollection<Company>(administratorsQuery);
 
+  const selectedAdmin = useMemo(() => {
+    if (!viewingAdminId || !administrators) return null;
+    return administrators.find(a => a.id === viewingAdminId) || null;
+  }, [viewingAdminId, administrators]);
+
   // Consulta de Comunidades para el Administrador Seleccionado
   const communitiesQuery = useMemoFirebase(() => {
-    if (!db || !isSuperAdmin || !detailsAdmin) return null;
-    return query(collection(db, "companies", detailsAdmin.id, "communities"), orderBy("createdAt", "desc"));
-  }, [db, isSuperAdmin, detailsAdmin]);
+    if (!db || !isSuperAdmin || !viewingAdminId) return null;
+    return query(collection(db, "companies", viewingAdminId, "communities"), orderBy("createdAt", "desc"));
+  }, [db, isSuperAdmin, viewingAdminId]);
 
   const { data: linkedCommunities, isLoading: isCommunitiesLoading } = useCollection<Community>(communitiesQuery);
 
@@ -155,11 +144,9 @@ export default function AdminCompaniesPage() {
   const handleCreateAdmin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db) return;
-
     setIsSubmitting(true);
     const adminId = `adm-${Math.random().toString(36).substr(2, 6)}`;
     const adminRef = doc(db, "companies", adminId);
-    
     const adminData = {
       id: adminId,
       name: formData.name || "Nombre por definir",
@@ -170,25 +157,17 @@ export default function AdminCompaniesPage() {
       isActive: true,
       createdAt: new Date().toISOString(),
     };
-
     setDocumentNonBlocking(adminRef, adminData, { merge: true });
-    
-    toast({
-      title: "Administrador Creado",
-      description: `Se ha generado el acceso para ${adminData.name}.`,
-    });
-    
+    toast({ title: "Administrador Creado" });
     setIsCreateOpen(false);
     setFormData({ name: "", address: "", currentPlan: "simple" });
     setIsSubmitting(false);
   };
 
   const handleAddCommunity = async () => {
-    if (!db || !detailsAdmin || !commData.name) return;
-
+    if (!db || !selectedAdmin || !commData.name) return;
     const fullAddress = `${commData.street} ${commData.number}${commData.complement ? ', ' + commData.complement : ''}, ${commData.commune}, ${commData.city}, ${commData.region}`;
-
-    const communitiesCol = collection(db, "companies", detailsAdmin.id, "communities");
+    const communitiesCol = collection(db, "companies", selectedAdmin.id, "communities");
     await addDocumentNonBlocking(communitiesCol, {
       name: commData.name,
       address: fullAddress,
@@ -201,44 +180,23 @@ export default function AdminCompaniesPage() {
       isActive: true,
       createdAt: serverTimestamp()
     });
-
-    toast({ title: "Comunidad Vinculada", description: `${commData.name} ahora es gestionada por ${detailsAdmin.name}.` });
+    toast({ title: "Comunidad Vinculada", description: `${commData.name} activada para ${selectedAdmin.name}.` });
     setIsAddCommunityOpen(false);
     setCommData({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
   };
 
   const handleOpenConfig = (admin: Company) => {
-    setSelectedAdmin(admin);
-    setConfigData({
-      currentPlan: admin.currentPlan || "simple",
-      subscriptionStatus: admin.subscriptionStatus || "active",
-      isActive: admin.isActive ?? true
-    });
+    setConfigData({ currentPlan: admin.currentPlan || "simple", subscriptionStatus: admin.subscriptionStatus || "active", isActive: admin.isActive ?? true });
     setIsConfigOpen(true);
   };
 
   const handleSaveConfig = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !selectedAdmin) return;
-
     const adminRef = doc(db, "companies", selectedAdmin.id);
-    updateDocumentNonBlocking(adminRef, {
-      currentPlan: configData.currentPlan,
-      subscriptionStatus: configData.subscriptionStatus,
-      isActive: configData.isActive,
-      updatedAt: serverTimestamp(),
-    });
-
-    toast({
-      title: "Cambios guardados",
-      description: `Configuración actualizada para ${selectedAdmin.name}.`,
-    });
+    updateDocumentNonBlocking(adminRef, { ...configData, updatedAt: serverTimestamp() });
+    toast({ title: "Configuración Actualizada" });
     setIsConfigOpen(false);
-  };
-
-  const handleViewDetails = (admin: Company) => {
-    setDetailsAdmin(admin);
-    setIsDetailsOpen(true);
   };
 
   const formatDate = (date: any) => {
@@ -246,31 +204,208 @@ export default function AdminCompaniesPage() {
     try {
       const d = date?.toDate ? date.toDate() : (typeof date === 'string' ? parseISO(date) : date);
       return format(d, "dd MMM yyyy", { locale: es });
-    } catch (e) {
-      return 'N/A';
-    }
+    } catch (e) { return 'N/A'; }
   };
 
-  if (isUserLoading || !isSuperAdmin) {
+  const selectedRegionData = useMemo(() => CHILE_REGIONS.find(r => r.name === commData.region), [commData.region]);
+
+  if (isUserLoading || !isSuperAdmin) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+
+  // RENDERIZADO DE VISTA ENFOCADA (DETAIL VIEW)
+  if (viewingAdminId && selectedAdmin) {
     return (
-      <div className="flex h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="rounded-full h-12 w-12 hover:bg-slate-100" onClick={() => { setViewingAdminId(null); router.push('/admin/companies'); }}>
+              <ArrowLeft className="h-6 w-6" />
+            </Button>
+            <div>
+              <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Ficha del Administrador</h2>
+              <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">Control de gestión y comunidades asociadas</p>
+            </div>
+          </div>
+          <Button variant="outline" className="rounded-xl font-bold h-11 px-6 border-slate-200" onClick={() => handleOpenConfig(selectedAdmin)}>
+            <Settings2 className="h-4 w-4 mr-2" /> Ajustar Suscripción
+          </Button>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card className="md:col-span-2 rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden relative group">
+            <div className="absolute right-0 top-0 p-8 opacity-10 group-hover:scale-110 transition-transform"><UserCog className="h-40 w-40 text-blue-400" /></div>
+            <CardHeader className="p-10 pb-4">
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-3 py-1 mb-4">Registro SaaS Activo</Badge>
+                  <CardTitle className="text-4xl font-black italic uppercase tracking-tighter">{selectedAdmin.name}</CardTitle>
+                  <p className="text-blue-400 font-mono text-xs pt-2">ID ÚNICO: {selectedAdmin.id}</p>
+                </div>
+                <Badge variant="outline" className="border-white/20 text-white font-black uppercase text-[10px] px-4 py-2 rounded-full backdrop-blur-md bg-white/5">
+                  Plan {selectedAdmin.currentPlan?.toUpperCase()}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-10 pt-6 grid grid-cols-2 gap-8 relative z-10">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Fecha de Ingreso</p>
+                <p className="text-lg font-bold">{formatDate(selectedAdmin.createdAt)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Estado Operativo</p>
+                <div className="flex items-center gap-2">
+                  <div className={cn("h-2.5 w-2.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.2)]", selectedAdmin.isActive ? "bg-emerald-500" : "bg-rose-500")} />
+                  <p className="text-lg font-black italic uppercase tracking-tight">{selectedAdmin.isActive ? 'Operativo' : 'Suspendido'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white p-10 flex flex-col justify-center text-center space-y-4">
+            <div className="bg-white/20 p-4 rounded-3xl w-fit mx-auto mb-2"><Home className="h-10 w-10" /></div>
+            <div className="space-y-1">
+              <p className="text-5xl font-black italic tracking-tighter">{linkedCommunities?.length || 0}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Comunidades Vinculadas</p>
+            </div>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900 flex items-center gap-3">
+              <ShieldCheck className="h-6 w-6 text-blue-600" /> Cartera de Recintos
+            </h3>
+            <Dialog open={isAddCommunityOpen} onOpenChange={setIsAddCommunityOpen}>
+              <DialogTrigger asChild>
+                <Button className="rounded-xl h-11 px-6 font-black uppercase text-[10px] gap-2 shadow-lg shadow-blue-900/10">
+                  <Plus className="h-4 w-4" /> Vincular Nueva Comunidad
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black italic uppercase">Nuevo Registro de Comunidad</DialogTitle>
+                  <DialogDescription>Asigne un edificio o recinto para que este administrador pueda gestionarlo.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Recinto *</Label>
+                    <Input placeholder="Ej: Edificio Vista Mar" value={commData.name} onChange={e => setCommData({...commData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                  </div>
+                  <div className="space-y-4 bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
+                    <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2"><Globe className="h-4 w-4" /> Ubicación Geográfica</p>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Región</Label><Select value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}><SelectTrigger className="h-11 border-2 rounded-xl bg-white"><SelectValue placeholder="Región" /></SelectTrigger><SelectContent>{CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}</SelectContent></Select></div>
+                      <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Ciudad</Label><Select value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}><SelectTrigger className="h-11 border-2 rounded-xl bg-white"><SelectValue placeholder="Ciudad" /></SelectTrigger><SelectContent>{selectedRegionData?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                      <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Comuna</Label><Select value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}><SelectTrigger className="h-11 border-2 rounded-xl bg-white"><SelectValue placeholder="Comuna" /></SelectTrigger><SelectContent>{selectedRegionData?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="col-span-2 space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Calle / Avenida</Label><Input value={commData.street} onChange={e => setCommData({...commData, street: e.target.value})} className="h-11 border-2 rounded-xl bg-white" /></div>
+                      <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">N°</Label><Input value={commData.number} onChange={e => setCommData({...commData, number: e.target.value})} className="h-11 border-2 rounded-xl bg-white" /></div>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter><Button className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" onClick={handleAddCommunity}>Activar Comunidad</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {isCommunitiesLoading ? (
+            <div className="py-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-blue-200" /></div>
+          ) : linkedCommunities && linkedCommunities.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {linkedCommunities.map((comm) => (
+                <Card key={comm.id} className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white group hover:shadow-lg transition-all border-2 border-transparent hover:border-blue-100">
+                  <CardContent className="p-8 space-y-6">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-blue-50 p-3 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all"><Building2 className="h-6 w-6" /></div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xl font-black text-slate-900 uppercase italic tracking-tighter truncate">{comm.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1 mt-0.5"><MapPin className="h-2.5 w-2.5" /> {comm.city}, {comm.region}</p>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
+                      <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Dirección Operativa</p>
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed">{comm.address}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" asChild className="flex-1 rounded-xl h-10 font-black uppercase text-[9px] gap-2 border-slate-100 bg-white hover:bg-blue-50 hover:text-blue-600">
+                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(comm.address)}`} target="_blank" rel="noopener noreferrer">
+                          <Globe className="h-3 w-3" /> Maps
+                        </a>
+                      </Button>
+                      <Button variant="outline" size="sm" asChild className="flex-1 rounded-xl h-10 font-black uppercase text-[9px] gap-2 border-slate-100 bg-white hover:bg-indigo-50 hover:text-indigo-600">
+                        <a href={`https://waze.com/ul?q=${encodeURIComponent(comm.address)}&navigate=yes`} target="_blank" rel="noopener noreferrer">
+                          <Navigation className="h-3 w-3" /> Waze
+                        </a>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="py-32 text-center border-4 border-dashed rounded-[3rem] bg-slate-50/50 space-y-4">
+              <Home className="h-16 w-16 mx-auto text-slate-200" />
+              <div className="space-y-1">
+                <p className="text-xl font-black italic uppercase text-slate-400">Sin comunidades activas</p>
+                <p className="text-sm text-slate-400">Este administrador no tiene recintos vinculados a su gestión todavía.</p>
+              </div>
+              <Button onClick={() => setIsAddCommunityOpen(true)} className="rounded-xl h-11 px-8 font-black uppercase text-[10px] gap-2 mt-4 shadow-xl">Vincular mi primer edificio</Button>
+            </div>
+          )}
+        </div>
+
+        {/* Dialog Configuración Comercial (Reutilizado) */}
+        <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+          <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]">
+            <DialogHeader>
+              <DialogTitle className="font-black italic uppercase text-xl">Parámetros de Servicio</DialogTitle>
+              <DialogDescription>Ajuste el nivel de suscripción para {selectedAdmin?.name}.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSaveConfig} className="space-y-6 py-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Plan de Suscripción</Label>
+                  <Select value={configData.currentPlan} onValueChange={(val) => setConfigData({...configData, currentPlan: val})}>
+                    <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
+                      <SelectItem value="business">Plan Business (1.8 UF)</SelectItem>
+                      <SelectItem value="enterprise">Plan Enterprise (3.5 UF)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado de Operación</Label>
+                  <Select value={configData.isActive ? "true" : "false"} onValueChange={(val) => setConfigData({...configData, isActive: val === "true"})}>
+                    <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Activa / Operativa</SelectItem>
+                      <SelectItem value="false">Suspendida / Bloqueada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl"><Save className="h-4 w-4 mr-2" /> Actualizar Configuración</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
 
+  // RENDERIZADO DE LISTA GLOBAL
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild title="Volver al Panel Maestro">
-            <Link href="/admin">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
+            <Link href="/admin"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Gestión de Administradores</h2>
-            <p className="text-muted-foreground">Control central de gestores SaaS y sus comunidades vinculadas.</p>
+            <p className="text-muted-foreground">Control central de gestores SaaS y sus carteras de comunidades.</p>
           </div>
         </div>
         
@@ -280,34 +415,23 @@ export default function AdminCompaniesPage() {
           </Button>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Nuevo Administrador
-              </Button>
+              <Button className="rounded-xl font-black gap-2 shadow-lg"><Plus className="h-4 w-4" /> Nuevo Administrador</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
               <DialogHeader>
-                <DialogTitle>Registrar Administrador (Tenant)</DialogTitle>
+                <DialogTitle className="text-2xl font-black italic uppercase">Registrar Nuevo Gestor</DialogTitle>
                 <DialogDescription>Cree el entorno para que el gestor pueda administrar sus comunidades.</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleCreateAdmin} className="space-y-4 py-4">
+              <form onSubmit={handleCreateAdmin} className="space-y-6 py-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Nombre del Administrador / Empresa</Label>
-                    <Input 
-                      placeholder="Ej: Administraciones Cordillera" 
-                      value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    />
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre Administrador / Empresa</Label>
+                    <Input placeholder="Ej: Administraciones Cordillera" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Plan de Inicio</Label>
-                    <Select 
-                      value={formData.currentPlan} 
-                      onValueChange={(val) => setFormData({...formData, currentPlan: val})}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Plan de Inicio</Label>
+                    <Select value={formData.currentPlan} onValueChange={(val) => setFormData({...formData, currentPlan: val})}>
+                      <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
                         <SelectItem value="business">Plan Business (1.8 UF)</SelectItem>
@@ -316,327 +440,82 @@ export default function AdminCompaniesPage() {
                     </Select>
                   </div>
                 </div>
-                <DialogFooter className="pt-4">
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Entorno Administrador"}
-                  </Button>
-                </DialogFooter>
+                <DialogFooter><Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Entorno SaaS"}</Button></DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      <div className="grid gap-6">
-        <Card className="border-none shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar por nombre o ID de administrador..." 
-                className="pl-10"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isAdminsLoading ? (
-              <div className="py-10 text-center">
-                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                Cargando administradores...
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Administrador / Registro</TableHead>
-                    <TableHead>Plan de Servicio</TableHead>
-                    <TableHead>Código Acceso</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((admin: Company) => {
-                    return (
-                      <TableRow key={admin.id} className="group">
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-900">{admin.name}</span>
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <Calendar className="h-3 w-3" /> {formatDate(admin.createdAt)}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={cn(
-                            "w-fit text-[9px] font-black uppercase",
-                            admin.currentPlan === 'enterprise' && "bg-purple-50 text-purple-700 border-purple-200",
-                            admin.currentPlan === 'business' && "bg-blue-50 text-blue-700 border-blue-200"
-                          )}>
-                            {admin.currentPlan?.toUpperCase() || 'SIMPLE'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">
-                              {admin.id}
-                            </code>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" 
-                              onClick={() => {
-                                navigator.clipboard.writeText(admin.id);
-                                toast({ title: "Copiado", description: "Código de administrador copiado." });
-                              }}
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleViewDetails(admin)}
-                              title="Ver Comunidades Asociadas"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleOpenConfig(admin)}
-                              title="Ajustar Parámetros Comerciales"
-                            >
-                              <Settings2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Dialog FICHA DE COMUNIDADES POR ADMINISTRADOR */}
-      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl">
-          <DialogHeader className="bg-slate-900 text-white p-8 -m-6 mb-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-4">
-                <div className="bg-white/10 p-3 rounded-2xl">
-                  <UserCog className="h-8 w-8 text-blue-400" />
-                </div>
-                <div>
-                  <DialogTitle className="text-2xl font-black uppercase italic tracking-tighter">{detailsAdmin?.name}</DialogTitle>
-                  <DialogDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">
-                    ID Administrador: {detailsAdmin?.id}
-                  </DialogDescription>
-                </div>
-              </div>
-              
-              <Dialog open={isAddCommunityOpen} onOpenChange={setIsAddCommunityOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-500 font-black uppercase text-[10px] gap-2 rounded-xl h-10 px-4">
-                    <Plus className="h-4 w-4" /> Vincular Comunidad
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle className="font-black uppercase italic text-lg">Nueva Comunidad Vinculada</DialogTitle>
-                    <DialogDescription>Registre un edificio o recinto para este administrador.</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-6 py-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Recinto *</Label>
-                      <Input placeholder="Ej: Edificio Vista Mar" value={commData.name} onChange={e => setCommData({...commData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
-                    </div>
-
-                    <div className="space-y-4 bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
-                      <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2">
-                        <Globe className="h-4 w-4" /> Ubicación Geográfica
-                      </p>
-                      
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-black uppercase text-slate-400">Región *</Label>
-                          <Select value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}>
-                            <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
-                              <SelectValue placeholder="Región" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-black uppercase text-slate-400">Ciudad *</Label>
-                          <Select key={`city-${commData.region}`} value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}>
-                            <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
-                              <SelectValue placeholder="Ciudad" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {selectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-black uppercase text-slate-400">Comuna *</Label>
-                          <Select key={`commune-${commData.region}`} value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}>
-                            <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
-                              <SelectValue placeholder="Comuna" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="col-span-2 space-y-2">
-                          <Label className="text-[9px] font-black uppercase text-slate-400">Calle / Avenida *</Label>
-                          <Input placeholder="Ej: Av. Providencia" value={commData.street} onChange={e => setCommData({...commData, street: e.target.value})} className="h-11 border-2 rounded-xl bg-white" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-black uppercase text-slate-400">N° *</Label>
-                          <Input placeholder="1234" value={commData.number} onChange={e => setCommData({...commData, number: e.target.value})} className="h-11 border-2 rounded-xl bg-white" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400">Depto / Of / Casa (Opcional)</Label>
-                        <Input placeholder="Ej: Depto 502" value={commData.complement} onChange={e => setCommData({...commData, complement: e.target.value})} className="h-11 border-2 rounded-xl bg-white" />
-                      </div>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" onClick={handleAddCommunity}>Activar Comunidad</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </DialogHeader>
-          
-          <div className="space-y-8 py-2 px-2">
-            <div className="space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-blue-600 border-b pb-2 flex items-center gap-2">
-                <Home className="h-4 w-4" /> Comunidades Asociadas ({linkedCommunities?.length || 0})
-              </h3>
-              
-              <div className="grid grid-cols-1 gap-4">
-                {isCommunitiesLoading ? (
-                  <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-200" /></div>
-                ) : linkedCommunities && linkedCommunities.length > 0 ? (
-                  linkedCommunities.map((comm) => (
-                    <Card key={comm.id} className="border-2 border-slate-100 shadow-none rounded-[1.5rem] overflow-hidden hover:border-blue-200 transition-colors group">
-                      <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="bg-blue-50 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
-                            <Building2 className="h-6 w-6 text-blue-600 group-hover:text-white" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-base font-black text-slate-900 uppercase italic tracking-tighter truncate">{comm.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <MapPin className="h-3 w-3 text-slate-400" />
-                              <p className="text-[10px] text-slate-400 font-bold truncate">{comm.address}</p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button variant="outline" size="sm" asChild className="rounded-xl border-blue-200 text-blue-700 font-black text-[9px] uppercase gap-2 h-9 px-3">
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(comm.address)}`} target="_blank" rel="noopener noreferrer">
-                              <Globe className="h-3.5 w-3.5" /> Maps
-                            </a>
-                          </Button>
-                          <Button variant="outline" size="sm" asChild className="rounded-xl border-blue-400 text-blue-600 bg-blue-50 hover:bg-blue-100 font-black text-[9px] uppercase gap-2 h-9 px-3">
-                            <a href={`https://waze.com/ul?q=${encodeURIComponent(comm.address)}&navigate=yes`} target="_blank" rel="noopener noreferrer">
-                              <Navigation className="h-3.5 w-3.5 fill-blue-600" /> Waze
-                            </a>
-                          </Button>
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase h-9 px-3">Operativo</Badge>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
-                ) : (
-                  <div className="py-24 text-center border-2 border-dashed rounded-[2rem] bg-slate-50/50">
-                    <Home className="h-12 w-12 mx-auto mb-4 text-slate-200" />
-                    <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">Este administrador no tiene comunidades asociadas aún.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+      <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+        <CardHeader className="pb-6 p-8 border-b">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+            <Input placeholder="Buscar por nombre o ID..." className="pl-12 h-12 border-none bg-slate-50 rounded-2xl text-base font-medium shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          
-          <DialogFooter className="pt-6">
-            <Button variant="ghost" className="w-full h-12 rounded-xl font-black uppercase text-[10px] tracking-widest text-slate-400" onClick={() => setIsDetailsOpen(false)}>
-              Cerrar Ficha de Administrador
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Configuración Comercial */}
-      <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-[2rem]">
-          <DialogHeader>
-            <DialogTitle className="font-black italic uppercase text-xl">Parámetros de Servicio</DialogTitle>
-            <DialogDescription>
-              Ajuste el nivel de suscripción para {selectedAdmin?.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSaveConfig} className="space-y-4 py-4">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Plan de Suscripción</Label>
-                <Select 
-                  value={configData.currentPlan} 
-                  onValueChange={(val) => setConfigData({...configData, currentPlan: val})}
-                >
-                  <SelectTrigger className="h-12 border-2 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="simple">Plan Inicio (Demo)</SelectItem>
-                    <SelectItem value="business">Plan Business (1.8 UF)</SelectItem>
-                    <SelectItem value="enterprise">Plan Enterprise (3.5 UF)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Estado de Operación</Label>
-                <Select 
-                  value={configData.isActive ? "true" : "false"} 
-                  onValueChange={(val) => setConfigData({...configData, isActive: val === "true"})}
-                >
-                  <SelectTrigger className="h-12 border-2 rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Activa / Operativa</SelectItem>
-                    <SelectItem value="false">Suspendida / Bloqueada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter className="pt-4">
-              <Button type="submit" className="w-full h-12 rounded-xl font-black uppercase shadow-xl">
-                <Save className="h-4 w-4 mr-2" />
-                Actualizar Configuración
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isAdminsLoading ? (
+            <div className="py-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary/20" /></div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="border-none">
+                  <TableHead className="pl-10 h-14 font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Administrador / Registro</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Plan de Servicio</TableHead>
+                  <TableHead className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Código Acceso</TableHead>
+                  <TableHead className="text-right pr-10 font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((admin: Company) => (
+                  <TableRow key={admin.id} className="group hover:bg-slate-50/80 transition-colors cursor-pointer" onClick={() => setViewingAdminId(admin.id)}>
+                    <TableCell className="pl-10 py-6">
+                      <div className="flex flex-col">
+                        <span className="font-black text-slate-900 text-lg tracking-tight">{admin.name}</span>
+                        <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-1.5 mt-1">
+                          <Calendar className="h-3 w-3" /> {formatDate(admin.createdAt)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={cn(
+                        "text-[9px] font-black uppercase border-none px-3 py-1 rounded-full",
+                        admin.currentPlan === 'enterprise' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                      )}>
+                        {admin.currentPlan}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <code className="bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-mono font-black text-blue-600 border border-slate-200">
+                        {admin.id}
+                      </code>
+                    </TableCell>
+                    <TableCell className="text-right pr-10" onClick={e => e.stopPropagation()}>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white hover:text-blue-600 transition-all" onClick={() => setViewingAdminId(admin.id)}>
+                          <Eye className="h-5 w-5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-white" onClick={() => handleOpenConfig(admin)}>
+                          <Settings2 className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+export default function AdminCompaniesPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <AdminCompaniesContent />
+    </Suspense>
   );
 }
