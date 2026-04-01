@@ -87,17 +87,19 @@ export default function HomePage() {
 
     const playVideo = async () => {
       if (videoRef.current) {
+        // Forzamos atributos directamente en el elemento DOM para asegurar reproducción
         videoRef.current.muted = true;
         videoRef.current.defaultMuted = true;
         try {
           await videoRef.current.play();
         } catch (error) {
-          console.warn("Autoplay bloqueado:", error);
+          console.warn("Autoplay detectado como bloqueado por el navegador:", error);
         }
       }
     };
     
-    const timer = setTimeout(playVideo, 150);
+    // Pequeño delay para asegurar que el DOM esté listo
+    const timer = setTimeout(playVideo, 100);
     return () => {
       clearInterval(interval);
       clearTimeout(timer);
@@ -230,7 +232,8 @@ export default function HomePage() {
         </div>
       )}
 
-      <section className="relative h-[100vh] min-h-[700px] flex items-center justify-center overflow-hidden">
+      {/* HERO SECTION OPTIMIZADA PARA LECTURA Y VIDEO */}
+      <section className="relative h-[100svh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-slate-900/60 z-10" />
           {mounted && (
@@ -251,13 +254,13 @@ export default function HomePage() {
           )}
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 text-center space-y-8 md:space-y-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 text-center space-y-8">
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000">
             <Badge variant="outline" className="py-2 px-6 border-blue-400/30 text-blue-300 bg-white/5 backdrop-blur-md rounded-full font-black uppercase tracking-[0.3em] text-[10px]">
               GENKO • Gestión y Telemetría Hídrica
             </Badge>
-            <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-white uppercase italic leading-tight">
-              Transparencia que Ahorra: <br />
+            <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-white uppercase italic leading-tight px-4">
+              Transparencia que Ahorra: <br /> 
               <span className="text-blue-400">El Control del Agua vuelve a la Comunidad</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium px-4">
@@ -364,17 +367,18 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* SECCIÓN EDUCACIÓN ACTUALIZADA */}
       <section id="agua-colegios" className="py-32 bg-slate-950 text-white relative overflow-hidden border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-10">
               <div className="space-y-6">
                 <Badge className="bg-emerald-500 text-white font-black px-6 py-2 uppercase tracking-[0.3em] rounded-full border-none text-[10px]">GESTIÓN EDUCACIONAL</Badge>
-                <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase italic leading-[0.9]">Eficiencia Hídrica <br /><span className="text-emerald-400">Sin Inversión Inicial</span></h2>
-                <p className="text-xl text-slate-400 font-medium leading-relaxed">Sustentabilidad basada en rendimiento. Implementación de control automático bajo modelo de ahorro compartido.</p>
+                <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase italic leading-[0.9]">Gestión que se Paga <br /><span className="text-emerald-400">con Resultados</span></h2>
+                <p className="text-xl text-slate-400 font-medium leading-relaxed">El Poder de Controlar el Agua. Sustentabilidad basada en métricas de rendimiento y eficiencia operativa de alto impacto.</p>
               </div>
               <Card className="rounded-[2.5rem] border-none bg-emerald-500/10 border-2 border-emerald-500/20 p-8 shadow-2xl">
-                <div className="flex items-start gap-6"><div className="bg-emerald-500 p-4 rounded-3xl shadow-xl shadow-emerald-900/40"><HandCoins className="h-10 w-10 text-white" /></div><div className="space-y-2"><h3 className="text-2xl font-black italic uppercase tracking-tighter text-emerald-400">Modelo de Ahorro Real</h3><p className="text-slate-300 text-sm leading-relaxed">Nuestra retribución es un porcentaje del ahorro generado en la facturación. El sistema se amortiza con el capital recuperado por eliminación de fugas.</p></div></div>
+                <div className="flex items-start gap-6"><div className="bg-emerald-500 p-4 rounded-3xl shadow-xl shadow-emerald-900/40"><HandCoins className="h-10 w-10 text-white" /></div><div className="space-y-2"><h3 className="text-2xl font-black italic uppercase tracking-tighter text-emerald-400">Modelo de Eficiencia Real</h3><p className="text-slate-300 text-sm leading-relaxed">La inteligencia de datos permite identificar ahorros que justifican la modernización. El sistema se rentabiliza mediante la eliminación drástica de mermas no detectadas.</p></div></div>
               </Card>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {[
