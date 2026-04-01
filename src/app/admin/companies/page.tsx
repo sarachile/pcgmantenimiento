@@ -173,6 +173,11 @@ function AdminCompaniesContent() {
     c.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/auth/login");
+  };
+
   const handleCreateAdmin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!db) return;
