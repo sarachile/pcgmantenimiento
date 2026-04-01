@@ -25,7 +25,8 @@ import {
   LayoutGrid,
   List,
   MoreHorizontal,
-  UserCog
+  UserCog,
+  Home
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase";
 import { collection, query, orderBy } from "firebase/firestore";
@@ -35,7 +36,24 @@ import { Badge } from "@/components/ui/badge";
 import { signOut } from "firebase/auth";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Company, User } from "@/lib/types";
+import { Company, User, Community } from "@/lib/types";
+
+// Componente auxiliar para obtener el conteo de comunidades de un administrador
+function CommunityCount({ adminId }: { adminId: string }) {
+  const db = useFirestore();
+  const communitiesQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return collection(db, "companies", adminId, "communities");
+  }, [db, adminId]);
+
+  const { data: communities, isLoading } = useCollection<Community>(communitiesQuery);
+
+  if (isLoading) return <Loader2 className="h-3 w-3 animate-spin text-slate-300" />;
+  
+  return (
+    <span className="font-black text-slate-900">{communities?.length || 0}</span>
+  );
+}
 
 export default function SuperadminDashboardPage() {
   const { isSuperAdmin, isLoading: isAuthLoading, isAuthenticated } = useUser();
@@ -173,6 +191,16 @@ export default function SuperadminDashboardPage() {
                       <h4 className="text-xl font-black text-slate-900 uppercase italic tracking-tighter truncate">Admin: {admin.name}</h4>
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {admin.id}</p>
                     </div>
+
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Home className="h-3.5 w-3.5 text-blue-600" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Comunidades</span>
+                      </div>
+                      <div className="text-sm">
+                        <CommunityCount adminId={admin.id} />
+                      </div>
+                    </div>
                     
                     <div className="pt-4 border-t flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -203,7 +231,13 @@ export default function SuperadminDashboardPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Comunidades</p>
+                            <div className="text-xs">
+                              <CommunityCount adminId={admin.id} />
+                            </div>
+                          </div>
                           <Badge variant="outline" className={cn(
                             "text-[9px] font-black uppercase",
                             admin.currentPlan === 'enterprise' ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-blue-50 text-blue-700 border-blue-200"
