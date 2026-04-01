@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo, Suspense } from "react";
@@ -345,11 +344,11 @@ function AdminCompaniesContent() {
                 {enrollType === 'sensor' && (
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Tipo de Magnitud</Label>
-                    <Select value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
+                    <Select value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})} modal={false}>
                       <SelectTrigger className="h-12 border-2 rounded-xl font-bold" onPointerDown={e => e.stopPropagation()}>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent modal={false}>
+                      <SelectContent>
                         <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
                         <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
                         <SelectItem value="presion">Presión (Bar)</SelectItem>
