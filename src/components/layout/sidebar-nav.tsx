@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -151,7 +150,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
             <span className="font-black text-sm tracking-tighter text-white uppercase truncate">
               {isSuperAdmin ? "CORE INFRA" : (company?.name || "GENKO ERP")}
             </span>
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">Espíritu Guardián</span>
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">Gestión Inteligente</span>
           </div>
         </div>
       </SidebarHeader>

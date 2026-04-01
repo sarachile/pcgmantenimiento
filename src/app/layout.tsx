@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 
 export const metadata: Metadata = {
-  title: "GENKO - El Espíritu Guardián del Agua",
-  description: "Plataforma de inteligencia hídrica y custodia digital. Gestión industrial con trazabilidad inalterable e integración IoT.",
+  title: "GENKO - Gestión Hídrica e Inteligencia IoT",
+  description: "Plataforma profesional de telemetría hídrica y gestión industrial con integración IoT y redes NB-IoT. Trazabilidad inalterable y auditoría del recurso.",
   appleWebApp: {
     capable: true,
     title: "GENKO ERP",
