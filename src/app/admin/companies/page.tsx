@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, useRef, useCallback } from "react";
 import { 
   Table, 
   TableBody, 
@@ -61,7 +61,10 @@ import {
   Waves,
   QrCode,
   Wifi,
-  KeyRound
+  KeyRound,
+  Camera,
+  X,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -83,6 +86,130 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { signOut } from "firebase/auth";
 import { CHILE_REGIONS } from "@/lib/chile-data";
+import jsQR from "jsqr";
+
+// --- COMPONENTE ESCÁNER QR ---
+function QRScannerDialog({ onScan, isOpen, onOpenChange }: { onScan: (data: string) => void, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const { toast } = useToast();
+
+  const stopCamera = useCallback(() => {
+    setIsScanning(false);
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setHasCameraPermission(true);
+        setIsScanning(true);
+      }
+    } catch (error) {
+      console.error('Error accessing camera:', error);
+      setHasCameraPermission(false);
+      toast({
+        variant: 'destructive',
+        title: 'Acceso a Cámara Denegado',
+        description: 'Por favor permite el uso de la cámara en tu navegador para escanear hardware.',
+      });
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    if (isOpen) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => stopCamera();
+  }, [isOpen, startCamera, stopCamera]);
+
+  useEffect(() => {
+    let animationFrameId: number;
+
+    const tick = () => {
+      if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current && isScanning) {
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        canvas.height = video.videoHeight;
+        canvas.width = video.videoWidth;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: "dontInvert",
+          });
+          if (code) {
+            onScan(code.data);
+            stopCamera();
+          }
+        }
+      }
+      if (isScanning) {
+        animationFrameId = requestAnimationFrame(tick);
+      }
+    };
+
+    if (isScanning) {
+      animationFrameId = requestAnimationFrame(tick);
+    }
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+    };
+  }, [isScanning, onScan, stopCamera]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[450px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-slate-900">
+        <DialogHeader className="p-8 pb-0 text-white">
+          <DialogTitle className="text-xl font-black italic uppercase tracking-tighter flex items-center gap-3">
+            <Camera className="h-5 w-5 text-blue-400" /> Escaneo de Hardware
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Apunta la cámara al código QR del sensor.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="p-8 space-y-6">
+          <div className="relative aspect-square rounded-[2rem] overflow-hidden bg-black border-4 border-slate-800 shadow-inner flex items-center justify-center">
+            <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" autoPlay muted playsInline />
+            <canvas ref={canvasRef} className="hidden" />
+            
+            {/* Overlay de escaneo */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="w-48 h-48 border-2 border-blue-500 rounded-2xl relative animate-pulse">
+                <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
+                <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
+                <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
+                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] animate-[scan_2s_ease-in-out_infinite]" />
+              </div>
+            </div>
+
+            {hasCameraPermission === false && (
+              <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-8 text-center gap-4">
+                <AlertTriangle className="h-12 w-12 text-rose-500" />
+                <p className="text-white font-bold text-sm">Cámara bloqueada o no disponible.</p>
+                <Button variant="outline" className="text-white border-white/20" onClick={startCamera}>Reintentar Acceso</Button>
+              </div>
+            )}
+          </div>
+          <Button variant="ghost" className="w-full text-slate-400 font-bold uppercase text-[10px]" onClick={() => onOpenChange(false)}>Cancelar Escaneo</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function AdminCompaniesContent() {
   const { toast } = useToast();
@@ -112,6 +239,7 @@ function AdminCompaniesContent() {
 
   // Enrollment State (Provisioning LoRaWAN/NB-IoT)
   const [isEnrollOpen, setIsEnrollOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [enrollType, setEnrollOpenType] = useState<"meter" | "sensor">("meter");
   const [enrollData, setEnrollData] = useState({ 
     devEUI: "", 
@@ -130,14 +258,14 @@ function AdminCompaniesContent() {
 
   // FORCE UNLOCK BODY
   useEffect(() => {
-    if (!isAddCommunityOpen && !isConfigOpen && !isCreateOpen && !isEnrollOpen) {
+    if (!isAddCommunityOpen && !isConfigOpen && !isCreateOpen && !isEnrollOpen && !isScannerOpen) {
       const timer = setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
         document.body.style.overflow = 'auto';
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isAddCommunityOpen, isConfigOpen, isCreateOpen, isEnrollOpen]);
+  }, [isAddCommunityOpen, isConfigOpen, isCreateOpen, isEnrollOpen, isScannerOpen]);
 
   // Consultas Globales
   const administratorsQuery = useMemoFirebase(() => {
@@ -299,6 +427,49 @@ function AdminCompaniesContent() {
     }
   };
 
+  const handleQRScanResult = (text: string) => {
+    // Parser flexible para formatos industriales
+    // Formato 1: DEVEUI:X;APPEUI:Y;APPKEY:Z
+    // Formato 2: X,Y,Z
+    const data: any = {};
+    const pairs = text.split(/[;,&]/);
+    
+    pairs.forEach(pair => {
+      const parts = pair.split(/[:=]/);
+      if (parts.length >= 2) {
+        const k = parts[0].trim().toLowerCase();
+        const v = parts[1].trim();
+        if (k.includes('deveui') || k.includes('dev_eui')) data.devEUI = v;
+        if (k.includes('appeui') || k.includes('app_eui')) data.appEUI = v;
+        if (k.includes('appkey') || k.includes('app_key')) data.appKey = v;
+      }
+    });
+
+    // Si no detectó por etiquetas, intentar por orden posicional si hay comas
+    if (!data.devEUI && pairs.length >= 3) {
+      if (pairs[0].length >= 16) data.devEUI = pairs[0].trim();
+      if (pairs[1].length >= 16) data.appEUI = pairs[1].trim();
+      if (pairs[2].length >= 32) data.appKey = pairs[2].trim();
+    }
+
+    if (data.devEUI || data.appEUI || data.appKey) {
+      setEnrollData(prev => ({
+        ...prev,
+        devEUI: data.devEUI || prev.devEUI,
+        appEUI: data.appEUI || prev.appEUI,
+        appKey: data.appKey || prev.appKey
+      }));
+      setIsScannerOpen(false);
+      toast({ title: "QR Decodificado", description: "Datos de hardware cargados automáticamente." });
+    } else {
+      toast({ 
+        title: "QR no reconocido", 
+        description: "El formato del código no es compatible con el estándar de red. Ingrese los datos manualmente.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleOpenConfig = (admin: Company) => {
     setConfigData({ currentPlan: admin.currentPlan || "simple", subscriptionStatus: admin.subscriptionStatus || "active", isActive: admin.isActive ?? true });
     setIsConfigOpen(true);
@@ -363,13 +534,18 @@ function AdminCompaniesContent() {
                 </div>
                 
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-[10px] font-black uppercase text-primary tracking-widest"><Wifi className="h-4 w-4" /> Credenciales de Red</div>
+                  <div className="flex items-center justify-between text-[10px] font-black uppercase text-primary tracking-widest">
+                    <div className="flex items-center gap-2"><Wifi className="h-4 w-4" /> Credenciales de Red</div>
+                    <Button variant="ghost" size="sm" className="h-7 px-2 bg-slate-100 text-slate-600 rounded-lg gap-1.5" onClick={() => setIsScannerOpen(true)}>
+                      <Camera className="h-3 w-3" /> Escanear QR
+                    </Button>
+                  </div>
                   
                   <div className="space-y-2">
                     <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">DevEUI (ID Único del Hardware)</Label>
                     <div className="relative">
                       <Input placeholder="Ej: 0011223344556677" value={enrollData.devEUI} onChange={e => setEnrollData({...enrollData, devEUI: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono uppercase pl-4" />
-                      <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors" title="Simular Escaneo QR"><Smartphone className="h-5 w-5" /></button>
+                      <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors" title="Escanear QR" onClick={() => setIsScannerOpen(true)}><Smartphone className="h-5 w-5" /></button>
                     </div>
                   </div>
 
@@ -437,6 +613,12 @@ function AdminCompaniesContent() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          <QRScannerDialog 
+            isOpen={isScannerOpen} 
+            onOpenChange={setIsScannerOpen} 
+            onScan={handleQRScanResult} 
+          />
         </div>
 
         <div className="grid gap-8">
