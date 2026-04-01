@@ -88,6 +88,41 @@ import { signOut } from "firebase/auth";
 import { CHILE_REGIONS } from "@/lib/chile-data";
 import jsQR from "jsqr";
 
+// --- SIMULATED DATA FOR JUAN FERNANDEZ ---
+const SIM_JUAN_ADMIN: Company = {
+  id: 'adm-juan-f',
+  name: 'Juan Fernández',
+  rut: '12.345.678-9',
+  address: 'Avenida Libertad 450, Viña del Mar',
+  currentPlan: 'enterprise',
+  subscriptionStatus: 'active',
+  isActive: true,
+  createdAt: new Date('2024-01-15').toISOString(),
+};
+
+const SIM_JUAN_COMMUNITY: Community = {
+  id: 'comm-juan-1',
+  companyId: 'adm-juan-f',
+  name: 'Edificio Horizonte',
+  address: 'Calle 2 Norte 1245, Viña del Mar',
+  region: 'Valparaíso',
+  city: 'Viña del Mar',
+  commune: 'Viña del Mar',
+  createdAt: new Date('2024-01-20').toISOString(),
+  isActive: true
+};
+
+const SIM_JUAN_METERS: WaterMeter[] = [
+  { id: 'meter-juan-1', companyId: 'adm-juan-f', communityId: 'comm-juan-1', unitIdentifier: 'Depto 402 (Torre A)', status: 'open', currentReading: 452.12, batteryLevel: 95, signalStrength: 88, hasLeakAlert: false, lastCommunication: new Date().toISOString(), devEUI: '0011223344556601' },
+  { id: 'meter-juan-2', companyId: 'adm-juan-f', communityId: 'comm-juan-1', unitIdentifier: 'Depto 505 (Torre A)', status: 'open', currentReading: 12.45, batteryLevel: 92, signalStrength: 75, hasLeakAlert: true, lastCommunication: new Date().toISOString(), devEUI: '0011223344556602' },
+  { id: 'meter-juan-3', companyId: 'adm-juan-f', communityId: 'comm-juan-1', unitIdentifier: 'Oficina Admin (PB)', status: 'open', currentReading: 1245.80, batteryLevel: 100, signalStrength: 99, hasLeakAlert: false, lastCommunication: new Date().toISOString(), devEUI: '0011223344556603' },
+];
+
+const SIM_JUAN_SENSORS: Asset[] = [
+  { id: 'sensor-juan-1', companyId: 'adm-juan-f', communityId: 'comm-juan-1', name: 'Matriz Principal - Caudal', code: 'CQ-01', location: 'Sala de Bombas -1', status: 'activo', isIoT: true, iotType: 'caudal', lastValue: 45.2, unit: 'L/min', createdAt: new Date().toISOString() },
+  { id: 'sensor-juan-2', companyId: 'adm-juan-f', communityId: 'comm-juan-1', name: 'Presión Matriz Agua', code: 'PR-01', location: 'Estanque PB', status: 'activo', isIoT: true, iotType: 'presion', lastValue: 4.2, unit: 'Bar', createdAt: new Date().toISOString() },
+];
+
 // --- COMPONENTE ESCÁNER QR ---
 function QRScannerDialog({ onScan, isOpen, onOpenChange }: { onScan: (data: string) => void, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -191,8 +226,8 @@ function QRScannerDialog({ onScan, isOpen, onOpenChange }: { onScan: (data: stri
                 <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-blue-400 rounded-tl-lg" />
                 <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-blue-400 rounded-tr-lg" />
                 <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-blue-400 rounded-bl-lg" />
-                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-blue-400 rounded-br-lg" />
-                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] animate-[scan_2s_ease-in-out_infinite]" />
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-blue-400 rounded-tr-lg" />
+                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-blue-50/50 shadow-[0_0_10px_rgba(59,130,246,0.5)] animate-[scan_2s_ease-in-out_infinite]" />
               </div>
             </div>
 
@@ -250,6 +285,11 @@ function AdminCompaniesContent() {
     initialReading: "0" 
   });
 
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/auth/login");
+  };
+
   useEffect(() => {
     setMounted(true);
     const adminId = searchParams.get('id');
@@ -273,7 +313,16 @@ function AdminCompaniesContent() {
     return query(collection(db, "companies"), orderBy("createdAt", "desc"));
   }, [db, isSuperAdmin]);
 
-  const { data: administrators, isLoading: isAdminsLoading } = useCollection<Company>(administratorsQuery);
+  const { data: rawAdministrators, isLoading: isAdminsLoading } = useCollection<Company>(administratorsQuery);
+
+  // Inyectar Juan Fernández
+  const administrators = useMemo(() => {
+    const list = rawAdministrators || [];
+    if (!list.some(a => a.id === 'adm-juan-f')) {
+      return [SIM_JUAN_ADMIN, ...list];
+    }
+    return list;
+  }, [rawAdministrators]);
 
   const selectedAdmin = useMemo(() => {
     if (!viewingAdminId || !administrators) return null;
@@ -282,11 +331,17 @@ function AdminCompaniesContent() {
 
   // Consulta de Comunidades
   const communitiesQuery = useMemoFirebase(() => {
-    if (!db || !isSuperAdmin || !viewingAdminId) return null;
+    if (!db || !isSuperAdmin || !viewingAdminId || viewingAdminId === 'adm-juan-f') return null;
     return query(collection(db, "companies", viewingAdminId, "communities"), orderBy("createdAt", "desc"));
   }, [db, isSuperAdmin, viewingAdminId]);
 
-  const { data: linkedCommunities, isLoading: isCommunitiesLoading } = useCollection<Community>(communitiesQuery);
+  const { data: rawLinkedCommunities, isLoading: isCommunitiesLoading } = useCollection<Community>(communitiesQuery);
+
+  // Inyectar comunidad de Juan
+  const linkedCommunities = useMemo(() => {
+    if (viewingAdminId === 'adm-juan-f') return [SIM_JUAN_COMMUNITY];
+    return rawLinkedCommunities || [];
+  }, [rawLinkedCommunities, viewingAdminId]);
 
   const selectedCommunity = useMemo(() => {
     if (!viewingCommunityId || !linkedCommunities) return null;
@@ -295,27 +350,32 @@ function AdminCompaniesContent() {
 
   // Consulta de Equipos por Comunidad
   const metersQuery = useMemoFirebase(() => {
-    if (!db || !viewingAdminId || !viewingCommunityId) return null;
+    if (!db || !viewingAdminId || !viewingCommunityId || viewingCommunityId === 'comm-juan-1') return null;
     return query(collection(db, "companies", viewingAdminId, "waterMeters"), where("communityId", "==", viewingCommunityId));
   }, [db, viewingAdminId, viewingCommunityId]);
 
   const sensorsQuery = useMemoFirebase(() => {
-    if (!db || !viewingAdminId || !viewingCommunityId) return null;
+    if (!db || !viewingAdminId || !viewingCommunityId || viewingCommunityId === 'comm-juan-1') return null;
     return query(collection(db, "companies", viewingAdminId, "assets"), where("communityId", "==", viewingCommunityId));
   }, [db, viewingAdminId, viewingCommunityId]);
 
-  const { data: communityMeters } = useCollection<WaterMeter>(metersQuery);
-  const { data: communitySensors } = useCollection<Asset>(sensorsQuery);
+  const { data: rawCommunityMeters } = useCollection<WaterMeter>(metersQuery);
+  const { data: rawCommunitySensors } = useCollection<Asset>(sensorsQuery);
+
+  const communityMeters = useMemo(() => {
+    if (viewingCommunityId === 'comm-juan-1') return SIM_JUAN_METERS;
+    return rawCommunityMeters || [];
+  }, [rawCommunityMeters, viewingCommunityId]);
+
+  const communitySensors = useMemo(() => {
+    if (viewingCommunityId === 'comm-juan-1') return SIM_JUAN_SENSORS;
+    return rawCommunitySensors || [];
+  }, [rawCommunitySensors, viewingCommunityId]);
 
   const filtered = (administrators || []).filter((c: Company) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    router.push("/auth/login");
-  };
 
   const handleCreateAdmin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -428,9 +488,6 @@ function AdminCompaniesContent() {
   };
 
   const handleQRScanResult = (text: string) => {
-    // Parser flexible para formatos industriales
-    // Formato 1: DEVEUI:X;APPEUI:Y;APPKEY:Z
-    // Formato 2: X,Y,Z
     const data: any = {};
     const pairs = text.split(/[;,&]/);
     
@@ -445,7 +502,6 @@ function AdminCompaniesContent() {
       }
     });
 
-    // Si no detectó por etiquetas, intentar por orden posicional si hay comas
     if (!data.devEUI && pairs.length >= 3) {
       if (pairs[0].length >= 16) data.devEUI = pairs[0].trim();
       if (pairs[1].length >= 16) data.appEUI = pairs[1].trim();
@@ -669,7 +725,7 @@ function AdminCompaniesContent() {
                     </div>
                     <div className="bg-indigo-950 p-4 rounded-2xl flex justify-between items-baseline text-white">
                       <span className="text-[9px] font-black uppercase text-blue-400">Valor Live</span>
-                      <span className="text-2xl font-black italic">{s.lastValue || '0.0'}</span>
+                      <span className="text-2xl font-black italic">{s.lastValue || '0.0'} {s.unit}</span>
                     </div>
                   </CardContent>
                 </Card>

@@ -76,6 +76,9 @@ const CommunityCount = memo(function CommunityCount({ adminId }: { adminId: stri
 
   const { data: communities, isLoading } = useCollection<Community>(communitiesQuery);
 
+  // Simulación para Juan Fernández
+  if (adminId === 'adm-juan-f') return <span className="font-black text-slate-900">1</span>;
+
   if (isLoading) return <Loader2 className="h-3 w-3 animate-spin text-slate-300" />;
   
   return (
@@ -115,7 +118,29 @@ export default function SuperadminDashboardPage() {
     return query(collection(db, "companies"), orderBy("createdAt", "desc"));
   }, [db, isSuperAdmin]);
 
-  const { data: administrators, isLoading: isAdminsLoading } = useCollection<Company>(administratorsQuery);
+  const { data: rawAdministrators, isLoading: isAdminsLoading } = useCollection<Company>(administratorsQuery);
+
+  // Inyectar a Juan Fernández en la lista si no existe
+  const administrators = useMemo(() => {
+    const list = rawAdministrators || [];
+    const juanExists = list.some(a => a.id === 'adm-juan-f');
+    
+    if (!juanExists) {
+      return [
+        {
+          id: 'adm-juan-f',
+          name: 'Juan Fernández',
+          currentPlan: 'enterprise' as any,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          address: 'Viña del Mar, Chile',
+          subscriptionStatus: 'active' as any
+        },
+        ...list
+      ];
+    }
+    return list;
+  }, [rawAdministrators]);
 
   const stats = useMemo(() => {
     const totalAdmins = administrators?.length || 0;
