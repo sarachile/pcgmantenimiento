@@ -52,7 +52,12 @@ import {
   Navigation,
   ExternalLink,
   ShieldCheck,
-  Zap
+  Zap,
+  Cpu,
+  Monitor,
+  Droplets,
+  HardHat,
+  Smartphone
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -68,8 +73,8 @@ import {
   setDocumentNonBlocking,
   addDocumentNonBlocking
 } from "@/firebase";
-import { collection, doc, serverTimestamp, query, orderBy, limit, updateDoc, addDoc } from "firebase/firestore";
-import { Company, Community } from "@/lib/types";
+import { collection, doc, serverTimestamp, query, orderBy, where, setDoc } from "firebase/firestore";
+import { Company, Community, WaterMeter, Asset } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { signOut } from "firebase/auth";
@@ -85,7 +90,10 @@ function AdminCompaniesContent() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [mounted, setMounted] = useState(false);
+  
+  // Niveles de Navegación
   const [viewingAdminId, setViewingAdminId] = useState<string | null>(null);
+  const [viewingCommunityId, setViewingCommunityId] = useState<string | null>(null);
   
   // State para creación/edición
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -98,35 +106,29 @@ function AdminCompaniesContent() {
   const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
   const [commData, setCommData] = useState({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
 
+  // Enrollment State
+  const [isEnrollOpen, setIsEnrollOpen] = useState(false);
+  const [enrollType, setEnrollOpenType] = useState<"meter" | "sensor">("meter");
+  const [enrollData, setEnrollData] = useState({ serial: "", alias: "", sensorType: "vibracion" });
+
   useEffect(() => {
     setMounted(true);
     const adminId = searchParams.get('id');
     if (adminId) setViewingAdminId(adminId);
   }, [searchParams]);
 
-  // FORCE UNLOCK BODY: Garantiza que la UI no quede bloqueada tras cerrar modales
+  // FORCE UNLOCK BODY
   useEffect(() => {
-    if (!isAddCommunityOpen && !isConfigOpen && !isCreateOpen) {
+    if (!isAddCommunityOpen && !isConfigOpen && !isCreateOpen && !isEnrollOpen) {
       const timer = setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
         document.body.style.overflow = 'auto';
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isAddCommunityOpen, isConfigOpen, isCreateOpen]);
+  }, [isAddCommunityOpen, isConfigOpen, isCreateOpen, isEnrollOpen]);
 
-  // Redirigir si no es superadmin
-  useEffect(() => {
-    if (!isUserLoading && !isSuperAdmin) {
-      redirect("/dashboard");
-    }
-  }, [isUserLoading, isSuperAdmin]);
-
-  const handleLogout = async () => {
-    await signOut(auth);
-    redirect("/auth/login");
-  };
-
+  // Consultas Globales
   const administratorsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
     return query(collection(db, "companies"), orderBy("createdAt", "desc"));
@@ -139,13 +141,32 @@ function AdminCompaniesContent() {
     return administrators.find(a => a.id === viewingAdminId) || null;
   }, [viewingAdminId, administrators]);
 
-  // Consulta de Comunidades para el Administrador Seleccionado
+  // Consulta de Comunidades
   const communitiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin || !viewingAdminId) return null;
     return query(collection(db, "companies", viewingAdminId, "communities"), orderBy("createdAt", "desc"));
   }, [db, isSuperAdmin, viewingAdminId]);
 
   const { data: linkedCommunities, isLoading: isCommunitiesLoading } = useCollection<Community>(communitiesQuery);
+
+  const selectedCommunity = useMemo(() => {
+    if (!viewingCommunityId || !linkedCommunities) return null;
+    return linkedCommunities.find(c => c.id === viewingCommunityId) || null;
+  }, [viewingCommunityId, linkedCommunities]);
+
+  // Consulta de Equipos por Comunidad
+  const metersQuery = useMemoFirebase(() => {
+    if (!db || !viewingAdminId || !viewingCommunityId) return null;
+    return query(collection(db, "companies", viewingAdminId, "waterMeters"), where("communityId", "==", viewingCommunityId));
+  }, [db, viewingAdminId, viewingCommunityId]);
+
+  const sensorsQuery = useMemoFirebase(() => {
+    if (!db || !viewingAdminId || !viewingCommunityId) return null;
+    return query(collection(db, "companies", viewingAdminId, "assets"), where("communityId", "==", viewingCommunityId));
+  }, [db, viewingAdminId, viewingCommunityId]);
+
+  const { data: communityMeters } = useCollection<WaterMeter>(metersQuery);
+  const { data: communitySensors } = useCollection<Asset>(sensorsQuery);
 
   const filtered = (administrators || []).filter((c: Company) => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -188,17 +209,59 @@ function AdminCompaniesContent() {
         region: commData.region,
         city: commData.city,
         commune: commData.commune,
-        street: commData.street,
-        number: commData.number,
-        complement: commData.complement,
         isActive: true,
         createdAt: serverTimestamp()
       });
-      toast({ title: "Comunidad Vinculada", description: `${commData.name} activada para ${selectedAdmin.name}.` });
+      toast({ title: "Comunidad Vinculada" });
       setIsAddCommunityOpen(false);
       setCommData({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
     } catch (e) {
-      toast({ title: "Error", description: "No se pudo vincular la comunidad.", variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEnrollSystem = async () => {
+    if (!db || !viewingAdminId || !viewingCommunityId || !enrollData.serial) return;
+    
+    setIsSubmitting(true);
+    try {
+      if (enrollType === 'meter') {
+        const meterRef = doc(db, "companies", viewingAdminId, "waterMeters", enrollData.serial);
+        await setDoc(meterRef, {
+          id: enrollData.serial,
+          companyId: viewingAdminId,
+          communityId: viewingCommunityId,
+          unitIdentifier: enrollData.alias || enrollData.serial,
+          status: "open",
+          currentReading: 0,
+          batteryLevel: 100,
+          signalStrength: 100,
+          hasLeakAlert: false,
+          lastCommunication: serverTimestamp()
+        });
+      } else {
+        const sensorRef = doc(db, "companies", viewingAdminId, "assets", enrollData.serial);
+        await setDoc(sensorRef, {
+          id: enrollData.serial,
+          companyId: viewingAdminId,
+          communityId: viewingCommunityId,
+          name: enrollData.alias || `Sensor ${enrollData.serial}`,
+          code: enrollData.serial,
+          location: "Por definir",
+          status: "activo",
+          isIoT: true,
+          iotType: enrollData.sensorType,
+          lastValue: 0,
+          createdAt: serverTimestamp()
+        });
+      }
+      toast({ title: "Sistema Enrolado", description: "El equipo ya está transmitiendo data al servidor." });
+      setIsEnrollOpen(false);
+      setEnrollData({ serial: "", alias: "", sensorType: "vibracion" });
+    } catch (e) {
+      toast({ title: "Error en enrolamiento", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -230,7 +293,137 @@ function AdminCompaniesContent() {
 
   if (isUserLoading || !isSuperAdmin) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
-  // RENDERIZADO DE VISTA ENFOCADA (DETAIL VIEW)
+  // RENDERIZADO NIVEL 3: DETALLE DE COMUNIDAD (EQUIPOS)
+  if (viewingCommunityId && selectedCommunity) {
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" className="rounded-full h-12 w-12 hover:bg-slate-100" onClick={() => setViewingCommunityId(null)}>
+              <ArrowLeft className="h-6 w-6" />
+            </Button>
+            <div>
+              <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">{selectedCommunity.name}</h2>
+              <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
+                <MapPin className="h-3 w-3 text-blue-600" /> {selectedCommunity.address}
+              </p>
+            </div>
+          </div>
+          <Dialog open={isEnrollOpen} onOpenChange={setIsEnrollOpen}>
+            <DialogTrigger asChild>
+              <Button className="rounded-xl h-11 px-6 font-black uppercase text-[10px] gap-2 shadow-xl bg-blue-600">
+                <Plus className="h-4 w-4" /> Enrolar Nuevo Sistema
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-black italic uppercase italic tracking-tighter">Enrolamiento de Dispositivo</DialogTitle>
+                <DialogDescription>Sincronice hardware GENKO con esta comunidad.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-6 py-4">
+                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+                  <Button variant={enrollType === 'meter' ? 'default' : 'ghost'} className="rounded-lg text-[9px] font-black uppercase h-9" onClick={() => setEnrollOpenType('meter')}>Medidor Agua</Button>
+                  <Button variant={enrollType === 'sensor' ? 'default' : 'ghost'} className="rounded-lg text-[9px] font-black uppercase h-9" onClick={() => setEnrollOpenType('sensor')}>Sensor IoT</Button>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">ID de Serie / Código QR</Label>
+                  <Input placeholder="Ej: SN-884422" value={enrollData.serial} onChange={e => setEnrollData({...enrollData, serial: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase text-slate-400">Alias de Identificación</Label>
+                  <Input placeholder={enrollType === 'meter' ? "Ej: Depto 405" : "Ej: Bomba Principal"} value={enrollData.alias} onChange={e => setEnrollData({...enrollData, alias: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                </div>
+
+                {enrollType === 'sensor' && (
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Tipo de Magnitud</Label>
+                    <Select value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
+                      <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
+                        <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
+                        <SelectItem value="presion">Presión (Bar)</SelectItem>
+                        <SelectItem value="otro">Genérico</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button disabled={isSubmitting || !enrollData.serial} className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" onClick={handleEnrollSystem}>
+                  {isSubmitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Activar y Sincronizar"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="grid gap-8">
+          <div className="space-y-4">
+            <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2 pl-2">
+              <Droplets className="h-4 w-4 text-blue-600" /> Medidores de Agua Inteligentes
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(communityMeters || []).map((m) => (
+                <Card key={m.id} className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden group">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="bg-blue-50 p-3 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all"><Droplets className="h-6 w-6" /></div>
+                      <Badge className="bg-emerald-50 text-emerald-700 font-black text-[8px] uppercase px-2 h-5">Online</Badge>
+                    </div>
+                    <div>
+                      <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{m.unitIdentifier}</p>
+                      <p className="text-[10px] font-mono text-slate-400">ID: {m.id}</p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
+                      <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
+                      <span className="text-2xl font-black italic">{m.currentReading.toFixed(2)}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {(communityMeters || []).length === 0 && (
+                <div className="col-span-full py-20 text-center border-4 border-dashed rounded-[3rem] bg-slate-50/50 opacity-40 italic">Sin medidores registrados.</div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2 pl-2">
+              <Cpu className="h-4 w-4 text-indigo-600" /> Sensores de Activos Críticos
+            </h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(communitySensors || []).map((s) => (
+                <Card key={s.id} className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden group">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="bg-indigo-50 p-3 rounded-2xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all"><Cpu className="h-6 w-6" /></div>
+                      <Badge className="bg-blue-50 text-blue-700 font-black text-[8px] uppercase px-2 h-5">{s.iotType?.toUpperCase()}</Badge>
+                    </div>
+                    <div>
+                      <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{s.name}</p>
+                      <p className="text-[10px] font-mono text-slate-400">SN: {s.id}</p>
+                    </div>
+                    <div className="bg-indigo-950 p-4 rounded-2xl flex justify-between items-baseline text-white">
+                      <span className="text-[9px] font-black uppercase text-blue-400">Valor Live</span>
+                      <span className="text-2xl font-black italic">{s.lastValue || '0.0'}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {(communitySensors || []).length === 0 && (
+                <div className="col-span-full py-20 text-center border-4 border-dashed rounded-[3rem] bg-slate-50/50 opacity-40 italic">Sin sensores de monitoreo.</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // RENDERIZADO NIVEL 2: DETALLE DE ADMINISTRADOR (COMUNIDADES)
   if (viewingAdminId && selectedAdmin) {
     return (
       <div className="space-y-8 animate-in fade-in duration-500 max-w-6xl mx-auto">
@@ -241,7 +434,7 @@ function AdminCompaniesContent() {
             </Button>
             <div>
               <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">Ficha del Administrador</h2>
-              <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">Control de gestión y comunidades asociadas</p>
+              <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">Control de gestión y recintos vinculados</p>
             </div>
           </div>
           <Button variant="outline" className="rounded-xl font-bold h-11 px-6 border-slate-200" onClick={() => handleOpenConfig(selectedAdmin)}>
@@ -299,10 +492,10 @@ function AdminCompaniesContent() {
                   <Plus className="h-4 w-4" /> Vincular Nueva Comunidad
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto">
+              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto" onPointerDown={(e) => e.stopPropagation()}>
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-black italic uppercase">Nuevo Registro de Comunidad</DialogTitle>
-                  <DialogDescription>Asigne un edificio o recinto para que este administrador pueda gestionarlo.</DialogDescription>
+                  <DialogDescription>Asigne un recinto para que este administrador pueda gestionarlo.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 py-4">
                   <div className="space-y-2">
@@ -314,9 +507,9 @@ function AdminCompaniesContent() {
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Región</Label>
-                        <Select value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}>
-                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
-                            <SelectValue placeholder="Región" />
+                        <Select modal={false} value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white" onPointerDown={e => e.stopPropagation()}>
+                            <SelectValue placeholder="Seleccione..." />
                           </SelectTrigger>
                           <SelectContent>
                             {CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
@@ -325,8 +518,8 @@ function AdminCompaniesContent() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Ciudad</Label>
-                        <Select key={`city-select-${commData.region}`} value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}>
-                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
+                        <Select modal={false} key={`city-${commData.region}`} value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white" onPointerDown={e => e.stopPropagation()}>
                             <SelectValue placeholder="Ciudad" />
                           </SelectTrigger>
                           <SelectContent>
@@ -336,8 +529,8 @@ function AdminCompaniesContent() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Comuna</Label>
-                        <Select key={`commune-select-${commData.region}`} value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}>
-                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
+                        <Select modal={false} key={`commune-${commData.region}`} value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white" onPointerDown={e => e.stopPropagation()}>
                             <SelectValue placeholder="Comuna" />
                           </SelectTrigger>
                           <SelectContent>
@@ -366,20 +559,20 @@ function AdminCompaniesContent() {
           ) : linkedCommunities && linkedCommunities.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {linkedCommunities.map((comm) => (
-                <Card key={comm.id} className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white group hover:shadow-lg transition-all border-2 border-transparent hover:border-blue-100">
+                <Card key={comm.id} className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white group hover:shadow-lg transition-all border-2 border-transparent hover:border-blue-100 cursor-pointer" onClick={() => setViewingCommunityId(comm.id)}>
                   <CardContent className="p-8 space-y-6">
                     <div className="flex items-center gap-4">
                       <div className="bg-blue-50 p-3 rounded-2xl text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all"><Building2 className="h-6 w-6" /></div>
                       <div className="min-w-0 flex-1">
                         <p className="text-xl font-black text-slate-900 uppercase italic tracking-tighter truncate">{comm.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1 mt-0.5"><MapPin className="h-2.5 w-2.5" /> {comm.city}, {comm.region}</p>
+                        <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1 mt-0.5"><MapPin className="h-2.5 w-2.5" /> {comm.city || 'S/I'}</p>
                       </div>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-2xl space-y-2">
                       <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Dirección Operativa</p>
-                      <p className="text-xs font-bold text-slate-600 leading-relaxed">{comm.address}</p>
+                      <p className="text-xs font-bold text-slate-600 leading-relaxed truncate">{comm.address}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                       <Button variant="outline" size="sm" asChild className="flex-1 rounded-xl h-10 font-black uppercase text-[9px] gap-2 border-slate-100 bg-white hover:bg-blue-50 hover:text-blue-600">
                         <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(comm.address)}`} target="_blank" rel="noopener noreferrer">
                           <Globe className="h-3 w-3" /> Maps
@@ -448,7 +641,7 @@ function AdminCompaniesContent() {
     );
   }
 
-  // RENDERIZADO DE LISTA GLOBAL
+  // RENDERIZADO NIVEL 1: LISTA GLOBAL DE ADMINISTRADORES
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

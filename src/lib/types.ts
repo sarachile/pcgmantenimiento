@@ -48,6 +48,9 @@ export interface Community {
   companyId: string; // ID del Administrador (Tenant)
   name: string;
   address: string;
+  region?: string;
+  city?: string;
+  commune?: string;
   createdAt: string | any;
   isActive: boolean;
 }
@@ -77,7 +80,8 @@ export interface Client {
 export interface WaterMeter {
   id: string;
   companyId: string;
-  clientId: string;
+  clientId?: string;
+  communityId?: string; // Vinculación con recinto
   unitIdentifier: string; // Depto 402, etc
   status: WaterMeterStatus;
   currentReading: number;
@@ -136,6 +140,7 @@ export interface Team {
 export interface Asset {
   id: string;
   companyId: string;
+  communityId?: string; // Vinculación con recinto
   name: string;
   code: string;
   location: string;
