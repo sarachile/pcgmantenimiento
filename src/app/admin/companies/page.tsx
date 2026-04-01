@@ -299,7 +299,7 @@ function AdminCompaniesContent() {
                   <Plus className="h-4 w-4" /> Vincular Nueva Comunidad
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => e.preventDefault()}>
+              <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="text-2xl font-black italic uppercase">Nuevo Registro de Comunidad</DialogTitle>
                   <DialogDescription>Asigne un edificio o recinto para que este administrador pueda gestionarlo.</DialogDescription>
@@ -312,9 +312,39 @@ function AdminCompaniesContent() {
                   <div className="space-y-4 bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
                     <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2"><Globe className="h-4 w-4" /> Ubicación Geográfica</p>
                     <div className="grid grid-cols-3 gap-4">
-                      <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Región</Label><Select value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}><SelectTrigger className="h-11 border-2 rounded-xl bg-white"><SelectValue placeholder="Región" /></SelectTrigger><SelectContent>{CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}</SelectContent></Select></div>
-                      <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Ciudad</Label><Select value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}><SelectTrigger className="h-11 border-2 rounded-xl bg-white"><SelectValue placeholder="Ciudad" /></SelectTrigger><SelectContent>{selectedRegionData?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                      <div className="space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Comuna</Label><Select value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}><SelectTrigger className="h-11 border-2 rounded-xl bg-white"><SelectValue placeholder="Comuna" /></SelectTrigger><SelectContent>{selectedRegionData?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-slate-400">Región</Label>
+                        <Select value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
+                            <SelectValue placeholder="Región" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-slate-400">Ciudad</Label>
+                        <Select key={`city-select-${commData.region}`} value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
+                            <SelectValue placeholder="Ciudad" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectedRegionData?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-slate-400">Comuna</Label>
+                        <Select key={`commune-select-${commData.region}`} value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}>
+                          <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
+                            <SelectValue placeholder="Comuna" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {selectedRegionData?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div className="col-span-2 space-y-2"><Label className="text-[9px] font-black uppercase text-slate-400">Calle / Avenida</Label><Input value={commData.street} onChange={e => setCommData({...commData, street: e.target.value})} className="h-11 border-2 rounded-xl bg-white" /></div>
@@ -379,7 +409,7 @@ function AdminCompaniesContent() {
 
         {/* Dialog Configuración Comercial (Reutilizado) */}
         <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-          <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]" onPointerDownOutside={(e) => e.preventDefault()}>
+          <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]">
             <DialogHeader>
               <DialogTitle className="font-black italic uppercase text-xl">Parámetros de Servicio</DialogTitle>
               <DialogDescription>Ajuste el nivel de suscripción para {selectedAdmin?.name}.</DialogDescription>
@@ -440,7 +470,7 @@ function AdminCompaniesContent() {
             <DialogTrigger asChild>
               <Button className="rounded-xl font-black gap-2 shadow-lg"><Plus className="h-4 w-4" /> Nuevo Administrador</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]" onPointerDownOutside={(e) => e.preventDefault()}>
+            <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black italic uppercase">Registrar Nuevo Gestor</DialogTitle>
                 <DialogDescription>Cree el entorno para que el gestor pueda administrar sus comunidades.</DialogDescription>
