@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Building2, 
@@ -20,10 +20,13 @@ import {
   Server,
   KeyRound,
   Wifi,
-  Database
+  Database,
+  LayoutGrid,
+  List,
+  MoreHorizontal
 } from "lucide-react";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useAuth } from "@/firebase";
-import { collection, query, limit, orderBy } from "firebase/firestore";
+import { collection, query, orderBy } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +40,7 @@ export default function SuperadminDashboardPage() {
   const db = useFirestore();
   const auth = useAuth();
   const router = useRouter();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   useEffect(() => {
     if (!isAuthLoading && (!isAuthenticated || !isSuperAdmin)) {
@@ -51,7 +55,8 @@ export default function SuperadminDashboardPage() {
 
   const companiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
-    return query(collection(db, "companies"), orderBy("createdAt", "desc"), limit(10));
+    // Eliminamos el límite para ver todas las comunidades como solicitó el usuario
+    return query(collection(db, "companies"), orderBy("createdAt", "desc"));
   }, [db, isSuperAdmin]);
 
   const { data: companies, isLoading: isCompaniesLoading } = useCollection<Company>(companiesQuery);
@@ -113,57 +118,79 @@ export default function SuperadminDashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
-          <CardContent className="p-0">
-            <div className="grid md:grid-cols-5">
-              <div className="md:col-span-2 bg-slate-900 p-8 flex flex-col justify-center items-center text-center space-y-4">
-                <div className="bg-white/10 p-4 rounded-3xl"><Building2 className="h-10 w-10 text-white" /></div>
-                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Gestión de Empresas</h3>
-              </div>
-              <div className="md:col-span-3 p-8 flex flex-col justify-center space-y-4">
-                <p className="text-sm text-slate-500 font-medium">Control de Tenants, asignación de planes Business/Enterprise y monitoreo de suscripciones.</p>
-                <Button asChild className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 font-black uppercase tracking-widest text-[10px] gap-2">
-                  <Link href="/admin/companies">Configurar Clientes SaaS <ArrowUpRight className="h-4 w-4" /></Link>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-black uppercase italic tracking-tighter text-slate-900">Comunidades Registradas</h3>
+            <p className="text-[10px] font-bold uppercase text-slate-400">Control de acceso y planes por tenant</p>
+          </div>
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border">
+            <Button 
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", viewMode === 'grid' && "bg-white shadow-sm")}
+              onClick={() => setViewMode('grid')}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> Tarjetas
+            </Button>
+            <Button 
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", viewMode === 'list' && "bg-white shadow-sm")}
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-3.5 w-3.5" /> Listado
+            </Button>
+          </div>
+        </div>
 
-        <Card className="rounded-[2.5rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden group hover:shadow-2xl transition-all">
-          <CardContent className="p-0">
-            <div className="grid md:grid-cols-5">
-              <div className="md:col-span-2 bg-blue-600 p-8 flex flex-col justify-center items-center text-center space-y-4">
-                <div className="bg-white/20 p-4 rounded-3xl"><Droplets className="h-10 w-10 text-white" /></div>
-                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Gestión Agua IoT</h3>
-              </div>
-              <div className="md:col-span-3 p-8 flex flex-col justify-center space-y-4">
-                <p className="text-sm text-slate-500 font-medium">Alta de Administradores de Edificio, envío de PINs y telemetría de medidores inteligentes.</p>
-                <Button asChild className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 font-black uppercase tracking-widest text-[10px] gap-2">
-                  <Link href="/admin/water">Monitor Hídrico Maestro <ArrowUpRight className="h-4 w-4" /></Link>
-                </Button>
-              </div>
+        {isCompaniesLoading ? (
+          <div className="py-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-blue-600/20" /></div>
+        ) : companies && companies.length > 0 ? (
+          viewMode === 'grid' ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {companies.map((company) => (
+                <Card key={company.id} className="rounded-[2.5rem] border-none shadow-sm hover:shadow-xl transition-all bg-white overflow-hidden group">
+                  <CardHeader className="p-8 pb-4">
+                    <div className="flex justify-between items-start">
+                      <div className={cn(
+                        "p-4 rounded-3xl transition-transform group-hover:scale-110",
+                        company.isActive ? "bg-blue-50 text-blue-600" : "bg-slate-100 text-slate-400"
+                      )}>
+                        <Building2 className="h-8 w-8" />
+                      </div>
+                      <Badge variant="outline" className={cn(
+                        "text-[9px] font-black uppercase border-none px-3 py-1",
+                        company.currentPlan === 'enterprise' ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                      )}>
+                        {company.currentPlan}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-8 pt-0 space-y-6">
+                    <div>
+                      <h4 className="text-xl font-black text-slate-900 uppercase italic tracking-tighter truncate">{company.name}</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {company.id}</p>
+                    </div>
+                    
+                    <div className="pt-4 border-t flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={cn("h-2 w-2 rounded-full", company.isActive ? "bg-emerald-500" : "bg-rose-500")} />
+                        <span className="text-[10px] font-black uppercase text-slate-500">{company.isActive ? 'Operativo' : 'Suspendido'}</span>
+                      </div>
+                      <Button variant="ghost" size="icon" asChild className="rounded-xl h-10 w-10">
+                        <Link href="/admin/companies"><ArrowUpRight className="h-5 w-5 text-blue-600" /></Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-8 lg:grid-cols-2">
-        <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-          <CardHeader className="bg-slate-50/50 border-b p-8">
-            <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <Building2 className="h-6 w-6 text-blue-600" /> Tenants SaaS Recientes
-            </CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Últimas empresas incorporadas al ecosistema</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            {isCompaniesLoading ? (
-              <div className="py-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600/20" /></div>
-            ) : (
-              <div className="divide-y">
-                {(companies || []).map((company) => {
-                  return (
+          ) : (
+            <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {companies.map((company) => (
                     <div key={company.id} className="flex items-center justify-between p-6 hover:bg-slate-50 transition-colors group">
                       <div className="flex items-center gap-4">
                         <div className="bg-blue-50 p-3 rounded-2xl group-hover:bg-blue-100 transition-colors">
@@ -186,64 +213,105 @@ export default function SuperadminDashboardPage() {
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-                {(!companies || companies.length === 0) && (
-                  <div className="py-20 text-center text-slate-400 italic text-sm">No hay empresas registradas aún.</div>
-                )}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )
+        ) : (
+          <div className="py-20 text-center text-slate-400 italic text-sm">No hay empresas registradas aún.</div>
+        )}
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card className="rounded-[3rem] border-none shadow-xl bg-slate-900 text-white overflow-hidden group hover:shadow-2xl transition-all">
+          <CardContent className="p-0">
+            <div className="grid md:grid-cols-5 h-full">
+              <div className="md:col-span-2 bg-slate-800 p-8 flex flex-col justify-center items-center text-center space-y-4">
+                <div className="bg-white/10 p-4 rounded-3xl"><Building2 className="h-10 w-10 text-white" /></div>
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Gestión de Empresas</h3>
               </div>
-            )}
+              <div className="md:col-span-3 p-8 flex flex-col justify-center space-y-4">
+                <p className="text-sm text-slate-400 font-medium">Control total de Tenants, asignación de planes Business/Enterprise y monitoreo de suscripciones comerciales.</p>
+                <Button asChild className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-500 font-black uppercase tracking-widest text-[10px] gap-2">
+                  <Link href="/admin/companies">Configurar Clientes SaaS <ArrowUpRight className="h-4 w-4" /></Link>
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* MONITOR DE INFRAESTRUCTURA - ASEGURAR QUE SEA VISIBLE */}
+        <Card className="rounded-[3rem] border-none shadow-xl bg-blue-600 text-white overflow-hidden group hover:shadow-2xl transition-all">
+          <CardContent className="p-0">
+            <div className="grid md:grid-cols-5 h-full">
+              <div className="md:col-span-2 bg-blue-700 p-8 flex flex-col justify-center items-center text-center space-y-4">
+                <div className="bg-white/20 p-4 rounded-3xl"><Droplets className="h-10 w-10 text-white" /></div>
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Gestión Agua IoT</h3>
+              </div>
+              <div className="md:col-span-3 p-8 flex flex-col justify-center space-y-4">
+                <p className="text-sm text-blue-100 font-medium">Alta de Administradores de Edificio, envío de credenciales PIN y telemetría avanzada de medidores inteligentes.</p>
+                <Button asChild className="w-full h-12 rounded-xl bg-slate-900 hover:bg-slate-800 font-black uppercase tracking-widest text-[10px] gap-2">
+                  <Link href="/admin/water">Monitor Hídrico Maestro <ArrowUpRight className="h-4 w-4" /></Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-8">
         <Card className="border-none shadow-xl rounded-[2.5rem] bg-slate-900 text-white overflow-hidden relative">
           <div className="absolute -right-10 -bottom-10 opacity-10"><Zap className="h-48 w-48 text-blue-400" /></div>
           <CardHeader className="border-b border-white/5 p-8">
             <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <Activity className="h-6 w-6 text-blue-400" /> Monitor de Infraestructura
+              <Activity className="h-6 w-6 text-blue-400" /> Monitor de Infraestructura Crítica
             </CardTitle>
-            <CardDescription className="text-slate-400 text-[10px] font-bold uppercase">Estado de servicios críticos en tiempo real</CardDescription>
+            <CardDescription className="text-slate-400 text-[10px] font-bold uppercase">Estado de servicios core en tiempo real</CardDescription>
           </CardHeader>
-          <CardContent className="p-8 space-y-4">
-            <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
-              <div className="space-y-1">
-                <p className="text-[9px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-2">
-                  <Database className="h-3 w-3" /> Core Backend
-                </p>
-                <p className="text-sm font-black uppercase">Firestore Multi-Region</p>
+          <CardContent className="p-8">
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black uppercase text-blue-400 tracking-widest flex items-center gap-2">
+                    <Database className="h-3 w-3" /> Core Backend
+                  </p>
+                  <p className="text-sm font-black uppercase">Firestore Multi-Region</p>
+                </div>
+                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">OPERACIONAL</Badge>
               </div>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">OPERACIONAL</Badge>
+
+              <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                    <Globe className="h-3 w-3" /> Public API Gateway
+                  </p>
+                  <p className="text-sm font-black uppercase">Ingesta IoT & Telemetría</p>
+                </div>
+                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">ONLINE (V1)</Badge>
+              </div>
+
+              <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black uppercase text-amber-400 tracking-widest flex items-center gap-2">
+                    <Zap className="h-3 w-3" /> External Integrations
+                  </p>
+                  <p className="text-sm font-black uppercase">SimpleAPI & SMTP Relay</p>
+                </div>
+                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">CONECTADO</Badge>
+              </div>
             </div>
 
-            <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
-              <div className="space-y-1">
-                <p className="text-[9px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
-                  <Globe className="h-3 w-3" /> Public API Gateway
-                </p>
-                <p className="text-sm font-black uppercase">Ingesta IoT & Telemetría</p>
-              </div>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">ONLINE (V1)</Badge>
-            </div>
-
-            <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
-              <div className="space-y-1">
-                <p className="text-[9px] font-black uppercase text-amber-400 tracking-widest flex items-center gap-2">
-                  <Zap className="h-3 w-3" /> External Integrations
-                </p>
-                <p className="text-sm font-black uppercase">SimpleAPI & SMTP Relay</p>
-              </div>
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">CONECTADO</Badge>
-            </div>
-
-            <div className="pt-4 border-t border-white/5">
+            <div className="pt-8 mt-8 border-t border-white/5">
               <div className="flex items-center justify-between px-2">
-                <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-500">
-                  <KeyRound className="h-3 w-3" /> Auth: Bearer / API-Key
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-500">
+                    <KeyRound className="h-3 w-3" /> Auth: Bearer / API-Key
+                  </div>
+                  <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-500">
+                    <Wifi className="h-3 w-3" /> Latency: 42ms
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-[9px] font-black uppercase text-slate-500">
-                  <Wifi className="h-3 w-3" /> Latency: 42ms
-                </div>
+                <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">GENKO ERP CORE v1.2.0</p>
               </div>
             </div>
           </CardContent>
