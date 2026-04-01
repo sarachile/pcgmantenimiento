@@ -68,7 +68,12 @@ import {
   LayoutGrid,
   List,
   Battery,
-  Signal
+  Signal,
+  TrendingUp,
+  AlertCircle,
+  Activity,
+  HandCoins,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -116,23 +121,31 @@ const SIM_JUAN_COMMUNITY: Community = {
   isActive: true
 };
 
-// GENERACIÓN DE 100 MEDIDORES PARA JUAN FERNANDEZ
+// GENERACIÓN DE 100 MEDIDORES PARA JUAN FERNANDEZ CON EVENTOS REALES
 const SIM_JUAN_METERS: WaterMeter[] = Array.from({ length: 100 }, (_, i) => {
   const id = i + 1;
   const floor = Math.floor(i / 10) + 1;
   const room = (i % 10) + 1;
   const unit = `Depto ${floor}${room < 10 ? '0' + room : room}`;
-  const reading = Math.random() * 800 + 50;
+  
+  // Perfilado de consumo realista
+  const baseReading = 150 + (i * 12.4);
+  const variation = Math.random() * 5;
+  const reading = baseReading + variation;
+  
   const battery = Math.floor(Math.random() * 30) + 70;
   const signal = Math.floor(Math.random() * 40) + 60;
-  const hasLeak = Math.random() > 0.96; // ~4% de fugas simuladas
+  
+  // Eventos: 4% de fugas (WC fallando), 2% cerrados por morosidad
+  const hasLeak = Math.random() > 0.96; 
+  const isClosed = Math.random() > 0.98;
 
   return {
     id: `meter-juan-${id}`,
     companyId: 'adm-juan-f',
     communityId: 'comm-juan-1',
     unitIdentifier: unit,
-    status: Math.random() > 0.05 ? 'open' : 'closed',
+    status: isClosed ? 'closed' : 'open',
     currentReading: reading,
     batteryLevel: battery,
     signalStrength: signal,
@@ -279,7 +292,7 @@ function AdminCompaniesContent() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [meterSearchTerm, setMeterSearchTerm] = useState("");
-  const [meterViewMode, setMeterViewMode] = useState<'grid' | 'list'>('grid');
+  const [meterViewMode, setMeterViewMode] = useState<'grid' | 'list'>('list');
   const [mounted, setMounted] = useState(false);
   
   // Niveles de Navegación
@@ -391,6 +404,34 @@ function AdminCompaniesContent() {
     }
     return list;
   }, [rawCommunityMeters, viewingCommunityId, meterSearchTerm]);
+
+  // KPIs DE AUDITORÍA HÍDRICA REAL (Juan Fernández Simulation)
+  const auditStats = useMemo(() => {
+    const list = communityMeters;
+    const totalUnits = list.length;
+    if (totalUnits === 0) return null;
+
+    const sumUnitsReading = list.reduce((acc, m) => acc + m.currentReading, 0);
+    // Simulación de medidor matriz (siempre superior a la suma de unidades por pérdidas técnicas)
+    const matrixReading = sumUnitsReading * 1.08; 
+    const efficiency = (sumUnitsReading / matrixReading) * 100;
+    
+    const leakCount = list.filter(m => m.hasLeakAlert).length;
+    const closedCount = list.filter(m => m.status === 'closed').length;
+    
+    // Estimación económica (CLP): $1.800 por m3 perdido aproximado
+    const estimatedLossCLP = (matrixReading - sumUnitsReading) * 1800;
+
+    return {
+      sumUnitsReading,
+      matrixReading,
+      efficiency,
+      leakCount,
+      closedCount,
+      estimatedLossCLP,
+      totalUnits
+    };
+  }, [communityMeters]);
 
   const communitySensors = useMemo(() => {
     if (viewingCommunityId === 'comm-juan-1') return SIM_JUAN_SENSORS;
@@ -577,7 +618,7 @@ function AdminCompaniesContent() {
 
   if (isUserLoading || !isSuperAdmin) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
-  // RENDERIZADO NIVEL 3: DETALLE DE COMUNIDAD (EQUIPOS)
+  // RENDERIZADO NIVEL 3: DETALLE DE COMUNIDAD (AUDITORÍA HÍDRICA)
   if (viewingCommunityId && selectedCommunity) {
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
@@ -722,6 +763,47 @@ function AdminCompaniesContent() {
           />
         </div>
 
+        {/* DASHBOARD DE AUDITORÍA HÍDRICA (NUEVO) */}
+        {auditStats && (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-in slide-in-from-top-4 duration-700">
+            <Card className="border-none shadow-xl bg-blue-600 text-white rounded-[2rem] overflow-hidden relative group">
+              <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Activity className="h-20 w-20" /></div>
+              <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-100">Eficiencia de Red</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-4xl font-black italic">{auditStats.efficiency.toFixed(1)}%</div>
+                <p className="text-[8px] font-bold uppercase text-blue-200 mt-1">Suma Unidades vs Matriz</p>
+              </CardContent>
+            </Card>
+
+            <Card className={cn("border-none shadow-xl rounded-[2rem] overflow-hidden relative group transition-all", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
+              <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><ShieldAlert className="h-20 w-20" /></div>
+              <CardHeader className="pb-2"><CardTitle className={cn("text-[9px] font-black uppercase tracking-[0.2em]", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Detectadas</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-4xl font-black italic">{auditStats.leakCount}</div>
+                <p className={cn("text-[8px] font-bold uppercase mt-1", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Puntos de desperdicio activo</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] overflow-hidden relative group">
+              <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><HandCoins className="h-20 w-20 text-emerald-400" /></div>
+              <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Pérdida Económica</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-4xl font-black italic text-rose-400">${auditStats.estimatedLossCLP.toLocaleString()}</div>
+                <p className="text-[8px] font-bold uppercase text-slate-500 mt-1">Agua No Facturada (Mensual)</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden relative group border-2 border-slate-100">
+              <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Smartphone className="h-20 w-20 text-blue-600" /></div>
+              <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Medición Digital</CardTitle></CardHeader>
+              <CardContent>
+                <div className="text-4xl font-black italic text-slate-900">{auditStats.totalUnits}</div>
+                <p className="text-[8px] font-bold uppercase text-slate-400 mt-1">Dispositivos Online NB-IoT</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <div className="grid gap-8">
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
@@ -760,19 +842,19 @@ function AdminCompaniesContent() {
                       </div>
                       <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
                         <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
-                        <span className="text-2xl font-black italic">{m.currentReading.toFixed(2)}</span>
+                        <span className="text-2xl font-black italic">{m.currentReading.toFixed(3)}</span>
                       </div>
                     </CardContent>
                   </Card>
                 ))}
               </div>
             ) : (
-              <Card className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white">
+              <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
                 <Table>
                   <TableHeader className="bg-slate-50">
                     <TableRow>
                       <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad / Depto</TableHead>
-                      <TableHead className="font-black uppercase text-[10px]">Estado</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Estado Operativo</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Lectura Actual</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Batería / Señal</TableHead>
                       <TableHead className="font-black uppercase text-[10px] text-right pr-8">DevEUI</TableHead>
@@ -783,19 +865,21 @@ function AdminCompaniesContent() {
                       <TableRow key={m.id} className={cn("group hover:bg-slate-50 transition-colors", m.hasLeakAlert && "bg-rose-50/30")}>
                         <TableCell className="pl-8 py-4">
                           <div className="flex items-center gap-3">
-                            <Droplets className={cn("h-4 w-4", m.hasLeakAlert ? "text-rose-600" : "text-blue-600")} />
-                            <span className="font-black text-slate-900">{m.unitIdentifier}</span>
+                            <div className={cn("p-2 rounded-lg", m.hasLeakAlert ? "bg-rose-100" : "bg-blue-50")}>
+                              <Droplets className={cn("h-4 w-4", m.hasLeakAlert ? "text-rose-600" : "text-blue-600")} />
+                            </div>
+                            <span className="font-black text-slate-900 text-base">{m.unitIdentifier}</span>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
                             <span className="text-[10px] font-bold uppercase text-slate-600">{m.status}</span>
-                            {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[7px] h-4">ALERTA</Badge>}
+                            {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[7px] h-4 font-black">ALERTA FUGA</Badge>}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm font-black italic">{m.currentReading.toFixed(3)} m³</span>
+                          <span className="text-base font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400">
