@@ -671,7 +671,7 @@ function AdminCompaniesContent() {
                 <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
                   <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
                     <Button variant={enrollType === 'meter' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'meter' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('meter')}>Medidor Agua</Button>
-                    <Button variant={enrollType === 'sensor' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'sensor' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('sensor')}>Sensor Clap-On</Button>
+                    <Button variant={enrollType === 'sensor' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'sensor' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('sensor')}>Sensor IoT / Activo</Button>
                   </div>
                   
                   <div className="space-y-4">
@@ -729,20 +729,28 @@ function AdminCompaniesContent() {
                     )}
 
                     {enrollType === 'sensor' && (
-                      <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Magnitud de Monitoreo</Label>
-                        <Select modal={false} value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
-                          <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="caudal" className="font-bold">Caudal (L/min)</SelectItem>
-                            <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
-                            <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
-                            <SelectItem value="presion">Presión (Bar)</SelectItem>
-                            <SelectItem value="otro">Genérico</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Tipo de Sensor & Método de Instalación</Label>
+                          <Select modal={false} value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
+                            <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="caudal" className="font-bold">Caudal (No Invasivo - Clip On)</SelectItem>
+                              <SelectItem value="vibracion">Vibración (Superficial)</SelectItem>
+                              <SelectItem value="temperatura">Temperatura (Superficial)</SelectItem>
+                              <SelectItem value="presion">Presión (Invasivo - Transductor)</SelectItem>
+                              <SelectItem value="otro">Genérico</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {enrollData.sensorType === 'presion' && (
+                          <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
+                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                            <p className="text-[9px] text-amber-800 font-bold uppercase leading-tight">Nota: Los sensores de presión requieren perforación hidráulica o conexión a válvula de servicio.</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
