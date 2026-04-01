@@ -43,6 +43,15 @@ export interface Company {
   };
 }
 
+export interface Community {
+  id: string;
+  companyId: string; // ID del Administrador (Tenant)
+  name: string;
+  address: string;
+  createdAt: string | any;
+  isActive: boolean;
+}
+
 export interface Client {
   id: string;
   companyId: string;
