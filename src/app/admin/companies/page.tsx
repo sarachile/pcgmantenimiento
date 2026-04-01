@@ -81,7 +81,8 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
-  Maximize2
+  Maximize2,
+  Scale
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -120,6 +121,7 @@ import { es } from "date-fns/locale";
 import { signOut } from "firebase/auth";
 import { CHILE_REGIONS } from "@/lib/chile-data";
 import jsQR from "jsqr";
+import { Progress } from "@/components/ui/progress";
 
 // --- SIMULATED DATA FOR JUAN FERNANDEZ ---
 const SIM_JUAN_ADMIN: Company = {
@@ -572,18 +574,20 @@ function AdminCompaniesContent() {
   // KPIs DE AUDITORÍA HÍDRICA REAL (Juan Fernández Simulation)
   const auditStats = useMemo(() => {
     const list = communityMeters;
-    const totalUnits = list.length;
-    if (totalUnits === 0) return null;
+    const totalUnitsCount = list.length;
+    if (totalUnitsCount === 0) return null;
 
     const sumUnitsReading = list.reduce((acc, m) => acc + m.currentReading, 0);
-    // Simulación de medidor matriz
-    const matrixReading = sumUnitsReading * 1.08; 
+    // Simulación de medidor matriz (Aguas Andinas)
+    // El medidor matriz siempre marca más que la suma de unidades (áreas comunes + fugas)
+    const matrixReading = sumUnitsReading * 1.15; 
+    const commonAreasCons = matrixReading - sumUnitsReading;
     const efficiency = (sumUnitsReading / matrixReading) * 100;
     
     const leakCount = list.filter(m => m.hasLeakAlert).length;
     
     // Estimación económica (CLP): $1.800 por m3 perdido aproximado
-    const estimatedLossCLP = (matrixReading - sumUnitsReading) * 1800;
+    const estimatedLossCLP = commonAreasCons * 1800;
 
     // Proyecciones
     const currentDay = new Date().getDate();
@@ -594,12 +598,13 @@ function AdminCompaniesContent() {
     const riskPercentage = Math.min((projectedMonthCons / overconsumptionThreshold) * 100, 100);
 
     return {
-      sumUnitsReading,
-      matrixReading,
+      residentsConsumption: sumUnitsReading,
+      matrixTotal: matrixReading,
+      commonAreasTotal: commonAreasCons,
       efficiency,
       leakCount,
       estimatedLossCLP,
-      totalUnits,
+      totalUnits: totalUnitsCount,
       projectedMonthCons,
       overconsumptionThreshold,
       riskPercentage
@@ -913,6 +918,72 @@ function AdminCompaniesContent() {
               </Card>
             </div>
 
+            {/* BALANCE DE DISTRIBUCIÓN HÍDRICA (NUEVO PANEL SOLICITADO) */}
+            <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+              <CardHeader className="p-8 border-b bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-600 p-2 rounded-xl shadow-lg"><Scale className="h-5 w-5 text-white" /></div>
+                  <div>
+                    <CardTitle className="text-xl font-black uppercase italic tracking-tighter">Balance Maestro de Distribución</CardTitle>
+                    <CardDescription className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Comparativa de Auditoría vs Empresa de Agua</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8">
+                <div className="grid gap-10 md:grid-cols-3">
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Medidor Aguas Andinas (Matriz)</p>
+                      <p className="text-4xl font-black italic text-slate-900">{auditStats.matrixTotal.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                    </div>
+                    <div className="bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-slate-900 h-full w-full" />
+                    </div>
+                    <p className="text-[9px] font-medium text-slate-500 leading-relaxed italic">
+                      "Lectura total registrada en el punto de acometida general del edificio."
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Total Residentes</p>
+                      <p className="text-4xl font-black italic text-blue-600">{auditStats.residentsConsumption.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                    </div>
+                    <div className="bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-blue-600 h-full" style={{ width: `${auditStats.efficiency}%` }} />
+                    </div>
+                    <p className="text-[9px] font-medium text-slate-500 leading-relaxed italic">
+                      "Suma de las 100 unidades individuales monitoreadas por GENKO."
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial (Áreas Comunes / Fugas)</p>
+                      <p className="text-4xl font-black italic text-rose-600">{auditStats.commonAreasTotal.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                    </div>
+                    <div className="bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-rose-600 h-full" style={{ width: `${100 - auditStats.efficiency}%` }} />
+                    </div>
+                    <p className="text-[9px] font-medium text-slate-500 leading-relaxed italic">
+                      "Agua consumida en riego, piscinas, lavandería o perdida en matrices internas."
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-10 p-6 bg-blue-50 rounded-[2rem] border-2 border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-blue-600 p-3 rounded-2xl"><Zap className="h-6 w-6 text-white" /></div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Ratio de Recuperación</p>
+                      <p className="text-xl font-black text-slate-900 italic">Estás facturando el {auditStats.efficiency.toFixed(1)}% del agua recibida.</p>
+                    </div>
+                  </div>
+                  <Button className="rounded-xl h-12 px-8 font-black uppercase text-[10px] bg-slate-900 shadow-xl">Generar Informe de Auditoría</Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* GRÁFICOS DE ANÁLISIS DE PATRONES */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Card className="lg:col-span-2 border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
@@ -1046,45 +1117,47 @@ function AdminCompaniesContent() {
             {meterViewMode === 'grid' ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {(communityMeters || []).map((m) => (
-                  <div key={m.id} className="space-y-2">
-                    <Card 
-                      className={cn(
-                        "border-none shadow-sm rounded-[2rem] bg-white overflow-hidden group transition-all cursor-pointer", 
-                        m.hasLeakAlert && "ring-2 ring-rose-500",
-                        expandedMeterId === m.id && "ring-2 ring-blue-600"
-                      )}
-                      onClick={() => toggleMeterExpansion(m.id)}
-                    >
-                      <CardContent className="p-6 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className={cn("p-3 rounded-2xl transition-all", m.status === 'open' ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white" : "bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white")}><Droplets className="h-6 w-6" /></div>
-                          <div className="flex gap-1.5">
-                            {m.hasLeakAlert && <Badge className="bg-rose-600 text-white font-black text-[7px] uppercase px-2 h-5 animate-pulse">FUGA</Badge>}
-                            <Badge className={cn("font-black text-[8px] uppercase px-2 h-5", m.status === 'open' ? "bg-emerald-50 text-emerald-700" : "bg-rose-100 text-rose-700")}>{m.status === 'open' ? 'Online' : 'Cerrado'}</Badge>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{m.unitIdentifier}</p>
-                            <div className="flex items-center gap-3 mt-1 opacity-40">
-                              <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Battery className="h-2.5 w-2.5" /> {m.batteryLevel}%</span>
-                              <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Signal className="h-2.5 w-2.5" /> {m.signalStrength}%</span>
+                  <Fragment key={m.id}>
+                    <div className="space-y-2">
+                      <Card 
+                        className={cn(
+                          "border-none shadow-sm rounded-[2rem] bg-white overflow-hidden group transition-all cursor-pointer", 
+                          m.hasLeakAlert && "ring-2 ring-rose-500",
+                          expandedMeterId === m.id && "ring-2 ring-blue-600"
+                        )}
+                        onClick={() => toggleMeterExpansion(m.id)}
+                      >
+                        <CardContent className="p-6 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className={cn("p-3 rounded-2xl transition-all", m.status === 'open' ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white" : "bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white")}><Droplets className="h-6 w-6" /></div>
+                            <div className="flex gap-1.5">
+                              {m.hasLeakAlert && <Badge className="bg-rose-600 text-white font-black text-[7px] uppercase px-2 h-5 animate-pulse">FUGA</Badge>}
+                              <Badge className={cn("font-black text-[8px] uppercase px-2 h-5", m.status === 'open' ? "bg-emerald-50 text-emerald-700" : "bg-rose-100 text-rose-700")}>{m.status === 'open' ? 'Online' : 'Cerrado'}</Badge>
                             </div>
                           </div>
-                          {expandedMeterId === m.id ? <ChevronUp className="h-5 w-5 text-blue-600" /> : <ChevronDown className="h-5 w-5 text-slate-300" />}
-                        </div>
-                        <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
-                          <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
-                          <span className="text-2xl font-black italic">{m.currentReading.toFixed(3)}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{m.unitIdentifier}</p>
+                              <div className="flex items-center gap-3 mt-1 opacity-40">
+                                <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Battery className="h-2.5 w-2.5" /> {m.batteryLevel}%</span>
+                                <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Signal className="h-2.5 w-2.5" /> {m.signalStrength}%</span>
+                              </div>
+                            </div>
+                            {expandedMeterId === m.id ? <ChevronUp className="h-5 w-5 text-blue-600" /> : <ChevronDown className="h-5 w-5 text-slate-300" />}
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
+                            <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
+                            <span className="text-2xl font-black italic">{m.currentReading.toFixed(3)}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
                     {expandedMeterId === m.id && (
                       <div className="col-span-full">
                         <UnitAnalysisSection meter={m} />
                       </div>
                     )}
-                  </div>
+                  </Fragment>
                 ))}
               </div>
             ) : (
