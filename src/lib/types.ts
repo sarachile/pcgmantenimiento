@@ -5,7 +5,7 @@ export type OTStatus = 'solicitada' | 'creada' | 'asignada' | 'en proceso' | 'ej
 
 export type AssetStatus = 'activo' | 'inactivo' | 'en mantenimiento';
 
-export type IoTType = 'solar' | 'temperatura' | 'vibracion' | 'presion' | 'otro';
+export type IoTType = 'solar' | 'temperatura' | 'vibracion' | 'presion' | 'caudal' | 'otro';
 
 export type DTEStatus = 'pendiente' | 'emitido' | 'anulado' | 'error' | 'aceptado_sii';
 

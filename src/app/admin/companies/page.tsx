@@ -57,7 +57,8 @@ import {
   Monitor,
   Droplets,
   HardHat,
-  Smartphone
+  Smartphone,
+  Waves
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -345,11 +346,14 @@ function AdminCompaniesContent() {
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Tipo de Magnitud</Label>
                     <Select value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
-                      <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="h-12 border-2 rounded-xl font-bold" onPointerDown={e => e.stopPropagation()}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent modal={false}>
                         <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
                         <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
                         <SelectItem value="presion">Presión (Bar)</SelectItem>
+                        <SelectItem value="caudal">Caudal (L/min)</SelectItem>
                         <SelectItem value="otro">Genérico</SelectItem>
                       </SelectContent>
                     </Select>

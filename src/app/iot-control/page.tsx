@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -17,7 +18,8 @@ import {
   Waves,
   Gauge,
   History,
-  ExternalLink
+  ExternalLink,
+  Droplets
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -59,6 +61,7 @@ export default function IotControlPanelPage() {
     { id: "temperatura", label: "Temperatura", icon: Thermometer, color: "text-rose-500" },
     { id: "vibracion", label: "Vibración", icon: Activity, color: "text-indigo-500" },
     { id: "presion", label: "Presión", icon: Waves, color: "text-cyan-500" },
+    { id: "caudal", label: "Caudal", icon: Droplets, color: "text-blue-400" },
   ];
 
   if (isAuthLoading || isAssetsLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
