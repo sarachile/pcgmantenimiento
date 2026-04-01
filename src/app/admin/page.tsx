@@ -55,7 +55,6 @@ export default function SuperadminDashboardPage() {
 
   const companiesQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
-    // Eliminamos el límite para ver todas las comunidades como solicitó el usuario
     return query(collection(db, "companies"), orderBy("createdAt", "desc"));
   }, [db, isSuperAdmin]);
 
@@ -79,7 +78,7 @@ export default function SuperadminDashboardPage() {
   }
 
   const platformStats = [
-    { label: "Empresas Registradas", value: stats.totalCompanies, icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Comunidades Registradas", value: stats.totalCompanies, icon: Building2, color: "text-blue-600", bg: "bg-blue-50" },
     { label: "Tenants Activos", value: stats.activeTenants, icon: Activity, color: "text-emerald-600", bg: "bg-emerald-50" },
     { label: "Nivel de Servicio", value: "SLA 99.9%", icon: ShieldCheck, color: "text-amber-600", bg: "bg-amber-50" },
     { label: "Estado Infra", value: "Online", icon: Globe, color: "text-indigo-600", bg: "bg-indigo-50" },
@@ -219,7 +218,7 @@ export default function SuperadminDashboardPage() {
             </Card>
           )
         ) : (
-          <div className="py-20 text-center text-slate-400 italic text-sm">No hay empresas registradas aún.</div>
+          <div className="py-20 text-center text-slate-400 italic text-sm">No hay comunidades registradas aún.</div>
         )}
       </div>
 
@@ -229,7 +228,7 @@ export default function SuperadminDashboardPage() {
             <div className="grid md:grid-cols-5 h-full">
               <div className="md:col-span-2 bg-slate-800 p-8 flex flex-col justify-center items-center text-center space-y-4">
                 <div className="bg-white/10 p-4 rounded-3xl"><Building2 className="h-10 w-10 text-white" /></div>
-                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Gestión de Empresas</h3>
+                <h3 className="text-xl font-black text-white uppercase italic tracking-tighter">Gestión Comunidades</h3>
               </div>
               <div className="md:col-span-3 p-8 flex flex-col justify-center space-y-4">
                 <p className="text-sm text-slate-400 font-medium">Control total de Tenants, asignación de planes Business/Enterprise y monitoreo de suscripciones comerciales.</p>
@@ -277,7 +276,7 @@ export default function SuperadminDashboardPage() {
                   </p>
                   <p className="text-sm font-black uppercase">Firestore Multi-Region</p>
                 </div>
-                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">OPERACIONAL</Badge>
+                <Badge className="bg-emerald-50/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">OPERACIONAL</Badge>
               </div>
 
               <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
@@ -287,7 +286,7 @@ export default function SuperadminDashboardPage() {
                   </p>
                   <p className="text-sm font-black uppercase">Ingesta IoT & Telemetría</p>
                 </div>
-                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">ONLINE (V1)</Badge>
+                <Badge className="bg-emerald-50/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">ONLINE (V1)</Badge>
               </div>
 
               <div className="bg-white/5 p-5 rounded-[1.5rem] border border-white/10 flex items-center justify-between group hover:bg-white/10 transition-colors">
@@ -297,7 +296,7 @@ export default function SuperadminDashboardPage() {
                   </p>
                   <p className="text-sm font-black uppercase">SimpleAPI & SMTP Relay</p>
                 </div>
-                <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">CONECTADO</Badge>
+                <Badge className="bg-emerald-50/20 text-emerald-400 border-emerald-500/30 font-black text-[8px]">CONECTADO</Badge>
               </div>
             </div>
 

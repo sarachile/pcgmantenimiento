@@ -88,7 +88,7 @@ const settingsItems: NavItem[] = [
 
 const adminItems: NavItem[] = [
   { title: "Control Maestro", href: "/admin", icon: Globe, roles: ['superadmin'] },
-  { title: "Empresas SaaS", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
+  { title: "Comunidades SaaS", href: "/admin/companies", icon: Building2, roles: ['superadmin'] },
   { title: "Gestión Agua IoT", href: "/admin/water", icon: Waves, roles: ['superadmin'] },
   { title: "Estadísticas Infra", href: "/admin/stats", icon: BarChart3, roles: ['superadmin'] },
 ];

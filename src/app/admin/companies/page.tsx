@@ -99,7 +99,7 @@ export default function AdminCompaniesPage() {
     redirect("/auth/login");
   };
 
-  // Create Company State
+  // Create Community State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -351,7 +351,7 @@ export default function AdminCompaniesPage() {
             </Link>
           </Button>
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">Gestión de Empresas</h2>
+            <h2 className="text-3xl font-bold tracking-tight">Gestión de Comunidades</h2>
             <p className="text-muted-foreground">Control central de tenants, usuarios y planes activos.</p>
           </div>
         </div>
@@ -363,20 +363,20 @@ export default function AdminCompaniesPage() {
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" /> Nueva Empresa
+                <Plus className="mr-2 h-4 w-4" /> Nueva Comunidad
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Registrar Nuevo Cliente (Tenant)</DialogTitle>
+                <DialogTitle>Registrar Nueva Comunidad (Tenant)</DialogTitle>
                 <DialogDescription>Cree el entorno para que el cliente pueda registrar sus usuarios operativos.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateCompany} className="space-y-4 py-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Nombre de la Empresa / Razón Social</Label>
+                    <Label>Nombre de la Comunidad / Razón Social</Label>
                     <Input 
-                      placeholder="Ej: Servicios Industriales S.A." 
+                      placeholder="Ej: Edificio Vista Hermosa" 
                       value={formData.name}
                       onChange={(e) => setFormData({...formData, name: e.target.value})}
                     />
@@ -432,7 +432,7 @@ export default function AdminCompaniesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Empresa / Inicio</TableHead>
+                    <TableHead>Comunidad / Inicio</TableHead>
                     <TableHead>Plan / Trial</TableHead>
                     <TableHead>Código Acceso</TableHead>
                     <TableHead>Usuarios</TableHead>
@@ -593,7 +593,7 @@ export default function AdminCompaniesPage() {
         </div>
       </div>
 
-      {/* Dialog Ficha de Empresa y Usuarios */}
+      {/* Dialog Ficha de Comunidad y Usuarios */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -616,7 +616,7 @@ export default function AdminCompaniesPage() {
           <div className="space-y-6 py-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-muted/30 p-3 rounded-lg border">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">RUT Empresa</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">RUT Comunidad</p>
                 <p className="text-sm font-bold">{detailsCompany?.rut || 'Pendiente'}</p>
               </div>
               <div className="bg-muted/30 p-3 rounded-lg border">
@@ -677,7 +677,7 @@ export default function AdminCompaniesPage() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center py-8 text-muted-foreground italic text-sm">
-                          No hay usuarios registrados aún en esta empresa.
+                          No hay usuarios registrados aún en esta comunidad.
                         </TableCell>
                       </TableRow>
                     )}
@@ -710,7 +710,7 @@ export default function AdminCompaniesPage() {
               <Input 
                 id="invite-email" 
                 type="email" 
-                placeholder="gerencia@cliente.cl" 
+                placeholder="gerencia@comunidad.cl" 
                 required 
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
