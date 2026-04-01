@@ -73,8 +73,26 @@ import {
   AlertCircle,
   Activity,
   HandCoins,
-  ShieldAlert
+  ShieldAlert,
+  BarChart3,
+  Clock,
+  ArrowUpRight,
+  TrendingDown
 } from "lucide-react";
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  ReferenceLine,
+  Cell,
+  Legend
+} from "recharts";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { redirect, useSearchParams, useRouter } from "next/navigation";
@@ -91,7 +109,7 @@ import {
 } from "@/firebase";
 import { collection, doc, serverTimestamp, query, orderBy, where, setDoc } from "firebase/firestore";
 import { Company, Community, WaterMeter, Asset } from "@/lib/types";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, subDays, startOfMonth, endOfMonth, isAfter } from "date-fns";
 import { es } from "date-fns/locale";
 import { signOut } from "firebase/auth";
 import { CHILE_REGIONS } from "@/lib/chile-data";
@@ -128,7 +146,6 @@ const SIM_JUAN_METERS: WaterMeter[] = Array.from({ length: 100 }, (_, i) => {
   const room = (i % 10) + 1;
   const unit = `Depto ${floor}${room < 10 ? '0' + room : room}`;
   
-  // Perfilado de consumo realista
   const baseReading = 150 + (i * 12.4);
   const variation = Math.random() * 5;
   const reading = baseReading + variation;
@@ -136,7 +153,6 @@ const SIM_JUAN_METERS: WaterMeter[] = Array.from({ length: 100 }, (_, i) => {
   const battery = Math.floor(Math.random() * 30) + 70;
   const signal = Math.floor(Math.random() * 40) + 60;
   
-  // Eventos: 4% de fugas (WC fallando), 2% cerrados por morosidad
   const hasLeak = Math.random() > 0.96; 
   const isClosed = Math.random() > 0.98;
 
@@ -158,6 +174,27 @@ const SIM_JUAN_METERS: WaterMeter[] = Array.from({ length: 100 }, (_, i) => {
 const SIM_JUAN_SENSORS: Asset[] = [
   { id: 'sensor-juan-1', companyId: 'adm-juan-f', communityId: 'comm-juan-1', name: 'Matriz Principal - Caudal', code: 'CQ-01', location: 'Sala de Bombas -1', status: 'activo', isIoT: true, iotType: 'caudal', lastValue: 45.2, unit: 'L/min', createdAt: new Date().toISOString() },
   { id: 'sensor-juan-2', companyId: 'adm-juan-f', communityId: 'comm-juan-1', name: 'Presión Matriz Agua', code: 'PR-01', location: 'Estanque PB', status: 'activo', isIoT: true, iotType: 'presion', lastValue: 4.2, unit: 'Bar', createdAt: new Date().toISOString() },
+];
+
+// DATA DE TENDENCIAS SIMULADA
+const TREND_DATA = [
+  { day: "Lun", actual: 45, previous: 42 },
+  { day: "Mar", actual: 48, previous: 44 },
+  { day: "Mié", actual: 52, previous: 41 },
+  { day: "Jue", actual: 61, previous: 45 },
+  { day: "Vie", actual: 58, previous: 48 },
+  { day: "Sáb", actual: 75, previous: 65 },
+  { day: "Dom", actual: 82, previous: 70 },
+];
+
+const PATTERN_DATA = [
+  { hour: "00:00", value: 5 },
+  { hour: "04:00", value: 3 },
+  { hour: "08:00", value: 25 },
+  { hour: "12:00", value: 18 },
+  { hour: "16:00", value: 15 },
+  { hour: "20:00", value: 35 },
+  { hour: "23:00", value: 12 },
 ];
 
 // --- COMPONENTE ESCÁNER QR ---
@@ -412,24 +449,33 @@ function AdminCompaniesContent() {
     if (totalUnits === 0) return null;
 
     const sumUnitsReading = list.reduce((acc, m) => acc + m.currentReading, 0);
-    // Simulación de medidor matriz (siempre superior a la suma de unidades por pérdidas técnicas)
+    // Simulación de medidor matriz
     const matrixReading = sumUnitsReading * 1.08; 
     const efficiency = (sumUnitsReading / matrixReading) * 100;
     
     const leakCount = list.filter(m => m.hasLeakAlert).length;
-    const closedCount = list.filter(m => m.status === 'closed').length;
     
     // Estimación económica (CLP): $1.800 por m3 perdido aproximado
     const estimatedLossCLP = (matrixReading - sumUnitsReading) * 1800;
+
+    // Proyecciones
+    const currentDay = new Date().getDate();
+    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const currentMonthCons = sumUnitsReading * 0.15; // Simulado
+    const projectedMonthCons = (currentMonthCons / currentDay) * daysInMonth;
+    const overconsumptionThreshold = 1200; // m3 de límite para el edificio
+    const riskPercentage = Math.min((projectedMonthCons / overconsumptionThreshold) * 100, 100);
 
     return {
       sumUnitsReading,
       matrixReading,
       efficiency,
       leakCount,
-      closedCount,
       estimatedLossCLP,
-      totalUnits
+      totalUnits,
+      projectedMonthCons,
+      overconsumptionThreshold,
+      riskPercentage
     };
   }, [communityMeters]);
 
@@ -535,7 +581,7 @@ function AdminCompaniesContent() {
       }
       toast({ 
         title: "Provisioning Exitoso", 
-        description: "El dispositivo ha sido vinculado. Esperando mensaje de activación (JOIN)..." 
+        description: "El dispositivo ha sido vinculado. Esperando activación..." 
       });
       setIsEnrollOpen(false);
       setEnrollData({ 
@@ -545,7 +591,7 @@ function AdminCompaniesContent() {
         alias: "", 
         sensorType: "caudal", 
         initialReading: "0" 
-  });
+      });
     } catch (e) {
       toast({ title: "Error en enrolamiento", variant: "destructive" });
     } finally {
@@ -582,13 +628,7 @@ function AdminCompaniesContent() {
         appKey: data.appKey || prev.appKey
       }));
       setIsScannerOpen(false);
-      toast({ title: "QR Decodificado", description: "Datos de hardware cargados automáticamente." });
-    } else {
-      toast({ 
-        title: "QR no reconocido", 
-        description: "El formato del código no es compatible con el estándar de red. Ingrese los datos manualmente.",
-        variant: "destructive"
-      });
+      toast({ title: "QR Decodificado", description: "Datos cargados." });
     }
   };
 
@@ -618,7 +658,7 @@ function AdminCompaniesContent() {
 
   if (isUserLoading || !isSuperAdmin) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
-  // RENDERIZADO NIVEL 3: DETALLE DE COMUNIDAD (AUDITORÍA HÍDRICA)
+  // RENDERIZADO NIVEL 3: DETALLE DE COMUNIDAD (AUDITORÍA HÍDRICA + GRÁFICOS)
   if (viewingCommunityId && selectedCommunity) {
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto">
@@ -635,197 +675,223 @@ function AdminCompaniesContent() {
             </div>
           </div>
           <div className="flex gap-2">
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border">
-              <Button 
-                variant={meterViewMode === 'grid' ? 'secondary' : 'ghost'} 
-                size="sm" 
-                className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", meterViewMode === 'grid' && "bg-white shadow-sm")}
-                onClick={() => setMeterViewMode('grid')}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" /> Grilla
-              </Button>
-              <Button 
-                variant={meterViewMode === 'list' ? 'secondary' : 'ghost'} 
-                size="sm" 
-                className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", meterViewMode === 'list' && "bg-white shadow-sm")}
-                onClick={() => setMeterViewMode('list')}
-              >
-                <List className="h-3.5 w-3.5" /> Listado
-              </Button>
-            </div>
             <Dialog open={isEnrollOpen} onOpenChange={setIsEnrollOpen}>
               <DialogTrigger asChild>
                 <Button className="rounded-xl h-11 px-6 font-black uppercase text-[10px] gap-2 shadow-xl bg-blue-600">
-                  <Plus className="h-4 w-4" /> Enrolar Nuevo Sistema
+                  <Plus className="h-4 w-4" /> Enrolar Sistema
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
-                <DialogHeader className="bg-slate-900 text-white p-8">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="bg-blue-600 p-2 rounded-lg"><QrCode className="h-6 w-6" /></div>
-                    <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Provisioning IoT</DialogTitle>
-                  </div>
-                  <DialogDescription className="text-slate-400 font-medium">Sincronice hardware LoRaWAN/NB-IoT con esta comunidad.</DialogDescription>
+              <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
+                <DialogHeader className="bg-slate-900 text-white p-8 rounded-t-[2.5rem]">
+                  <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter flex items-center gap-3">
+                    <QrCode className="h-6 w-6" /> Provisioning IoT
+                  </DialogTitle>
                 </DialogHeader>
-                
-                <div className="p-8 space-y-6 max-h-[60vh] overflow-y-auto">
-                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1.5 rounded-2xl">
-                    <Button variant={enrollType === 'meter' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'meter' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('meter')}>Medidor Agua</Button>
-                    <Button variant={enrollType === 'sensor' ? 'default' : 'ghost'} className={cn("rounded-xl text-[10px] font-black uppercase h-10 transition-all", enrollType === 'sensor' && "bg-white text-slate-900 shadow-sm")} onClick={() => setEnrollOpenType('sensor')}>Sensor IoT / Activo</Button>
+                <div className="p-8 space-y-6">
+                  <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+                    <Button variant={enrollType === 'meter' ? 'secondary' : 'ghost'} className="rounded-lg text-[10px] font-black uppercase" onClick={() => setEnrollOpenType('meter')}>Medidor Agua</Button>
+                    <Button variant={enrollType === 'sensor' ? 'secondary' : 'ghost'} className="rounded-lg text-[10px] font-black uppercase" onClick={() => setEnrollOpenType('sensor')}>Sensor IoT</Button>
                   </div>
-                  
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase text-primary tracking-widest">
-                      <div className="flex items-center gap-2"><Wifi className="h-4 w-4" /> Credenciales de Red</div>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Credenciales de Red</Label>
                       <Button variant="ghost" size="sm" className="h-7 px-2 bg-slate-100 text-slate-600 rounded-lg gap-1.5" onClick={() => setIsScannerOpen(true)}>
                         <Camera className="h-3 w-3" /> Escanear QR
                       </Button>
                     </div>
-                    
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">DevEUI (ID Único del Hardware)</Label>
-                      <div className="relative">
-                        <Input placeholder="Ej: 0011223344556677" value={enrollData.devEUI} onChange={e => setEnrollData({...enrollData, devEUI: e.target.value})} className="h-12 border-2 rounded-xl font-bold font-mono uppercase pl-4" />
-                        <button className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors" title="Escanear QR" onClick={() => setIsScannerOpen(true)}><Smartphone className="h-5 w-5" /></button>
-                      </div>
-                    </div>
-
+                    <Input placeholder="DevEUI" value={enrollData.devEUI} onChange={e => setEnrollData({...enrollData, devEUI: e.target.value})} className="h-12 border-2 rounded-xl font-mono uppercase" />
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">AppEUI</Label>
-                        <Input value={enrollData.appEUI} onChange={e => setEnrollData({...enrollData, appEUI: e.target.value})} className="h-11 border-2 rounded-xl font-mono text-xs" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">AppKey (AES-128)</Label>
-                        <div className="relative">
-                          <Input type="password" placeholder="Key de Encriptación" value={enrollData.appKey} onChange={e => setEnrollData({...enrollData, appKey: e.target.value})} className="h-11 border-2 rounded-xl font-mono text-xs pr-10" />
-                          <KeyRound className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300" />
-                        </div>
-                      </div>
+                      <Input placeholder="AppEUI" value={enrollData.appEUI} onChange={e => setEnrollData({...enrollData, appEUI: e.target.value})} className="h-11 border-2 rounded-xl font-mono" />
+                      <Input type="password" placeholder="AppKey" value={enrollData.appKey} onChange={e => setEnrollData({...enrollData, appKey: e.target.value})} className="h-11 border-2 rounded-xl font-mono" />
                     </div>
-                  </div>
-
-                  <div className="space-y-4 pt-4 border-t-2 border-dashed border-slate-100">
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-slate-400 tracking-widest"><MapPin className="h-4 w-4" /> Asignación Lógica</div>
-                    
                     <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Ubicación / Vertical / Identificador</Label>
-                      <Input placeholder={enrollType === 'meter' ? "Ej: Depto 405 (Torre A)" : "Ej: Matriz Principal - Sala Calderas"} value={enrollData.alias} onChange={e => setEnrollData({...enrollData, alias: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                      <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Asignación Vertical</Label>
+                      <Input placeholder="Ej: Depto 405 (Torre A)" value={enrollData.alias} onChange={e => setEnrollData({...enrollData, alias: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                     </div>
-
                     {enrollType === 'meter' && (
                       <div className="space-y-2">
-                        <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Lectura Inicial / Offset (m³)</Label>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          placeholder="Ej: 450.00" 
-                          value={enrollData.initialReading} 
-                          onChange={e => setEnrollData({...enrollData, initialReading: e.target.value})} 
-                          className="h-12 border-2 rounded-xl font-black text-blue-600 text-center text-lg" 
-                        />
-                        <p className="text-[9px] text-slate-400 font-medium italic text-center">Sincronice el CRM con la lectura actual del medidor físico análogo.</p>
-                      </div>
-                    )}
-
-                    {enrollType === 'sensor' && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Tipo de Sensor & Método de Instalación</Label>
-                          <Select modal={false} value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})}>
-                            <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="caudal" className="font-bold">Caudal (No Invasivo - Clip On)</SelectItem>
-                              <SelectItem value="vibracion">Vibración (Superficial)</SelectItem>
-                              <SelectItem value="temperatura">Temperatura (Superficial)</SelectItem>
-                              <SelectItem value="presion">Presión (Invasivo - Transductor)</SelectItem>
-                              <SelectItem value="otro">Genérico</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {enrollData.sensorType === 'presion' && (
-                          <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
-                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                            <p className="text-[9px] text-amber-800 font-bold uppercase leading-tight">Nota: Los sensores de presión requieren perforación hidráulica o conexión a válvula de servicio.</p>
-                          </div>
-                        )}
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Lectura Inicial (Offset m³)</Label>
+                        <Input type="number" step="0.01" value={enrollData.initialReading} onChange={e => setEnrollData({...enrollData, initialReading: e.target.value})} className="h-12 border-2 rounded-xl font-black text-blue-600 text-center text-lg" />
                       </div>
                     )}
                   </div>
                 </div>
-                <DialogFooter className="p-8 bg-slate-50 border-t">
-                  <Button disabled={isSubmitting || !enrollData.devEUI} className="w-full h-16 rounded-2xl font-black uppercase tracking-widest shadow-xl text-lg bg-blue-600 hover:bg-blue-700" onClick={handleEnrollSystem}>
-                    {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Vincular y Activar"}
-                  </Button>
+                <DialogFooter className="p-8 pt-0">
+                  <Button disabled={isSubmitting || !enrollData.devEUI} className="w-full h-14 rounded-2xl font-black uppercase shadow-xl bg-blue-600" onClick={handleEnrollSystem}>Vincular y Activar</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
-
-          <QRScannerDialog 
-            isOpen={isScannerOpen} 
-            onOpenChange={setIsScannerOpen} 
-            onScan={handleQRScanResult} 
-          />
         </div>
 
-        {/* DASHBOARD DE AUDITORÍA HÍDRICA (NUEVO) */}
+        {/* DASHBOARD DE AUDITORÍA HÍDRICA */}
         {auditStats && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-in slide-in-from-top-4 duration-700">
-            <Card className="border-none shadow-xl bg-blue-600 text-white rounded-[2rem] overflow-hidden relative group">
-              <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Activity className="h-20 w-20" /></div>
-              <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-100">Eficiencia de Red</CardTitle></CardHeader>
-              <CardContent>
-                <div className="text-4xl font-black italic">{auditStats.efficiency.toFixed(1)}%</div>
-                <p className="text-[8px] font-bold uppercase text-blue-200 mt-1">Suma Unidades vs Matriz</p>
-              </CardContent>
-            </Card>
+          <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card className="border-none shadow-xl bg-blue-600 text-white rounded-[2rem] overflow-hidden relative group">
+                <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Activity className="h-20 w-20" /></div>
+                <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-100">Eficiencia de Red</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-black italic">{auditStats.efficiency.toFixed(1)}%</div>
+                  <p className="text-[8px] font-bold uppercase text-blue-200 mt-1">Suma Unidades vs Matriz</p>
+                </CardContent>
+              </Card>
 
-            <Card className={cn("border-none shadow-xl rounded-[2rem] overflow-hidden relative group transition-all", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
-              <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><ShieldAlert className="h-20 w-20" /></div>
-              <CardHeader className="pb-2"><CardTitle className={cn("text-[9px] font-black uppercase tracking-[0.2em]", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Detectadas</CardTitle></CardHeader>
-              <CardContent>
-                <div className="text-4xl font-black italic">{auditStats.leakCount}</div>
-                <p className={cn("text-[8px] font-bold uppercase mt-1", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Puntos de desperdicio activo</p>
-              </CardContent>
-            </Card>
+              <Card className={cn("border-none shadow-xl rounded-[2rem] overflow-hidden relative group transition-all", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
+                <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><ShieldAlert className="h-20 w-20" /></div>
+                <CardHeader className="pb-2"><CardTitle className={cn("text-[9px] font-black uppercase tracking-[0.2em]", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Detectadas</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-black italic">{auditStats.leakCount}</div>
+                  <p className={cn("text-[8px] font-bold uppercase mt-1", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Puntos de desperdicio activo</p>
+                </CardContent>
+              </Card>
 
-            <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] overflow-hidden relative group">
-              <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><HandCoins className="h-20 w-20 text-emerald-400" /></div>
-              <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Pérdida Económica</CardTitle></CardHeader>
-              <CardContent>
-                <div className="text-4xl font-black italic text-rose-400">${auditStats.estimatedLossCLP.toLocaleString()}</div>
-                <p className="text-[8px] font-bold uppercase text-slate-500 mt-1">Agua No Facturada (Mensual)</p>
-              </CardContent>
-            </Card>
+              <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] overflow-hidden relative group">
+                <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><HandCoins className="h-20 w-20 text-emerald-400" /></div>
+                <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Pérdida Económica</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-black italic text-rose-400">${auditStats.estimatedLossCLP.toLocaleString()}</div>
+                  <p className="text-[8px] font-bold uppercase text-slate-500 mt-1">Agua No Facturada (Mensual)</p>
+                </CardContent>
+              </Card>
 
-            <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden relative group border-2 border-slate-100">
-              <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Smartphone className="h-20 w-20 text-blue-600" /></div>
-              <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Medición Digital</CardTitle></CardHeader>
-              <CardContent>
-                <div className="text-4xl font-black italic text-slate-900">{auditStats.totalUnits}</div>
-                <p className="text-[8px] font-bold uppercase text-slate-400 mt-1">Dispositivos Online NB-IoT</p>
-              </CardContent>
-            </Card>
+              <Card className="border-none shadow-xl bg-white rounded-[2rem] overflow-hidden relative group border-2 border-slate-100">
+                <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><TrendingUp className="h-20 w-20 text-blue-600" /></div>
+                <CardHeader className="pb-2"><CardTitle className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Riesgo Sobreconsumo</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="text-4xl font-black italic text-slate-900">{auditStats.riskPercentage.toFixed(0)}%</div>
+                  <p className="text-[8px] font-bold uppercase text-slate-400 mt-1">Probabilidad de multa</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* GRÁFICOS DE ANÁLISIS DE PATRONES */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="lg:col-span-2 border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+                <CardHeader className="p-8 border-b bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+                        <TrendingUp className="h-6 w-6 text-blue-600" /> Tendencia Semanal Comparativa
+                      </CardTitle>
+                      <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Semana Actual vs Semana Anterior (m³)</CardDescription>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-2"><div className="h-3 w-3 bg-blue-600 rounded-full" /><span className="text-[9px] font-black uppercase">Actual</span></div>
+                      <div className="flex items-center gap-2"><div className="h-3 w-3 bg-slate-200 rounded-full" /><span className="text-[9px] font-black uppercase">Anterior</span></div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-8 h-[350px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={TREND_DATA}>
+                      <defs>
+                        <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
+                      <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
+                      <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: '900' }} />
+                      <Area type="monotone" dataKey="previous" stroke="#e2e8f0" strokeWidth={2} fill="#f8fafc" />
+                      <Area type="monotone" dataKey="actual" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-slate-900 text-white relative">
+                <div className="absolute top-0 right-0 p-8 opacity-10"><Zap className="h-40 w-40 text-blue-400" /></div>
+                <CardHeader className="p-8 border-b border-white/5">
+                  <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+                    <BarChart3 className="h-6 w-6 text-blue-400" /> Meta Sobreconsumo
+                  </CardTitle>
+                  <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Proyección de cierre de mes</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 space-y-8 relative z-10">
+                  <div className="h-[200px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: 'Consumo Real', value: 850, fill: '#3b82f6' },
+                        { name: 'Proyectado', value: 1120, fill: '#1e293b' }
+                      ]}>
+                        <XAxis dataKey="name" hide />
+                        <YAxis hide domain={[0, 1500]} />
+                        <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px' }} />
+                        <ReferenceLine y={1200} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={2} label={{ position: 'top', value: 'LÍMITE', fill: '#ef4444', fontSize: 10, fontWeight: '900' }} />
+                        <Bar dataKey="value" radius={[12, 12, 12, 12]} barSize={60}>
+                          <Cell fill="#3b82f6" />
+                          <Cell fill="#ffffff10" stroke="#ffffff20" strokeWidth={2} strokeDasharray="4 4" />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-black uppercase text-slate-400">Estado</span>
+                      <Badge className="bg-emerald-500 text-white font-black text-[8px] uppercase">Bajo Límite</Badge>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-blue-400">Proyección Final</p>
+                      <p className="text-3xl font-black italic">1.120 m³</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+                <CardHeader className="p-8 border-b bg-slate-50/50">
+                  <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+                    <Clock className="h-6 w-6 text-indigo-600" /> Patrón Horario Promedio
+                  </CardTitle>
+                  <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Detección de horas punta y valles</CardDescription>
+                </CardHeader>
+                <CardContent className="p-8 h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={PATTERN_DATA}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="hour" fontSize={8} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
+                      <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', fontSize: '10px' }} />
+                      <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white p-10 flex flex-col justify-center relative overflow-hidden group">
+                <div className="absolute right-0 bottom-0 p-10 opacity-10 group-hover:scale-110 transition-transform"><Sparkles className="h-40 w-40 text-blue-400" /></div>
+                <div className="relative z-10 space-y-6">
+                  <div className="space-y-2">
+                    <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-4 py-1">Análisis Predictivo GENKO</Badge>
+                    <h3 className="text-3xl font-black italic uppercase tracking-tighter">Diagnóstico de Inteligencia</h3>
+                  </div>
+                  <p className="text-slate-400 text-lg leading-relaxed max-w-2xl font-medium">
+                    "El edificio Horizonte presenta un patrón de consumo nocturno estable, sin embargo, el incremento del <span className="text-blue-400">12% respecto a la semana pasada</span> en horas de la mañana sugiere un desajuste en los tiempos de riego perimetral. Se recomienda auditoría de válvulas en Torre B."
+                  </p>
+                  <div className="flex gap-4">
+                    <Button variant="outline" className="rounded-xl border-white/20 text-white hover:bg-white/10 font-black uppercase text-[10px] h-12 px-8">Descargar Reporte PDF</Button>
+                    <Button className="rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-[10px] h-12 px-8">Agendar Mantención Preventiva</Button>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         )}
 
-        <div className="grid gap-8">
+        <div className="grid gap-8 pt-8">
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
               <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2">
                 <Droplets className="h-4 w-4 text-blue-600" /> Medidores de Agua ({communityMeters.length})
               </h3>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input 
-                  placeholder="Buscar departamento..." 
-                  className="pl-9 h-10 border-2 rounded-xl bg-white shadow-sm"
-                  value={meterSearchTerm}
-                  onChange={e => setMeterSearchTerm(e.target.value)}
-                />
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border">
+                  <Button variant={meterViewMode === 'grid' ? 'secondary' : 'ghost'} size="sm" className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", meterViewMode === 'grid' && "bg-white shadow-sm")} onClick={() => setMeterViewMode('grid')}><LayoutGrid className="h-3.5 w-3.5" /> Grilla</Button>
+                  <Button variant={meterViewMode === 'list' ? 'secondary' : 'ghost'} size="sm" className={cn("h-9 px-3 rounded-lg font-black uppercase text-[9px] gap-2", meterViewMode === 'list' && "bg-white shadow-sm")} onClick={() => setMeterViewMode('list')}><List className="h-3.5 w-3.5" /> Listado</Button>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input placeholder="Buscar departamento..." className="pl-9 h-10 border-2 rounded-xl bg-white shadow-sm" value={meterSearchTerm} onChange={e => setMeterSearchTerm(e.target.value)} />
+                </div>
               </div>
             </div>
 
@@ -904,10 +970,6 @@ function AdminCompaniesContent() {
                 </Table>
               </Card>
             )}
-
-            {(communityMeters || []).length === 0 && (
-              <div className="py-20 text-center border-4 border-dashed rounded-[3rem] bg-slate-50/50 opacity-40 italic">Sin resultados para la búsqueda.</div>
-            )}
           </div>
 
           <div className="space-y-4 pt-8">
@@ -933,9 +995,6 @@ function AdminCompaniesContent() {
                   </CardContent>
                 </Card>
               ))}
-              {(communitySensors || []).length === 0 && (
-                <div className="col-span-full py-20 text-center border-4 border-dashed rounded-[3rem] bg-slate-50/50 opacity-40 italic">Sin sensores de monitoreo.</div>
-              )}
             </div>
           </div>
         </div>
@@ -1027,7 +1086,7 @@ function AdminCompaniesContent() {
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Región</Label>
-                        <Select modal={false} value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}>
+                        <Select value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}>
                           <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
                             <SelectValue placeholder="Seleccione..." />
                           </SelectTrigger>
@@ -1038,7 +1097,7 @@ function AdminCompaniesContent() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Ciudad</Label>
-                        <Select modal={false} key={`city-${commData.region}`} value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}>
+                        <Select key={`city-${commData.region}`} value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}>
                           <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
                             <SelectValue placeholder="Ciudad" />
                           </SelectTrigger>
@@ -1049,7 +1108,7 @@ function AdminCompaniesContent() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase text-slate-400">Comuna</Label>
-                        <Select modal={false} key={`commune-${commData.region}`} value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}>
+                        <Select key={`commune-${commData.region}`} value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}>
                           <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
                             <SelectValue placeholder="Comuna" />
                           </SelectTrigger>
@@ -1100,7 +1159,7 @@ function AdminCompaniesContent() {
                       </Button>
                       <Button variant="outline" size="sm" asChild className="flex-1 rounded-xl h-10 font-black uppercase text-[9px] gap-2 border-slate-100 bg-white hover:bg-indigo-50 hover:text-indigo-600">
                         <a href={`https://waze.com/ul?q=${encodeURIComponent(comm.address)}&navigate=yes`} target="_blank" rel="noopener noreferrer">
-                          <Navigation className="h-3 w-3" /> Waze
+                          <Navigation className="h-3.5 w-3.5" /> Waze
                         </a>
                       </Button>
                     </div>
@@ -1120,7 +1179,7 @@ function AdminCompaniesContent() {
           )}
         </div>
 
-        {/* Dialog Configuración Comercial (Reutilizado) */}
+        {/* Dialog Configuración Comercial */}
         <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
           <DialogContent className="sm:max-w-[425px] rounded-[2.5rem]">
             <DialogHeader>
