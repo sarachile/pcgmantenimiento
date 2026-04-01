@@ -87,7 +87,6 @@ export default function HomePage() {
 
     const playVideo = async () => {
       if (videoRef.current) {
-        // Forzamos atributos directamente en el elemento DOM para asegurar reproducción
         videoRef.current.muted = true;
         videoRef.current.defaultMuted = true;
         try {
@@ -98,7 +97,6 @@ export default function HomePage() {
       }
     };
     
-    // Pequeño delay para asegurar que el DOM esté listo
     const timer = setTimeout(playVideo, 100);
     return () => {
       clearInterval(interval);
@@ -232,7 +230,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* HERO SECTION OPTIMIZADA PARA LECTURA Y VIDEO */}
       <section className="relative h-[100svh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-slate-900/60 z-10" />
@@ -264,7 +261,7 @@ export default function HomePage() {
               <span className="text-blue-400">El Control del Agua vuelve a la Comunidad</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium px-4">
-              Plataforma profesional de monitoreo y auditoría hídrica. Integramos telemetría NB-IoT con hardware de alta precisión para la optimización operativa de activos.
+              Somos el socio estratégico en la digitalización hídrica. GENKO transforma la telemetría de alta precisión en ahorros reales y trazabilidad total, permitiendo que comunidades e instituciones gestionen el agua con la inteligencia que el futuro exige.
             </p>
           </div>
 
@@ -367,7 +364,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* SECCIÓN EDUCACIÓN ACTUALIZADA */}
       <section id="agua-colegios" className="py-32 bg-slate-950 text-white relative overflow-hidden border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
