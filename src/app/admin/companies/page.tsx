@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, Suspense } from "react";
@@ -109,7 +110,7 @@ function AdminCompaniesContent() {
   // Enrollment State
   const [isEnrollOpen, setIsEnrollOpen] = useState(false);
   const [enrollType, setEnrollOpenType] = useState<"meter" | "sensor">("meter");
-  const [enrollData, setEnrollData] = useState({ serial: "", alias: "", sensorType: "vibracion" });
+  const [enrollData, setEnrollData] = useState({ serial: "", alias: "", sensorType: "vibracion", initialReading: "0" });
 
   useEffect(() => {
     setMounted(true);
@@ -240,7 +241,7 @@ function AdminCompaniesContent() {
           communityId: viewingCommunityId,
           unitIdentifier: enrollData.alias || enrollData.serial,
           status: "open",
-          currentReading: 0,
+          currentReading: Number(enrollData.initialReading) || 0,
           batteryLevel: 100,
           signalStrength: 100,
           hasLeakAlert: false,
@@ -264,7 +265,7 @@ function AdminCompaniesContent() {
       }
       toast({ title: "Sistema Enrolado", description: "El equipo ya está transmitiendo data al servidor." });
       setIsEnrollOpen(false);
-      setEnrollData({ serial: "", alias: "", sensorType: "vibracion" });
+      setEnrollData({ serial: "", alias: "", sensorType: "vibracion", initialReading: "0" });
     } catch (e) {
       toast({ title: "Error en enrolamiento", variant: "destructive" });
     } finally {
@@ -341,11 +342,26 @@ function AdminCompaniesContent() {
                   <Input placeholder={enrollType === 'meter' ? "Ej: Depto 405" : "Ej: Bomba Principal"} value={enrollData.alias} onChange={e => setEnrollData({...enrollData, alias: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                 </div>
 
+                {enrollType === 'meter' && (
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400">Lectura Inicial / Offset (m³)</Label>
+                    <Input 
+                      type="number" 
+                      step="0.01"
+                      placeholder="Ej: 450.00" 
+                      value={enrollData.initialReading} 
+                      onChange={e => setEnrollData({...enrollData, initialReading: e.target.value})} 
+                      className="h-12 border-2 rounded-xl font-bold" 
+                    />
+                    <p className="text-[9px] text-slate-400 font-medium italic">Sincronice el CRM con la lectura actual del medidor físico.</p>
+                  </div>
+                )}
+
                 {enrollType === 'sensor' && (
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400">Tipo de Magnitud</Label>
                     <Select value={enrollData.sensorType} onValueChange={v => setEnrollData({...enrollData, sensorType: v})} modal={false}>
-                      <SelectTrigger className="h-12 border-2 rounded-xl font-bold" onPointerDown={e => e.stopPropagation()}>
+                      <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
