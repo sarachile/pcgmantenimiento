@@ -78,7 +78,10 @@ import {
   Clock,
   ArrowUpRight,
   TrendingDown,
-  Sparkles
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Maximize2
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -92,7 +95,9 @@ import {
   Bar,
   ReferenceLine,
   Cell,
-  Legend
+  Legend,
+  LineChart,
+  Line
 } from "recharts";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -110,7 +115,7 @@ import {
 } from "@/firebase";
 import { collection, doc, serverTimestamp, query, orderBy, where, setDoc } from "firebase/firestore";
 import { Company, Community, WaterMeter, Asset } from "@/lib/types";
-import { format, parseISO, subDays, startOfMonth, endOfMonth, isAfter } from "date-fns";
+import { format, parseISO, subDays, startOfMonth, endOfMonth, isAfter, subHours } from "date-fns";
 import { es } from "date-fns/locale";
 import { signOut } from "firebase/auth";
 import { CHILE_REGIONS } from "@/lib/chile-data";
@@ -197,6 +202,32 @@ const PATTERN_DATA = [
   { hour: "20:00", value: 35 },
   { hour: "23:00", value: 12 },
 ];
+
+// DATA SIMULADA PARA DETALLE DE UNIDAD
+const generateUnitHistory = () => {
+  const now = new Date();
+  const hourly = Array.from({ length: 24 }, (_, i) => {
+    const time = subHours(now, 23 - i);
+    const hour = time.getHours();
+    let val = 0.05;
+    if (hour >= 7 && hour <= 9) val = 0.4 + Math.random() * 0.3;
+    if (hour >= 19 && hour <= 21) val = 0.5 + Math.random() * 0.4;
+    if (hour >= 2 && hour <= 4) val = 0.01 + Math.random() * 0.05;
+    return { time: format(time, "HH:00"), value: Number(val.toFixed(3)) };
+  });
+
+  const daily = [
+    { day: "Lun", value: 0.8, avg: 0.75 },
+    { day: "Mar", value: 0.9, avg: 0.75 },
+    { day: "Mié", value: 0.7, avg: 0.75 },
+    { day: "Jue", value: 1.2, avg: 0.75 },
+    { day: "Vie", value: 0.85, avg: 0.75 },
+    { day: "Sáb", value: 1.5, avg: 0.75 },
+    { day: "Dom", value: 1.8, avg: 0.75 },
+  ];
+
+  return { hourly, daily };
+};
 
 // --- COMPONENTE ESCÁNER QR ---
 function QRScannerDialog({ onScan, isOpen, onOpenChange }: { onScan: (data: string) => void, isOpen: boolean, onOpenChange: (open: boolean) => void }) {
@@ -320,6 +351,99 @@ function QRScannerDialog({ onScan, isOpen, onOpenChange }: { onScan: (data: stri
   );
 }
 
+function UnitAnalysisSection({ meter }: { meter: WaterMeter }) {
+  const { hourly, daily } = useMemo(() => generateUnitHistory(), [meter.id]);
+
+  return (
+    <div className="p-8 bg-blue-50/20 border-t border-blue-100 animate-in slide-in-from-top-4 duration-500">
+      <div className="grid gap-8 lg:grid-cols-12">
+        <div className="lg:col-span-4 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <h4 className="text-sm font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
+                <Activity className="h-4 w-4" /> Diagnóstico de Unidad
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">{meter.unitIdentifier} • {meter.devEUI}</p>
+            </div>
+            {meter.hasLeakAlert && (
+              <Badge className="bg-rose-600 text-white font-black text-[8px] animate-pulse">ALERTA FUGA</Badge>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-2xl border shadow-sm space-y-1">
+              <p className="text-[9px] font-black uppercase text-slate-400">Consumo Hoy</p>
+              <p className="text-2xl font-black italic text-slate-900">1.45 <span className="text-[10px] opacity-40">m³</span></p>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border shadow-sm space-y-1">
+              <p className="text-[9px] font-black uppercase text-slate-400">Pico de Caudal</p>
+              <p className="text-2xl font-black italic text-blue-600">8.2 <span className="text-[10px] opacity-40">L/min</span></p>
+            </div>
+          </div>
+
+          <Card className="border-none shadow-sm rounded-2xl bg-slate-900 text-white p-6 relative overflow-hidden">
+            <div className="absolute right-0 top-0 p-4 opacity-10"><Sparkles className="h-12 w-12 text-blue-400" /></div>
+            <p className="text-[9px] font-black uppercase text-blue-400 tracking-widest mb-3">Sugerencia GENKO IA</p>
+            <p className="text-xs font-medium leading-relaxed italic text-slate-300">
+              "El patrón nocturno muestra un flujo residual constante de 0.05 m³/h entre las 02:00 y 05:00 AM. Probable fuga en válvula de estanque WC."
+            </p>
+            <Button variant="outline" className="w-full mt-4 h-9 border-white/20 text-white hover:bg-white/10 text-[9px] font-black uppercase">
+              Notificar al Propietario
+            </Button>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-8 space-y-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+              <CardHeader className="p-4 bg-slate-50 border-b">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 text-blue-600" /> Curva de Consumo (24h)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={hourly}>
+                    <defs>
+                      <linearGradient id="colorUnit" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="time" fontSize={8} tickLine={false} axisLine={false} stroke="#64748b" />
+                    <Tooltip contentStyle={{ fontSize: '10px', borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Area type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorUnit)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
+              <CardHeader className="p-4 bg-slate-50 border-b">
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                  <HandCoins className="h-3.5 w-3.5 text-indigo-600" /> Histórico Semanal (m³)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={daily}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="day" fontSize={8} tickLine={false} axisLine={false} stroke="#64748b" />
+                    <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ fontSize: '10px', borderRadius: '12px' }} />
+                    <ReferenceLine y={0.75} stroke="#6366f1" strokeDasharray="3 3" label={{ position: 'right', value: 'PROM', fill: '#6366f1', fontSize: 8, fontWeight: '900' }} />
+                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AdminCompaniesContent() {
   const { toast } = useToast();
   const router = useRouter();
@@ -332,6 +456,7 @@ function AdminCompaniesContent() {
   const [meterSearchTerm, setMeterSearchTerm] = useState("");
   const [meterViewMode, setMeterViewMode] = useState<'grid' | 'list'>('list');
   const [mounted, setMounted] = useState(false);
+  const [expandedMeterId, setExpandedMeterId] = useState<string | null>(null);
   
   // Niveles de Navegación
   const [viewingAdminId, setViewingAdminId] = useState<string | null>(null);
@@ -362,6 +487,7 @@ function AdminCompaniesContent() {
   });
 
   const handleLogout = async () => {
+    if (!auth) return;
     await signOut(auth);
     router.push("/auth/login");
   };
@@ -592,7 +718,7 @@ function AdminCompaniesContent() {
         alias: "", 
         sensorType: "caudal", 
         initialReading: "0" 
-      });
+  });
     } catch (e) {
       toast({ title: "Error en enrolamiento", variant: "destructive" });
     } finally {
@@ -656,6 +782,10 @@ function AdminCompaniesContent() {
   };
 
   const selectedRegionData = useMemo(() => CHILE_REGIONS.find(r => r.name === commData.region), [commData.region]);
+
+  const toggleMeterExpansion = (id: string) => {
+    setExpandedMeterId(expandedMeterId === id ? null : id);
+  };
 
   if (isUserLoading || !isSuperAdmin) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
@@ -724,9 +854,9 @@ function AdminCompaniesContent() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="caudal">Caudal (L/min)</SelectItem>
-                            <SelectItem value="presion">Presión (Bar)</SelectItem>
-                            <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
-                            <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
+                            <SelectItem value="presion">Transductor Presión (Bar)</SelectItem>
+                            <SelectItem value="vibracion">Sensor Vibración (Hz)</SelectItem>
+                            <SelectItem value="temperatura">Sensor Temperatura (°C)</SelectItem>
                             <SelectItem value="otro">Genérico</SelectItem>
                           </SelectContent>
                         </Select>
@@ -804,7 +934,7 @@ function AdminCompaniesContent() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={TREND_DATA}>
                       <defs>
-                        <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient>
+                        <linearGradient id="colorActual" x1="0" x1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
@@ -916,28 +1046,45 @@ function AdminCompaniesContent() {
             {meterViewMode === 'grid' ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {(communityMeters || []).map((m) => (
-                  <Card key={m.id} className={cn("border-none shadow-sm rounded-[2rem] bg-white overflow-hidden group transition-all", m.hasLeakAlert && "ring-2 ring-rose-500")}>
-                    <CardContent className="p-6 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className={cn("p-3 rounded-2xl transition-all", m.status === 'open' ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white" : "bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white")}><Droplets className="h-6 w-6" /></div>
-                        <div className="flex gap-1.5">
-                          {m.hasLeakAlert && <Badge className="bg-rose-600 text-white font-black text-[7px] uppercase px-2 h-5 animate-pulse">FUGA</Badge>}
-                          <Badge className={cn("font-black text-[8px] uppercase px-2 h-5", m.status === 'open' ? "bg-emerald-50 text-emerald-700" : "bg-rose-100 text-rose-700")}>{m.status === 'open' ? 'Online' : 'Cerrado'}</Badge>
+                  <div key={m.id} className="space-y-2">
+                    <Card 
+                      className={cn(
+                        "border-none shadow-sm rounded-[2rem] bg-white overflow-hidden group transition-all cursor-pointer", 
+                        m.hasLeakAlert && "ring-2 ring-rose-500",
+                        expandedMeterId === m.id && "ring-2 ring-blue-600"
+                      )}
+                      onClick={() => toggleMeterExpansion(m.id)}
+                    >
+                      <CardContent className="p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className={cn("p-3 rounded-2xl transition-all", m.status === 'open' ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white" : "bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white")}><Droplets className="h-6 w-6" /></div>
+                          <div className="flex gap-1.5">
+                            {m.hasLeakAlert && <Badge className="bg-rose-600 text-white font-black text-[7px] uppercase px-2 h-5 animate-pulse">FUGA</Badge>}
+                            <Badge className={cn("font-black text-[8px] uppercase px-2 h-5", m.status === 'open' ? "bg-emerald-50 text-emerald-700" : "bg-rose-100 text-rose-700")}>{m.status === 'open' ? 'Online' : 'Cerrado'}</Badge>
+                          </div>
                         </div>
-                      </div>
-                      <div>
-                        <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{m.unitIdentifier}</p>
-                        <div className="flex items-center gap-3 mt-1 opacity-40">
-                          <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Battery className="h-2.5 w-2.5" /> {m.batteryLevel}%</span>
-                          <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Signal className="h-2.5 w-2.5" /> {m.signalStrength}%</span>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{m.unitIdentifier}</p>
+                            <div className="flex items-center gap-3 mt-1 opacity-40">
+                              <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Battery className="h-2.5 w-2.5" /> {m.batteryLevel}%</span>
+                              <span className="flex items-center gap-1 text-[8px] font-black uppercase"><Signal className="h-2.5 w-2.5" /> {m.signalStrength}%</span>
+                            </div>
+                          </div>
+                          {expandedMeterId === m.id ? <ChevronUp className="h-5 w-5 text-blue-600" /> : <ChevronDown className="h-5 w-5 text-slate-300" />}
                         </div>
+                        <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
+                          <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
+                          <span className="text-2xl font-black italic">{m.currentReading.toFixed(3)}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    {expandedMeterId === m.id && (
+                      <div className="col-span-full">
+                        <UnitAnalysisSection meter={m} />
                       </div>
-                      <div className="bg-slate-50 p-4 rounded-2xl flex justify-between items-baseline">
-                        <span className="text-[9px] font-black uppercase text-slate-400">Lectura m³</span>
-                        <span className="text-2xl font-black italic">{m.currentReading.toFixed(3)}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    )}
+                  </div>
                 ))}
               </div>
             ) : (
@@ -954,35 +1101,52 @@ function AdminCompaniesContent() {
                   </TableHeader>
                   <TableBody>
                     {(communityMeters || []).map((m) => (
-                      <TableRow key={m.id} className={cn("group hover:bg-slate-50 transition-colors", m.hasLeakAlert && "bg-rose-50/30")}>
-                        <TableCell className="pl-8 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={cn("p-2 rounded-lg", m.hasLeakAlert ? "bg-rose-100" : "bg-blue-50")}>
-                              <Droplets className={cn("h-4 w-4", m.hasLeakAlert ? "text-rose-600" : "text-blue-600")} />
+                      <div key={m.id} className="contents">
+                        <TableRow 
+                          className={cn(
+                            "group hover:bg-slate-50 transition-colors cursor-pointer", 
+                            m.hasLeakAlert && "bg-rose-50/30",
+                            expandedMeterId === m.id && "bg-blue-50/50"
+                          )}
+                          onClick={() => toggleMeterExpansion(m.id)}
+                        >
+                          <TableCell className="pl-8 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className={cn("p-2 rounded-lg", m.hasLeakAlert ? "bg-rose-100" : "bg-blue-50")}>
+                                <Droplets className={cn("h-4 w-4", m.hasLeakAlert ? "text-rose-600" : "text-blue-600")} />
+                              </div>
+                              <span className="font-black text-slate-900 text-base">{m.unitIdentifier}</span>
+                              {expandedMeterId === m.id ? <ChevronUp className="h-4 w-4 text-blue-600" /> : <ChevronDown className="h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100" />}
                             </div>
-                            <span className="font-black text-slate-900 text-base">{m.unitIdentifier}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
-                            <span className="text-[10px] font-bold uppercase text-slate-600">{m.status}</span>
-                            {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[7px] h-4 font-black">ALERTA FUGA</Badge>}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-base font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400">
-                            <span className="flex items-center gap-1"><Battery className="h-3 w-3" /> {m.batteryLevel}%</span>
-                            <span className="flex items-center gap-1"><Signal className="h-3 w-3" /> {m.signalStrength}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right pr-8">
-                          <code className="text-[10px] font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">{m.devEUI}</code>
-                        </TableCell>
-                      </TableRow>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
+                              <span className="text-[10px] font-bold uppercase text-slate-600">{m.status}</span>
+                              {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[7px] h-4 font-black">ALERTA FUGA</Badge>}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-base font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-4 text-[10px] font-bold text-slate-400">
+                              <span className="flex items-center gap-1"><Battery className="h-3 w-3" /> {m.batteryLevel}%</span>
+                              <span className="flex items-center gap-1"><Signal className="h-3 w-3" /> {m.signalStrength}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right pr-8">
+                            <code className="text-[10px] font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">{m.devEUI}</code>
+                          </TableCell>
+                        </TableRow>
+                        {expandedMeterId === m.id && (
+                          <TableRow className="bg-transparent border-none">
+                            <TableCell colSpan={5} className="p-0 border-none">
+                              <UnitAnalysisSection meter={m} />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </div>
                     ))}
                   </TableBody>
                 </Table>
