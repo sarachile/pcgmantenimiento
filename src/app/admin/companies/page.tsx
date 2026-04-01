@@ -77,7 +77,8 @@ import {
   BarChart3,
   Clock,
   ArrowUpRight,
-  TrendingDown
+  TrendingDown,
+  Sparkles
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -356,7 +357,7 @@ function AdminCompaniesContent() {
     appEUI: "70B3D57ED0000000", 
     appKey: "", 
     alias: "", 
-    sensorType: "caudal", 
+    sensorType: "caudal" as any, 
     initialReading: "0" 
   });
 
@@ -714,6 +715,23 @@ function AdminCompaniesContent() {
                         <Input type="number" step="0.01" value={enrollData.initialReading} onChange={e => setEnrollData({...enrollData, initialReading: e.target.value})} className="h-12 border-2 rounded-xl font-black text-blue-600 text-center text-lg" />
                       </div>
                     )}
+                    {enrollType === 'sensor' && (
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Tipo de Magnitud</Label>
+                        <Select value={enrollData.sensorType} onValueChange={(v) => setEnrollData({...enrollData, sensorType: v})} modal={false}>
+                          <SelectTrigger className="h-12 border-2 rounded-xl font-bold">
+                            <SelectValue placeholder="Seleccione magnitud..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="caudal">Caudal (L/min)</SelectItem>
+                            <SelectItem value="presion">Presión (Bar)</SelectItem>
+                            <SelectItem value="vibracion">Vibración (Hz)</SelectItem>
+                            <SelectItem value="temperatura">Temperatura (°C)</SelectItem>
+                            <SelectItem value="otro">Genérico</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <DialogFooter className="p-8 pt-0">
@@ -737,7 +755,7 @@ function AdminCompaniesContent() {
                 </CardContent>
               </Card>
 
-              <Card className={cn("border-none shadow-xl rounded-[2rem] overflow-hidden relative group transition-all", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
+              <Card className={cn("border-none shadow-xl rounded-[2.5rem] overflow-hidden relative group transition-all", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
                 <div className="absolute right-0 top-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><ShieldAlert className="h-20 w-20" /></div>
                 <CardHeader className="pb-2"><CardTitle className={cn("text-[9px] font-black uppercase tracking-[0.2em]", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Detectadas</CardTitle></CardHeader>
                 <CardContent>
