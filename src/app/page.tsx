@@ -4,35 +4,24 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useUser } from "@/firebase";
 import { 
-  ShieldCheck, 
   ArrowRight,
-  LayoutDashboard,
-  Menu,
   X,
   Zap,
-  CheckCircle2,
   Activity,
   Waves,
   Globe,
-  Droplets,
-  AlertTriangle,
-  TrendingDown,
-  Scale,
-  ChevronDown,
-  ChevronRight,
   MessageCircle,
   Radio,
   Gauge,
-  Check,
-  Coins,
+  Scale,
+  ChevronDown,
   ShieldAlert,
+  ShieldCheck,
   SearchCode,
   GraduationCap,
   School,
   HandCoins,
-  Microscope,
   Leaf,
-  Navigation,
   Monitor,
   History,
   HelpCircle,
@@ -40,8 +29,10 @@ import {
   Smartphone,
   PlusSquare,
   Share,
-  Download,
-  Sparkles
+  Sparkles,
+  LayoutDashboard,
+  Check,
+  Droplets
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -55,12 +46,12 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Accordion,
-  AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  AccordionContent,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
@@ -96,15 +87,16 @@ export default function HomePage() {
 
     const playVideo = async () => {
       if (videoRef.current) {
+        videoRef.current.muted = true;
+        videoRef.current.defaultMuted = true;
         try {
-          videoRef.current.muted = true; 
-          videoRef.current.defaultMuted = true;
           await videoRef.current.play();
         } catch (error) {
           console.warn("Autoplay bloqueado:", error);
         }
       }
     };
+    
     const timer = setTimeout(playVideo, 150);
     return () => {
       clearInterval(interval);
@@ -195,12 +187,14 @@ export default function HomePage() {
         </a>
       </div>
 
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
+      <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
-            <div className="flex items-center gap-3"><span className="font-black text-xl tracking-tighter text-slate-900 uppercase italic">GENKO</span></div>
+            <div className="flex items-center gap-3">
+              <span className="font-black text-xl tracking-tighter text-slate-900 uppercase italic">GENKO</span>
+            </div>
             <div className="flex items-center gap-6">
-              {!isMenuOpen && <button onClick={() => setIsMenuOpen(true)} className="text-emerald-400 font-black uppercase tracking-[0.2em] text-sm hover:text-emerald-500 transition-colors">MENÚ</button>}
+              {!isMenuOpen && <button onClick={() => setIsMenuOpen(true)} className="text-emerald-500 font-black uppercase tracking-[0.2em] text-sm hover:text-emerald-600 transition-colors">MENÚ</button>}
               {isAuthenticated && !isMenuOpen && <Button asChild className="rounded-full h-10 px-6"><Link href="/dashboard">Dashboard</Link></Button>}
             </div>
           </div>
@@ -240,27 +234,38 @@ export default function HomePage() {
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-slate-900/60 z-10" />
           {mounted && (
-            <video ref={videoRef} key="hero-video-client" autoPlay muted loop playsInline preload="auto" disablePictureInPicture poster="/imagen3.png" className="w-full h-full object-cover">
+            <video 
+              ref={videoRef}
+              key="hero-video-active"
+              autoPlay 
+              muted 
+              loop 
+              playsInline 
+              preload="auto" 
+              disablePictureInPicture
+              poster="/imagen3.png" 
+              className="w-full h-full object-cover"
+            >
               <source src="/hero-video.mp4" type="video/mp4" />
             </video>
           )}
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 text-center space-y-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 text-center space-y-8 md:space-y-10">
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000">
             <Badge variant="outline" className="py-2 px-6 border-blue-400/30 text-blue-300 bg-white/5 backdrop-blur-md rounded-full font-black uppercase tracking-[0.3em] text-[10px]">
               GENKO • Gestión y Telemetría Hídrica
             </Badge>
-            <h1 className="text-5xl md:text-8xl font-black tracking-tighter text-white uppercase italic leading-[0.85]">
+            <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-white uppercase italic leading-tight">
               Precisión Ultrasónica para <br />
               <span className="text-blue-400">el Control del Recurso</span>
             </h1>
-            <p className="text-lg md:text-2xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium">
+            <p className="text-lg md:text-xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium px-4">
               Plataforma profesional de monitoreo y auditoría hídrica. Integramos telemetría NB-IoT con hardware de alta precisión para la optimización operativa de activos.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-300">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto px-4 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-300">
             {[
               { title: "Precisión", desc: "Medición exacta sin piezas móviles.", icon: Scale },
               { title: "Telemetría", desc: "Monitoreo en tiempo real vía NB-IoT.", icon: Radio },
@@ -268,7 +273,7 @@ export default function HomePage() {
             ].map((item, i) => (
               <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] text-left group hover:bg-white/20 transition-all cursor-default">
                 <div className="bg-blue-500/20 p-3 rounded-2xl w-fit mb-4 text-blue-400 group-hover:scale-110 transition-transform"><item.icon className="h-6 w-6" /></div>
-                {item.title && <h3 className="text-white font-black uppercase italic tracking-tight text-lg mb-1">{item.title}</h3>}
+                <h3 className="text-white font-black uppercase italic tracking-tight text-lg mb-1">{item.title}</h3>
                 <p className="text-slate-300 text-[10px] font-bold uppercase tracking-widest">{item.desc}</p>
               </div>
             ))}
@@ -283,7 +288,6 @@ export default function HomePage() {
             </Button>
           </div>
         </div>
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce opacity-50"><ChevronDown className="h-8 w-8 text-white" /></div>
       </section>
 
       <section className="py-20 bg-slate-50/50 overflow-hidden border-b">
@@ -345,7 +349,7 @@ export default function HomePage() {
                 <div className="p-10 bg-indigo-50 border-b border-indigo-100 flex flex-col items-center justify-center text-center space-y-4"><div className="bg-indigo-600 p-5 rounded-3xl shadow-xl shadow-indigo-900/20 group-hover:rotate-6 transition-transform"><Waves className="h-10 w-10 text-white" /></div><Badge className="bg-indigo-100 text-indigo-700 font-black px-4 py-1.5 uppercase tracking-widest rounded-full border-none text-[9px]">Protección de Red</Badge></div>
                 <CardContent className="p-10 space-y-6"><h3 className="text-2xl font-black italic uppercase tracking-tighter text-indigo-950">Sensor de Turbidez</h3><p className="text-sm text-slate-500 font-medium leading-relaxed">Análisis óptico de pureza. Alertas preventivas para evitar daños en calefonts o grifería por sedimentos tras roturas de matriz.</p></CardContent>
               </Card>
-              <Card className="rounded-[3rem] border-none shadow-2xl bg-slate-900 text-white p-10 flex flex-col justify-center relative overflow-hidden group"><div className="absolute right-0 bottom-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><Coins className="h-32 w-32 text-amber-400" /></div><div className="relative z-10 space-y-4"><Badge className="bg-amber-500 text-slate-900 font-black uppercase text-[10px] tracking-widest px-4 py-1">Optimización Financiera</Badge><h3 className="text-3xl font-black italic uppercase tracking-tighter leading-none">Ahorro Escalar</h3><p className="text-slate-400 text-sm leading-relaxed">Reducción del diferencial entre el medidor matriz y la sumatoria de unidades.</p></div></Card>
+              <Card className="rounded-[3rem] border-none shadow-2xl bg-slate-900 text-white p-10 flex flex-col justify-center relative overflow-hidden group"><div className="absolute right-0 bottom-0 p-6 opacity-10 group-hover:scale-110 transition-transform"><HandCoins className="h-32 w-32 text-amber-400" /></div><div className="relative z-10 space-y-4"><Badge className="bg-amber-500 text-slate-900 font-black uppercase text-[10px] tracking-widest px-4 py-1">Optimización Financiera</Badge><h3 className="text-3xl font-black italic uppercase tracking-tighter leading-none">Ahorro Escalar</h3><p className="text-slate-400 text-sm leading-relaxed">Reducción del diferencial entre el medidor matriz y la sumatoria de unidades.</p></div></Card>
             </div>
           </div>
 
@@ -385,7 +389,7 @@ export default function HomePage() {
             </div>
             <div className="relative">
               <Card className="rounded-[3.5rem] border-none shadow-2xl bg-white text-slate-900 overflow-hidden relative border-t-8 border-emerald-500">
-                <CardHeader className="p-10 border-b bg-slate-50"><div className="flex items-center justify-between"><div><CardTitle className="text-xl font-black uppercase italic tracking-tighter">Panel de Infraestructura</CardTitle><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Protocolos de Telemetría Escolar</p></div><School className="h-8 w-8 text-emerald-600" /></div></CardHeader>
+                <div className="p-10 border-b bg-slate-50"><div className="flex items-center justify-between"><div><h3 className="text-xl font-black uppercase italic tracking-tighter">Panel de Infraestructura</h3><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Protocolos de Telemetría Escolar</p></div><School className="h-8 w-8 text-emerald-600" /></div></div>
                 <CardContent className="p-10 space-y-8">
                   <div className="space-y-4">
                     {[
@@ -396,7 +400,7 @@ export default function HomePage() {
                       <div key={i} className={cn("p-5 rounded-[1.5rem] border-2 flex items-center justify-between", row.alert ? "bg-rose-50 border-rose-200" : "bg-slate-50 border-slate-100")}><div className="space-y-1"><p className="text-[10px] font-black uppercase text-slate-400">{row.label}</p><p className={cn("text-xs font-bold", row.alert ? "text-rose-600" : "text-slate-700")}>{row.status}</p></div><p className="text-xl font-black italic">{row.value}</p></div>
                     ))}
                   </div>
-                  <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-4 relative overflow-hidden"><div className="absolute right-0 top-0 p-4 opacity-10"><Zap className="h-20 w-20 text-emerald-400" /></div><p className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.3em]">IA: Diagnóstico de Infraestructura</p><p className="text-sm font-medium italic leading-relaxed text-slate-300">"Anomalía en pabellón deportivo. Patrón compatible con falla en válvula de descarga. Acción sugerida: Cierre preventivo NB-IoT."</p><Button className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-black uppercase text-[10px] gap-2">Acción Remota <ChevronRight className="h-4 w-4" /></Button></div>
+                  <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-4 relative overflow-hidden"><div className="absolute right-0 top-0 p-4 opacity-10"><Zap className="h-20 w-20 text-emerald-400" /></div><p className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.3em]">IA: Diagnóstico de Infraestructura</p><p className="text-sm font-medium italic leading-relaxed text-slate-300">"Anomalía en pabellón deportivo. Patrón compatible con falla en válvula de descarga. Acción sugerida: Cierre preventivo NB-IoT."</p><Button className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-black uppercase text-[10px] gap-2">Acción Remota <ArrowRight className="h-4 w-4" /></Button></div>
                   <Button asChild className="h-16 w-full rounded-2xl bg-slate-900 text-white font-black uppercase text-xs tracking-widest shadow-xl"><a href={WHATSAPP_URL} target="_blank">Agendar Auditoría Técnica <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
                 </CardContent>
               </Card>
@@ -430,8 +434,19 @@ export default function HomePage() {
 
       <footer className="py-20 bg-slate-50 border-t border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-10">
-          <div className="flex flex-col items-center gap-4"><img src="/logogenko.png" alt="GENKO" className="h-12 w-auto object-contain mix-blend-multiply" /><span className="font-black text-2xl tracking-tighter text-slate-900 uppercase italic">GENKO</span><p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">Infraestructura Hídrica Digital</p></div>
-          <div className="flex justify-center gap-8 text-[10px] font-black uppercase text-slate-400 tracking-widest flex-wrap px-4"><Link href="/terms" className="hover:text-primary transition-colors">Términos Legales</Link><Link href="/auth/signup" className="hover:text-primary transition-colors">Solicitar Acceso</Link><Link href="/water-control/login" className="text-blue-600 hover:text-blue-700 font-black flex items-center gap-1.5 transition-colors"><Droplets className="h-3 w-3" /> Login Administradores</Link><a href={WHATSAPP_URL} className="hover:text-primary transition-colors">Soporte</a></div>
+          <div className="flex flex-col items-center gap-4">
+            <img src="/logogenko.png" alt="GENKO" className="h-12 w-auto object-contain mix-blend-multiply" />
+            <span className="font-black text-2xl tracking-tighter text-slate-900 uppercase italic">GENKO</span>
+            <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em]">Infraestructura Hídrica Digital</p>
+          </div>
+          <div className="flex justify-center gap-8 text-[10px] font-black uppercase text-slate-400 tracking-widest flex-wrap px-4">
+            <Link href="/terms" className="hover:text-primary transition-colors">Términos Legales</Link>
+            <Link href="/auth/signup" className="hover:text-primary transition-colors">Solicitar Acceso</Link>
+            <Link href="/water-control/login" className="text-blue-600 hover:text-blue-700 font-black flex items-center gap-1.5 transition-colors">
+              <Droplets className="h-3 w-3" /> Login Administradores
+            </Link>
+            <a href={WHATSAPP_URL} className="hover:text-primary transition-colors">Soporte</a>
+          </div>
           <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em] pt-10">© {new Date().getFullYear()} - GENKO.CL - INDUSTRIAL WATER INTELLIGENCE</p>
         </div>
       </footer>
