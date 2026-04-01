@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Table, 
   TableBody, 
@@ -47,7 +47,9 @@ import {
   LogOut,
   UserCog,
   MapPin,
-  ChevronRight
+  ChevronRight,
+  Globe,
+  Navigation
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -68,6 +70,7 @@ import { Company, Community } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { signOut } from "firebase/auth";
+import { CHILE_REGIONS } from "@/lib/chile-data";
 
 export default function AdminCompaniesPage() {
   const { toast } = useToast();
@@ -115,8 +118,19 @@ export default function AdminCompaniesPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [detailsAdmin, setDetailsAdmin] = useState<Company | null>(null);
   const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
-  const [newCommunityName, setNewCommunityName] = useState("");
-  const [newCommunityAddress, setNewCommunityAddress] = useState("");
+  
+  // Community Form State
+  const [commData, setCommData] = useState({
+    name: "",
+    region: "",
+    city: "",
+    commune: "",
+    street: "",
+    number: "",
+    complement: ""
+  });
+
+  const selectedRegion = useMemo(() => CHILE_REGIONS.find(r => r.name === commData.region), [commData.region]);
 
   const administratorsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
@@ -170,20 +184,27 @@ export default function AdminCompaniesPage() {
   };
 
   const handleAddCommunity = async () => {
-    if (!db || !detailsAdmin || !newCommunityName) return;
+    if (!db || !detailsAdmin || !commData.name) return;
+
+    const fullAddress = `${commData.street} ${commData.number}${commData.complement ? ', ' + commData.complement : ''}, ${commData.commune}, ${commData.city}, ${commData.region}`;
 
     const communitiesCol = collection(db, "companies", detailsAdmin.id, "communities");
     await addDocumentNonBlocking(communitiesCol, {
-      name: newCommunityName,
-      address: newCommunityAddress || "Dirección por definir",
+      name: commData.name,
+      address: fullAddress,
+      region: commData.region,
+      city: commData.city,
+      commune: commData.commune,
+      street: commData.street,
+      number: commData.number,
+      complement: commData.complement,
       isActive: true,
       createdAt: serverTimestamp()
     });
 
-    toast({ title: "Comunidad Vinculada", description: `${newCommunityName} ahora es gestionada por ${detailsAdmin.name}.` });
+    toast({ title: "Comunidad Vinculada", description: `${commData.name} ahora es gestionada por ${detailsAdmin.name}.` });
     setIsAddCommunityOpen(false);
-    setNewCommunityName("");
-    setNewCommunityAddress("");
+    setCommData({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
   };
 
   const handleOpenConfig = (admin: Company) => {
@@ -406,7 +427,7 @@ export default function AdminCompaniesPage() {
 
       {/* Dialog FICHA DE COMUNIDADES POR ADMINISTRADOR */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl">
           <DialogHeader className="bg-slate-900 text-white p-8 -m-6 mb-6">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-4">
@@ -427,30 +448,84 @@ export default function AdminCompaniesPage() {
                     <Plus className="h-4 w-4" /> Vincular Comunidad
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[400px] rounded-[2rem]">
+                <DialogContent className="sm:max-w-[600px] rounded-[2.5rem] max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle className="font-black uppercase italic text-lg">Nueva Comunidad Vinculada</DialogTitle>
                     <DialogDescription>Registre un edificio o recinto para este administrador.</DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
+                  <div className="space-y-6 py-4">
                     <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Recinto</Label>
-                      <Input placeholder="Ej: Edificio Vista Mar" value={newCommunityName} onChange={e => setNewCommunityName(e.target.value)} />
+                      <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Recinto *</Label>
+                      <Input placeholder="Ej: Edificio Vista Mar" value={commData.name} onChange={e => setCommData({...commData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] font-black uppercase text-slate-400">Dirección</Label>
-                      <Input placeholder="Calle, Número, Comuna" value={newCommunityAddress} onChange={e => setNewCommunityAddress(e.target.value)} />
+
+                    <div className="space-y-4 bg-slate-50 p-6 rounded-3xl border-2 border-slate-100">
+                      <p className="text-[10px] font-black uppercase text-primary flex items-center gap-2">
+                        <Globe className="h-4 w-4" /> Ubicación Geográfica
+                      </p>
+                      
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">Región *</Label>
+                          <Select value={commData.region} onValueChange={(v) => setCommData({...commData, region: v, city: "", commune: ""})}>
+                            <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
+                              <SelectValue placeholder="Región" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {CHILE_REGIONS.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">Ciudad *</Label>
+                          <Select key={`city-${commData.region}`} value={commData.city} onValueChange={(v) => setCommData({...commData, city: v})} disabled={!commData.region}>
+                            <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
+                              <SelectValue placeholder="Ciudad" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {selectedRegion?.cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">Comuna *</Label>
+                          <Select key={`commune-${commData.region}`} value={commData.commune} onValueChange={(v) => setCommData({...commData, commune: v})} disabled={!commData.region}>
+                            <SelectTrigger className="h-11 border-2 rounded-xl bg-white">
+                              <SelectValue placeholder="Comuna" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {selectedRegion?.communes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="col-span-2 space-y-2">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">Calle / Avenida *</Label>
+                          <Input placeholder="Ej: Av. Providencia" value={commData.street} onChange={e => setCommData({...commData, street: e.target.value})} className="h-11 border-2 rounded-xl bg-white" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[9px] font-black uppercase text-slate-400">N° *</Label>
+                          <Input placeholder="1234" value={commData.number} onChange={e => setCommData({...commData, number: e.target.value})} className="h-11 border-2 rounded-xl bg-white" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase text-slate-400">Depto / Of / Casa (Opcional)</Label>
+                        <Input placeholder="Ej: Depto 502" value={commData.complement} onChange={e => setCommData({...commData, complement: e.target.value})} className="h-11 border-2 rounded-xl bg-white" />
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>
-                    <Button className="w-full h-12 rounded-xl font-black uppercase" onClick={handleAddCommunity}>Activar Comunidad</Button>
+                    <Button className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" onClick={handleAddCommunity}>Activar Comunidad</Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>
           </DialogHeader>
           
-          <div className="space-y-8 py-2">
+          <div className="space-y-8 py-2 px-2">
             <div className="space-y-4">
               <h3 className="text-xs font-black uppercase tracking-[0.3em] text-blue-600 border-b pb-2 flex items-center gap-2">
                 <Home className="h-4 w-4" /> Comunidades Asociadas ({linkedCommunities?.length || 0})
@@ -462,9 +537,9 @@ export default function AdminCompaniesPage() {
                 ) : linkedCommunities && linkedCommunities.length > 0 ? (
                   linkedCommunities.map((comm) => (
                     <Card key={comm.id} className="border-2 border-slate-100 shadow-none rounded-[1.5rem] overflow-hidden hover:border-blue-200 transition-colors group">
-                      <CardContent className="p-6 flex items-center justify-between gap-4">
+                      <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="bg-blue-50 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                          <div className="bg-blue-50 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
                             <Building2 className="h-6 w-6 text-blue-600 group-hover:text-white" />
                           </div>
                           <div className="min-w-0">
@@ -475,9 +550,19 @@ export default function AdminCompaniesPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase h-5">Operativo</Badge>
-                          <ChevronRight className="h-5 w-5 text-slate-200 group-hover:text-blue-600 transition-colors" />
+                        
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button variant="outline" size="sm" asChild className="rounded-xl border-blue-200 text-blue-700 font-black text-[9px] uppercase gap-2 h-9 px-3">
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(comm.address)}`} target="_blank" rel="noopener noreferrer">
+                              <Globe className="h-3.5 w-3.5" /> Maps
+                            </a>
+                          </Button>
+                          <Button variant="outline" size="sm" asChild className="rounded-xl border-blue-400 text-blue-600 bg-blue-50 hover:bg-blue-100 font-black text-[9px] uppercase gap-2 h-9 px-3">
+                            <a href={`https://waze.com/ul?q=${encodeURIComponent(comm.address)}&navigate=yes`} target="_blank" rel="noopener noreferrer">
+                              <Navigation className="h-3.5 w-3.5 fill-blue-600" /> Waze
+                            </a>
+                          </Button>
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase h-9 px-3">Operativo</Badge>
                         </div>
                       </CardContent>
                     </Card>
