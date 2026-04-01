@@ -261,7 +261,7 @@ export default function HomePage() {
               <span className="text-blue-400">El Control del Agua vuelve a la Comunidad</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium px-4">
-              Somos el socio estratégico en la digitalización hídrica. GENKO transforma la telemetría de alta precisión en ahorros reales y trazabilidad total, permitiendo que comunidades e instituciones gestionen el agua con la inteligencia que el futuro exige.
+              GENKO es el socio que tu comunidad necesita para transparentar el uso del agua. Entregamos información clara y en tiempo real para que sepas exactamente dónde se va cada gota y cómo ahorrar más.
             </p>
           </div>
 
