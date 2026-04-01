@@ -257,8 +257,8 @@ export default function HomePage() {
               GENKO • Gestión y Telemetría Hídrica
             </Badge>
             <h1 className="text-4xl md:text-7xl font-black tracking-tighter text-white uppercase italic leading-tight">
-              Inteligencia que Fluye: <br />
-              <span className="text-blue-400">El Futuro del Control Hídrico</span>
+              Transparencia que Ahorra: <br />
+              <span className="text-blue-400">El Control del Agua vuelve a la Comunidad</span>
             </h1>
             <p className="text-lg md:text-xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium px-4">
               Plataforma profesional de monitoreo y auditoría hídrica. Integramos telemetría NB-IoT con hardware de alta precisión para la optimización operativa de activos.
@@ -400,7 +400,7 @@ export default function HomePage() {
                       <div key={i} className={cn("p-5 rounded-[1.5rem] border-2 flex items-center justify-between", row.alert ? "bg-rose-50 border-rose-200" : "bg-slate-50 border-slate-100")}><div className="space-y-1"><p className="text-[10px] font-black uppercase text-slate-400">{row.label}</p><p className={cn("text-xs font-bold", row.alert ? "text-rose-600" : "text-slate-700")}>{row.status}</p></div><p className="text-xl font-black italic">{row.value}</p></div>
                     ))}
                   </div>
-                  <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-4 relative overflow-hidden"><div className="absolute right-0 top-0 p-4 opacity-10"><Zap className="h-20 w-20 text-emerald-400" /></div><p className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.3em]">IA: Diagnóstico de Infraestructura</p><p className="text-sm font-medium italic leading-relaxed text-slate-300">"Anomalía en pabellón deportivo. Patrón compatible con falla en válvula de descarga. Acción sugerida: Cierre preventivo NB-IoT."</p><Button className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-black uppercase text-[10px] gap-2">Acción Remota <ArrowRight className="h-4 w-4" /></Button></div>
+                  <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-4 relative overflow-hidden"><div className="absolute right-0 top-0 p-4 opacity-10"><Zap className="h-20 w-20 text-emerald-400" /></div><p className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.3em]">IA: Diagnóstico de Infraestructura</p><p className="text-sm font-medium italic leading-relaxed text-slate-300">"Anomalía en pabellón deportivo. Patrón compatible con falla en válvula de descarga. Acción sugerida: Cierre preventivo NB-IoT."</p><button className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-black uppercase text-[10px] gap-2 flex items-center justify-center">Acción Remota <ArrowRight className="h-4 w-4" /></button></div>
                   <Button asChild className="h-16 w-full rounded-2xl bg-slate-900 text-white font-black uppercase text-xs tracking-widest shadow-xl"><a href={WHATSAPP_URL} target="_blank">Agendar Auditoría Técnica <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
                 </CardContent>
               </Card>
