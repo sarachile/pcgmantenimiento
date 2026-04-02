@@ -226,7 +226,6 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedMeterId, setExpandedMeterId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pendingMeter, setPendingMeter] = useState<WaterMeter | null>(null);
@@ -276,10 +275,9 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   const billingData = useMemo(() => {
     return displayMeters.map(m => {
       const isInfrastructure = m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común");
-      // Simular lectura anterior para el reporte
       const prevReading = m.currentReading - (Math.random() * 15 + 5);
       const consumption = m.currentReading - prevReading;
-      const cost = consumption * 1850; // Tarifa base simulada
+      const cost = consumption * 1850;
 
       return {
         id: m.id,
@@ -377,17 +375,19 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      <Tabs defaultValue="audit" className="space-y-8">
-        <TabsList className="bg-white p-1 h-14 rounded-2xl border shadow-sm w-full grid grid-cols-2 max-w-md">
-          <TabsTrigger value="audit" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
-            <Activity className="h-4 w-4" /> Auditoría Técnica
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
-            <Receipt className="h-4 w-4" /> Cierre de Consumo
-          </TabsTrigger>
-        </TabsList>
+      <Tabs defaultValue="audit" className="w-full space-y-8">
+        <div className="flex justify-center md:justify-start">
+          <TabsList className="bg-white p-1 h-14 rounded-2xl border shadow-sm w-full grid grid-cols-2 max-w-md">
+            <TabsTrigger value="audit" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
+              <Activity className="h-4 w-4" /> Auditoría Técnica
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
+              <Receipt className="h-4 w-4" /> Cierre de Consumo
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="audit" className="space-y-8">
+        <TabsContent value="audit" className="space-y-8 animate-in fade-in duration-300">
           {auditStats && (
             <>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -488,8 +488,6 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input placeholder="Buscar unidad..." className="pl-9 h-10 border-2 rounded-xl bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                 </div>
-                <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="sm" className="rounded-lg h-10" onClick={() => setViewMode('grid')}><LayoutGrid className="h-4 w-4" /></Button>
-                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" className="rounded-lg h-10" onClick={() => setViewMode('list')}><List className="h-4 w-4" /></Button>
               </div>
             </div>
 
@@ -554,7 +552,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </TabsContent>
 
-        <TabsContent value="billing" className="space-y-6">
+        <TabsContent value="billing" className="space-y-6 animate-in fade-in duration-300">
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
             <CardHeader className="bg-slate-900 text-white p-8">
               <div className="flex items-center justify-between">
