@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -24,7 +25,8 @@ import {
   Lock,
   Cpu,
   Droplets,
-  Waves
+  Waves,
+  LayoutGrid
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -59,7 +61,7 @@ interface NavItem {
 }
 
 const operationalItems: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { title: "Dashboard / Cartera", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendario", href: "/calendar", icon: CalendarDays, roles: ['companyAdmin', 'supervisor', 'tecnico', 'reviewer', 'superadmin'] },
   { title: "Órdenes de Trabajo", href: "/work-orders", icon: ClipboardList, roles: ['companyAdmin', 'supervisor', 'tecnico', 'reviewer', 'superadmin'] },
   { title: "Control de Agua (IoT)", href: "/water-control", icon: Droplets, highlight: true, roles: ['companyAdmin', 'supervisor', 'buildingAdmin'] },
@@ -81,7 +83,7 @@ const businessItems: NavItem[] = [
 ];
 
 const settingsItems: NavItem[] = [
-  { title: "Mi Empresa", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor'] },
+  { title: "Mi Empresa (Ficha)", href: "/company", icon: Building2, roles: ['companyAdmin', 'supervisor'] },
   { title: "Equipo Técnico", href: "/team", icon: Users, roles: ['companyAdmin', 'supervisor'] },
   { title: "Suscripción", href: "/subscription", icon: CreditCard, roles: ['companyAdmin'] },
 ];
@@ -160,7 +162,7 @@ export function SidebarNav({ userRole = 'tecnico' }: { userRole?: Role }) {
           <>
             {filteredOp.length > 0 && (
               <SidebarGroup>
-                <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Operación Diaria</SidebarGroupLabel>
+                <SidebarGroupLabel className="px-4 text-[10px] font-black uppercase text-slate-600 tracking-[0.2em] mb-2">Cartera & Operación</SidebarGroupLabel>
                 <SidebarMenu>
                   {filteredOp.map((item) => (
                     <SidebarMenuItem key={item.href}>
