@@ -497,15 +497,42 @@ function AdminCompaniesContent() {
     try {
       toast({ title: "Generando Reporte", description: "Consolidando lecturas mensuales..." });
       await new Promise(r => setTimeout(r, 1000));
+      
       const element = reportRef.current;
-      const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight
+      });
+
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, (canvas.height * pdfWidth) / canvas.width);
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Primera página
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Páginas subsiguientes si el contenido es largo
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
       pdf.save(`CIERRE_MENSUAL_${selectedCommunity?.name || 'RECINTO'}_${format(new Date(), "MM_yyyy")}.pdf`);
       toast({ title: "Reporte Descargado" });
     } catch (e) {
+      console.error("PDF Error:", e);
       toast({ title: "Error al generar PDF", variant: "destructive" });
     } finally {
       setIsGeneratingPdf(false);

@@ -326,17 +326,33 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         scale: 2, 
         useCORS: true, 
         backgroundColor: "#ffffff",
-        logging: false
+        logging: false,
+        width: element.scrollWidth,
+        height: element.scrollHeight
       });
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeight);
-      pdf.save(`CIERRE_MENSUAL_${community?.name || 'RECINTO'}_${format(new Date(), "MM_yyyy")}.pdf`);
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Página 1
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // Páginas adicionales si el reporte es largo
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
       
+      pdf.save(`CIERRE_MENSUAL_${community?.name || 'RECINTO'}_${format(new Date(), "MM_yyyy")}.pdf`);
       toast({ title: "Reporte Descargado", description: "El archivo PDF está listo para ser enviado a administración." });
     } catch (e) {
       console.error(e);
