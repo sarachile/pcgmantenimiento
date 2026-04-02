@@ -83,7 +83,8 @@ import {
   Scale,
   Power,
   PowerOff,
-  Lock
+  Lock,
+  Download
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -108,6 +109,7 @@ import {
   useFirestore, 
   useCollection, 
   useMemoFirebase, 
+  useDoc,
   updateDocumentNonBlocking,
   setDocumentNonBlocking
 } from "@/firebase";
@@ -115,6 +117,7 @@ import { collection, doc, serverTimestamp, query, where, getDoc } from "firebase
 import { Company, Community, WaterMeter, Asset } from "@/lib/types";
 import { format, parseISO, subDays, startOfMonth, endOfMonth, isAfter, subHours } from "date-fns";
 import { es } from "date-fns/locale";
+import { Progress } from "@/components/ui/progress";
 
 // DATA DE TENDENCIAS SIMULADA
 const TREND_DATA = [
@@ -210,7 +213,7 @@ function UnitAnalysisSection({ meter }: { meter: WaterMeter }) {
             <CardContent className="p-4 h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={hourly}>
-                  <defs><linearGradient id="colorU" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
+                  <defs><linearGradient id="colorU" x1="0" x1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="time" fontSize={8} axisLine={false} tickLine={false} stroke="#64748b" />
                   <Tooltip contentStyle={{ fontSize: '10px', borderRadius: '12px', border: 'none' }} />
@@ -356,8 +359,95 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         </CardContent>
       </Card>
 
+      {/* GRÁFICOS DE ANÁLISIS DE PATRONES (ADICIÓN) */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="lg:col-span-2 border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+          <CardHeader className="p-8 border-b bg-slate-50/50">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+                  <TrendingUp className="h-6 w-6 text-blue-600" /> Tendencia Semanal Comparativa
+                </CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Semana Actual vs Semana Anterior (m³)</CardDescription>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex items-center gap-2"><div className="h-3 w-3 bg-blue-600 rounded-full" /><span className="text-[9px] font-black uppercase">Actual</span></div>
+                <div className="flex items-center gap-2"><div className="h-3 w-3 bg-slate-200 rounded-full" /><span className="text-[9px] font-black uppercase">Anterior</span></div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8 h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={TREND_DATA}>
+                <defs>
+                  <linearGradient id="colorActual" x1="0" x1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
+                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: '900' }} />
+                <Area type="monotone" dataKey="previous" stroke="#e2e8f0" strokeWidth={2} fill="#f8fafc" />
+                <Area type="monotone" dataKey="actual" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-slate-900 text-white relative">
+          <div className="absolute top-0 right-0 p-8 opacity-10"><Zap className="h-40 w-40 text-blue-400" /></div>
+          <CardHeader className="p-8 border-b border-white/5">
+            <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+              <BarChart3 className="h-6 w-6 text-blue-400" /> Meta Sobreconsumo
+            </CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Proyección de cierre de mes</CardDescription>
+          </CardHeader>
+          <CardContent className="p-8 space-y-8 relative z-10">
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[
+                  { name: 'Consumo Real', value: 850, fill: '#3b82f6' },
+                  { name: 'Proyectado', value: 1120, fill: '#1e293b' }
+                ]}>
+                  <XAxis dataKey="name" hide />
+                  <YAxis hide domain={[0, 1500]} />
+                  <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px' }} />
+                  <ReferenceLine y={1200} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={2} label={{ position: 'top', value: 'LÍMITE', fill: '#ef4444', fontSize: 10, fontWeight: '900' }} />
+                  <Bar dataKey="value" radius={[12, 12, 12, 12]} barSize={60}>
+                    <Cell fill="#3b82f6" />
+                    <Cell fill="#ffffff10" stroke="#ffffff20" strokeWidth={2} strokeDasharray="4 4" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase text-slate-400">Estado</span>
+                <Badge className="bg-emerald-500 text-white font-black text-[8px] uppercase">Bajo Límite</Badge>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase text-blue-400">Proyección Final</p>
+                <p className="text-3xl font-black italic">1.120 m³</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-3 rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white p-10 flex flex-col justify-center relative overflow-hidden group">
+          <div className="absolute right-0 bottom-0 p-10 opacity-10 group-hover:scale-110 transition-transform"><Sparkles className="h-40 w-40 text-blue-400" /></div>
+          <div className="relative z-10 space-y-6">
+            <div className="space-y-2">
+              <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-4 py-1">Análisis Predictivo GENKO</Badge>
+              <h3 className="text-3xl font-black italic uppercase tracking-tighter">Diagnóstico de Inteligencia</h3>
+            </div>
+            <p className="text-slate-400 text-lg leading-relaxed max-w-2xl font-medium">
+              "El recinto presenta un patrón de consumo nocturno estable, sin embargo, se detecta un incremento del <span className="text-blue-400">12% respecto a la semana pasada</span> en horas de la mañana. Se recomienda auditar el sistema de riego automático."
+            </p>
+          </div>
+        </Card>
+      </div>
+
       {/* LISTADO DE MEDIDORES */}
-      <div className="space-y-4">
+      <div className="space-y-4 pt-8">
         <div className="flex items-center justify-between px-2">
           <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2">
             <Droplets className="h-4 w-4 text-blue-600" /> Detalle por Unidad ({displayMeters.length})

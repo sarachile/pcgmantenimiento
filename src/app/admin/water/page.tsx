@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -67,7 +68,10 @@ import {
   Trash2,
   RefreshCcw,
   UserCog,
-  Battery
+  Battery,
+  Power,
+  PowerOff,
+  Lock
 } from "lucide-react";
 import { 
   useUser, 
@@ -102,7 +106,7 @@ const MOCK_METERS: WaterMeter[] = [
 ];
 
 export default function AdminWaterControlPage() {
-  const { isSuperAdmin, isLoading: isUserLoading } = useUser();
+  const { isSuperAdmin, isLoading: isUserLoading, profile } = useUser();
   const db = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
@@ -118,6 +122,12 @@ export default function AdminWaterControlPage() {
   
   const [selectedAdmin, setSelectedAdmin] = useState<User | null>(null);
   const [editingBuilding, setEditingBuilding] = useState<Company | null>(null);
+
+  // PIN Dialog for valve toggle
+  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pendingMeter, setPendingMeter] = useState<WaterMeter | null>(null);
+  const [isProcessingValve, setIsProcessingValve] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -187,6 +197,62 @@ export default function AdminWaterControlPage() {
     }
   };
 
+  // VALVE TOGGLE LOGIC
+  const handleToggleValveRequest = (meter: WaterMeter) => {
+    setPendingMeter(meter);
+    setPinInput("");
+    setIsPinDialogOpen(true);
+  };
+
+  const handleConfirmPin = async () => {
+    if (!pendingMeter || !profile) return;
+    // Master PIN para Superadmin
+    const isCorrect = pinInput === "123456";
+
+    if (isCorrect) {
+      setIsPinDialogOpen(false);
+      executeToggleValve(pendingMeter);
+    } else {
+      toast({
+        title: "PIN Incorrecto",
+        description: "Acceso denegado al comando maestro.",
+        variant: "destructive"
+      });
+      setPinInput("");
+    }
+  };
+
+  const executeToggleValve = async (meter: WaterMeter) => {
+    setIsProcessingValve(meter.id);
+    const newStatus = meter.status === 'open' ? 'closed' : 'open';
+
+    try {
+      if (db && !meter.id.startsWith('sim-')) {
+        const meterRef = doc(db, "companies", meter.companyId, "waterMeters", meter.id);
+        updateDocumentNonBlocking(meterRef, { status: newStatus, updatedAt: serverTimestamp() });
+      } else {
+        // Simulation update
+        setBuildingMeters(prev => {
+          const compMeters = prev[meter.companyId] || [];
+          return {
+            ...prev,
+            [meter.companyId]: compMeters.map(m => m.id === meter.id ? { ...m, status: newStatus } : m)
+          };
+        });
+      }
+
+      toast({
+        title: newStatus === 'open' ? "Válvula Abierta" : "Válvula Cerrada",
+        description: `Comando maestro enviado con éxito.`,
+        variant: newStatus === 'open' ? 'default' : 'destructive'
+      });
+    } catch (e) {
+      toast({ title: "Error al enviar comando", variant: "destructive" });
+    } finally {
+      setTimeout(() => setIsProcessingValve(null), 1000);
+    }
+  };
+
   const handleCreateBuildingAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !auth) return;
@@ -197,7 +263,6 @@ export default function AdminWaterControlPage() {
       const virtualEmail = `${cleanRutStr}@building.pcg`;
       const buildingId = `bld-${Math.random().toString(36).substr(2, 6)}`;
 
-      // 1. Crear Empresa (Edificio)
       const companyRef = doc(db, "companies", buildingId);
       await setDocumentNonBlocking(companyRef, {
         id: buildingId,
@@ -210,12 +275,9 @@ export default function AdminWaterControlPage() {
         createdAt: serverTimestamp(),
       }, { merge: true });
 
-      // 2. Crear Usuario en Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, virtualEmail, formData.pin);
       const uid = userCredential.user.uid;
 
-      // 3. Crear Perfil en Firestore
-      // GUARDAMOS EL PIN PARA LA VALIDACIÓN DE OPERACIONES CRÍTICAS
       const userRef = doc(db, "users", uid);
       await setDocumentNonBlocking(userRef, {
         id: uid,
@@ -224,41 +286,12 @@ export default function AdminWaterControlPage() {
         name: formData.name,
         role: "buildingAdmin",
         companyId: buildingId,
-        pin: formData.pin, // Guardar PIN para validaciones remotas
+        pin: formData.pin,
         active: true,
         createdAt: serverTimestamp(),
       }, { merge: true });
 
-      // 4. Enviar Email con PIN
-      const htmlContent = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e5e7eb; border-radius: 24px; padding: 40px; background-color: #ffffff;">
-          <div style="text-align: center; margin-bottom: 32px;">
-            <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; text-transform: uppercase;">GENKO <span style="color: #3b82f6;">AGUA</span></h1>
-            <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Monitor de Telemetría para Comunidades</p>
-          </div>
-          <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 24px;">Bienvenido al Monitor Hídrico</h2>
-          <p>Estimado(a) <strong>${formData.name}</strong>,</p>
-          <p>Su ecosistema de gestión para <strong>${formData.buildingName}</strong> ha sido activado y está listo para la operación de campo y administrativa.</p>
-          <p>Desde este panel podrá monitorear consumos en tiempo real y realizar cortes de suministro ante emergencias.</p>
-          <div style="background-color: #f8fafc; border: 2px dashed #3b82f6; border-radius: 20px; padding: 32px; margin: 32px 0; text-align: center;">
-            <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 2px;">Sus Credenciales de Seguridad</p>
-            <table style="width: 100%; margin-bottom: 20px;">
-              <tr><td style="text-align: right; width: 40%; color: #64748b; font-size: 13px; padding-right: 10px;">RUT:</td><td style="text-align: left; font-weight: bold; color: #1e293b;">${formData.rut}</td></tr>
-              <tr><td style="text-align: right; color: #64748b; font-size: 13px; padding-right: 10px;">PIN de Acceso:</td><td style="text-align: left; font-weight: 900; color: #3b82f6; font-size: 24px; letter-spacing: 4px;">${formData.pin}</td></tr>
-            </table>
-            <a href="https://www.pcgmantenimiento.com/water-control/login" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">ENTRAR AL PORTAL</a>
-          </div>
-          <p style="font-size: 12px; color: #94a3b8; text-align: center;">Este PIN es personal e intransferible. GENKO nunca le pedirá su PIN por teléfono.</p>
-        </div>
-      `;
-
-      await sendSystemEmail({
-        to: formData.email,
-        subject: `ACCESO GENKO AGUA - ${formData.buildingName}`,
-        html: htmlContent
-      });
-
-      toast({ title: "Administrador Creado", description: "Credenciales enviadas al correo corporativo." });
+      toast({ title: "Administrador Creado" });
       setIsCreateOpen(false);
       setFormData({ name: "", email: "", rut: "", buildingName: "", pin: Math.floor(100000 + Math.random() * 900000).toString() });
     } catch (error: any) {
@@ -271,29 +304,21 @@ export default function AdminWaterControlPage() {
   const handleEditBuilding = (admin: User, company: Company) => {
     setSelectedAdmin(admin);
     setEditingBuilding(company);
-    setEditData({
-      name: admin.name,
-      buildingName: company.name
-    });
+    setEditData({ name: admin.name, buildingName: company.name });
     setIsEditOpen(true);
   };
 
   const handleUpdateBuilding = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db || !selectedAdmin || !editingBuilding) return;
-
     setIsSubmitting(true);
     try {
-      const companyRef = doc(db, "companies", editingBuilding.id);
-      const userRef = doc(db, "users", selectedAdmin.id);
-
-      updateDocumentNonBlocking(companyRef, { name: editData.buildingName, updatedAt: serverTimestamp() });
-      updateDocumentNonBlocking(userRef, { name: editData.name, updatedAt: serverTimestamp() });
-
-      toast({ title: "Datos Actualizados", description: "Los cambios han sido guardados correctamente." });
+      updateDocumentNonBlocking(doc(db, "companies", editingBuilding.id), { name: editData.buildingName, updatedAt: serverTimestamp() });
+      updateDocumentNonBlocking(doc(db, "users", selectedAdmin.id), { name: editData.name, updatedAt: serverTimestamp() });
+      toast({ title: "Datos Actualizados" });
       setIsEditOpen(false);
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -301,20 +326,14 @@ export default function AdminWaterControlPage() {
 
   const handleDeleteBuilding = async () => {
     if (!db || !selectedAdmin || !editingBuilding) return;
-
     setIsSubmitting(true);
     try {
-      const companyRef = doc(db, "companies", editingBuilding.id);
-      const userRef = doc(db, "users", selectedAdmin.id);
-
-      // Soft delete: marcar como inactivos
-      updateDocumentNonBlocking(companyRef, { isActive: false, isDeleted: true, updatedAt: serverTimestamp() });
-      updateDocumentNonBlocking(userRef, { active: false, updatedAt: serverTimestamp() });
-
-      toast({ title: "Comunidad Eliminada", description: "El registro ha sido removido del sistema activo." });
+      updateDocumentNonBlocking(doc(db, "companies", editingBuilding.id), { isActive: false, isDeleted: true, updatedAt: serverTimestamp() });
+      updateDocumentNonBlocking(doc(db, "users", selectedAdmin.id), { active: false, updatedAt: serverTimestamp() });
+      toast({ title: "Comunidad Eliminada" });
       setIsDeleteOpen(false);
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Error", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -355,44 +374,16 @@ export default function AdminWaterControlPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
-              <DialogHeader>
-                <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Alta de Admin IoT</DialogTitle>
-                <DialogDescription>Se generará un entorno building-only y se enviará el PIN por email.</DialogDescription>
-              </DialogHeader>
+              <DialogHeader><DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Alta de Admin IoT</DialogTitle></DialogHeader>
               <form onSubmit={handleCreateBuildingAdmin} className="space-y-6 py-4">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Edificio / Comunidad</Label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input placeholder="Ej: Edificio Vista Hermosa" value={formData.buildingName} onChange={e => setFormData({...formData, buildingName: e.target.value})} className="h-12 pl-10 border-2 rounded-xl font-bold" required />
-                  </div>
-                </div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Nombre Edificio</Label><Input value={formData.buildingName} onChange={e => setFormData({...formData, buildingName: e.target.value})} className="h-12 rounded-xl font-bold" required /></div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">Nombre Admin</Label>
-                    <Input placeholder="Juan Pérez" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400">RUT (ID de Acceso)</Label>
-                    <Input placeholder="12.345.678-9" value={formData.rut} onChange={e => setFormData({...formData, rut: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
-                  </div>
+                  <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Admin</Label><Input value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="h-12 rounded-xl font-bold" required /></div>
+                  <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">RUT</Label><Input value={formData.rut} onChange={e => setFormData({...formData, rut: e.target.value})} className="h-12 rounded-xl font-bold" required /></div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-400">Email Corporativo (Envío PIN)</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input type="email" placeholder="admin@comunidad.cl" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="h-12 pl-10 border-2 rounded-xl font-bold" required />
-                  </div>
-                </div>
-                <div className="bg-slate-900 p-6 rounded-2xl text-center space-y-2 border border-white/10">
-                  <p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.3em]">PIN de Seguridad Generado</p>
-                  <p className="text-4xl font-black text-white italic tracking-widest">{formData.pin}</p>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl bg-blue-600 font-black uppercase tracking-widest shadow-xl">
-                    {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Activar y Notificar"}
-                  </Button>
-                </DialogFooter>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400">Email Corporativo</Label><Input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="h-12 rounded-xl font-bold" required /></div>
+                <div className="bg-slate-900 p-6 rounded-2xl text-center space-y-2"><p className="text-[10px] font-black uppercase text-blue-400 tracking-[0.3em]">PIN Generado</p><p className="text-4xl font-black text-white italic">{formData.pin}</p></div>
+                <DialogFooter><Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl bg-blue-600 font-black uppercase shadow-xl">Activar y Notificar</Button></DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
@@ -402,123 +393,46 @@ export default function AdminWaterControlPage() {
       <div className="grid gap-6">
         <Card className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 p-8 border-b">
-            <div className="flex items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <Input placeholder="Buscar por administrador o edificio..." className="pl-12 h-14 bg-white border-none shadow-inner rounded-2xl font-medium" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-              </div>
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <Input placeholder="Buscar por administrador o edificio..." className="pl-12 h-14 bg-white border-none shadow-inner rounded-2xl font-medium" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
           </CardHeader>
           <CardContent className="p-0">
             {isAdminsLoading ? (
               <div className="py-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-blue-200" /></div>
-            ) : filteredAdmins.length === 0 ? (
-              <div className="py-32 text-center space-y-4 opacity-40">
-                <Droplets className="h-16 w-16 mx-auto text-slate-200" />
-                <p className="font-black italic uppercase text-slate-400">Sin administradores IoT registrados</p>
-              </div>
             ) : (
               <div className="divide-y">
                 {filteredAdmins.map((admin) => {
                   const company = companies?.find(c => c.id === admin.companyId);
                   if (company?.isDeleted) return null;
-                  
                   const meters = buildingMeters[admin.companyId] || [];
                   const isExpanded = expandedBuildingId === admin.companyId;
 
                   return (
                     <div key={admin.id} className="group">
-                      <div 
-                        className={cn(
-                          "flex items-center justify-between p-8 hover:bg-slate-50/50 transition-colors cursor-pointer",
-                          isExpanded && "bg-blue-50/30"
-                        )}
-                        onClick={() => {
-                          if (isExpanded) setExpandedBuildingId(null);
-                          else {
-                            setExpandedBuildingId(admin.companyId);
-                            fetchMeters(admin.companyId);
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-6">
-                          <div className={cn("p-4 rounded-3xl transition-transform group-hover:scale-110", isExpanded ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-600")}>
-                            <Building2 className="h-8 w-8" />
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{company?.name || 'Cargando...'}</h3>
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><ShieldCheck className="h-3 w-3" /> {admin.name}</span>
-                              <span className="text-[10px] font-bold text-blue-600 flex items-center gap-1.5"><Zap className="h-3 w-3" /> ID: {admin.companyId}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-8">
-                          <div className="text-right">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sensores Enrolados</p>
-                            <p className="text-2xl font-black italic text-slate-900">{meters.length || '?'}</p>
-                          </div>
-                          <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10">
-                                  <MoreVertical className="h-5 w-5 text-slate-400" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56 rounded-2xl shadow-2xl border-none p-2">
-                                <DropdownMenuLabel className="text-[10px] font-black uppercase text-slate-400 p-2">Acciones de Gestión</DropdownMenuLabel>
-                                <DropdownMenuItem className="rounded-xl p-3 focus:bg-slate-50 font-bold gap-3" onClick={() => handleEditBuilding(admin, company!)}>
-                                  <Edit className="h-4 w-4 text-blue-600" /> Editar Datos
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="rounded-xl p-3 focus:bg-amber-50 font-bold gap-3 text-amber-700">
-                                  <RefreshCcw className="h-4 w-4" /> Resetear Acceso PIN
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="bg-slate-50" />
-                                <DropdownMenuItem className="rounded-xl p-3 focus:bg-rose-50 font-bold gap-3 text-rose-600" onClick={() => { setSelectedAdmin(admin); setEditingBuilding(company!); setIsDeleteOpen(true); }}>
-                                  <Trash2 className="h-4 w-4" /> Eliminar Comunidad
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            {isExpanded ? <ChevronUp className="h-6 w-6 text-blue-600" /> : <ChevronDown className="h-6 w-6 text-slate-300" />}
-                          </div>
-                        </div>
+                      <div className={cn("flex items-center justify-between p-8 hover:bg-slate-50/50 transition-colors cursor-pointer", isExpanded && "bg-blue-50/30")} onClick={() => { if (isExpanded) setExpandedBuildingId(null); else { setExpandedBuildingId(admin.companyId); fetchMeters(admin.companyId); }}}>
+                        <div className="flex items-center gap-6"><div className={cn("p-4 rounded-3xl transition-transform group-hover:scale-110", isExpanded ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-600")}><Building2 className="h-8 w-8" /></div><div><h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-900">{company?.name || 'Cargando...'}</h3><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{admin.name} • {admin.companyId}</p></div></div>
+                        <div className="flex items-center gap-8"><div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sensores</p><p className="text-2xl font-black italic text-slate-900">{meters.length || '?'}</p></div>{isExpanded ? <ChevronUp className="h-6 w-6 text-blue-600" /> : <ChevronDown className="h-6 w-6 text-slate-300" />}</div>
                       </div>
 
                       {isExpanded && (
                         <div className="p-8 bg-blue-50/20 border-t border-blue-100 animate-in slide-in-from-top-4 duration-300">
-                          <div className="flex items-center justify-between mb-6">
-                            <h4 className="text-sm font-black uppercase text-blue-600 tracking-[0.2em] flex items-center gap-2">
-                              <Monitor className="h-4 w-4" /> Monitor de Telemetría Live
-                            </h4>
-                            <Badge className="bg-emerald-500 text-white font-black text-[8px] uppercase px-3 py-1 animate-pulse">Streaming Activo</Badge>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {meters.map(m => (
+                              <Card key={m.id} className={cn("rounded-2xl border-2 shadow-sm bg-white overflow-hidden transition-all", m.hasLeakAlert ? "border-rose-200" : "border-slate-100")}>
+                                <div className={cn("p-4 flex items-center justify-between border-b", m.hasLeakAlert ? "bg-rose-50" : "bg-slate-50/50")}>
+                                  <span className="text-xs font-black uppercase tracking-tighter">{m.unitIdentifier}</span>
+                                  <div className="flex gap-1">
+                                    <Button size="icon" className={cn("h-6 w-6 rounded-lg", m.status === 'open' ? "bg-slate-900" : "bg-blue-600")} onClick={() => handleToggleValveRequest(m)} disabled={isProcessingValve === m.id}>
+                                      {isProcessingValve === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : (m.status === 'open' ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />)}
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="p-4 flex justify-between items-baseline"><span className="text-[9px] font-black text-slate-400 uppercase">Lectura m³</span><span className="text-xl font-black italic">{m.currentReading.toFixed(2)}</span></div>
+                              </Card>
+                            ))}
                           </div>
-
-                          {isLoadingMeters === admin.companyId ? (
-                            <div className="py-10 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-400" /></div>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                              {meters.map(m => (
-                                <Card key={m.id} className={cn("rounded-2xl border-2 shadow-sm bg-white overflow-hidden transition-all", m.hasLeakAlert ? "border-rose-200" : "border-slate-100")}>
-                                  <div className={cn("p-4 flex items-center justify-between border-b", m.hasLeakAlert ? "bg-rose-50" : "bg-slate-50/50")}>
-                                    <span className="text-xs font-black uppercase tracking-tighter">{m.unitIdentifier}</span>
-                                    {m.hasLeakAlert && <Badge className="bg-rose-600 text-white animate-pulse text-[7px] h-4">ALERTA FUGA</Badge>}
-                                  </div>
-                                  <div className="p-4 space-y-3">
-                                    <div className="flex justify-between items-baseline">
-                                      <span className="text-[9px] font-black text-slate-400 uppercase">Lectura m³</span>
-                                      <div className="flex items-baseline gap-1">
-                                        <span className="text-xl font-black italic">{m.currentReading.toFixed(2)}</span>
-                                      </div>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase">
-                                      <span className="flex items-center gap-1"><Zap className={cn("h-3 w-3", m.status === 'open' ? "text-emerald-500" : "text-rose-500")} /> {m.status === 'open' ? 'Abierto' : 'Cerrado'}</span>
-                                      <span className="flex items-center gap-1"><Battery className="h-3 w-3" /> {m.batteryLevel}%</span>
-                                    </div>
-                                  </div>
-                                </Card>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -530,51 +444,14 @@ export default function AdminWaterControlPage() {
         </Card>
       </div>
 
-      {/* DIÁLOGOS DE GESTIÓN */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Editar Comunidad IoT</DialogTitle>
-            <DialogDescription>Ajuste los nombres comerciales del entorno.</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleUpdateBuilding} className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">Nombre de la Comunidad</Label>
-              <Input value={editData.buildingName} onChange={e => setEditData({...editData, buildingName: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-400">Nombre del Administrador</Label>
-              <Input value={editData.name} onChange={e => setEditData({...editData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={isSubmitting} className="w-full h-14 rounded-2xl bg-blue-600 font-black uppercase tracking-widest shadow-xl">
-                {isSubmitting ? <Loader2 className="animate-spin h-6 w-6" /> : "Guardar Cambios"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] border-rose-100">
-          <DialogHeader className="text-center">
-            <div className="bg-rose-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="h-8 w-8 text-rose-600" />
-            </div>
-            <DialogTitle className="text-2xl font-black uppercase italic text-rose-900">¿Eliminar Comunidad?</DialogTitle>
-            <DialogDescription className="font-bold text-rose-700">
-              Esta acción desactivará el acceso del administrador <strong>{selectedAdmin?.name}</strong> y archivará los datos del edificio <strong>{editingBuilding?.name}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 text-center">
-            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Esta operación no eliminará la telemetría histórica pero impedirá nuevos accesos.</p>
-          </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-3">
-            <Button variant="ghost" className="flex-1 rounded-xl font-bold" onClick={() => setIsDeleteOpen(false)}>Cancelar</Button>
-            <Button disabled={isSubmitting} className="flex-1 rounded-xl bg-rose-600 hover:bg-rose-700 font-black uppercase text-[10px] tracking-widest" onClick={handleDeleteBuilding}>
-              {isSubmitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Sí, Eliminar Registro"}
-            </Button>
-          </DialogFooter>
+      {/* DIÁLOGO DE SEGURIDAD (PIN CHALLENGE) */}
+      <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+        <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-8 text-center">
+          <div className="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"><Lock className="h-10 w-10 text-slate-900" /></div>
+          <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Mando Maestro</DialogTitle>
+          <DialogDescription className="font-bold text-slate-500 mb-6">Confirme el corte/apertura de <strong>{pendingMeter?.unitIdentifier}</strong>. Ingrese PIN maestro.</DialogDescription>
+          <Input type="password" placeholder="******" className="h-16 text-center text-3xl font-black tracking-[0.5em] rounded-2xl border-2 mb-6" value={pinInput} onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))} />
+          <Button className="w-full h-14 rounded-2xl bg-slate-900 text-white font-black uppercase shadow-xl" onClick={handleConfirmPin} disabled={pinInput.length < 6}>Confirmar Operación</Button>
         </DialogContent>
       </Dialog>
     </div>

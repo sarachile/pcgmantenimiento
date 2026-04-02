@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -196,7 +197,35 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* SECCIÓN 3: CARTERA DE RECINTOS (COMUNIDADES) */}
+        {/* SECCIÓN 3: MONITOR DE ALERTAS DE CARTERA (NUEVO) */}
+        <div className="space-y-6">
+          <h3 className="text-xl font-black uppercase italic tracking-tighter text-slate-900 flex items-center gap-3 px-2">
+            <BellRing className="h-6 w-6 text-rose-600" /> Alertas Críticas de Cartera
+          </h3>
+          <div className="grid gap-4">
+            {[
+              { community: "Edificio Horizonte", event: "Fuga Activa Depto 102", intensity: "Crítica", time: "Hace 14m", color: "border-rose-500 bg-rose-50 text-rose-900" },
+              { community: "Edificio Horizonte", event: "Fuga Activa Depto 405", intensity: "Media", time: "Hace 2h", color: "border-amber-500 bg-amber-50 text-amber-900" },
+              { community: "Condominio Mar Azul", event: "Sobreconsumo Proyectado", intensity: "Informativa", time: "Hace 5h", color: "border-blue-500 bg-blue-50 text-blue-900" }
+            ].map((alert, i) => (
+              <div key={i} className={cn("p-6 rounded-3xl border-2 flex items-center justify-between shadow-sm animate-in fade-in slide-in-from-left-4", alert.color)}>
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-2xl bg-white/50"><AlertTriangle className="h-6 w-6" /></div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase opacity-60">{alert.community}</p>
+                    <p className="text-lg font-black italic uppercase tracking-tight">{alert.event}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Badge variant="outline" className="border-current font-black text-[8px] uppercase px-3">{alert.intensity}</Badge>
+                  <p className="text-[10px] font-bold mt-1 opacity-60">{alert.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* SECCIÓN 4: CARTERA DE RECINTOS (COMUNIDADES) */}
         <div className="space-y-6">
           <div className="flex items-center justify-between px-2">
             <div className="space-y-1">
@@ -256,7 +285,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* SECCIÓN 4: ACCIONES RÁPIDAS ERP */}
+        {/* SECCIÓN 5: ACCIONES RÁPIDAS ERP */}
         <div className="grid gap-8 lg:grid-cols-2">
           <Card className="rounded-[3rem] border-none shadow-xl bg-white overflow-hidden group hover:shadow-2xl transition-all">
             <CardContent className="p-0">
