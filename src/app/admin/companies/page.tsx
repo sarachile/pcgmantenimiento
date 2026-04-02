@@ -145,7 +145,7 @@ const SIM_JUAN_COMMUNITIES: Community[] = [
 
 const generateMetersForCommunity = (commId: string): WaterMeter[] => {
   if (commId === 'comm-juan-2') {
-    // Caso Mar Azul: Verticales y Áreas Comunes
+    // Caso Mar Azul: Solo Verticales y Áreas Comunes (Infraestructura Pura)
     const meters: WaterMeter[] = [];
     
     // 5 Verticales
@@ -183,22 +183,6 @@ const generateMetersForCommunity = (commId: string): WaterMeter[] => {
       } as any);
     });
 
-    // 90 Residentes
-    for (let i = 1; i <= 90; i++) {
-      meters.push({
-        id: `meter-ma-res-${i}`,
-        companyId: 'adm-juan-f',
-        communityId: 'comm-juan-2',
-        unitIdentifier: `Depto ${100 + i}`,
-        status: Math.random() > 0.98 ? 'closed' : 'open',
-        currentReading: 120 + (i * 5.2),
-        batteryLevel: 75 + Math.random() * 20,
-        signalStrength: 70 + Math.random() * 20,
-        hasLeakAlert: Math.random() > 0.97,
-        lastCommunication: new Date().toISOString(),
-        devEUI: `RES000${i}MA`
-      } as any);
-    }
     return meters;
   }
 
@@ -448,20 +432,22 @@ function AdminCompaniesContent() {
     const list = communityMeters;
     if (list.length === 0) return null;
     
-    // Si es Mar Azul, el total residencial excluye verticales
-    const residential = list.filter(m => !m.unitIdentifier.includes("Vertical"));
+    // Si es Mar Azul, el total residencial puede ser 0 si solo hay infraestructura
+    const residential = list.filter(m => !m.unitIdentifier.includes("Vertical") && !m.unitIdentifier.includes("Área Común"));
     const sumUnits = residential.reduce((acc, m) => acc + m.currentReading, 0);
+    const sumInfra = list.filter(m => m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común")).reduce((acc, m) => acc + m.currentReading, 0);
     
-    // Matriz es un 15% más que la suma de unidades
-    const matrixTotal = sumUnits * 1.15;
-    const commonAreas = matrixTotal - sumUnits;
+    // Matriz es un 15% más que la suma de nodos medidos
+    const totalMeasured = sumUnits + sumInfra;
+    const matrixTotal = totalMeasured * 1.15;
+    const lossVolume = matrixTotal - totalMeasured;
     
     return { 
       sumUnits, 
+      sumInfra,
       matrixTotal, 
-      commonAreas, 
-      efficiency: (sumUnits / matrixTotal) * 100, 
-      lossCLP: commonAreas * 1800, 
+      efficiency: (totalMeasured / matrixTotal) * 100, 
+      lossCLP: lossVolume * 1800, 
       leakCount: list.filter(m => m.hasLeakAlert).length 
     };
   }, [communityMeters]);
@@ -532,8 +518,8 @@ function AdminCompaniesContent() {
                 <div className="text-4xl font-black italic text-rose-400 mt-2">${auditStats.lossCLP.toLocaleString()}</div>
               </Card>
               <Card className="border-none shadow-xl bg-white rounded-[2rem] p-6 border-2 border-slate-100">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Residencial</p>
-                <div className="text-4xl font-black text-slate-900 mt-2">{auditStats.sumUnits.toFixed(1)} m³</div>
+                <p className="text-[9px] font-black uppercase text-slate-400">Medición Total</p>
+                <div className="text-4xl font-black text-slate-900 mt-2">{(auditStats.sumUnits + auditStats.sumInfra).toFixed(1)} m³</div>
               </Card>
             </div>
 
@@ -547,12 +533,12 @@ function AdminCompaniesContent() {
                   <p className="text-4xl font-black italic text-slate-900">{auditStats.matrixTotal.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
                 </div>
                 <div className="space-y-4">
-                  <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Residentes</p>
-                  <p className="text-4xl font-black italic text-blue-600">{auditStats.sumUnits.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                  <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Nodos Internos</p>
+                  <p className="text-4xl font-black italic text-blue-600">{(auditStats.sumUnits + auditStats.sumInfra).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
                 </div>
                 <div className="space-y-4">
-                  <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial Áreas Comunes</p>
-                  <p className="text-4xl font-black italic text-rose-600">{auditStats.commonAreas.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                  <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial No Facturado</p>
+                  <p className="text-4xl font-black italic text-rose-600">{(auditStats.matrixTotal - (auditStats.sumUnits + auditStats.sumInfra)).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
                 </div>
               </CardContent>
             </Card>

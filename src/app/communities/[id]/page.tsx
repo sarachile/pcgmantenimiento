@@ -170,22 +170,6 @@ const generateMetersForCommunity = (commId: string): WaterMeter[] => {
       } as any);
     });
 
-    // 90 Residentes
-    for (let i = 1; i <= 90; i++) {
-      meters.push({
-        id: `meter-ma-res-${i}`,
-        companyId: 'adm-juan-f',
-        communityId: 'comm-juan-2',
-        unitIdentifier: `Depto ${100 + i}`,
-        status: Math.random() > 0.98 ? 'closed' : 'open',
-        currentReading: 120 + (i * 5.2),
-        batteryLevel: 75 + Math.random() * 20,
-        signalStrength: 70 + Math.random() * 20,
-        hasLeakAlert: Math.random() > 0.97,
-        lastCommunication: new Date().toISOString(),
-        devEUI: `RES000${i}MA`
-      } as any);
-    }
     return meters;
   }
 
@@ -193,7 +177,7 @@ const generateMetersForCommunity = (commId: string): WaterMeter[] => {
     const id = i + 1;
     return {
       id: `meter-sim-${id}`,
-      unitIdentifier: `Depto ${100 + id}`,
+      unitIdentifier: `Depto 100${id}`,
       status: Math.random() > 0.98 ? 'closed' : 'open',
       currentReading: 150 + (i * 12.4),
       batteryLevel: 70 + Math.random() * 30,
@@ -309,13 +293,19 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     const list = displayMeters;
     if (list.length === 0) return null;
     
-    const residential = list.filter(m => !m.unitIdentifier.includes("Vertical"));
-    const sumUnits = residential.reduce((acc, m) => acc + m.currentReading, 0);
-    const matrixTotal = sumUnits * 1.15;
-    const efficiency = (sumUnits / matrixTotal) * 100;
-    const lossCLP = (matrixTotal - sumUnits) * 1800;
+    // Mar Azul solo tiene Verticales y Áreas Comunes
+    const residential = list.filter(m => !m.unitIdentifier.includes("Vertical") && !m.unitIdentifier.includes("Área Común"));
+    const infrastructure = list.filter(m => m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común"));
     
-    return { sumUnits, matrixTotal, efficiency, lossCLP, leakCount: list.filter(m => m.hasLeakAlert).length };
+    const sumUnits = residential.reduce((acc, m) => acc + m.currentReading, 0);
+    const sumInfra = infrastructure.reduce((acc, m) => acc + m.currentReading, 0);
+    
+    const totalMeasured = sumUnits + sumInfra;
+    const matrixTotal = totalMeasured * 1.15;
+    const efficiency = (totalMeasured / matrixTotal) * 100;
+    const lossCLP = (matrixTotal - totalMeasured) * 1800;
+    
+    return { sumUnits, sumInfra, matrixTotal, efficiency, lossCLP, leakCount: list.filter(m => m.hasLeakAlert).length };
   }, [displayMeters]);
 
   const handleToggleValve = (meter: WaterMeter) => {
@@ -376,8 +366,8 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               <div className="text-4xl font-black italic text-rose-400 mt-2">${auditStats.lossCLP.toLocaleString()}</div>
             </Card>
             <Card className="border-none shadow-xl bg-white rounded-[2rem] p-6 border-2 border-slate-100">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Residencial</p>
-              <div className="text-4xl font-black text-slate-900 mt-2">{auditStats.sumUnits.toFixed(1)} m³</div>
+              <p className="text-[9px] font-black uppercase text-slate-400">Total Medido</p>
+              <div className="text-4xl font-black text-slate-900 mt-2">{(auditStats.sumUnits + auditStats.sumInfra).toFixed(1)} m³</div>
             </Card>
           </div>
 
@@ -392,13 +382,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                 <Progress value={100} className="h-2 bg-slate-100" />
               </div>
               <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Residentes</p>
-                <p className="text-4xl font-black italic text-blue-600">{auditStats.sumUnits.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Nodos Medidos</p>
+                <p className="text-4xl font-black italic text-blue-600">{(auditStats.sumUnits + auditStats.sumInfra).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
                 <Progress value={auditStats.efficiency} className="h-2 bg-blue-600" />
               </div>
               <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial Áreas Comunes</p>
-                <p className="text-4xl font-black italic text-rose-600">{(auditStats.matrixTotal - auditStats.sumUnits).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial No Facturado</p>
+                <p className="text-4xl font-black italic text-rose-600">{(auditStats.matrixTotal - (auditStats.sumUnits + auditStats.sumInfra)).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
                 <Progress value={100 - auditStats.efficiency} className="h-2 bg-rose-600" />
               </div>
             </CardContent>
@@ -504,7 +494,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           <div className="flex gap-2">
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input placeholder="Buscar departamento..." className="pl-9 h-10 border-2 rounded-xl bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              <Input placeholder="Buscar unidad..." className="pl-9 h-10 border-2 rounded-xl bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
             <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="sm" className="rounded-lg h-10" onClick={() => setViewMode('grid')}><LayoutGrid className="h-4 w-4" /></Button>
             <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" className="rounded-lg h-10" onClick={() => setViewMode('list')}><List className="h-4 w-4" /></Button>
