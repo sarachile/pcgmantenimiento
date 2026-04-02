@@ -84,7 +84,8 @@ import {
   Power,
   PowerOff,
   Lock,
-  Download
+  Download,
+  Layers
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -130,42 +131,79 @@ const TREND_DATA = [
   { day: "Dom", actual: 82, previous: 70 },
 ];
 
-const PATTERN_DATA = [
-  { hour: "00:00", value: 5 },
-  { hour: "04:00", value: 3 },
-  { hour: "08:00", value: 25 },
-  { hour: "12:00", value: 18 },
-  { hour: "16:00", value: 15 },
-  { hour: "20:00", value: 35 },
-  { hour: "23:00", value: 12 },
-];
+const generateMetersForCommunity = (commId: string): WaterMeter[] => {
+  if (commId === 'comm-juan-2') {
+    const meters: WaterMeter[] = [];
+    
+    // 5 Verticales
+    for (let i = 1; i <= 5; i++) {
+      meters.push({
+        id: `meter-ma-vert-${i}`,
+        companyId: 'adm-juan-f',
+        communityId: 'comm-juan-2',
+        unitIdentifier: `Vertical Sector ${i}`,
+        status: 'open',
+        currentReading: 450 + (i * 150.5),
+        batteryLevel: 95,
+        signalStrength: 90,
+        hasLeakAlert: false,
+        lastCommunication: new Date().toISOString(),
+        devEUI: `VERT000${i}MA`
+      } as any);
+    }
 
-// GENERACIÓN DE 100 MEDIDORES SIMULADOS
-const SIM_METERS: WaterMeter[] = Array.from({ length: 100 }, (_, i) => {
-  const id = i + 1;
-  const floor = Math.floor(i / 10) + 1;
-  const room = (i % 10) + 1;
-  const unit = `Depto ${floor}${room < 10 ? '0' + room : room}`;
-  const baseReading = 150 + (i * 12.4);
-  const variation = Math.random() * 5;
-  const reading = baseReading + variation;
-  const battery = Math.floor(Math.random() * 30) + 70;
-  const signal = Math.floor(Math.random() * 40) + 60;
-  const hasLeak = Math.random() > 0.96; 
-  const isClosed = Math.random() > 0.98;
+    // 5 Áreas Comunes
+    const commonAreas = ["Riego Jardín Norte", "Piscina Adultos", "Lavandería Piso 1", "Sala Multiuso", "Riego Jardín Sur"];
+    commonAreas.forEach((area, i) => {
+      meters.push({
+        id: `meter-ma-common-${i}`,
+        companyId: 'adm-juan-f',
+        communityId: 'comm-juan-2',
+        unitIdentifier: `Área Común: ${area}`,
+        status: 'open',
+        currentReading: 80 + (i * 22.4),
+        batteryLevel: 88,
+        signalStrength: 85,
+        hasLeakAlert: i === 0,
+        lastCommunication: new Date().toISOString(),
+        devEUI: `COMM000${i}MA`
+      } as any);
+    });
 
-  return {
-    id: `meter-sim-${id}`,
-    unitIdentifier: unit,
-    status: isClosed ? 'closed' : 'open',
-    currentReading: reading,
-    batteryLevel: battery,
-    signalStrength: signal,
-    hasLeakAlert: hasLeak,
-    lastCommunication: new Date().toISOString(),
-    devEUI: `00112233445566${id.toString(16).padStart(2, '0').toUpperCase()}`
-  } as WaterMeter;
-});
+    // 90 Residentes
+    for (let i = 1; i <= 90; i++) {
+      meters.push({
+        id: `meter-ma-res-${i}`,
+        companyId: 'adm-juan-f',
+        communityId: 'comm-juan-2',
+        unitIdentifier: `Depto ${100 + i}`,
+        status: Math.random() > 0.98 ? 'closed' : 'open',
+        currentReading: 120 + (i * 5.2),
+        batteryLevel: 75 + Math.random() * 20,
+        signalStrength: 70 + Math.random() * 20,
+        hasLeakAlert: Math.random() > 0.97,
+        lastCommunication: new Date().toISOString(),
+        devEUI: `RES000${i}MA`
+      } as any);
+    }
+    return meters;
+  }
+
+  return Array.from({ length: 100 }, (_, i) => {
+    const id = i + 1;
+    return {
+      id: `meter-sim-${id}`,
+      unitIdentifier: `Depto ${100 + id}`,
+      status: Math.random() > 0.98 ? 'closed' : 'open',
+      currentReading: 150 + (i * 12.4),
+      batteryLevel: 70 + Math.random() * 30,
+      signalStrength: 60 + Math.random() * 40,
+      hasLeakAlert: Math.random() > 0.96,
+      lastCommunication: new Date().toISOString(),
+      devEUI: `HORIZON${id.toString(16).toUpperCase()}`
+    } as any;
+  });
+};
 
 function UnitAnalysisSection({ meter }: { meter: WaterMeter }) {
   const hourly = useMemo(() => Array.from({ length: 24 }, (_, i) => {
@@ -243,9 +281,12 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pendingMeter, setPendingMeter] = useState<WaterMeter | null>(null);
-  const [simMeters, setSimMeters] = useState<WaterMeter[]>(SIM_METERS);
+  const [simMeters, setSimMeters] = useState<WaterMeter[]>([]);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => { 
+    setMounted(true); 
+    setSimMeters(generateMetersForCommunity(commId));
+  }, [commId]);
 
   const companyId = profile?.companyId || "";
 
@@ -266,10 +307,14 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
 
   const auditStats = useMemo(() => {
     const list = displayMeters;
-    const sumUnits = list.reduce((acc, m) => acc + m.currentReading, 0);
-    const matrixTotal = sumUnits * 1.15; // Simulación
+    if (list.length === 0) return null;
+    
+    const residential = list.filter(m => !m.unitIdentifier.includes("Vertical"));
+    const sumUnits = residential.reduce((acc, m) => acc + m.currentReading, 0);
+    const matrixTotal = sumUnits * 1.15;
     const efficiency = (sumUnits / matrixTotal) * 100;
     const lossCLP = (matrixTotal - sumUnits) * 1800;
+    
     return { sumUnits, matrixTotal, efficiency, lossCLP, leakCount: list.filter(m => m.hasLeakAlert).length };
   }, [displayMeters]);
 
@@ -284,7 +329,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     const isCorrect = pinInput === "123456" || (profile?.pin && pinInput === profile.pin);
     if (isCorrect) {
       const newStatus = pendingMeter.status === 'open' ? 'closed' : 'open';
-      if (pendingMeter.id.startsWith('meter-sim-')) {
+      if (pendingMeter.id.includes('ma-') || pendingMeter.id.includes('sim-')) {
         setSimMeters(prev => prev.map(m => m.id === pendingMeter.id ? { ...m, status: newStatus as any } : m));
       } else if (db && companyId) {
         updateDocumentNonBlocking(doc(db, "companies", companyId, "waterMeters", pendingMeter.id), { status: newStatus, updatedAt: serverTimestamp() });
@@ -313,51 +358,53 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      {/* DASHBOARD AUDITORÍA */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-none shadow-xl bg-blue-600 text-white rounded-[2rem] p-6 relative overflow-hidden">
-          <div className="absolute right-0 top-0 p-4 opacity-10"><Activity className="h-20 w-20" /></div>
-          <p className="text-[9px] font-black uppercase tracking-widest text-blue-100">Eficiencia de Red</p>
-          <div className="text-4xl font-black italic mt-2">{auditStats.efficiency.toFixed(1)}%</div>
-        </Card>
-        <Card className={cn("border-none shadow-xl rounded-[2rem] p-6 relative overflow-hidden", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
-          <div className="absolute right-0 top-0 p-4 opacity-10"><ShieldAlert className="h-20 w-20" /></div>
-          <p className={cn("text-[9px] font-black uppercase tracking-widest", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Activas</p>
-          <div className="text-4xl font-black italic mt-2">{auditStats.leakCount}</div>
-        </Card>
-        <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] p-6">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pérdida Económica</p>
-          <div className="text-4xl font-black italic text-rose-400 mt-2">${auditStats.lossCLP.toLocaleString()}</div>
-        </Card>
-        <Card className="border-none shadow-xl bg-white rounded-[2rem] p-6 border-2 border-slate-100">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Residencial</p>
-          <div className="text-4xl font-black text-slate-900 mt-2">{auditStats.sumUnits.toFixed(1)} m³</div>
-        </Card>
-      </div>
+      {auditStats && (
+        <>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border-none shadow-xl bg-blue-600 text-white rounded-[2rem] p-6 relative overflow-hidden">
+              <div className="absolute right-0 top-0 p-4 opacity-10"><Activity className="h-20 w-20" /></div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-blue-100">Eficiencia de Red</p>
+              <div className="text-4xl font-black italic mt-2">{auditStats.efficiency.toFixed(1)}%</div>
+            </Card>
+            <Card className={cn("border-none shadow-xl rounded-[2rem] p-6 relative overflow-hidden", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
+              <div className="absolute right-0 top-0 p-4 opacity-10"><ShieldAlert className="h-20 w-20" /></div>
+              <p className={cn("text-[9px] font-black uppercase tracking-widest", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Activas</p>
+              <div className="text-4xl font-black italic mt-2">{auditStats.leakCount}</div>
+            </Card>
+            <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] p-6">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pérdida Económica</p>
+              <div className="text-4xl font-black italic text-rose-400 mt-2">${auditStats.lossCLP.toLocaleString()}</div>
+            </Card>
+            <Card className="border-none shadow-xl bg-white rounded-[2rem] p-6 border-2 border-slate-100">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Residencial</p>
+              <div className="text-4xl font-black text-slate-900 mt-2">{auditStats.sumUnits.toFixed(1)} m³</div>
+            </Card>
+          </div>
 
-      {/* BALANCE MAESTRO */}
-      <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
-        <CardHeader className="p-8 border-b bg-slate-50/50">
-          <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3"><Scale className="h-6 w-6 text-blue-600" /> Balance Maestro de Distribución</CardTitle>
-        </CardHeader>
-        <CardContent className="p-8 grid gap-10 md:grid-cols-3">
-          <div className="space-y-4">
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Matriz Aguas Andinas</p>
-            <p className="text-4xl font-black italic text-slate-900">{auditStats.matrixTotal.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
-            <Progress value={100} className="h-2 bg-slate-100" />
-          </div>
-          <div className="space-y-4">
-            <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Residentes</p>
-            <p className="text-4xl font-black italic text-blue-600">{auditStats.sumUnits.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
-            <Progress value={auditStats.efficiency} className="h-2 bg-blue-600" />
-          </div>
-          <div className="space-y-4">
-            <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial Áreas Comunes</p>
-            <p className="text-4xl font-black italic text-rose-600">{(auditStats.matrixTotal - auditStats.sumUnits).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
-            <Progress value={100 - auditStats.efficiency} className="h-2 bg-rose-600" />
-          </div>
-        </CardContent>
-      </Card>
+          <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+            <CardHeader className="p-8 border-b bg-slate-50/50">
+              <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3"><Scale className="h-6 w-6 text-blue-600" /> Balance Maestro de Distribución</CardTitle>
+            </CardHeader>
+            <CardContent className="p-8 grid gap-10 md:grid-cols-3">
+              <div className="space-y-4">
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Matriz Aguas Andinas</p>
+                <p className="text-4xl font-black italic text-slate-900">{auditStats.matrixTotal.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                <Progress value={100} className="h-2 bg-slate-100" />
+              </div>
+              <div className="space-y-4">
+                <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Residentes</p>
+                <p className="text-4xl font-black italic text-blue-600">{auditStats.sumUnits.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                <Progress value={auditStats.efficiency} className="h-2 bg-blue-600" />
+              </div>
+              <div className="space-y-4">
+                <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial Áreas Comunes</p>
+                <p className="text-4xl font-black italic text-rose-600">{(auditStats.matrixTotal - auditStats.sumUnits).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                <Progress value={100 - auditStats.efficiency} className="h-2 bg-rose-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* GRÁFICOS DE ANÁLISIS DE PATRONES */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -440,7 +487,9 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               <h3 className="text-3xl font-black italic uppercase tracking-tighter">Diagnóstico de Inteligencia</h3>
             </div>
             <p className="text-slate-400 text-lg leading-relaxed max-w-2xl font-medium">
-              "El recinto presenta un patrón de consumo nocturno estable, sin embargo, se detecta un incremento del <span className="text-blue-400">12% respecto a la semana pasada</span> en horas de la mañana. Se recomienda auditar el sistema de riego automático."
+              {commId === 'comm-juan-2' 
+                ? '"Condominio Mar Azul presenta una anomalía crítica en el sensor Área Común: Riego Jardín Norte. El consumo se mantiene estable en 0.8 L/min incluso en horario nocturno, sugiriendo una rotura de matriz."' 
+                : '"El recinto presenta un patrón de consumo nocturno estable, sin embargo, se detecta un incremento del 12% respecto a la semana pasada en horas de la mañana. Se recomienda auditar el sistema de riego automático."'}
             </p>
           </div>
         </Card>
@@ -467,50 +516,59 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad</TableHead>
+                  <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad / Categoría</TableHead>
                   <TableHead className="font-black uppercase text-[10px]">Estado</TableHead>
                   <TableHead className="font-black uppercase text-[10px]">Lectura</TableHead>
                   <TableHead className="text-right pr-8 font-black uppercase text-[10px]">Mando</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayMeters.map(m => (
-                  <Fragment key={m.id}>
-                    <TableRow 
-                      className={cn(
-                        "group hover:bg-slate-50 transition-colors cursor-pointer border-l-4", 
-                        m.hasLeakAlert ? "bg-rose-50/50 border-l-rose-500 hover:bg-rose-100/50" : "border-l-transparent"
-                      )} 
-                      onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
-                    >
-                      <TableCell className="pl-8 py-4 font-black text-slate-900">
-                        <div className="flex items-center gap-2">
-                          {m.unitIdentifier}
-                          {m.hasLeakAlert && (
-                            <Badge className="bg-rose-600 text-white font-black text-[7px] h-4 uppercase animate-pulse">ALERTA FUGA</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
-                          <span className="text-[10px] font-bold uppercase">{m.status}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</TableCell>
-                      <TableCell className="text-right pr-8">
-                        <Button size="sm" className={cn("h-8 rounded-xl font-black uppercase text-[8px] gap-2", m.status === 'open' ? "bg-slate-900" : "bg-blue-600")} onClick={e => { e.stopPropagation(); handleToggleValve(m); }}>
-                          {m.status === 'open' ? <><PowerOff className="h-3.5 w-3.5" /> Cortar</> : <><Power className="h-3.5 w-3.5" /> Abrir</>}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {expandedMeterId === m.id && (
-                      <TableRow className="bg-transparent border-none">
-                        <TableCell colSpan={4} className="p-0 border-none"><UnitAnalysisSection meter={m} /></TableCell>
+                {displayMeters.map(m => {
+                  const isInfrastructure = m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común");
+                  return (
+                    <Fragment key={m.id}>
+                      <TableRow 
+                        className={cn(
+                          "group hover:bg-slate-50 transition-colors cursor-pointer border-l-4", 
+                          m.hasLeakAlert ? "bg-rose-50/50 border-l-rose-500 hover:bg-rose-100/50" : (isInfrastructure ? "bg-blue-50/10 border-l-blue-400" : "border-l-transparent")
+                        )} 
+                        onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
+                      >
+                        <TableCell className="pl-8 py-4 font-black text-slate-900">
+                          <div className="flex items-center gap-3">
+                            {isInfrastructure && <Layers className="h-3.5 w-3.5 text-blue-600" />}
+                            <div className="flex flex-col">
+                              <span className="flex items-center gap-2">
+                                {m.unitIdentifier}
+                                {m.hasLeakAlert && (
+                                  <Badge className="bg-rose-600 text-white font-black text-[7px] h-4 uppercase animate-pulse">ALERTA FUGA</Badge>
+                                )}
+                              </span>
+                              {isInfrastructure && <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Infraestructura</span>}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
+                            <span className="text-[10px] font-bold uppercase">{m.status}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</TableCell>
+                        <TableCell className="text-right pr-8">
+                          <Button size="sm" className={cn("h-8 rounded-xl font-black uppercase text-[8px] gap-2", m.status === 'open' ? "bg-slate-900" : "bg-blue-600")} onClick={e => { e.stopPropagation(); handleToggleValve(m); }}>
+                            {m.status === 'open' ? <><PowerOff className="h-3.5 w-3.5" /> Cortar</> : <><Power className="h-3.5 w-3.5" /> Abrir</>}
+                          </Button>
+                        </TableCell>
                       </TableRow>
-                    )}
-                  </Fragment>
-                ))}
+                      {expandedMeterId === m.id && (
+                        <TableRow className="bg-transparent border-none">
+                          <TableCell colSpan={4} className="p-0 border-none"><UnitAnalysisSection meter={m} /></TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </Card>

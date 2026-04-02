@@ -87,7 +87,8 @@ import {
   PowerOff,
   Lock,
   Mail,
-  Send
+  Send,
+  Layers
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -142,33 +143,86 @@ const SIM_JUAN_COMMUNITIES: Community[] = [
   { id: 'comm-juan-2', companyId: 'adm-juan-f', name: 'Condominio Mar Azul', address: 'Av. Libertad 450, Viña del Mar', region: 'Valparaíso', city: 'Viña del Mar', commune: 'Viña del Mar', createdAt: new Date('2024-01-22').toISOString(), isActive: true },
 ];
 
-const SIM_JUAN_METERS: WaterMeter[] = Array.from({ length: 100 }, (_, i) => {
-  const id = i + 1;
-  const floor = Math.floor(i / 10) + 1;
-  const room = (i % 10) + 1;
-  const unit = `Depto ${floor}${room < 10 ? '0' + room : room}`;
-  const baseReading = 150 + (i * 12.4);
-  const variation = Math.random() * 5;
-  const reading = baseReading + variation;
-  const battery = Math.floor(Math.random() * 30) + 70;
-  const signal = Math.floor(Math.random() * 40) + 60;
-  const hasLeak = Math.random() > 0.96; 
-  const isClosed = Math.random() > 0.98;
+const generateMetersForCommunity = (commId: string): WaterMeter[] => {
+  if (commId === 'comm-juan-2') {
+    // Caso Mar Azul: Verticales y Áreas Comunes
+    const meters: WaterMeter[] = [];
+    
+    // 5 Verticales
+    for (let i = 1; i <= 5; i++) {
+      meters.push({
+        id: `meter-ma-vert-${i}`,
+        companyId: 'adm-juan-f',
+        communityId: 'comm-juan-2',
+        unitIdentifier: `Vertical Sector ${i}`,
+        status: 'open',
+        currentReading: 450 + (i * 150.5),
+        batteryLevel: 95,
+        signalStrength: 90,
+        hasLeakAlert: false,
+        lastCommunication: new Date().toISOString(),
+        devEUI: `VERT000${i}MA`
+      } as any);
+    }
 
-  return {
-    id: `meter-juan-${id}`,
-    companyId: 'adm-juan-f',
-    communityId: 'comm-juan-1',
-    unitIdentifier: unit,
-    status: isClosed ? 'closed' : 'open',
-    currentReading: reading,
-    batteryLevel: battery,
-    signalStrength: signal,
-    hasLeakAlert: hasLeak,
-    lastCommunication: new Date().toISOString(),
-    devEUI: `00112233445566${id.toString(16).padStart(2, '0').toUpperCase()}`
-  } as WaterMeter;
-});
+    // 5 Áreas Comunes
+    const commonAreas = ["Riego Jardín Norte", "Piscina Adultos", "Lavandería Piso 1", "Sala Multiuso", "Riego Jardín Sur"];
+    commonAreas.forEach((area, i) => {
+      meters.push({
+        id: `meter-ma-common-${i}`,
+        companyId: 'adm-juan-f',
+        communityId: 'comm-juan-2',
+        unitIdentifier: `Área Común: ${area}`,
+        status: 'open',
+        currentReading: 80 + (i * 22.4),
+        batteryLevel: 88,
+        signalStrength: 85,
+        hasLeakAlert: i === 0, // Fuga simulada en riego
+        lastCommunication: new Date().toISOString(),
+        devEUI: `COMM000${i}MA`
+      } as any);
+    });
+
+    // 90 Residentes
+    for (let i = 1; i <= 90; i++) {
+      meters.push({
+        id: `meter-ma-res-${i}`,
+        companyId: 'adm-juan-f',
+        communityId: 'comm-juan-2',
+        unitIdentifier: `Depto ${100 + i}`,
+        status: Math.random() > 0.98 ? 'closed' : 'open',
+        currentReading: 120 + (i * 5.2),
+        batteryLevel: 75 + Math.random() * 20,
+        signalStrength: 70 + Math.random() * 20,
+        hasLeakAlert: Math.random() > 0.97,
+        lastCommunication: new Date().toISOString(),
+        devEUI: `RES000${i}MA`
+      } as any);
+    }
+    return meters;
+  }
+
+  // Caso Horizonte: Solo residentes (100)
+  return Array.from({ length: 100 }, (_, i) => {
+    const id = i + 1;
+    const floor = Math.floor(i / 10) + 1;
+    const room = (i % 10) + 1;
+    const unit = `Depto ${floor}${room < 10 ? '0' + room : room}`;
+    return {
+      id: `meter-juan-${id}`,
+      companyId: 'adm-juan-f',
+      communityId: 'comm-juan-1',
+      unitIdentifier: unit,
+      status: Math.random() > 0.98 ? 'closed' : 'open',
+      currentReading: 150 + (i * 12.4),
+      batteryLevel: 70 + Math.random() * 30,
+      signalStrength: 60 + Math.random() * 40,
+      hasLeakAlert: Math.random() > 0.96,
+      lastCommunication: new Date().toISOString(),
+      devEUI: `HORIZON${id.toString(16).toUpperCase()}`
+    } as any;
+  });
+};
 
 const TREND_DATA = [
   { day: "Lun", actual: 45, previous: 42 },
@@ -319,11 +373,6 @@ function AdminCompaniesContent() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ companyName: "", adminName: "", adminEmail: "", adminRut: "", address: "", currentPlan: "simple" as any });
-  const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [configData, setConfigData] = useState({ currentPlan: "simple" as any, subscriptionStatus: "active" as any, isActive: true });
-
-  const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
-  const [commData, setCommData] = useState({ name: "", region: "", city: "", commune: "", street: "", number: "", complement: "" });
 
   useEffect(() => {
     setMounted(true);
@@ -375,8 +424,8 @@ function AdminCompaniesContent() {
 
   const [simMeters, setSimMeters] = useState<WaterMeter[]>([]);
   useEffect(() => {
-    if (viewingCommunityId === 'comm-juan-1' || viewingCommunityId === 'comm-juan-2') {
-      setSimMeters(SIM_JUAN_METERS);
+    if (viewingCommunityId) {
+      setSimMeters(generateMetersForCommunity(viewingCommunityId));
     }
   }, [viewingCommunityId]);
 
@@ -398,10 +447,23 @@ function AdminCompaniesContent() {
   const auditStats = useMemo(() => {
     const list = communityMeters;
     if (list.length === 0) return null;
-    const sumUnits = list.reduce((acc, m) => acc + m.currentReading, 0);
+    
+    // Si es Mar Azul, el total residencial excluye verticales
+    const residential = list.filter(m => !m.unitIdentifier.includes("Vertical"));
+    const sumUnits = residential.reduce((acc, m) => acc + m.currentReading, 0);
+    
+    // Matriz es un 15% más que la suma de unidades
     const matrixTotal = sumUnits * 1.15;
     const commonAreas = matrixTotal - sumUnits;
-    return { sumUnits, matrixTotal, commonAreas, efficiency: (sumUnits / matrixTotal) * 100, lossCLP: commonAreas * 1800, leakCount: list.filter(m => m.hasLeakAlert).length };
+    
+    return { 
+      sumUnits, 
+      matrixTotal, 
+      commonAreas, 
+      efficiency: (sumUnits / matrixTotal) * 100, 
+      lossCLP: commonAreas * 1800, 
+      leakCount: list.filter(m => m.hasLeakAlert).length 
+    };
   }, [communityMeters]);
 
   const handleToggleValveRequest = (meter: WaterMeter) => {
@@ -519,7 +581,11 @@ function AdminCompaniesContent() {
                 <div className="absolute right-0 bottom-0 p-10 opacity-10 group-hover:scale-110 transition-transform"><Sparkles className="h-40 w-40 text-blue-400" /></div>
                 <div className="relative z-10 space-y-6">
                   <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-4 py-1">Análisis Predictivo GENKO</Badge>
-                  <p className="text-slate-400 text-lg leading-relaxed font-medium italic">"Se detecta incremento del 12% en horas punta. Recomendado auditar riego."</p>
+                  <p className="text-slate-400 text-lg leading-relaxed font-medium italic">
+                    {viewingCommunityId === 'comm-juan-2' 
+                      ? '"Se detecta flujo anómalo en Área Común: Riego Jardín Norte. Posible aspersor roto o fuga en matriz de patio."' 
+                      : '"Se detecta incremento del 12% en horas punta. Recomendado auditar riego."'}
+                  </p>
                 </div>
               </Card>
             </div>
@@ -539,50 +605,59 @@ function AdminCompaniesContent() {
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
-                  <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad</TableHead>
+                  <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad / Categoría</TableHead>
                   <TableHead className="font-black uppercase text-[10px]">Estado</TableHead>
                   <TableHead className="font-black uppercase text-[10px]">Lectura</TableHead>
                   <TableHead className="text-right pr-8 font-black uppercase text-[10px]">Mando</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {communityMeters.map((m) => (
-                  <Fragment key={m.id}>
-                    <TableRow 
-                      className={cn(
-                        "group hover:bg-slate-50 transition-colors cursor-pointer border-l-4", 
-                        m.hasLeakAlert ? "bg-rose-50/50 border-l-rose-500 hover:bg-rose-100/50" : "border-l-transparent"
-                      )} 
-                      onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
-                    >
-                      <TableCell className="pl-8 py-4 font-black text-slate-900">
-                        <div className="flex items-center gap-2">
-                          {m.unitIdentifier}
-                          {m.hasLeakAlert && (
-                            <Badge className="bg-rose-600 text-white font-black text-[7px] h-4 uppercase animate-pulse">ALERTA FUGA</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
-                          <span className="text-[10px] font-bold uppercase">{m.status}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</TableCell>
-                      <TableCell className="text-right pr-8">
-                        <Button size="sm" className={cn("h-8 px-4 rounded-xl font-black uppercase text-[8px] gap-2", m.status === 'open' ? "bg-slate-900 text-white" : "bg-blue-600 text-white")} onClick={(e) => { e.stopPropagation(); handleToggleValveRequest(m); }}>
-                          {m.status === 'open' ? <><PowerOff className="h-3.5 w-3.5" /> Cortar</> : <><Power className="h-3.5 w-3.5" /> Abrir</>}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {expandedMeterId === m.id && (
-                      <TableRow className="bg-transparent border-none">
-                        <TableCell colSpan={4} className="p-0 border-none"><UnitAnalysisSection meter={m} /></TableCell>
+                {communityMeters.map((m) => {
+                  const isInfrastructure = m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común");
+                  return (
+                    <Fragment key={m.id}>
+                      <TableRow 
+                        className={cn(
+                          "group hover:bg-slate-50 transition-colors cursor-pointer border-l-4", 
+                          m.hasLeakAlert ? "bg-rose-50/50 border-l-rose-500 hover:bg-rose-100/50" : (isInfrastructure ? "bg-blue-50/10 border-l-blue-400" : "border-l-transparent")
+                        )} 
+                        onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
+                      >
+                        <TableCell className="pl-8 py-4 font-black text-slate-900">
+                          <div className="flex items-center gap-3">
+                            {isInfrastructure && <Layers className="h-3.5 w-3.5 text-blue-600" />}
+                            <div className="flex flex-col">
+                              <span className="flex items-center gap-2">
+                                {m.unitIdentifier}
+                                {m.hasLeakAlert && (
+                                  <Badge className="bg-rose-600 text-white font-black text-[7px] h-4 uppercase animate-pulse">ALERTA FUGA</Badge>
+                                )}
+                              </span>
+                              {isInfrastructure && <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Infraestructura</span>}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
+                            <span className="text-[10px] font-bold uppercase">{m.status}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</TableCell>
+                        <TableCell className="text-right pr-8">
+                          <Button size="sm" className={cn("h-8 px-4 rounded-xl font-black uppercase text-[8px] gap-2", m.status === 'open' ? "bg-slate-900 text-white" : "bg-blue-600 text-white")} onClick={(e) => { e.stopPropagation(); handleToggleValveRequest(m); }}>
+                            {m.status === 'open' ? <><PowerOff className="h-3.5 w-3.5" /> Cortar</> : <><Power className="h-3.5 w-3.5" /> Abrir</>}
+                          </Button>
+                        </TableCell>
                       </TableRow>
-                    )}
-                  </Fragment>
-                ))}
+                      {expandedMeterId === m.id && (
+                        <TableRow className="bg-transparent border-none">
+                          <TableCell colSpan={4} className="p-0 border-none"><UnitAnalysisSection meter={m} /></TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </TableBody>
             </Table>
           </Card>
