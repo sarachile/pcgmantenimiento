@@ -82,7 +82,10 @@ import {
   ChevronDown,
   ChevronUp,
   Maximize2,
-  Scale
+  Scale,
+  Power,
+  PowerOff,
+  Lock
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -407,7 +410,7 @@ function UnitAnalysisSection({ meter }: { meter: WaterMeter }) {
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={hourly}>
                     <defs>
-                      <linearGradient id="colorUnit" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="colorUnit" x1="0" x1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
                       </linearGradient>
@@ -450,7 +453,7 @@ function AdminCompaniesContent() {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isSuperAdmin, isLoading: isUserLoading } = useUser();
+  const { isSuperAdmin, isLoading: isUserLoading, profile } = useUser();
   const db = useFirestore();
   const auth = useAuth();
   
@@ -459,7 +462,13 @@ function AdminCompaniesContent() {
   const [meterViewMode, setMeterViewMode] = useState<'grid' | 'list'>('list');
   const [mounted, setMounted] = useState(false);
   const [expandedMeterId, setExpandedMeterId] = useState<string | null>(null);
+  const [isProcessingValve, setIsProcessingValve] = useState<string | null>(null);
   
+  // PIN Dialog for valve toggle
+  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pendingMeter, setPendingMeter] = useState<WaterMeter | null>(null);
+
   // Niveles de Navegación
   const [viewingAdminId, setViewingAdminId] = useState<string | null>(null);
   const [viewingCommunityId, setViewingCommunityId] = useState<string | null>(null);
@@ -501,14 +510,14 @@ function AdminCompaniesContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!isAddCommunityOpen && !isConfigOpen && !isCreateOpen && !isEnrollOpen && !isScannerOpen) {
+    if (!isAddCommunityOpen && !isConfigOpen && !isCreateOpen && !isEnrollOpen && !isScannerOpen && !isPinDialogOpen) {
       const timer = setTimeout(() => {
         document.body.style.pointerEvents = 'auto';
         document.body.style.overflow = 'auto';
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isAddCommunityOpen, isConfigOpen, isCreateOpen, isEnrollOpen, isScannerOpen]);
+  }, [isAddCommunityOpen, isConfigOpen, isCreateOpen, isEnrollOpen, isScannerOpen, isPinDialogOpen]);
 
   const administratorsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
@@ -560,8 +569,17 @@ function AdminCompaniesContent() {
   const { data: rawCommunityMeters } = useCollection<WaterMeter>(metersQuery);
   const { data: rawCommunitySensors } = useCollection<Asset>(sensorsQuery);
 
+  // Local state for valve toggling simulation in Juan Fernandez demo
+  const [simMeters, setSimMeters] = useState<WaterMeter[]>([]);
+
+  useEffect(() => {
+    if (viewingCommunityId === 'comm-juan-1') {
+      setSimMeters(SIM_JUAN_METERS);
+    }
+  }, [viewingCommunityId]);
+
   const communityMeters = useMemo(() => {
-    let list = viewingCommunityId === 'comm-juan-1' ? SIM_JUAN_METERS : (rawCommunityMeters || []);
+    let list = viewingCommunityId === 'comm-juan-1' ? simMeters : (rawCommunityMeters || []);
     if (meterSearchTerm) {
       list = list.filter(m => 
         m.unitIdentifier.toLowerCase().includes(meterSearchTerm.toLowerCase()) || 
@@ -569,7 +587,7 @@ function AdminCompaniesContent() {
       );
     }
     return list;
-  }, [rawCommunityMeters, viewingCommunityId, meterSearchTerm]);
+  }, [rawCommunityMeters, viewingCommunityId, meterSearchTerm, simMeters]);
 
   // KPIs DE AUDITORÍA HÍDRICA REAL (Juan Fernández Simulation)
   const auditStats = useMemo(() => {
@@ -778,6 +796,58 @@ function AdminCompaniesContent() {
     setIsConfigOpen(false);
   };
 
+  // VALVE TOGGLE LOGIC
+  const handleToggleValveRequest = (meter: WaterMeter) => {
+    setPendingMeter(meter);
+    setPinInput("");
+    setIsPinDialogOpen(true);
+  };
+
+  const handleConfirmPin = async () => {
+    if (!pendingMeter || !profile) return;
+
+    // Validation PIN (Master PIN or profile PIN)
+    const isCorrect = pinInput === "123456" || pinInput === profile.pin;
+
+    if (isCorrect) {
+      setIsPinDialogOpen(false);
+      executeToggleValve(pendingMeter);
+    } else {
+      toast({
+        title: "PIN Incorrecto",
+        description: "Acceso denegado al comando de válvula.",
+        variant: "destructive"
+      });
+      setPinInput("");
+    }
+  };
+
+  const executeToggleValve = async (meter: WaterMeter) => {
+    setIsProcessingValve(meter.id);
+    const newStatus = meter.status === 'open' ? 'closed' : 'open';
+
+    try {
+      if (viewingCommunityId === 'comm-juan-1') {
+        // Update simulation state
+        setSimMeters(prev => prev.map(m => m.id === meter.id ? { ...m, status: newStatus as any } : m));
+      } else if (db && viewingAdminId) {
+        // Update real Firestore doc
+        const meterRef = doc(db, "companies", viewingAdminId, "waterMeters", meter.id);
+        updateDocumentNonBlocking(meterRef, { status: newStatus, updatedAt: serverTimestamp() });
+      }
+
+      toast({
+        title: newStatus === 'open' ? "Válvula Abierta" : "Válvula Cerrada",
+        description: `Comando enviado con éxito a ${meter.unitIdentifier}.`,
+        variant: newStatus === 'open' ? 'default' : 'destructive'
+      });
+    } catch (e) {
+      toast({ title: "Error al enviar comando", variant: "destructive" });
+    } finally {
+      setTimeout(() => setIsProcessingValve(null), 1000);
+    }
+  };
+
   const formatDate = (date: any) => {
     if (!mounted || !date) return '...';
     try {
@@ -918,7 +988,7 @@ function AdminCompaniesContent() {
               </Card>
             </div>
 
-            {/* BALANCE DE DISTRIBUCIÓN HÍDRICA (NUEVO PANEL SOLICITADO) */}
+            {/* BALANCE DE DISTRIBUCIÓN HÍDRICA */}
             <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
               <CardHeader className="p-8 border-b bg-slate-50/50">
                 <div className="flex items-center gap-3">
@@ -1130,9 +1200,20 @@ function AdminCompaniesContent() {
                         <CardContent className="p-6 space-y-4">
                           <div className="flex items-center justify-between">
                             <div className={cn("p-3 rounded-2xl transition-all", m.status === 'open' ? "bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white" : "bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white")}><Droplets className="h-6 w-6" /></div>
-                            <div className="flex gap-1.5">
+                            <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
                               {m.hasLeakAlert && <Badge className="bg-rose-600 text-white font-black text-[7px] uppercase px-2 h-5 animate-pulse">FUGA</Badge>}
-                              <Badge className={cn("font-black text-[8px] uppercase px-2 h-5", m.status === 'open' ? "bg-emerald-50 text-emerald-700" : "bg-rose-100 text-rose-700")}>{m.status === 'open' ? 'Online' : 'Cerrado'}</Badge>
+                              <Button 
+                                onClick={() => handleToggleValveRequest(m)}
+                                disabled={isProcessingValve === m.id}
+                                className={cn(
+                                  "h-6 px-2 rounded-lg font-black uppercase text-[7px] gap-1 transition-all active:scale-95",
+                                  m.status === 'open' ? "bg-slate-900 text-white hover:bg-rose-600" : "bg-blue-600 text-white hover:bg-blue-500"
+                                )}
+                              >
+                                {isProcessingValve === m.id ? <Loader2 className="h-2 w-2 animate-spin" /> : (
+                                  m.status === 'open' ? <><PowerOff className="h-2 w-2" /> Cortar</> : <><Power className="h-2 w-2" /> Abrir</>
+                                )}
+                              </Button>
                             </div>
                           </div>
                           <div className="flex items-center justify-between">
@@ -1169,7 +1250,7 @@ function AdminCompaniesContent() {
                       <TableHead className="font-black uppercase text-[10px]">Estado Operativo</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Lectura Actual</TableHead>
                       <TableHead className="font-black uppercase text-[10px]">Batería / Señal</TableHead>
-                      <TableHead className="font-black uppercase text-[10px] text-right pr-8">DevEUI</TableHead>
+                      <TableHead className="text-right pr-8 font-black uppercase text-[10px]">Mando Remoto</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1196,7 +1277,7 @@ function AdminCompaniesContent() {
                             <div className="flex items-center gap-2">
                               <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
                               <span className="text-[10px] font-bold uppercase text-slate-600">{m.status}</span>
-                              {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[7px] h-4 font-black">ALERTA FUGA</Badge>}
+                              {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[7px] h-4 font-black ml-2">ALERTA FUGA</Badge>}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -1209,7 +1290,20 @@ function AdminCompaniesContent() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right pr-8">
-                            <code className="text-[10px] font-mono bg-slate-100 px-2 py-1 rounded text-slate-500">{m.devEUI}</code>
+                            <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+                              <Button 
+                                onClick={() => handleToggleValveRequest(m)}
+                                disabled={isProcessingValve === m.id}
+                                className={cn(
+                                  "h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-2 shadow-sm transition-all active:scale-95",
+                                  m.status === 'open' ? "bg-slate-900 text-white hover:bg-rose-600" : "bg-blue-600 text-white hover:bg-blue-500"
+                                )}
+                              >
+                                {isProcessingValve === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : (
+                                  m.status === 'open' ? <><PowerOff className="h-3.5 w-3.5" /> Cortar</> : <><Power className="h-3.5 w-3.5" /> Abrir</>
+                                )}
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                         {expandedMeterId === m.id && (
@@ -1253,6 +1347,55 @@ function AdminCompaniesContent() {
             </div>
           </div>
         </div>
+
+        {/* DIÁLOGO DE SEGURIDAD (PIN CHALLENGE) */}
+        <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+          <DialogContent className="sm:max-w-[400px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+            <div className="p-8 space-y-6 text-center">
+              <div className="bg-slate-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <Lock className="h-10 w-10 text-slate-900" />
+              </div>
+              <div className="space-y-2">
+                <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Validación de Comando</DialogTitle>
+                <DialogDescription className="font-bold text-slate-500">
+                  Está a punto de {pendingMeter?.status === 'open' ? 'cortar' : 'restablecer'} el suministro de <strong>{pendingMeter?.unitIdentifier}</strong>. Ingrese su PIN de administrador para confirmar.
+                </DialogDescription>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em]">PIN de Seguridad</Label>
+                <Input 
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="******"
+                  autoComplete="one-time-code"
+                  className="h-16 text-center text-3xl font-black tracking-[0.5em] rounded-2xl border-2 border-slate-200 focus:border-blue-600 shadow-inner"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+                  onKeyDown={(e) => e.key === 'Enter' && pinInput.length >= 6 && handleConfirmPin()}
+                />
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Button 
+                  className="w-full h-14 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest gap-2 shadow-xl"
+                  onClick={handleConfirmPin}
+                  disabled={pinInput.length < 6}
+                >
+                  <ShieldCheck className="h-5 w-5" /> Confirmar Operación
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  className="text-slate-400 font-bold uppercase text-[10px]"
+                  onClick={() => setIsPinDialogOpen(false)}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
