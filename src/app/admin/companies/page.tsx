@@ -368,6 +368,10 @@ function AdminCompaniesContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ companyName: "", adminName: "", adminEmail: "", adminRut: "", address: "", currentPlan: "simple" as any });
 
+  // State for dynamic PDF generation
+  const [pdfData, setPdfData] = useState<any[] | null>(null);
+  const [pdfPeriod, setPdfPeriod] = useState<string | null>(null);
+
   useEffect(() => {
     setMounted(true);
     const adminId = searchParams.get('id');
@@ -535,12 +539,12 @@ function AdminCompaniesContent() {
     }
   };
 
-  const handleDownloadBillingPdf = async () => {
+  const generatePdf = async (customPeriod?: string) => {
     if (!reportRef.current) return;
     setIsGeneratingPdf(true);
     try {
-      toast({ title: "Generando Reporte", description: "Consolidando lecturas mensuales..." });
-      await new Promise(r => setTimeout(r, 1000));
+      // Small delay to ensure React has rendered the new data in the hidden component
+      await new Promise(r => setTimeout(r, 500));
       
       const element = reportRef.current;
       const canvas = await html2canvas(element, { 
@@ -573,14 +577,29 @@ function AdminCompaniesContent() {
         heightLeft -= pdfHeight;
       }
 
-      pdf.save(`CIERRE_MENSUAL_${selectedCommunity?.name || 'RECINTO'}_${format(new Date(), "MM_yyyy")}.pdf`);
+      const fileName = `CIERRE_MENSUAL_${selectedCommunity?.name || 'RECINTO'}_${(customPeriod || format(new Date(), "MM_yyyy")).replace(/\s/g, '_')}.pdf`;
+      pdf.save(fileName);
       toast({ title: "Reporte Descargado" });
     } catch (e) {
       console.error("PDF Error:", e);
       toast({ title: "Error al generar PDF", variant: "destructive" });
     } finally {
       setIsGeneratingPdf(false);
+      setPdfData(null);
+      setPdfPeriod(null);
     }
+  };
+
+  const handleDownloadBillingPdf = async () => {
+    setPdfData(billingData);
+    setPdfPeriod(format(new Date(), "MMMM yyyy", { locale: es }));
+    generatePdf();
+  };
+
+  const handleDownloadHistoricalPdf = (closure: BillingClosure) => {
+    setPdfData(closure.readings);
+    setPdfPeriod(closure.period);
+    generatePdf(closure.period);
   };
 
   const formatDate = (date: any) => {
@@ -601,8 +620,8 @@ function AdminCompaniesContent() {
           <MonthlyBillingReport 
             forwardedRef={reportRef} 
             communityName={selectedCommunity.name} 
-            data={billingData} 
-            period={format(new Date(), "MMMM yyyy", { locale: es })}
+            data={pdfData || billingData} 
+            period={pdfPeriod || format(new Date(), "MMMM yyyy", { locale: es })}
           />
         </div>
 
@@ -890,7 +909,7 @@ function AdminCompaniesContent() {
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-10">
+                        <div className="flex items-center gap-6">
                           <div className="text-right hidden sm:block">
                             <p className="text-[9px] font-black uppercase text-slate-400">Unidades</p>
                             <p className="font-black text-slate-900">{closure.unitCount}</p>
@@ -903,9 +922,20 @@ function AdminCompaniesContent() {
                             <p className="text-[9px] font-black uppercase text-slate-400">Total Liquidado</p>
                             <p className="text-xl font-black text-slate-900">$ {closure.totalCost.toLocaleString()}</p>
                           </div>
-                          <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10">
-                            <ChevronRight className="h-5 w-5 text-slate-300" />
-                          </Button>
+                          <div className="flex gap-2 ml-4">
+                            <Button 
+                              variant="outline" 
+                              size="icon" 
+                              className="rounded-xl h-10 w-10 border-blue-100 text-blue-600 hover:bg-blue-50"
+                              onClick={() => handleDownloadHistoricalPdf(closure)}
+                              disabled={isGeneratingPdf}
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10">
+                              <ChevronRight className="h-5 w-5 text-slate-300" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
