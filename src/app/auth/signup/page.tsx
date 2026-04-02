@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth, useFirestore } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,8 @@ import {
   Building2, 
   KeyRound, 
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
@@ -26,13 +27,16 @@ import { addDays } from 'date-fns';
 
 const SUPERADMIN_EMAIL = 'control@pcgoperacion.com';
 
-export default function SignupPage() {
+function SignupContent() {
+  const searchParams = useSearchParams();
+  const invitationCode = searchParams.get('companyId');
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [companyCode, setCompanyCode] = useState('');
-  const [signupMode, setSignupMode] = useState<'new' | 'join'>('new');
+  const [companyCode, setCompanyCode] = useState(invitationCode || '');
+  const [signupMode, setSignupMode] = useState<'new' | 'join'>(invitationCode ? 'join' : 'new');
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   
@@ -68,7 +72,7 @@ export default function SignupPage() {
         if (!companySnap.exists()) throw new Error("El código de acceso no es válido.");
         const companyData = companySnap.data();
         if (!companyData.isActive) throw new Error("Esta empresa se encuentra suspendida.");
-        role = 'tecnico';
+        role = 'companyAdmin'; // Al unirse por invitación directa de Superadmin, asume este rol
       }
 
       if (isSuperAdminAccount) {
@@ -138,16 +142,18 @@ export default function SignupPage() {
         <Card className="w-full border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
           <CardHeader className="space-y-1 flex flex-col items-center p-10">
             <div className="bg-primary/10 p-4 rounded-3xl mb-4"><ShieldPlus className="h-10 w-10 text-primary" /></div>
-            <CardTitle className="text-3xl font-black tracking-tighter uppercase italic">Empezar Ahora</CardTitle>
+            <CardTitle className="text-3xl font-black tracking-tighter uppercase italic">
+              {invitationCode ? "Activar Invitación" : "Empezar Ahora"}
+            </CardTitle>
             <CardDescription className="text-base font-medium">Digitalice su operación técnica en minutos.</CardDescription>
           </CardHeader>
           
           <form onSubmit={handleSignup}>
             <CardContent className="space-y-6 px-10 pb-6">
-              <Tabs defaultValue="new" onValueChange={(v) => setSignupMode(v as any)} className="w-full">
+              <Tabs value={signupMode} onValueChange={(v) => setSignupMode(v as any)} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 h-14 bg-slate-100 rounded-2xl p-1 mb-6">
                   <TabsTrigger value="new" className="rounded-xl font-black uppercase text-[10px] tracking-widest">Registrar Empresa</TabsTrigger>
-                  <TabsTrigger value="join" className="rounded-xl font-black uppercase text-[10px] tracking-widest">Unirme a Empresa</TabsTrigger>
+                  <TabsTrigger value="join" className="rounded-xl font-black uppercase text-[10px] tracking-widest">Unirme por Código</TabsTrigger>
                 </TabsList>
                 <TabsContent value="new" className="space-y-4">
                   <div className="space-y-2">
@@ -165,16 +171,22 @@ export default function SignupPage() {
                       <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <Input placeholder="comp-xxxxxx" className="h-14 pl-12 rounded-2xl border-2 font-mono font-bold" value={companyCode} onChange={(e) => setCompanyCode(e.target.value)} />
                     </div>
+                    {invitationCode && (
+                      <div className="flex items-center gap-2 text-emerald-600 mt-2 px-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Invitación Validada</span>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
               </Tabs>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre</Label><Input placeholder="Juan Soto" required className="h-12 rounded-xl border-2 font-bold" value={name} onChange={(e) => setName(e.target.value)} /></div>
-                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email</Label><Input type="email" placeholder="nombre@empresa.cl" required className="h-12 rounded-xl border-2 font-bold" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Tu Nombre Completo</Label><Input placeholder="Juan Soto" required className="h-12 rounded-xl border-2 font-bold" value={name} onChange={(e) => setName(e.target.value)} /></div>
+                <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Tu Email Corporativo</Label><Input type="email" placeholder="nombre@empresa.cl" required className="h-12 rounded-xl border-2 font-bold" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
               </div>
               
-              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Contraseña</Label><Input type="password" placeholder="Mínimo 6 caracteres" required className="h-12 rounded-xl border-2 font-bold" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+              <div className="space-y-2"><Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Contraseña de Acceso</Label><Input type="password" placeholder="Mínimo 6 caracteres" required className="h-12 rounded-xl border-2 font-bold" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
 
               <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-2xl border-2 border-slate-100">
                 <Checkbox id="terms" checked={acceptedTerms} onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)} className="mt-1 h-5 w-5" />
@@ -184,7 +196,7 @@ export default function SignupPage() {
             
             <CardFooter className="flex flex-col gap-6 p-10 pt-0">
               <Button className="w-full h-16 rounded-2xl font-black text-lg uppercase tracking-widest shadow-xl" type="submit" disabled={loading || !acceptedTerms}>
-                {loading ? <Loader2 className="animate-spin h-6 w-6" /> : "Crear Acceso"} <ArrowRight className="ml-2 h-5 w-5" />
+                {loading ? <Loader2 className="animate-spin h-6 w-6" /> : "Finalizar y Entrar"} <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <p className="text-sm text-center text-muted-foreground">¿Ya tienes cuenta? <Link href="/auth/login" className="text-primary font-black uppercase text-xs">Iniciar Sesión</Link></p>
             </CardFooter>
@@ -192,5 +204,13 @@ export default function SignupPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>
+      <SignupContent />
+    </Suspense>
   );
 }

@@ -85,7 +85,9 @@ import {
   Scale,
   Power,
   PowerOff,
-  Lock
+  Lock,
+  Mail,
+  Send
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -99,9 +101,7 @@ import {
   Bar,
   ReferenceLine,
   Cell,
-  Legend,
-  LineChart,
-  Line
+  Legend
 } from "recharts";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -125,6 +125,7 @@ import { signOut } from "firebase/auth";
 import { CHILE_REGIONS } from "@/lib/chile-data";
 import jsQR from "jsqr";
 import { Progress } from "@/components/ui/progress";
+import { sendSystemEmail } from "@/actions/email";
 
 // --- SIMULATED DATA FOR JUAN FERNANDEZ ---
 const SIM_JUAN_ADMIN: Company = {
@@ -476,7 +477,14 @@ function AdminCompaniesContent() {
   // State para creación/edición
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ name: "", address: "", currentPlan: "simple" as any });
+  const [formData, setFormData] = useState({ 
+    companyName: "", 
+    adminName: "", 
+    adminEmail: "", 
+    adminRut: "", 
+    address: "", 
+    currentPlan: "simple" as any 
+  });
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [configData, setConfigData] = useState({ currentPlan: "simple" as any, subscriptionStatus: "active" as any, isActive: true });
 
@@ -639,27 +647,77 @@ function AdminCompaniesContent() {
     c.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleCreateAdmin = (e: React.FormEvent) => {
+  const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!db) return;
+    
     setIsSubmitting(true);
     const adminId = `adm-${Math.random().toString(36).substr(2, 6)}`;
-    const adminRef = doc(db, "companies", adminId);
-    const adminData = {
-      id: adminId,
-      name: formData.name || "Nombre por definir",
-      rut: "RUT por definir", 
-      address: formData.address || "Dirección por definir",
-      currentPlan: formData.currentPlan,
-      subscriptionStatus: "active",
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    };
-    setDocumentNonBlocking(adminRef, adminData, { merge: true });
-    toast({ title: "Administrador Creado" });
-    setIsCreateOpen(false);
-    setFormData({ name: "", address: "", currentPlan: "simple" });
-    setIsSubmitting(false);
+    
+    try {
+      // 1. Crear Empresa (Tenant)
+      const adminRef = doc(db, "companies", adminId);
+      const adminData = {
+        id: adminId,
+        name: formData.companyName || "Nombre por definir",
+        rut: formData.adminRut || "RUT por definir", 
+        address: formData.address || "Dirección por definir",
+        currentPlan: formData.currentPlan,
+        subscriptionStatus: "active",
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+      await setDoc(adminRef, adminData, { merge: true });
+
+      // 2. Enviar Invitación por Email
+      if (formData.adminEmail) {
+        const signupUrl = `${window.location.origin}/auth/signup?companyId=${adminId}`;
+        
+        await sendSystemEmail({
+          to: formData.adminEmail,
+          subject: `INVITACIÓN GENKO ERP - Bienvenido ${formData.adminName}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 24px; padding: 40px; background-color: #ffffff;">
+              <div style="text-align: center; margin-bottom: 32px;">
+                <h1 style="color: #1e3a8a; font-size: 28px; font-weight: 900; margin: 0; text-transform: uppercase;">GENKO <span style="color: #3b82f6;">ERP</span></h1>
+                <p style="color: #64748b; font-size: 14px; margin-top: 4px;">Plataforma de Gestión Hídrica Industrial</p>
+              </div>
+              <h2 style="color: #1e3a8a; font-size: 20px; margin-bottom: 24px;">Activación de Cuenta Administrador</h2>
+              <p>Estimado(a) <strong>${formData.adminName}</strong>,</p>
+              <p>Le damos la bienvenida a la red de gestión inteligente de <strong>GENKO</strong>.</p>
+              <p>Se ha habilitado el entorno corporativo para <strong>${formData.companyName}</strong>. A partir de ahora, podrá centralizar la telemetría de sus recintos, gestionar cuadrillas y automatizar su facturación DTE.</p>
+              
+              <div style="background-color: #f8fafc; border: 2px dashed #3b82f6; border-radius: 20px; padding: 32px; margin: 32px 0; text-align: center;">
+                <p style="font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 2px;">Su Código de Vinculación</p>
+                <div style="font-size: 32px; font-family: monospace; font-weight: 900; color: #1e3a8a; letter-spacing: 4px; margin-bottom: 20px;">
+                  ${adminId}
+                </div>
+                <a href="${signupUrl}" style="background-color: #1e3a8a; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; display: inline-block;">ACTIVAR MI EMPRESA</a>
+              </div>
+              
+              <p style="font-size: 12px; color: #94a3b8; text-align: center; line-height: 1.6;">
+                * Al pulsar el botón será dirigido a la página de registro. Su cuenta quedará vinculada automáticamente a su empresa.<br/>
+                Servicio proporcionado por PCG OPERACIONES SPA.
+              </p>
+            </div>
+          `
+        });
+        
+        toast({ 
+          title: "Administrador Creado", 
+          description: `Invitación enviada a ${formData.adminEmail}.` 
+        });
+      } else {
+        toast({ title: "Entorno Generado", description: "Código de acceso listo para entrega manual." });
+      }
+
+      setIsCreateOpen(false);
+      setFormData({ companyName: "", adminName: "", adminEmail: "", adminRut: "", address: "", currentPlan: "simple" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAddCommunity = async () => {
@@ -1638,21 +1696,40 @@ function AdminCompaniesContent() {
           </Button>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="rounded-xl font-black gap-2 shadow-lg"><Plus className="h-4 w-4" /> Nuevo Administrador</Button>
+              <Button className="rounded-xl h-11 px-6 font-black gap-2 shadow-lg bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4" /> Registrar y Notificar Admin
+              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] rounded-[2.5rem]">
               <DialogHeader>
-                <DialogTitle className="text-2xl font-black italic uppercase">Registrar Nuevo Gestor</DialogTitle>
-                <DialogDescription>Cree el entorno para que el gestor pueda administrar sus comunidades.</DialogDescription>
+                <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">Alta de Administrador SaaS</DialogTitle>
+                <DialogDescription>El administrador recibirá una invitación por email para activar su cuenta.</DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateAdmin} className="space-y-6 py-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre Administrador / Empresa</Label>
-                    <Input placeholder="Ej: Administraciones Cordillera" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre Administrador / Empresa *</Label>
+                    <Input placeholder="Ej: Administraciones Cordillera" value={formData.companyName} onChange={(e) => setFormData({...formData, companyName: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre Responsable *</Label>
+                      <Input placeholder="Juan Pérez" value={formData.adminName} onChange={(e) => setFormData({...formData, adminName: e.target.value})} className="h-12 border-2 rounded-xl font-bold" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">RUT Empresa</Label>
+                      <Input placeholder="12.345.678-9" value={formData.adminRut} onChange={(e) => setFormData({...formData, adminRut: e.target.value})} className="h-12 border-2 rounded-xl font-bold" />
+                    </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Plan de Inicio</Label>
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Email Corporativo (Invitación) *</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input type="email" placeholder="admin@empresa.cl" value={formData.adminEmail} onChange={(e) => setFormData({...formData, adminEmail: e.target.value})} className="h-12 pl-10 border-2 rounded-xl font-bold" required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Plan de Suscripción</Label>
                     <Select value={formData.currentPlan} onValueChange={(val) => setFormData({...formData, currentPlan: val})}>
                       <SelectTrigger className="h-12 border-2 rounded-xl font-bold"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -1663,7 +1740,11 @@ function AdminCompaniesContent() {
                     </Select>
                   </div>
                 </div>
-                <DialogFooter><Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generar Entorno SaaS"}</Button></DialogFooter>
+                <DialogFooter>
+                  <Button type="submit" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-xl bg-blue-600" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <><Send className="h-4 w-4 mr-2" /> Generar y Enviar Invitación</>}
+                  </Button>
+                </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
