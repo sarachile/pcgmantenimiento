@@ -53,7 +53,8 @@ import {
   Scale,
   Receipt,
   FileText,
-  CalendarCheck
+  CalendarCheck,
+  Info
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -417,8 +418,11 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   <p className={cn("text-[9px] font-black uppercase tracking-widest", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Activas</p>
                   <div className="text-4xl font-black italic mt-2">{auditStats.leakCount}</div>
                 </Card>
-                <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] p-6">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pérdida Económica</p>
+                <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] p-6 relative">
+                  <div className="flex justify-between items-start">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pérdida Económica</p>
+                    <Info className="h-3 w-3 text-slate-600 cursor-help" title="Costo del agua pagada a la sanitaria pero no registrada por medidores internos (fugas en red matriz o sub-medición)." />
+                  </div>
                   <div className="text-4xl font-black italic text-rose-400 mt-2">${auditStats.lossCLP.toLocaleString()}</div>
                 </Card>
                 <Card className="border-none shadow-xl bg-white rounded-[2rem] p-6 border-2 border-slate-100">
