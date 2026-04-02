@@ -44,7 +44,8 @@ import {
   Scale,
   UserCog,
   Home,
-  ArrowUpRight
+  ArrowUpRight,
+  Receipt
 } from "lucide-react";
 import Link from "next/link";
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase";
@@ -104,7 +105,7 @@ export default function DashboardPage() {
   const communities = useMemo(() => {
     // Si el administrador es Juan Fernández, inyectamos su cartera simulada
     if (profile?.name?.includes("Juan Fernández") || company?.id === 'adm-juan-f') {
-      return SIM_JUAN_COMMUNITIES;
+      return SIM_JUAN_COMMITIES;
     }
     return rawCommunities || [];
   }, [rawCommunities, profile, company]);
