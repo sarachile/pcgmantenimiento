@@ -99,7 +99,9 @@ import {
   FileText,
   CalendarCheck,
   Download,
-  Info
+  Info,
+  History,
+  CheckCircle2
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -129,7 +131,7 @@ import {
   addDocumentNonBlocking
 } from "@/firebase";
 import { collection, doc, serverTimestamp, query, orderBy, where, setDoc } from "firebase/firestore";
-import { Company, Community, WaterMeter, Asset } from "@/lib/types";
+import { Company, Community, WaterMeter, Asset, BillingClosure } from "@/lib/types";
 import { format, parseISO, subHours } from "date-fns";
 import { es } from "date-fns/locale";
 import { signOut } from "firebase/auth";
@@ -353,6 +355,7 @@ function AdminCompaniesContent() {
   const [expandedMeterId, setExpandedMeterId] = useState<string | null>(null);
   const [isProcessingValve, setIsProcessingValve] = useState<string | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isClosingMonth, setIsClosingMonth] = useState(false);
   
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [pinInput, setPinInput] = useState("");
@@ -425,7 +428,13 @@ function AdminCompaniesContent() {
     return query(collection(db, "companies", viewingAdminId, "waterMeters"), where("communityId", "==", viewingCommunityId));
   }, [db, viewingAdminId, viewingCommunityId]);
 
+  const historyQuery = useMemoFirebase(() => 
+    db && viewingAdminId && viewingCommunityId ? query(collection(db, "companies", viewingAdminId, "communities", viewingCommunityId, "billingClosures"), orderBy("createdAt", "desc")) : null,
+    [db, viewingAdminId, viewingCommunityId]
+  );
+
   const { data: rawCommunityMeters } = useCollection<WaterMeter>(metersQuery);
+  const { data: closuresHistory, isLoading: isHistoryLoading } = useCollection<BillingClosure>(historyQuery);
 
   const communityMeters = useMemo(() => {
     let list = (viewingAdminId === 'adm-juan-f') ? simMeters : (rawCommunityMeters || []);
@@ -489,6 +498,40 @@ function AdminCompaniesContent() {
       toast({ title: newStatus === 'open' ? "Válvula Abierta" : "Válvula Cerrada" });
     } else {
       toast({ title: "PIN Incorrecto", variant: "destructive" });
+    }
+  };
+
+  const handlePerformMonthlyClosure = async () => {
+    if (!db || !viewingAdminId || !viewingCommunityId) return;
+    
+    setIsClosingMonth(true);
+    try {
+      const residential = billingData.filter(d => !d.isInfrastructure);
+      const totalConsumption = residential.reduce((acc, d) => acc + d.consumption, 0);
+      const totalCost = residential.reduce((acc, d) => acc + d.cost, 0);
+      const period = format(new Date(), "MMMM yyyy", { locale: es });
+
+      const closureData = {
+        companyId: viewingAdminId,
+        communityId: viewingCommunityId,
+        period,
+        totalConsumption,
+        totalCost,
+        unitCount: residential.length,
+        readings: billingData,
+        createdAt: serverTimestamp(),
+      };
+
+      await addDocumentNonBlocking(collection(db, "companies", viewingAdminId, "communities", viewingCommunityId, "billingClosures"), closureData);
+      
+      toast({ 
+        title: "Corte Mensual Realizado", 
+        description: `Se ha guardado el histórico para ${period}.`,
+      });
+    } catch (e) {
+      toast({ title: "Error al guardar histórico", variant: "destructive" });
+    } finally {
+      setIsClosingMonth(false);
     }
   };
 
@@ -746,7 +789,7 @@ function AdminCompaniesContent() {
             </div>
           </TabsContent>
 
-          <TabsContent value="billing" className="space-y-6 animate-in fade-in duration-300">
+          <TabsContent value="billing" className="space-y-10 animate-in fade-in duration-300">
             <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
               <CardHeader className="bg-slate-900 text-white p-8">
                 <div className="flex items-center justify-between">
@@ -775,11 +818,13 @@ function AdminCompaniesContent() {
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" className="rounded-xl h-11 bg-white font-bold gap-2">
-                      <FileText className="h-4 w-4" /> Importar Último Cierre
-                    </Button>
-                    <Button className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg" onClick={() => toast({ title: "Mes Cerrado", description: "Se han guardado las lecturas de facturación." })}>
-                      <CalendarCheck className="h-4 w-4" /> Realizar Corte Mensual
+                    <Button 
+                      className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg" 
+                      onClick={handlePerformMonthlyClosure}
+                      disabled={isClosingMonth}
+                    >
+                      {isClosingMonth ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />} 
+                      Realizar Corte Mensual
                     </Button>
                   </div>
                 </div>
@@ -821,6 +866,58 @@ function AdminCompaniesContent() {
                 </div>
               </CardContent>
             </Card>
+
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 px-4">
+                <History className="h-5 w-5 text-slate-400" />
+                <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest">Histórico de Cierres Mensuales</h3>
+              </div>
+
+              <div className="grid gap-4">
+                {isHistoryLoading ? (
+                  <div className="py-10 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-slate-200" /></div>
+                ) : closuresHistory && closuresHistory.length > 0 ? (
+                  closuresHistory.map((closure) => (
+                    <Card key={closure.id} className="rounded-2xl border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
+                      <CardContent className="p-6 flex items-center justify-between">
+                        <div className="flex items-center gap-6">
+                          <div className="bg-slate-50 p-3 rounded-xl group-hover:bg-blue-50 transition-colors">
+                            <FileText className="h-6 w-6 text-slate-400 group-hover:text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-lg font-black text-slate-900 uppercase italic tracking-tighter">{closure.period}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Cierre: {closure.createdAt ? format(closure.createdAt.toDate ? closure.createdAt.toDate() : new Date(closure.createdAt), "dd/MM/yyyy HH:mm") : '...'}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-10">
+                          <div className="text-right hidden sm:block">
+                            <p className="text-[9px] font-black uppercase text-slate-400">Unidades</p>
+                            <p className="font-black text-slate-900">{closure.unitCount}</p>
+                          </div>
+                          <div className="text-right hidden sm:block">
+                            <p className="text-[9px] font-black uppercase text-slate-400">Consumo</p>
+                            <p className="font-black text-blue-600">{closure.totalConsumption.toFixed(1)} m³</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] font-black uppercase text-slate-400">Total Liquidado</p>
+                            <p className="text-xl font-black text-slate-900">$ {closure.totalCost.toLocaleString()}</p>
+                          </div>
+                          <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10">
+                            <ChevronRight className="h-5 w-5 text-slate-300" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="py-20 text-center border-2 border-dashed rounded-[2.5rem] bg-slate-50/50 space-y-2">
+                    <CalendarCheck className="h-10 w-10 text-slate-200 mx-auto" />
+                    <p className="text-sm font-black uppercase text-slate-400">No hay cierres procesados aún.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

@@ -102,6 +102,24 @@ export interface WaterReading {
   timestamp: string | any;
 }
 
+export interface BillingClosure {
+  id: string;
+  companyId: string;
+  communityId: string;
+  period: string; // Ej: "Marzo 2024"
+  totalConsumption: number;
+  totalCost: number;
+  unitCount: number;
+  readings: {
+    unit: string;
+    previous: number;
+    current: number;
+    consumption: number;
+    cost: number;
+  }[];
+  createdAt: string | any;
+}
+
 export interface User {
   id: string;
   email: string;

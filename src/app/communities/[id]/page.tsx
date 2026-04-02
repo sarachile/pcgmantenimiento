@@ -54,7 +54,9 @@ import {
   Receipt,
   FileText,
   CalendarCheck,
-  Info
+  Info,
+  History,
+  CheckCircle2
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -79,10 +81,11 @@ import {
   useCollection, 
   useMemoFirebase, 
   useDoc,
-  updateDocumentNonBlocking
+  updateDocumentNonBlocking,
+  addDocumentNonBlocking
 } from "@/firebase";
-import { collection, doc, serverTimestamp, query, where } from "firebase/firestore";
-import { Community, WaterMeter } from "@/lib/types";
+import { collection, doc, serverTimestamp, query, where, orderBy } from "firebase/firestore";
+import { Community, WaterMeter, BillingClosure } from "@/lib/types";
 import { format, subHours } from "date-fns";
 import { es } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
@@ -90,7 +93,6 @@ import { MonthlyBillingReport } from "@/components/MonthlyBillingReport";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
-// DATA DE TENDENCIAS SIMULADA
 const TREND_DATA = [
   { day: "Lun", actual: 45, previous: 42 },
   { day: "Mar", actual: 48, previous: 44 },
@@ -232,6 +234,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   const [pendingMeter, setPendingMeter] = useState<WaterMeter | null>(null);
   const [simMeters, setSimMeters] = useState<WaterMeter[]>([]);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isClosingMonth, setIsClosingMonth] = useState(false);
 
   useEffect(() => { 
     setMounted(true); 
@@ -243,9 +246,15 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   // Queries
   const communityRef = useMemoFirebase(() => db && companyId ? doc(db, "companies", companyId, "communities", commId) : null, [db, companyId, commId]);
   const metersQuery = useMemoFirebase(() => db && companyId ? query(collection(db, "companies", companyId, "waterMeters"), where("communityId", "==", commId)) : null, [db, companyId, commId]);
+  
+  const historyQuery = useMemoFirebase(() => 
+    db && companyId ? query(collection(db, "companies", companyId, "communities", commId, "billingClosures"), orderBy("createdAt", "desc")) : null,
+    [db, companyId, commId]
+  );
 
   const { data: community, isLoading: isCommLoading } = useDoc<Community>(communityRef);
   const { data: realMeters, isLoading: isMetersLoading } = useCollection<WaterMeter>(metersQuery);
+  const { data: closuresHistory, isLoading: isHistoryLoading } = useCollection<BillingClosure>(historyQuery);
 
   const displayMeters = useMemo(() => {
     let list = (realMeters && realMeters.length > 0) ? realMeters : simMeters;
@@ -315,6 +324,40 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  const handlePerformMonthlyClosure = async () => {
+    if (!db || !companyId || !commId) return;
+    
+    setIsClosingMonth(true);
+    try {
+      const residential = billingData.filter(d => !d.isInfrastructure);
+      const totalConsumption = residential.reduce((acc, d) => acc + d.consumption, 0);
+      const totalCost = residential.reduce((acc, d) => acc + d.cost, 0);
+      const period = format(new Date(), "MMMM yyyy", { locale: es });
+
+      const closureData = {
+        companyId,
+        communityId: commId,
+        period,
+        totalConsumption,
+        totalCost,
+        unitCount: residential.length,
+        readings: billingData,
+        createdAt: serverTimestamp(),
+      };
+
+      await addDocumentNonBlocking(collection(db, "companies", companyId, "communities", commId, "billingClosures"), closureData);
+      
+      toast({ 
+        title: "Corte Mensual Realizado", 
+        description: `Se ha guardado el histórico para ${period} con éxito.`,
+      });
+    } catch (e) {
+      toast({ title: "Error al guardar histórico", variant: "destructive" });
+    } finally {
+      setIsClosingMonth(false);
+    }
+  };
+
   const handleDownloadBillingPdf = async () => {
     if (!reportRef.current) return;
     setIsGeneratingPdf(true);
@@ -354,7 +397,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
       }
       
       pdf.save(`CIERRE_MENSUAL_${community?.name || 'RECINTO'}_${format(new Date(), "MM_yyyy")}.pdf`);
-      toast({ title: "Reporte Descargado", description: "El archivo PDF está listo para ser enviado a administración." });
+      toast({ title: "Reporte Descargado" });
     } catch (e) {
       console.error(e);
       toast({ title: "Error al generar PDF", variant: "destructive" });
@@ -572,7 +615,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </TabsContent>
 
-        <TabsContent value="billing" className="space-y-6 animate-in fade-in duration-300">
+        <TabsContent value="billing" className="space-y-10 animate-in fade-in duration-300">
           <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
             <CardHeader className="bg-slate-900 text-white p-8">
               <div className="flex items-center justify-between">
@@ -601,11 +644,13 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" className="rounded-xl h-11 bg-white font-bold gap-2">
-                    <FileText className="h-4 w-4" /> Importar Último Cierre
-                  </Button>
-                  <Button className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg" onClick={() => toast({ title: "Mes Cerrado", description: "Se han guardado las lecturas de facturación." })}>
-                    <CalendarCheck className="h-4 w-4" /> Realizar Corte Mensual
+                  <Button 
+                    className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg" 
+                    onClick={handlePerformMonthlyClosure}
+                    disabled={isClosingMonth}
+                  >
+                    {isClosingMonth ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />} 
+                    Realizar Corte Mensual
                   </Button>
                 </div>
               </div>
@@ -647,6 +692,58 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </CardContent>
           </Card>
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 px-4">
+              <History className="h-5 w-5 text-slate-400" />
+              <h3 className="text-sm font-black uppercase text-slate-400 tracking-widest">Histórico de Cierres Mensuales</h3>
+            </div>
+
+            <div className="grid gap-4">
+              {isHistoryLoading ? (
+                <div className="py-10 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-slate-200" /></div>
+              ) : closuresHistory && closuresHistory.length > 0 ? (
+                closuresHistory.map((closure) => (
+                  <Card key={closure.id} className="rounded-2xl border-none shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all">
+                    <CardContent className="p-6 flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="bg-slate-50 p-3 rounded-xl group-hover:bg-blue-50 transition-colors">
+                          <FileText className="h-6 w-6 text-slate-400 group-hover:text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-black text-slate-900 uppercase italic tracking-tighter">{closure.period}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Cierre: {closure.createdAt ? format(closure.createdAt.toDate ? closure.createdAt.toDate() : new Date(closure.createdAt), "dd/MM/yyyy HH:mm") : '...'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-10">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-[9px] font-black uppercase text-slate-400">Unidades</p>
+                          <p className="font-black text-slate-900">{closure.unitCount}</p>
+                        </div>
+                        <div className="text-right hidden sm:block">
+                          <p className="text-[9px] font-black uppercase text-slate-400">Consumo</p>
+                          <p className="font-black text-blue-600">{closure.totalConsumption.toFixed(1)} m³</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-black uppercase text-slate-400">Total Liquidado</p>
+                          <p className="text-xl font-black text-slate-900">$ {closure.totalCost.toLocaleString()}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="rounded-xl h-10 w-10">
+                          <ChevronRight className="h-5 w-5 text-slate-300" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="py-20 text-center border-2 border-dashed rounded-[2.5rem] bg-slate-50/50 space-y-2">
+                  <CalendarCheck className="h-10 w-10 text-slate-200 mx-auto" />
+                  <p className="text-sm font-black uppercase text-slate-400">No hay cierres procesados aún.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
