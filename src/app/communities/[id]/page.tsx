@@ -1,7 +1,7 @@
 
 "use client";
 
-import { use, useState, useEffect, useMemo, useRef, useCallback, Fragment } from "react";
+import { use, useState, useEffect, useMemo, useRef, Fragment } from "react";
 import { 
   Table, 
   TableBody, 
@@ -22,70 +22,38 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { 
   Search, 
-  Plus, 
   ArrowLeft,
   Loader2,
-  Save,
-  Users,
-  Eye,
-  Calendar,
-  Building2,
-  Home,
-  LogOut,
-  UserCog,
   MapPin,
   ChevronRight,
-  Globe,
-  Navigation,
-  ExternalLink,
   ShieldCheck,
   Zap,
-  Cpu,
-  Monitor,
   Droplets,
-  HardHat,
-  Smartphone,
-  Waves,
-  QrCode,
-  Wifi,
-  KeyRound,
-  Camera,
-  X,
-  AlertTriangle,
-  LayoutGrid,
-  List,
-  Battery,
-  Signal,
-  TrendingUp,
-  AlertCircle,
   Activity,
-  HandCoins,
   ShieldAlert,
   BarChart3,
-  Clock,
-  ArrowUpRight,
-  TrendingDown,
   Sparkles,
-  ChevronDown,
-  ChevronUp,
-  Maximize2,
-  Scale,
+  LayoutGrid,
+  List,
   Power,
   PowerOff,
   Lock,
   Download,
-  Layers
+  Layers,
+  TrendingUp,
+  Scale,
+  Receipt,
+  FileText,
+  CalendarCheck
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -98,8 +66,7 @@ import {
   BarChart,
   Bar,
   ReferenceLine,
-  Cell,
-  Legend
+  Cell
 } from "recharts";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -111,14 +78,16 @@ import {
   useCollection, 
   useMemoFirebase, 
   useDoc,
-  updateDocumentNonBlocking,
-  setDocumentNonBlocking
+  updateDocumentNonBlocking
 } from "@/firebase";
-import { collection, doc, serverTimestamp, query, where, getDoc } from "firebase/firestore";
-import { Company, Community, WaterMeter, Asset } from "@/lib/types";
-import { format, parseISO, subDays, startOfMonth, endOfMonth, isAfter, subHours } from "date-fns";
+import { collection, doc, serverTimestamp, query, where } from "firebase/firestore";
+import { Community, WaterMeter } from "@/lib/types";
+import { format, subHours } from "date-fns";
 import { es } from "date-fns/locale";
 import { Progress } from "@/components/ui/progress";
+import { MonthlyBillingReport } from "@/components/MonthlyBillingReport";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 // DATA DE TENDENCIAS SIMULADA
 const TREND_DATA = [
@@ -134,8 +103,6 @@ const TREND_DATA = [
 const generateMetersForCommunity = (commId: string): WaterMeter[] => {
   if (commId === 'comm-juan-2') {
     const meters: WaterMeter[] = [];
-    
-    // 5 Verticales
     for (let i = 1; i <= 5; i++) {
       meters.push({
         id: `meter-ma-vert-${i}`,
@@ -151,8 +118,6 @@ const generateMetersForCommunity = (commId: string): WaterMeter[] => {
         devEUI: `VERT000${i}MA`
       } as any);
     }
-
-    // 5 Áreas Comunes
     const commonAreas = ["Riego Jardín Norte", "Piscina Adultos", "Lavandería Piso 1", "Sala Multiuso", "Riego Jardín Sur"];
     commonAreas.forEach((area, i) => {
       meters.push({
@@ -169,7 +134,6 @@ const generateMetersForCommunity = (commId: string): WaterMeter[] => {
         devEUI: `COMM000${i}MA`
       } as any);
     });
-
     return meters;
   }
 
@@ -179,7 +143,7 @@ const generateMetersForCommunity = (commId: string): WaterMeter[] => {
       id: `meter-sim-${id}`,
       unitIdentifier: `Depto 100${id}`,
       status: Math.random() > 0.98 ? 'closed' : 'open',
-      currentReading: 150 + (i * 12.4),
+      currentReading: 150 + (i * 12.4) + (Math.random() * 5),
       batteryLevel: 70 + Math.random() * 30,
       signalStrength: 60 + Math.random() * 40,
       hasLeakAlert: Math.random() > 0.96,
@@ -253,10 +217,11 @@ function UnitAnalysisSection({ meter }: { meter: WaterMeter }) {
 export default function CommunityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const commId = resolvedParams.id;
-  const { profile, isCompanyAdmin, isSupervisor } = useUser();
+  const { profile } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
+  const reportRef = useRef<HTMLDivElement>(null);
   
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -266,6 +231,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
   const [pinInput, setPinInput] = useState("");
   const [pendingMeter, setPendingMeter] = useState<WaterMeter | null>(null);
   const [simMeters, setSimMeters] = useState<WaterMeter[]>([]);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => { 
     setMounted(true); 
@@ -293,7 +259,6 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     const list = displayMeters;
     if (list.length === 0) return null;
     
-    // Mar Azul solo tiene Verticales y Áreas Comunes
     const residential = list.filter(m => !m.unitIdentifier.includes("Vertical") && !m.unitIdentifier.includes("Área Común"));
     const infrastructure = list.filter(m => m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común"));
     
@@ -306,6 +271,26 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     const lossCLP = (matrixTotal - totalMeasured) * 1800;
     
     return { sumUnits, sumInfra, matrixTotal, efficiency, lossCLP, leakCount: list.filter(m => m.hasLeakAlert).length };
+  }, [displayMeters]);
+
+  const billingData = useMemo(() => {
+    return displayMeters.map(m => {
+      const isInfrastructure = m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común");
+      // Simular lectura anterior para el reporte
+      const prevReading = m.currentReading - (Math.random() * 15 + 5);
+      const consumption = m.currentReading - prevReading;
+      const cost = consumption * 1850; // Tarifa base simulada
+
+      return {
+        id: m.id,
+        unit: m.unitIdentifier,
+        previous: Number(prevReading.toFixed(3)),
+        current: Number(m.currentReading.toFixed(3)),
+        consumption: Number(consumption.toFixed(3)),
+        cost: Math.round(cost),
+        isInfrastructure
+      };
+    }).sort((a, b) => a.unit.localeCompare(b.unit));
   }, [displayMeters]);
 
   const handleToggleValve = (meter: WaterMeter) => {
@@ -331,10 +316,52 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     }
   };
 
+  const handleDownloadBillingPdf = async () => {
+    if (!reportRef.current) return;
+    setIsGeneratingPdf(true);
+    try {
+      toast({ title: "Generando Reporte", description: "Consolidando lecturas mensuales..." });
+      await new Promise(r => setTimeout(r, 1000));
+      
+      const element = reportRef.current;
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true, 
+        backgroundColor: "#ffffff",
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeight);
+      pdf.save(`CIERRE_MENSUAL_${community?.name || 'RECINTO'}_${format(new Date(), "MM_yyyy")}.pdf`);
+      
+      toast({ title: "Reporte Descargado", description: "El archivo PDF está listo para ser enviado a administración." });
+    } catch (e) {
+      console.error(e);
+      toast({ title: "Error al generar PDF", variant: "destructive" });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   if (!mounted || isCommLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-blue-600" /></div>;
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-500 max-w-6xl mx-auto">
+      {/* Elemento oculto para la generación del PDF */}
+      <div className="fixed -left-[10000px] top-0 pointer-events-none opacity-0">
+        <MonthlyBillingReport 
+          forwardedRef={reportRef} 
+          communityName={community?.name || ""} 
+          data={billingData} 
+          period={format(new Date(), "MMMM yyyy", { locale: es })}
+        />
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full h-12 w-12"><ArrowLeft className="h-5 w-5" /></Button>
@@ -344,253 +371,266 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         <div className="flex gap-2">
-          <Button className="rounded-xl h-11 px-6 font-black uppercase text-[10px] gap-2 shadow-xl bg-blue-600"><Download className="h-4 w-4" /> Descargar Reporte</Button>
+          <Button variant="outline" className="rounded-xl h-11 px-6 font-black uppercase text-[10px] gap-2 bg-white" onClick={handleDownloadBillingPdf} disabled={isGeneratingPdf}>
+            {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} Exportar Cierre Mensual
+          </Button>
         </div>
       </div>
 
-      {auditStats && (
-        <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-none shadow-xl bg-blue-600 text-white rounded-[2rem] p-6 relative overflow-hidden">
-              <div className="absolute right-0 top-0 p-4 opacity-10"><Activity className="h-20 w-20" /></div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-blue-100">Eficiencia de Red</p>
-              <div className="text-4xl font-black italic mt-2">{auditStats.efficiency.toFixed(1)}%</div>
-            </Card>
-            <Card className={cn("border-none shadow-xl rounded-[2rem] p-6 relative overflow-hidden", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
-              <div className="absolute right-0 top-0 p-4 opacity-10"><ShieldAlert className="h-20 w-20" /></div>
-              <p className={cn("text-[9px] font-black uppercase tracking-widest", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Activas</p>
-              <div className="text-4xl font-black italic mt-2">{auditStats.leakCount}</div>
-            </Card>
-            <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] p-6">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pérdida Económica</p>
-              <div className="text-4xl font-black italic text-rose-400 mt-2">${auditStats.lossCLP.toLocaleString()}</div>
-            </Card>
-            <Card className="border-none shadow-xl bg-white rounded-[2rem] p-6 border-2 border-slate-100">
-              <p className="text-[9px] font-black uppercase text-slate-400">Total Medido</p>
-              <div className="text-4xl font-black text-slate-900 mt-2">{(auditStats.sumUnits + auditStats.sumInfra).toFixed(1)} m³</div>
-            </Card>
-          </div>
+      <Tabs defaultValue="audit" className="space-y-8">
+        <TabsList className="bg-white p-1 h-14 rounded-2xl border shadow-sm w-full grid grid-cols-2 max-w-md">
+          <TabsTrigger value="audit" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
+            <Activity className="h-4 w-4" /> Auditoría Técnica
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2">
+            <Receipt className="h-4 w-4" /> Cierre de Consumo
+          </TabsTrigger>
+        </TabsList>
 
-          <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
-            <CardHeader className="p-8 border-b bg-slate-50/50">
-              <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3"><Scale className="h-6 w-6 text-blue-600" /> Balance Maestro de Distribución</CardTitle>
-            </CardHeader>
-            <CardContent className="p-8 grid gap-10 md:grid-cols-3">
-              <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Matriz Aguas Andinas</p>
-                <p className="text-4xl font-black italic text-slate-900">{auditStats.matrixTotal.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
-                <Progress value={100} className="h-2 bg-slate-100" />
+        <TabsContent value="audit" className="space-y-8">
+          {auditStats && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card className="border-none shadow-xl bg-blue-600 text-white rounded-[2rem] p-6 relative overflow-hidden">
+                  <div className="absolute right-0 top-0 p-4 opacity-10"><Activity className="h-20 w-20" /></div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-blue-100">Eficiencia de Red</p>
+                  <div className="text-4xl font-black italic mt-2">{auditStats.efficiency.toFixed(1)}%</div>
+                </Card>
+                <Card className={cn("border-none shadow-xl rounded-[2rem] p-6 relative overflow-hidden", auditStats.leakCount > 0 ? "bg-rose-600 text-white animate-pulse" : "bg-white")}>
+                  <div className="absolute right-0 top-0 p-4 opacity-10"><ShieldAlert className="h-20 w-20" /></div>
+                  <p className={cn("text-[9px] font-black uppercase tracking-widest", auditStats.leakCount > 0 ? "text-rose-100" : "text-slate-400")}>Fugas Activas</p>
+                  <div className="text-4xl font-black italic mt-2">{auditStats.leakCount}</div>
+                </Card>
+                <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] p-6">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Pérdida Económica</p>
+                  <div className="text-4xl font-black italic text-rose-400 mt-2">${auditStats.lossCLP.toLocaleString()}</div>
+                </Card>
+                <Card className="border-none shadow-xl bg-white rounded-[2rem] p-6 border-2 border-slate-100">
+                  <p className="text-[9px] font-black uppercase text-slate-400">Total Medido</p>
+                  <div className="text-4xl font-black text-slate-900 mt-2">{(auditStats.sumUnits + auditStats.sumInfra).toFixed(1)} m³</div>
+                </Card>
               </div>
-              <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Nodos Medidos</p>
-                <p className="text-4xl font-black italic text-blue-600">{(auditStats.sumUnits + auditStats.sumInfra).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
-                <Progress value={auditStats.efficiency} className="h-2 bg-blue-600" />
-              </div>
-              <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial No Facturado</p>
-                <p className="text-4xl font-black italic text-rose-600">{(auditStats.matrixTotal - (auditStats.sumUnits + auditStats.sumInfra)).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
-                <Progress value={100 - auditStats.efficiency} className="h-2 bg-rose-600" />
-              </div>
-            </CardContent>
-          </Card>
-        </>
-      )}
 
-      {/* GRÁFICOS DE ANÁLISIS DE PATRONES */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="lg:col-span-2 border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
-          <CardHeader className="p-8 border-b bg-slate-50/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-                  <TrendingUp className="h-6 w-6 text-blue-600" /> Tendencia Semanal Comparativa
-                </CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Semana Actual vs Semana Anterior (m³)</CardDescription>
-              </div>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-2"><div className="h-3 w-3 bg-blue-600 rounded-full" /><span className="text-[9px] font-black uppercase">Actual</span></div>
-                <div className="flex items-center gap-2"><div className="h-3 w-3 bg-slate-200 rounded-full" /><span className="text-[9px] font-black uppercase">Anterior</span></div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-8 h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={TREND_DATA}>
-                <defs>
-                  <linearGradient id="colorActual" x1="0" x1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
-                <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
-                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: '900' }} />
-                <Area type="monotone" dataKey="previous" stroke="#e2e8f0" strokeWidth={2} fill="#f8fafc" />
-                <Area type="monotone" dataKey="actual" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-slate-900 text-white relative">
-          <div className="absolute top-0 right-0 p-8 opacity-10"><Zap className="h-40 w-40 text-blue-400" /></div>
-          <CardHeader className="p-8 border-b border-white/5">
-            <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <BarChart3 className="h-6 w-6 text-blue-400" /> Meta Sobreconsumo
-            </CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Proyección de cierre de mes</CardDescription>
-          </CardHeader>
-          <CardContent className="p-8 space-y-8 relative z-10">
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={[
-                  { name: 'Consumo Real', value: 850, fill: '#3b82f6' },
-                  { name: 'Proyectado', value: 1120, fill: '#1e293b' }
-                ]}>
-                  <XAxis dataKey="name" hide />
-                  <YAxis hide domain={[0, 1500]} />
-                  <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '12px' }} />
-                  <ReferenceLine y={1200} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={2} label={{ position: 'top', value: 'LÍMITE', fill: '#ef4444', fontSize: 10, fontWeight: '900' }} />
-                  <Bar dataKey="value" radius={[12, 12, 12, 12]} barSize={60}>
-                    <Cell fill="#3b82f6" />
-                    <Cell fill="#ffffff10" stroke="#ffffff20" strokeWidth={2} strokeDasharray="4 4" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase text-slate-400">Estado</span>
-                <Badge className="bg-emerald-500 text-white font-black text-[8px] uppercase">Bajo Límite</Badge>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-blue-400">Proyección Final</p>
-                <p className="text-3xl font-black italic">1.120 m³</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3 rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white p-10 flex flex-col justify-center relative overflow-hidden group">
-          <div className="absolute right-0 bottom-0 p-10 opacity-10 group-hover:scale-110 transition-transform"><Sparkles className="h-40 w-40 text-blue-400" /></div>
-          <div className="relative z-10 space-y-6">
-            <div className="space-y-2">
-              <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-4 py-1">Análisis Predictivo GENKO</Badge>
-              <h3 className="text-3xl font-black italic uppercase tracking-tighter">Diagnóstico de Inteligencia</h3>
-            </div>
-            <p className="text-slate-400 text-lg leading-relaxed max-w-2xl font-medium">
-              {commId === 'comm-juan-2' 
-                ? '"Condominio Mar Azul presenta una anomalía crítica en el sensor Área Común: Riego Jardín Norte. El consumo se mantiene estable en 0.8 L/min incluso en horario nocturno, sugiriendo una rotura de matriz."' 
-                : '"El recinto presenta un patrón de consumo nocturno estable, sin embargo, se detecta un incremento del 12% respecto a la semana pasada en horas de la mañana. Se recomienda auditar el sistema de riego automático."'}
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      {/* LISTADO DE MEDIDORES */}
-      <div className="space-y-4 pt-8">
-        <div className="flex items-center justify-between px-2">
-          <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2">
-            <Droplets className="h-4 w-4 text-blue-600" /> Detalle por Unidad ({displayMeters.length})
-          </h3>
-          <div className="flex gap-2">
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input placeholder="Buscar unidad..." className="pl-9 h-10 border-2 rounded-xl bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-            </div>
-            <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="sm" className="rounded-lg h-10" onClick={() => setViewMode('grid')}><LayoutGrid className="h-4 w-4" /></Button>
-            <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" className="rounded-lg h-10" onClick={() => setViewMode('list')}><List className="h-4 w-4" /></Button>
-          </div>
-        </div>
-
-        {viewMode === 'list' ? (
-          <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad / Categoría</TableHead>
-                  <TableHead className="font-black uppercase text-[10px]">Estado</TableHead>
-                  <TableHead className="font-black uppercase text-[10px]">Lectura</TableHead>
-                  <TableHead className="text-right pr-8 font-black uppercase text-[10px]">Mando</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {displayMeters.map(m => {
-                  const isInfrastructure = m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común");
-                  return (
-                    <Fragment key={m.id}>
-                      <TableRow 
-                        className={cn(
-                          "group hover:bg-slate-50 transition-colors cursor-pointer border-l-4", 
-                          m.hasLeakAlert ? "bg-rose-50/50 border-l-rose-500 hover:bg-rose-100/50" : (isInfrastructure ? "bg-blue-50/10 border-l-blue-400" : "border-l-transparent")
-                        )} 
-                        onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
-                      >
-                        <TableCell className="pl-8 py-4 font-black text-slate-900">
-                          <div className="flex items-center gap-3">
-                            {isInfrastructure && <Layers className="h-3.5 w-3.5 text-blue-600" />}
-                            <div className="flex flex-col">
-                              <span className="flex items-center gap-2">
-                                {m.unitIdentifier}
-                                {m.hasLeakAlert && (
-                                  <Badge className="bg-rose-600 text-white font-black text-[7px] h-4 uppercase animate-pulse">ALERTA FUGA</Badge>
-                                )}
-                              </span>
-                              {isInfrastructure && <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Infraestructura</span>}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
-                            <span className="text-[10px] font-bold uppercase">{m.status}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</TableCell>
-                        <TableCell className="text-right pr-8">
-                          <Button size="sm" className={cn("h-8 rounded-xl font-black uppercase text-[8px] gap-2", m.status === 'open' ? "bg-slate-900" : "bg-blue-600")} onClick={e => { e.stopPropagation(); handleToggleValve(m); }}>
-                            {m.status === 'open' ? <><PowerOff className="h-3.5 w-3.5" /> Cortar</> : <><Power className="h-3.5 w-3.5" /> Abrir</>}
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                      {expandedMeterId === m.id && (
-                        <TableRow className="bg-transparent border-none">
-                          <TableCell colSpan={4} className="p-0 border-none"><UnitAnalysisSection meter={m} /></TableCell>
-                        </TableRow>
-                      )}
-                    </Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </Card>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {displayMeters.map(m => (
-              <Card 
-                key={m.id} 
-                className={cn(
-                  "rounded-[2rem] border-none shadow-sm cursor-pointer hover:shadow-md transition-all bg-white overflow-hidden relative", 
-                  m.hasLeakAlert ? "ring-2 ring-rose-500 bg-rose-50" : (expandedMeterId === m.id && "ring-2 ring-blue-600")
-                )} 
-                onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
-              >
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div className={cn("p-2 rounded-xl", m.status === 'open' ? "bg-blue-50 text-blue-600" : "bg-rose-50 text-rose-600")}><Droplets className="h-5 w-5" /></div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={e => { e.stopPropagation(); handleToggleValve(m); }}>{m.status === 'open' ? <PowerOff className="h-4 w-4 text-slate-400" /> : <Power className="h-4 w-4 text-blue-600" />}</Button>
+              <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+                <CardHeader className="p-8 border-b bg-slate-50/50">
+                  <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3"><Scale className="h-6 w-6 text-blue-600" /> Balance Maestro de Distribución</CardTitle>
+                </CardHeader>
+                <CardContent className="p-8 grid gap-10 md:grid-cols-3">
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Matriz Aguas Andinas</p>
+                    <p className="text-4xl font-black italic text-slate-900">{auditStats.matrixTotal.toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                    <Progress value={100} className="h-2 bg-slate-100" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-xl font-black italic uppercase tracking-tighter">{m.unitIdentifier}</p>
-                      {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[6px] h-3 px-1 font-black">FUGA</Badge>}
-                    </div>
-                    <p className="text-sm font-black text-slate-900">{m.currentReading.toFixed(2)} m³</p>
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase text-blue-600 tracking-widest">Consumo Nodos Medidos</p>
+                    <p className="text-4xl font-black italic text-blue-600">{(auditStats.sumUnits + auditStats.sumInfra).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                    <Progress value={auditStats.efficiency} className="h-2 bg-blue-600" />
+                  </div>
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase text-rose-600 tracking-widest">Diferencial No Facturado</p>
+                    <p className="text-4xl font-black italic text-rose-600">{(auditStats.matrixTotal - (auditStats.sumUnits + auditStats.sumInfra)).toFixed(2)} <span className="text-sm font-bold opacity-40">m³</span></p>
+                    <Progress value={100 - auditStats.efficiency} className="h-2 bg-rose-600" />
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            </>
+          )}
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="lg:col-span-2 border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+              <CardHeader className="p-8 border-b bg-slate-50/50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-black uppercase italic tracking-tighter flex items-center gap-3">
+                      <TrendingUp className="h-6 w-6 text-blue-600" /> Tendencia Semanal Comparativa
+                    </CardTitle>
+                    <CardDescription className="text-[10px] font-bold uppercase text-slate-400">Semana Actual vs Semana Anterior (m³)</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-8 h-[350px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={TREND_DATA}>
+                    <defs>
+                      <linearGradient id="colorActual" x1="0" x1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/><stop offset="95%" stopColor="#2563eb" stopOpacity={0}/></linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
+                    <YAxis fontSize={10} axisLine={false} tickLine={false} stroke="#64748b" fontWeight="bold" />
+                    <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: '900' }} />
+                    <Area type="monotone" dataKey="previous" stroke="#e2e8f0" strokeWidth={2} fill="#f8fafc" />
+                    <Area type="monotone" dataKey="actual" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorActual)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-slate-900 text-white p-10 flex flex-col justify-center relative overflow-hidden group">
+              <div className="absolute right-0 bottom-0 p-10 opacity-10 group-hover:scale-110 transition-transform"><Sparkles className="h-40 w-40 text-blue-400" /></div>
+              <div className="relative z-10 space-y-6">
+                <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-4 py-1">Análisis Predictivo GENKO</Badge>
+                <p className="text-slate-400 text-lg leading-relaxed font-medium">
+                  {commId === 'comm-juan-2' 
+                    ? '"Condominio Mar Azul presenta una anomalía crítica en el sensor Área Común: Riego Jardín Norte. El consumo se mantiene estable sugiriendo una rotura de matriz."' 
+                    : '"El recinto presenta un patrón de consumo nocturno estable con un incremento del 12% respecto a la semana pasada. Se recomienda auditar el sistema de riego."'}
+                </p>
+              </div>
+            </Card>
           </div>
-        )}
-      </div>
+
+          <div className="space-y-4 pt-8">
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-sm font-black uppercase text-slate-400 tracking-[0.3em] flex items-center gap-2">
+                <Droplets className="h-4 w-4 text-blue-600" /> Sensores Activos ({displayMeters.length})
+              </h3>
+              <div className="flex gap-2">
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input placeholder="Buscar unidad..." className="pl-9 h-10 border-2 rounded-xl bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="sm" className="rounded-lg h-10" onClick={() => setViewMode('grid')}><LayoutGrid className="h-4 w-4" /></Button>
+                <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="sm" className="rounded-lg h-10" onClick={() => setViewMode('list')}><List className="h-4 w-4" /></Button>
+              </div>
+            </div>
+
+            <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow>
+                    <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad / Categoría</TableHead>
+                    <TableHead className="font-black uppercase text-[10px]">Estado</TableHead>
+                    <TableHead className="font-black uppercase text-[10px]">Lectura Actual</TableHead>
+                    <TableHead className="text-right pr-8 font-black uppercase text-[10px]">Mando Remoto</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayMeters.map(m => {
+                    const isInfrastructure = m.unitIdentifier.includes("Vertical") || m.unitIdentifier.includes("Área Común");
+                    return (
+                      <Fragment key={m.id}>
+                        <TableRow 
+                          className={cn(
+                            "group hover:bg-slate-50 transition-colors cursor-pointer border-l-4", 
+                            m.hasLeakAlert ? "bg-rose-50/50 border-l-rose-500" : (isInfrastructure ? "bg-blue-50/10 border-l-blue-400" : "border-l-transparent")
+                          )} 
+                          onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
+                        >
+                          <TableCell className="pl-8 py-4 font-black text-slate-900">
+                            <div className="flex items-center gap-3">
+                              {isInfrastructure && <Layers className="h-3.5 w-3.5 text-blue-600" />}
+                              <div className="flex flex-col">
+                                <span className="flex items-center gap-2">
+                                  {m.unitIdentifier}
+                                  {m.hasLeakAlert && <Badge className="bg-rose-600 text-white font-black text-[7px] h-4 uppercase animate-pulse">ALERTA FUGA</Badge>}
+                                </span>
+                                {isInfrastructure && <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">Infraestructura</span>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
+                              <span className="text-[10px] font-bold uppercase">{m.status}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</TableCell>
+                          <TableCell className="text-right pr-8">
+                            <Button size="sm" className={cn("h-8 rounded-xl font-black uppercase text-[8px] gap-2", m.status === 'open' ? "bg-slate-900" : "bg-blue-600")} onClick={e => { e.stopPropagation(); handleToggleValve(m); }}>
+                              {m.status === 'open' ? <><PowerOff className="h-3.5 w-3.5" /> Cortar</> : <><Power className="h-3.5 w-3.5" /> Abrir</>}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {expandedMeterId === m.id && (
+                          <TableRow className="bg-transparent border-none">
+                            <TableCell colSpan={4} className="p-0 border-none"><UnitAnalysisSection meter={m} /></TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="billing" className="space-y-6">
+          <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
+            <CardHeader className="bg-slate-900 text-white p-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-blue-600 p-3 rounded-2xl shadow-lg"><Receipt className="h-6 w-6 text-white" /></div>
+                  <div>
+                    <CardTitle className="text-xl font-black italic uppercase tracking-tighter">Liquidación de Consumo Mensual</CardTitle>
+                    <CardDescription className="text-slate-400 font-medium uppercase text-[10px] tracking-widest">Periodo: {format(new Date(), "MMMM yyyy", { locale: es })}</CardDescription>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Tarifa Referencial</p>
+                  <p className="text-2xl font-black italic text-blue-400">$ 1.850 <span className="text-[10px] opacity-50">/ m³</span></p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="p-8 border-b bg-slate-50 flex items-center justify-between gap-4">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    placeholder="Filtrar unidad..." 
+                    className="pl-10 h-11 border-none bg-white rounded-xl shadow-inner font-bold"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="rounded-xl h-11 bg-white font-bold gap-2">
+                    <FileText className="h-4 w-4" /> Importar Último Cierre
+                  </Button>
+                  <Button className="rounded-xl h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] gap-2 shadow-lg" onClick={() => toast({ title: "Mes Cerrado", description: "Se han guardado las lecturas de facturación." })}>
+                    <CalendarCheck className="h-4 w-4" /> Realizar Corte Mensual
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-slate-50/50">
+                    <TableRow>
+                      <TableHead className="pl-8 font-black uppercase text-[10px]">Unidad Habitacional</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Lectura Anterior</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Lectura Actual</TableHead>
+                      <TableHead className="font-black uppercase text-[10px]">Consumo (m³)</TableHead>
+                      <TableHead className="text-right pr-8 font-black uppercase text-[10px]">Total Período</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {billingData.filter(b => b.unit.toLowerCase().includes(searchTerm.toLowerCase())).map((row) => (
+                      <TableRow key={row.id} className={cn("hover:bg-slate-50 transition-colors", row.isInfrastructure && "bg-slate-50/30 opacity-60")}>
+                        <TableCell className="pl-8 py-4">
+                          <div className="flex items-center gap-3">
+                            {row.isInfrastructure ? <Layers className="h-3.5 w-3.5 text-slate-400" /> : <Droplets className="h-3.5 w-3.5 text-blue-600" />}
+                            <span className="font-black text-slate-900">{row.unit}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-slate-400 text-xs">{row.previous.toFixed(3)}</TableCell>
+                        <TableCell className="font-mono font-bold text-slate-900 text-xs">{row.current.toFixed(3)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 font-black text-xs">
+                            {row.consumption.toFixed(3)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-8 font-black text-slate-900">
+                          $ {row.cost.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* DIÁLOGO PIN */}
       <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
