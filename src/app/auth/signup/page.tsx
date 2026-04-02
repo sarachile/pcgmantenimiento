@@ -39,11 +39,16 @@ function SignupContent() {
   const [signupMode, setSignupMode] = useState<'new' | 'join'>(invitationCode ? 'join' : 'new');
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +77,7 @@ function SignupContent() {
         if (!companySnap.exists()) throw new Error("El código de acceso no es válido.");
         const companyData = companySnap.data();
         if (!companyData.isActive) throw new Error("Esta empresa se encuentra suspendida.");
-        role = 'companyAdmin'; // Al unirse por invitación directa de Superadmin, asume este rol
+        role = 'companyAdmin'; 
       }
 
       if (isSuperAdminAccount) {
@@ -116,22 +121,30 @@ function SignupContent() {
       toast({ title: "Registro Completo", description: "Bienvenido a la plataforma." });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Signup error:", error);
-      let friendlyMessage = error.message;
+      console.error("Signup error detail:", error);
+      let friendlyMessage = "No se pudo completar el registro. Verifique sus datos.";
 
       if (error.code === 'auth/email-already-in-use') {
-        friendlyMessage = "Este correo ya está registrado. Por favor, inicie sesión.";
+        friendlyMessage = "Este correo ya tiene una cuenta activa. Por favor, inicie sesión en lugar de registrarse.";
       } else if (error.code === 'auth/weak-password') {
-        friendlyMessage = "La contraseña debe tener al menos 6 caracteres.";
+        friendlyMessage = "La contraseña es muy débil. Use al menos 6 caracteres.";
       } else if (error.code === 'auth/invalid-email') {
-        friendlyMessage = "El formato del correo no es válido.";
+        friendlyMessage = "El formato del correo electrónico no es válido.";
+      } else if (error.message) {
+        friendlyMessage = error.message;
       }
 
-      toast({ title: "Error de Registro", description: friendlyMessage, variant: "destructive" });
+      toast({ 
+        title: "Error de Registro", 
+        description: friendlyMessage, 
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
   };
+
+  if (!mounted) return null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
@@ -209,7 +222,7 @@ function SignupContent() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="animate-spin text-primary" /></div>}>
       <SignupContent />
     </Suspense>
   );
