@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -35,6 +34,7 @@ import {
   Monitor,
   Download,
   ShieldCheck,
+  ShieldAlert,
   Inbox,
   Droplets,
   TrendingUp,
@@ -342,7 +342,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-5xl font-black italic tracking-tighter">1</div>
-              <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase">Suministros suspendidos</p>
+              <p className="text-[10px] font-bold text-slate-50 mt-1 uppercase">Suministros suspendidos</p>
             </CardContent>
           </Card>
         </div>
