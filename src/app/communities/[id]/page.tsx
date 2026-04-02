@@ -302,7 +302,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
     <div className="space-y-8 pb-20 animate-in fade-in duration-500 max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full h-12 w-12"><ArrowLeft className="h-6 w-6" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full h-12 w-12"><ArrowLeft className="h-5 w-5" /></Button>
           <div>
             <h2 className="text-4xl font-black tracking-tighter text-slate-900 italic uppercase">{community?.name || "Auditoría Hídrica"}</h2>
             <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest mt-1 flex items-center gap-2"><MapPin className="h-3 w-3 text-blue-600" /> {community?.address}</p>
