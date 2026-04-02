@@ -548,8 +548,21 @@ function AdminCompaniesContent() {
               <TableBody>
                 {communityMeters.map((m) => (
                   <Fragment key={m.id}>
-                    <TableRow className="group hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}>
-                      <TableCell className="pl-8 py-4 font-black text-slate-900">{m.unitIdentifier}</TableCell>
+                    <TableRow 
+                      className={cn(
+                        "group hover:bg-slate-50 transition-colors cursor-pointer border-l-4", 
+                        m.hasLeakAlert ? "bg-rose-50/50 border-l-rose-500 hover:bg-rose-100/50" : "border-l-transparent"
+                      )} 
+                      onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
+                    >
+                      <TableCell className="pl-8 py-4 font-black text-slate-900">
+                        <div className="flex items-center gap-2">
+                          {m.unitIdentifier}
+                          {m.hasLeakAlert && (
+                            <Badge className="bg-rose-600 text-white font-black text-[7px] h-4 uppercase animate-pulse">ALERTA FUGA</Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />

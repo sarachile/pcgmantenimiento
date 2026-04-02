@@ -359,7 +359,7 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         </CardContent>
       </Card>
 
-      {/* GRÁFICOS DE ANÁLISIS DE PATRONES (ADICIÓN) */}
+      {/* GRÁFICOS DE ANÁLISIS DE PATRONES */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card className="lg:col-span-2 border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white">
           <CardHeader className="p-8 border-b bg-slate-50/50">
@@ -476,19 +476,31 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
               <TableBody>
                 {displayMeters.map(m => (
                   <Fragment key={m.id}>
-                    <TableRow className="group hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}>
-                      <TableCell className="pl-8 py-4 font-black text-slate-900">{m.unitIdentifier}</TableCell>
+                    <TableRow 
+                      className={cn(
+                        "group hover:bg-slate-50 transition-colors cursor-pointer border-l-4", 
+                        m.hasLeakAlert ? "bg-rose-50/50 border-l-rose-500 hover:bg-rose-100/50" : "border-l-transparent"
+                      )} 
+                      onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
+                    >
+                      <TableCell className="pl-8 py-4 font-black text-slate-900">
+                        <div className="flex items-center gap-2">
+                          {m.unitIdentifier}
+                          {m.hasLeakAlert && (
+                            <Badge className="bg-rose-600 text-white font-black text-[7px] h-4 uppercase animate-pulse">ALERTA FUGA</Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className={cn("h-2 w-2 rounded-full", m.status === 'open' ? "bg-emerald-500" : "bg-rose-500")} />
                           <span className="text-[10px] font-bold uppercase">{m.status}</span>
-                          {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[7px] h-4 font-black">FUGA</Badge>}
                         </div>
                       </TableCell>
                       <TableCell className="font-black italic text-slate-900">{m.currentReading.toFixed(3)} m³</TableCell>
                       <TableCell className="text-right pr-8">
                         <Button size="sm" className={cn("h-8 rounded-xl font-black uppercase text-[8px] gap-2", m.status === 'open' ? "bg-slate-900" : "bg-blue-600")} onClick={e => { e.stopPropagation(); handleToggleValve(m); }}>
-                          {m.status === 'open' ? <><PowerOff className="h-3 w-3" /> Cortar</> : <><Power className="h-3 w-3" /> Abrir</>}
+                          {m.status === 'open' ? <><PowerOff className="h-3.5 w-3.5" /> Cortar</> : <><Power className="h-3.5 w-3.5" /> Abrir</>}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -505,13 +517,26 @@ export default function CommunityDetailPage({ params }: { params: Promise<{ id: 
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {displayMeters.map(m => (
-              <Card key={m.id} className={cn("rounded-[2rem] border-none shadow-sm cursor-pointer hover:shadow-md transition-all bg-white", expandedMeterId === m.id && "ring-2 ring-blue-600")} onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}>
+              <Card 
+                key={m.id} 
+                className={cn(
+                  "rounded-[2rem] border-none shadow-sm cursor-pointer hover:shadow-md transition-all bg-white overflow-hidden relative", 
+                  m.hasLeakAlert ? "ring-2 ring-rose-500 bg-rose-50" : (expandedMeterId === m.id && "ring-2 ring-blue-600")
+                )} 
+                onClick={() => setExpandedMeterId(expandedMeterId === m.id ? null : m.id)}
+              >
                 <CardContent className="p-6 space-y-4">
                   <div className="flex justify-between items-center">
                     <div className={cn("p-2 rounded-xl", m.status === 'open' ? "bg-blue-50 text-blue-600" : "bg-rose-50 text-rose-600")}><Droplets className="h-5 w-5" /></div>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={e => { e.stopPropagation(); handleToggleValve(m); }}>{m.status === 'open' ? <PowerOff className="h-4 w-4 text-slate-400" /> : <Power className="h-4 w-4 text-blue-600" />}</Button>
                   </div>
-                  <div><p className="text-xl font-black italic uppercase tracking-tighter">{m.unitIdentifier}</p><p className="text-sm font-black text-slate-900">{m.currentReading.toFixed(2)} m³</p></div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-xl font-black italic uppercase tracking-tighter">{m.unitIdentifier}</p>
+                      {m.hasLeakAlert && <Badge className="bg-rose-600 text-white text-[6px] h-3 px-1 font-black">FUGA</Badge>}
+                    </div>
+                    <p className="text-sm font-black text-slate-900">{m.currentReading.toFixed(2)} m³</p>
+                  </div>
                 </CardContent>
               </Card>
             ))}
