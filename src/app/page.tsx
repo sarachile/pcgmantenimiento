@@ -55,8 +55,6 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 
-const WHATSAPP_URL = "https://wa.me/56941245316?text=Hola,%20me%20interesa%20saber%20m%C3%A1s%20sobre%20GENKO.";
-
 export default function HomePage() {
   const { isAuthenticated } = useUser();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -175,18 +173,10 @@ export default function HomePage() {
     { label: "COMUNIDADES", href: "#agua-comunidades" },
     { label: "EDUCACIÓN", href: "#agua-colegios" },
     { label: "PREGUNTAS", href: "#faq" },
-    { label: "CONTACTO", href: WHATSAPP_URL, external: true },
   ];
 
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans scroll-smooth">
-      <div className="fixed bottom-8 right-8 z-[60]">
-        <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className="bg-emerald-500 hover:bg-emerald-600 text-white p-4 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group">
-          <MessageCircle className="h-8 w-8 fill-white" />
-          <span className="max-w-0 overflow-hidden group-hover:max-w-xs group-hover:ml-3 transition-all duration-500 font-black uppercase text-xs tracking-widest whitespace-nowrap">Consultar Factibilidad</span>
-        </a>
-      </div>
-
       <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md z-50 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
@@ -207,11 +197,7 @@ export default function HomePage() {
             <div className="flex justify-end mb-12"><button onClick={() => setIsMenuOpen(false)} className="text-white hover:rotate-90 transition-transform p-2"><X className="h-10 w-10" /></button></div>
             <div className="flex flex-col gap-8 flex-1 justify-center">
               {menuItems.map((item) => (
-                item.external ? (
-                  <a key={item.label} href={item.href} target="_blank" rel="noopener noreferrer" className="text-white text-4xl sm:text-5xl font-black italic tracking-tighter hover:translate-x-4 transition-transform leading-none" onClick={() => setIsMenuOpen(false)}>{item.label}</a>
-                ) : (
-                  <Link key={item.label} href={item.href} className="text-white text-4xl sm:text-5xl font-black italic tracking-tighter hover:translate-x-4 transition-transform leading-none" onClick={() => setIsMenuOpen(false)}>{item.label}</Link>
-                )
+                <Link key={item.label} href={item.href} className="text-white text-4xl sm:text-5xl font-black italic tracking-tighter hover:translate-x-4 transition-transform leading-none" onClick={() => setIsMenuOpen(false)}>{item.label}</Link>
               ))}
             </div>
             <div className="mt-auto pt-10 border-t border-white/20">
@@ -401,7 +387,7 @@ export default function HomePage() {
                     ))}
                   </div>
                   <div className="bg-slate-900 rounded-3xl p-8 text-white space-y-4 relative overflow-hidden"><div className="absolute right-0 top-0 p-4 opacity-10"><Zap className="h-20 w-20 text-emerald-400" /></div><p className="text-[10px] font-black uppercase text-emerald-400 tracking-[0.3em]">IA: Diagnóstico de Infraestructura</p><p className="text-sm font-medium italic leading-relaxed text-slate-300">"Anomalía en pabellón deportivo. Patrón compatible con falla en válvula de descarga. Acción sugerida: Cierre preventivo NB-IoT."</p><button className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-black uppercase text-[10px] gap-2 flex items-center justify-center">Acción Remota <ArrowRight className="h-4 w-4" /></button></div>
-                  <Button asChild className="h-16 w-full rounded-2xl bg-slate-900 text-white font-black uppercase text-xs tracking-widest shadow-xl"><a href={WHATSAPP_URL} target="_blank">Agendar Auditoría Técnica <ArrowRight className="ml-2 h-4 w-4" /></a></Button>
+                  <Button asChild className="h-16 w-full rounded-2xl bg-slate-900 text-white font-black uppercase text-xs tracking-widest shadow-xl"><Link href="/auth/signup">Agendar Auditoría Técnica <ArrowRight className="ml-2 h-4 w-4" /></Link></Button>
                 </CardContent>
               </Card>
             </div>
@@ -445,7 +431,6 @@ export default function HomePage() {
             <Link href="/water-control/login" className="text-blue-600 hover:text-blue-700 font-black flex items-center gap-1.5 transition-colors">
               <Droplets className="h-3 w-3" /> Login Administradores
             </Link>
-            <a href={WHATSAPP_URL} className="hover:text-primary transition-colors">Soporte</a>
           </div>
           <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.5em] pt-10">© {new Date().getFullYear()} - GENKO.CL - INDUSTRIAL WATER INTELLIGENCE</p>
         </div>
