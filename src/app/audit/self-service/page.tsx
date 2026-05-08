@@ -37,7 +37,8 @@ import {
   Sprout,
   Loader2,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Timer
 } from "lucide-react";
 import { useFirestore } from "@/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -75,7 +76,9 @@ export default function PublicSelfAuditPage() {
     irrigationAreaM2: "",
     irrigationType: "automatico",
     irrigationDaysPerWeek: "3",
-    irrigationSchedule: "", // Mañana, Noche, Madrugada
+    irrigationStartTime: "22:00",
+    irrigationEndTime: "06:00",
+    irrigationCircuitsCount: "",
     irrigationObservation: "",
 
     // Step 4: Consumo
@@ -337,8 +340,24 @@ export default function PublicSelfAuditPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Horario Habitual</Label>
-                    <Input placeholder="Ej: 05:00 AM a 07:30 AM" value={formData.irrigationSchedule} onChange={e => updateField('irrigationSchedule', e.target.value)} className="h-12 border-2 rounded-xl font-bold" />
+                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">N° de Circuitos de Riego</Label>
+                    <Input type="number" placeholder="Ej: 4" value={formData.irrigationCircuitsCount} onChange={e => updateField('irrigationCircuitsCount', e.target.value)} className="h-12 border-2 rounded-xl font-bold" />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 ml-1 flex items-center gap-2">
+                    <Timer className="h-4 w-4 text-blue-500" /> Horario Habitual de Riego
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50 p-6 rounded-2xl border-2 border-dashed">
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Desde (Inicio)</Label>
+                      <Input type="time" value={formData.irrigationStartTime} onChange={e => updateField('irrigationStartTime', e.target.value)} className="h-12 border-2 rounded-xl font-bold" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-slate-400 ml-1">Hasta (Término)</Label>
+                      <Input type="time" value={formData.irrigationEndTime} onChange={e => updateField('irrigationEndTime', e.target.value)} className="h-12 border-2 rounded-xl font-bold" />
+                    </div>
                   </div>
                 </div>
 
