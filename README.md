@@ -16,17 +16,6 @@ Esta guía explica cómo conectar los medidores inteligentes de agua a la plataf
 1.  **Despertar el Sensor:** Pase un imán por el costado del equipo o use la App de Instalador (vía NFC) para activarlo.
 2.  **Sincronización:** El icono de antena dejará de parpadear cuando la conexión sea exitosa.
 
-### Paso 3: Configuración API
-1.  **Obtener Llave API:** En "Mi Empresa", presione "Generar API Key".
-2.  **Endpoint de Ingesta:** `https://www.pcgmantenimiento.com/api/v1/water-readings`
-
----
-
-## 📊 Nuevas Funcionalidades
-- **Cierre Mensual de Consumo:** Liquidación detallada por departamento con exportación a PDF para cobro de gastos comunes.
-- **Auditoría de Autogestión:** Herramienta para que instituciones (ej: Colegios) realicen un levantamiento técnico de su infraestructura y riego.
-- **Dashboard de Superadmin:** Monitor de leads y gestión centralizada de administradores de carteras.
-
 ---
 
 ## 🛠️ Control de Versiones (Git)
@@ -34,8 +23,24 @@ Esta guía explica cómo conectar los medidores inteligentes de agua a la plataf
 Para guardar y desplegar los cambios:
 
 1. **Añadir cambios**: `git add .`
-2. **Confirmar**: `git commit -m "Implementación de Cierre Mensual, Auditoría Institucional y Dashboard de Superadmin"`
+2. **Confirmar**: `git commit -m "Descripción de los cambios"`
 3. **Subir**: `git push origin main`
+
+### 🔑 ¿Olvidaste tu contraseña de GitHub?
+GitHub ya no acepta contraseñas para comandos de consola. Debes usar un **Personal Access Token (PAT)**:
+
+1.  Entra a **GitHub.com** en tu navegador.
+2.  Ve a **Settings** > **Developer Settings** > **Personal Access Tokens** > **Tokens (classic)**.
+3.  Presiona **Generate new token**. Dale un nombre y selecciona el permiso `repo`.
+4.  **Copia el token** (no lo volverás a ver).
+5.  Cuando la terminal te pida "Password", **pega el token** en su lugar.
+
+---
+
+## 📊 Nuevas Funcionalidades
+- **Cierre Mensual de Consumo:** Liquidación detallada por departamento con exportación a PDF para cobro de gastos comunes.
+- **Auditoría de Autogestión:** Herramienta para que instituciones (ej: Colegio Sagrados Corazones) realicen un levantamiento técnico de su infraestructura.
+- **Dashboard de Superadmin:** Monitor de leads y gestión centralizada de administradores de carteras.
 
 ---
 
