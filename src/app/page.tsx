@@ -170,7 +170,7 @@ export default function HomePage() {
 
   const menuItems = [
     { label: "SOLUCIONES", href: "#soluciones" },
-    { label: "COMUNIDADES", href: "#agua-comunidades" },
+    { label: "MULTISECTORIAL", href: "#agua-comunidades" },
     { label: "EDUCACIÓN", href: "#agua-colegios" },
     { label: "PREGUNTAS", href: "#faq" },
   ];
@@ -296,9 +296,9 @@ export default function HomePage() {
       <section id="agua-comunidades" className="py-32 bg-slate-50 relative overflow-hidden border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center mb-24 space-y-6">
-            <Badge className="bg-blue-600 text-white font-black px-6 py-2 uppercase tracking-[0.3em] rounded-full border-none text-[10px]">SOLUCIONES PARA COMUNIDADES</Badge>
-            <h2 className="text-5xl md:text-8xl font-black tracking-tighter text-slate-900 uppercase italic leading-[0.85]">Gestión Hídrica <br /><span className="text-blue-600">para Edificios</span></h2>
-            <p className="text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">Automatización de lecturas y control de mermas financieras mediante telemetría IoT.</p>
+            <Badge className="bg-blue-600 text-white font-black px-6 py-2 uppercase tracking-[0.3em] rounded-full border-none text-[10px]">SOLUCIONES MULTISECTORIALES</Badge>
+            <h2 className="text-5xl md:text-8xl font-black tracking-tighter text-slate-900 uppercase italic leading-[0.85]">Gestión Hídrica <br /><span className="text-blue-600">Multisectorial</span></h2>
+            <p className="text-xl text-slate-500 font-medium max-w-2xl mx-auto leading-relaxed">Automatización de lecturas y control de mermas financieras mediante telemetría IoT para todo tipo de infraestructuras.</p>
           </div>
 
           <div className="grid lg:grid-cols-12 gap-8 items-stretch mb-20">
