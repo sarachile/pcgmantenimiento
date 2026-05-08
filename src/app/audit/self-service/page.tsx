@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -185,7 +184,7 @@ export default function PublicSelfAuditPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Nombre Colegio / Empresa *</Label>
-                    <Input placeholder="Ej: Colegio Sagrados Corazones" value={formData.entityName} onChange={e => updateField('entityName', e.target.value)} className="h-12 border-2 rounded-xl font-bold" required />
+                    <Input placeholder="Ej: Complejo Educacional Maipú" value={formData.entityName} onChange={e => updateField('entityName', e.target.value)} className="h-12 border-2 rounded-xl font-bold" required />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Tipo de Sector</Label>
@@ -198,6 +197,7 @@ export default function PublicSelfAuditPage() {
                         <SelectItem value="edificio">Edificio Residencial</SelectItem>
                         <SelectItem value="condominio">Condominio de Casas</SelectItem>
                         <SelectItem value="industria">Planta Industrial</SelectItem>
+                        <SelectItem value="apr">Agua Potable Rural (APR)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
