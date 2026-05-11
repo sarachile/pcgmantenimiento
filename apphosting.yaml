@@ -1,11 +1,11 @@
-# Configuración de recuperación de despliegue
-# Optimizada para minimizar errores de cuota tras reactivación de cuenta.
+# Configuración de recuperación de despliegue optimizada
+# Ajustes para evitar saturación de CPU y límites de solicitudes (Rate Exceeded)
 
 runConfig:
   memoryMiB: 1024
   cpu: 1
   minInstances: 0
-  maxInstances: 5
+  maxInstances: 10 # Aumentado ligeramente para manejar picos sin bloqueos
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID

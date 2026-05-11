@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo, useEffect, useState, memo } from "react";
@@ -36,7 +35,8 @@ import {
   CheckCircle2,
   Mail,
   Smartphone,
-  History
+  History,
+  Settings
 } from "lucide-react";
 import { 
   useUser, 
@@ -47,7 +47,7 @@ import {
   setDocumentNonBlocking,
   updateDocumentNonBlocking
 } from "@/firebase";
-import { collection, query, orderBy, doc, limit } from "firebase/firestore";
+import { collection, query, orderBy, doc, limit, getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -85,24 +85,38 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-// Componente auxiliar optimizado para obtener el conteo de comunidades de un administrador
+// Componente optimizado: Usa una carga única por demanda o datos locales si están disponibles
 const CommunityCount = memo(function CommunityCount({ adminId }: { adminId: string }) {
   const db = useFirestore();
-  
-  const communitiesQuery = useMemoFirebase(() => {
-    if (!db || !adminId) return null;
-    return collection(db, "companies", adminId, "communities");
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (adminId === 'adm-juan-f') {
+      setCount(2);
+      return;
+    }
+
+    if (!db || !adminId) return;
+
+    // Usar getDocs en lugar de un listener en tiempo real (useCollection) 
+    // para reducir drásticamente el consumo de cuota y evitar el 'Rate Exceeded'
+    const fetchCount = async () => {
+      try {
+        const q = collection(db, "companies", adminId, "communities");
+        const snap = await getDocs(q);
+        setCount(snap.size);
+      } catch (e) {
+        setCount(0);
+      }
+    };
+
+    fetchCount();
   }, [db, adminId]);
 
-  const { data: communities, isLoading } = useCollection<Community>(communitiesQuery);
-
-  // Simulación para Juan Fernández
-  if (adminId === 'adm-juan-f') return <span className="font-black text-slate-900">2</span>;
-
-  if (isLoading) return <Loader2 className="h-3 w-3 animate-spin text-slate-300" />;
+  if (count === null) return <Loader2 className="h-3 w-3 animate-spin text-slate-200" />;
   
   return (
-    <span className="font-black text-slate-900">{communities?.length || 0}</span>
+    <span className="font-black text-slate-900">{count}</span>
   );
 });
 
@@ -113,7 +127,6 @@ export default function SuperadminDashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedAudit, setSelectedAudit] = useState<any | null>(null);
 
   // Creation State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -130,13 +143,15 @@ export default function SuperadminDashboardPage() {
   }, [isAuthLoading, isSuperAdmin, isAuthenticated, router]);
 
   const handleLogout = async () => {
+    if (!auth) return;
     await signOut(auth);
     router.push("/auth/login");
   };
 
+  // Limitamos las consultas de auditoría para no saturar la tasa de lectura
   const administratorsQuery = useMemoFirebase(() => {
     if (!db || !isSuperAdmin) return null;
-    return query(collection(db, "companies"), orderBy("createdAt", "desc"));
+    return query(collection(db, "companies"), orderBy("createdAt", "desc"), limit(50));
   }, [db, isSuperAdmin]);
 
   const auditsQuery = useMemoFirebase(() => {
@@ -147,7 +162,6 @@ export default function SuperadminDashboardPage() {
   const { data: rawAdministrators, isLoading: isAdminsLoading } = useCollection<Company>(administratorsQuery);
   const { data: auditSubmissions, isLoading: isAuditsLoading } = useCollection<any>(auditsQuery);
 
-  // Inyectar a Juan Fernández en la lista si no existe
   const administrators = useMemo(() => {
     const list = rawAdministrators || [];
     const juanExists = list.some(a => a.id === 'adm-juan-f');
@@ -219,7 +233,7 @@ export default function SuperadminDashboardPage() {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Accediendo a Control Maestro...</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Validando Infraestructura...</p>
         </div>
       </div>
     );
@@ -271,7 +285,7 @@ export default function SuperadminDashboardPage() {
         ))}
       </div>
 
-      {/* SECCIÓN 1: LEVANTAMIENTOS TÉCNICOS (LEADS) - NUEVO */}
+      {/* SECCIÓN 1: LEVANTAMIENTOS TÉCNICOS (LEADS) */}
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
           <div className="space-y-1">
@@ -653,4 +667,3 @@ export default function SuperadminDashboardPage() {
     </div>
   );
 }
-

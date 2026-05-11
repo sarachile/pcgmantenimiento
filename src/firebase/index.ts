@@ -1,8 +1,7 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { 
   initializeFirestore, 
@@ -14,24 +13,27 @@ import {
 import { getStorage } from 'firebase/storage';
 
 /**
- * Inicializa Firebase de forma robusta.
- * Maneja fallos de persistencia (comunes en navegadores de WhatsApp o Modo Incógnito).
+ * Inicializa Firebase de forma robusta y eficiente.
+ * Implementa un patrón de singleton para evitar excesos de tasa (Rate Exceeded).
  */
 export function initializeFirebase() {
   const apps = getApps();
   const app = apps.length ? apps[0] : initializeApp(firebaseConfig);
   
   let firestore: Firestore;
+  
   try {
-    // Intentamos inicializar con persistencia para soporte offline.
-    // Solo si no ha sido inicializado antes por otra llamada.
-    firestore = initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-    });
-  } catch (e: any) {
-    // Si ya existe o si el entorno (WhatsApp/Incognito) bloquea IndexedDB, 
-    // obtenemos la instancia existente o una nueva sin persistencia.
+    // Intentamos obtener la instancia existente para no saturar las conexiones
     firestore = getFirestore(app);
+  } catch (e: any) {
+    // Si falla la obtención simple, inicializamos con caché persistente
+    try {
+      firestore = initializeFirestore(app, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      });
+    } catch (innerError) {
+      firestore = getFirestore(app);
+    }
   }
 
   return {
