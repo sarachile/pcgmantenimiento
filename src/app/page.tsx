@@ -222,7 +222,8 @@ export default function HomePage() {
         </div>
       )}
 
-      <section className="relative h-[100svh] flex items-center justify-center overflow-hidden">
+      {/* HERO SECTION OPTIMIZADA PARA MÓVIL */}
+      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-24 pb-20 md:py-0">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-slate-900/60 z-10" />
           {mounted && (
@@ -243,7 +244,7 @@ export default function HomePage() {
           )}
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 text-center space-y-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 text-center space-y-12">
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-10 duration-1000">
             <Badge variant="outline" className="py-2 px-6 border-blue-400/30 text-blue-300 bg-white/5 backdrop-blur-md rounded-full font-black uppercase tracking-[0.3em] text-[10px]">
               GENKO • Inteligencia Hídrica para Instituciones
@@ -252,7 +253,7 @@ export default function HomePage() {
               Gestión Hídrica <br /> 
               <span className="text-blue-400">Multisectorial</span>
             </h1>
-            <p className="text-lg md:text-xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium px-4">
+            <p className="text-base md:text-xl text-slate-200 max-w-3xl mx-auto leading-relaxed font-medium px-4">
               Transparentamos el consumo de agua en recintos complejos. Desde colegios hasta plantas industriales, GENKO entrega trazabilidad total para reducir mermas y asegurar la continuidad operativa.
             </p>
           </div>
@@ -263,7 +264,7 @@ export default function HomePage() {
               { title: "Control NB-IoT", desc: "Transmisión remota sin Wi-Fi local.", icon: Radio },
               { title: "Eficiencia", desc: "Ahorro garantizado mediante detección.", icon: Zap }
             ].map((item, i) => (
-              <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/10 p-8 rounded-[2.5rem] text-left group hover:bg-white/20 transition-all cursor-default">
+              <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-[2.5rem] text-left group hover:bg-white/20 transition-all cursor-default">
                 <div className="bg-blue-500/20 p-3 rounded-2xl w-fit mb-4 text-blue-400 group-hover:scale-110 transition-transform"><item.icon className="h-6 w-6" /></div>
                 <h3 className="text-white font-black uppercase italic tracking-tight text-lg mb-1">{item.title}</h3>
                 <p className="text-slate-300 text-[10px] font-bold uppercase tracking-widest">{item.desc}</p>
